@@ -2,8 +2,16 @@
 name = "kdlith-parse"
 version.workspace = true
 edition.workspace = true
-rust-version.workspace = true
+rust-version = "1.93"
 autotests = false
+
+[dependencies]
+displaydoc.workspace = true
+smol_str.workspace = true
+
+[features]
+default = ["std"]
+std = []
 
 [lints]
 workspace = true
