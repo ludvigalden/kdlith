@@ -1,0 +1,7 @@
+# Rust format baseline.
+#
+# This file is generated; it is the single variant at the repo root,
+# which every workspace crate reaches through rustfmt's upward config
+# discovery. Keys set formatting behavior; an absent key means the tool
+# default. The edition is read from Cargo.toml per crate and is
+# deliberately not duplicated here.

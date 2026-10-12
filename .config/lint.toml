@@ -1,0 +1,21 @@
+schema_version = 1
+
+# Quality gates for the kdlith repository run exclusively through
+# repoci (scoped `repoci check` with zero findings before every
+# commit); there are no other linters, hooks, or CI runners. The
+# test-policy rule stays at its default severity: the repository's
+# verification model forbids unit tests (no #[test] / #[cfg(test)]
+# modules in src) in favor of the fixture suite under tests/fixtures/
+# and the kdlith-fixtures harness, so any in-tree unit test that
+# appears is a finding, not a tolerated posture. (Contrast ctxmod,
+# which turns this rule off because its committed harness carries
+# in-crate tests by mandate.)
+#
+# The fixture harness under tests/tools/kdlith-fixtures is a test tool,
+# not a conventional test artifact: a plain binary with a normal entry
+# point that drives the compiled CLI as a subprocess. Its directory
+# carries a test-tool marker (testtool.flexbin.yaml), which the policy
+# classifier recognizes as a sanctioned test-tool root. That scopes the
+# exemption to the harness directory alone; the rule stays armed at its
+# error default everywhere else, pkg/** included. The harness itself
+# carries no #[test] / #[cfg(test)] items either.

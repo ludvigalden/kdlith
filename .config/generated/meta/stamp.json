@@ -1,0 +1,61 @@
+{
+  "version": 2,
+  "generator_set": "94040050be17ea382b1311b166153f59cb4484c768fc5e2b9b7bf43b0770bc32",
+  "inputs": {
+    "git.toml": "b2cf73a565d89d45599aae468037c469f2d9cc18a1ceaac33dba023f9b50d274",
+    "lint.toml": "76a45c5d0029820e9a75aee4bb17253c40bdabd6d33d17a5f36a8ecf7c24fc09",
+    "project.toml": "d616000791c5211cd555f9905ec03653d98f7926d6ea952f02600d61657dfe2e"
+  },
+  "files": {
+    ".config/generated/scripts/.shellcheckrc": {
+      "sha256": "22169791c87d9b2e9ab1c28fe40ddd4d90a3fd16ad9bad8adce367dd59770933",
+      "origin": "generated"
+    },
+    ".config/generated/scripts/ci/.stamp": {
+      "sha256": "aaba105c3bb9d7bb7cb33d63bf796890361610047c23810b872d2a246c6ba0ae",
+      "origin": "generated"
+    },
+    ".config/generated/scripts/ci/_lib.sh": {
+      "sha256": "c67753cd20e38c4df3b9ab82bcacb8a068cf0de0475e75c9918577d51d155a86",
+      "origin": "generated",
+      "mode": "0755"
+    },
+    ".config/generated/scripts/ci/ahead.sh": {
+      "sha256": "393341e80bb79035e1de488bfd546dd90f7add4f0e0883f9240e1137ce94f3e9",
+      "origin": "generated",
+      "mode": "0755"
+    },
+    ".config/generated/scripts/ci/depcheck.sh": {
+      "sha256": "a2f4a0e963c74c924c03a543038ac39055e44f7a2d15a8b753be59c6c8b002e4",
+      "origin": "generated",
+      "mode": "0755"
+    },
+    ".config/generated/scripts/ci/edits.sh": {
+      "sha256": "3f70d133931d89e55bbe133f1915963dd4eb03b0bb0c8a78310970d7094e572e",
+      "origin": "generated",
+      "mode": "0755"
+    },
+    ".config/generated/scripts/ci/full.sh": {
+      "sha256": "c76595d45ef2665cd7a622d143925199f14397e340bc0e3a0554ef2ee9ec2cfb",
+      "origin": "generated",
+      "mode": "0755"
+    },
+    ".config/generated/scripts/ci/manifest.sh": {
+      "sha256": "4add7619a73933335a989e2a8febc984ee3c1c1550cd21577b3cb694c000f426",
+      "origin": "generated",
+      "mode": "0644"
+    },
+    ".config/generated/tools/security/betterleaks.toml": {
+      "sha256": "f57f191fa97ee44df54051be9353be4b9ff73b22be9c7a725fb879be6a1789c3",
+      "origin": "generated"
+    },
+    ".config/generated/tools/yaml/.yamlfmt": {
+      "sha256": "c9cd9deec23f3f7fbef5ffd5cd8f54983239fa2d59944994db6bb85fd0c20e93",
+      "origin": "generated"
+    },
+    ".config/generated/tools/yaml/.yamllint.yaml": {
+      "sha256": "f83fd31789a3fa79a29f03dfa2a6be20c599a128027c2755ca52bec55e58ad92",
+      "origin": "generated"
+    }
+  }
+}

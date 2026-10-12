@@ -1,0 +1,77 @@
+schema_version = 1
+
+# Gitignore generation rules for the kdlith repository, following the
+# ctxmod shape: a deliberately narrow committed surface under a
+# deny-by-default root. Committed classes: Rust source (library crates
+# under pkg/rs/, the CLI under tools/kdlith), the fixture harness and
+# its fixture suite (tests/), the canonical KDL dialect definitions and
+# authored schemas (pkg/kdl/), the dialect-generation fixture
+# entrypoints (contracts/), the Cargo manifests, README.md, and the
+# LICENSE. The repository configuration (.config/) is committed too:
+# its TOML files are hand-authored inputs (project.toml's [environments]
+# block excepted -- sync refreshes it), so the managed-goes-gitignored
+# rule never bites and the directory stays classified in under the
+# default track-config-dir behavior. Everything else -- agent-internal
+# context and work state, local working material, and generated output
+# -- is operator-local, never repository content: hidden wholesale via
+# skip_dirs so the generated .gitignore never even names them, and
+# uncommittable under the deny-by-default root /*.
+#
+# Cargo.lock is committed deliberately (workspace dependencies are
+# exact-pinned and builds must be reproducible offline): the bare-name
+# include pin rescues it from the root /*, and the workspace manifests
+# keep it classified as well.
+
+[include]
+patterns = [
+  "Cargo.toml",
+  "Cargo.lock",
+  ".cargo/config.toml",
+  "pkg/rs/*/Cargo.toml",
+  "pkg/rs/*/src/**",
+  "pkg/kdl/**",
+  "contracts/**",
+  "tools/*/Cargo.toml",
+  "tools/*/src/**",
+  "tests/tools/*/Cargo.toml",
+  "tests/tools/*/src/**",
+  "tests/tools/*/tests/**",
+  "tests/tools/*/build.rs",
+  "tests/tools/*/testtool.flexbin.yaml",
+  "tests/fixtures/**",
+  "README.md",
+  "LICENSE",
+]
+
+[gitignore]
+# The .gitignore is itself uncommitted (the whitelist names every
+# committed class) and carries no generator branding or marker:
+# nothing in this repository's trees names private tooling.
+# Rust-only repository: the rig/js/jvm/python artifact subsets (and
+# their literal harness-dir patterns) are noise here.
+artifact_baseline = "rust"
+# Hide the meta and harness directories wholesale: they never appear
+# as literal patterns and their contents never reach classification.
+# Custom entries replace the built-in skip set wholesale (D3), so the
+# built-ins are restated until the generator gains an extend mode.
+skip_dirs = [
+  ".git",
+  ".hg",
+  ".svn",
+  "_darcs",
+  ".bzr",
+  "node_modules",
+  ".venv",
+  "vendor",
+  ".ctx",
+  ".work",
+  ".claude",
+  ".codex",
+  ".gemini",
+  ".cursor",
+  ".windsurf",
+]
+
+[commit_message]
+allow_body = false
+max_subject_length = 72

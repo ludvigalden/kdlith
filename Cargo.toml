@@ -1,0 +1,29 @@
+[workspace]
+resolver = "2"
+members = [
+    "pkg/rs/cli",
+    "pkg/rs/codegen",
+    "pkg/rs/diagnostic",
+    "pkg/rs/engine",
+    "pkg/rs/kdlith",
+    "pkg/rs/model",
+    "pkg/rs/parse",
+    "pkg/rs/runtime",
+    "pkg/rs/superproc",
+    "tests/tools/kdlith-fixtures",
+    "tools/kdlith",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+
+[workspace.dependencies]
+clap = { version = "=4.6.7", features = ["derive"] }
+libtest-mimic = "=0.8.2"
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = { version = "=1.0.151", features = ["preserve_order"] }
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }

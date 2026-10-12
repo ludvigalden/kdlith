@@ -1,0 +1,7 @@
+# Rust lint (clippy) baseline.
+#
+# This file is generated; it is the single variant at the repo root,
+# which every workspace crate reaches through clippy's upward config
+# discovery. Keys set lint thresholds and language-version behavior; an
+# absent key means the tool default. Lint levels themselves may also
+# live in Cargo.toml [lints] tables, which take precedence per crate.

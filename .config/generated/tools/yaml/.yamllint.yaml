@@ -1,0 +1,16 @@
+# YAML lint baseline (the same document the local gate applies when no
+# project config is discovered).
+#
+# yamllint's auto-discovery is cwd-only, so every consumer must pass the
+# config explicitly:
+#
+#   yamllint -c .config/generated/tools/yaml/.yamllint.yaml .
+extends: default
+rules:
+  document-start: disable
+  line-length:
+    max: 120
+    allow-non-breakable-words: true
+    allow-non-breakable-inline-mappings: true
+  truthy:
+    check-keys: false

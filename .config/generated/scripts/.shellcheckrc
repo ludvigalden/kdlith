@@ -1,0 +1,6 @@
+# shellcheck rc baseline: directives apply to scripts under this
+# directory subtree (shellcheck discovers this file from the checked
+# script's ancestry); pass --rcfile=<path> explicitly for scripts
+# elsewhere. One directive per line, e.g.:
+#
+#   disable=SC1091

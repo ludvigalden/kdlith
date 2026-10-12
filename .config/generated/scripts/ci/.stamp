@@ -1,0 +1,11 @@
+# Check-script freshness stamp, written last by the configuration
+# sync. Every entrypoint self-checks it before anything else —
+# even --help reports staleness. It covers the configuration inputs
+# and the manifest only: hand-edited generated scripts are caught
+# by the sync drift report instead, never by this stamp.
+version=1
+input:git.toml=b2cf73a565d89d45599aae468037c469f2d9cc18a1ceaac33dba023f9b50d274
+input:lint.toml=76a45c5d0029820e9a75aee4bb17253c40bdabd6d33d17a5f36a8ecf7c24fc09
+input:project.toml=d616000791c5211cd555f9905ec03653d98f7926d6ea952f02600d61657dfe2e
+manifest=4add7619a73933335a989e2a8febc984ee3c1c1550cd21577b3cb694c000f426
+generator=ci-scripts/1
