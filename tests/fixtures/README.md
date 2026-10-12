@@ -77,6 +77,13 @@ file under `pkg/kdl/schemas/dialect/`. Each runs `kdlith read` on the
 committed file through `{fx-suite}` and must exit `0`. Adding a canonical
 dialect file means adding its scenario here.
 
+`dialect/entrypoint-read/` holds one scenario per dialect-generation fixture
+entrypoint under `contracts/super-schemas/`. An entrypoint selects the
+canonical dialect definition files through `import` nodes and declares
+nothing of its own. Each scenario runs `kdlith read` on the committed
+entrypoint through `{fx-suite}` and must exit `0`; it proves the entrypoint
+parses, not that its imports resolve.
+
 `parse/kdl-spec/` and `invalid/kdl-spec/` hold the official KDL v2 test suite,
 one scenario per upstream case: valid documents must exit `0` under
 `kdlith read input.kdl`, and invalid ones must be rejected with the declared

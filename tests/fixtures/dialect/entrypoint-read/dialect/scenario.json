@@ -1,0 +1,8 @@
+{
+  "binary": "kdlith",
+  "description": "The committed dialect-generation fixture entrypoint contracts/super-schemas/dialect.kdl parses as KDL v2",
+  "args": ["read", "{fx-suite}/../../contracts/super-schemas/dialect.kdl"],
+  "expect": {
+    "exit": 0
+  }
+}
