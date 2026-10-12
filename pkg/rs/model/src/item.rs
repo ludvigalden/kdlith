@@ -100,6 +100,12 @@ pub struct ScopeCompletion {
     pub scope: Option<NodeId>,
 }
 
+impl ScopeCompletion {
+    pub fn new(source: SourceId, scope: Option<NodeId>) -> Self {
+        Self { source, scope }
+    }
+}
+
 /// One item of a processing session over the full role vocabulary.
 #[derive(Clone, Debug, Serialize)]
 #[serde(tag = "item", content = "data", rename_all = "kebab-case")]

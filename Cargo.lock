@@ -206,6 +206,10 @@ dependencies = [
 [[package]]
 name = "kdlith-runtime"
 version = "0.1.0"
+dependencies = [
+ "kdlith-diagnostic",
+ "kdlith-model",
+]
 
 [[package]]
 name = "kdlith-superproc"
