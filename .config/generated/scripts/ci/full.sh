@@ -8,17 +8,25 @@ set -euo pipefail
 _CI_HOME=$(cd -- "$(dirname -- "$0")" && pwd -P)
 _CI_CONF_DIR=$(cd -- "$_CI_HOME/../../.." && pwd -P)
 _CI_ROOT=$(cd -- "$_CI_CONF_DIR/.." && pwd -P)
+# shellcheck disable=SC2034
 CI_SCRIPT=full
+# shellcheck disable=SC2034
 CI_JSON=0
+# shellcheck disable=SC2034
 CI_WARN_MISSING=0
+# shellcheck disable=SC2034
 CI_WARN_EMPTY=0
+# shellcheck disable=SC2034
 CI_SKIP_BOOTSTRAP=0
+# shellcheck disable=SC2034
 CI_ONLY=""
 if [ ! -f "$_CI_HOME/_lib.sh" ] || [ ! -f "$_CI_HOME/manifest.sh" ]; then
     printf '%s\n' "ERROR: missing _lib.sh or manifest.sh beside $0 — torn sync; re-run the configuration sync" >&2
     exit 3
 fi
+# shellcheck source=./_lib.sh disable=SC1091
 . "$_CI_HOME/_lib.sh"
+# shellcheck source=./manifest.sh disable=SC1091
 . "$_CI_HOME/manifest.sh"
 ci_check_stamp
 #
@@ -28,6 +36,7 @@ ci_check_stamp
 # sync), 70 vacuous-should-match (--warn-empty downgrades to 0 with a
 # warning banner).
 _usage='usage: full.sh [--json] [--stages name[,name...]] [--warn-empty] [--warn-missing] [--skip-bootstrap]'
+# shellcheck disable=SC2034
 while [ "$#" -gt 0 ]; do
     case $1 in
         --json) CI_JSON=1 ;;

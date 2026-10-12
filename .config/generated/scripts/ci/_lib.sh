@@ -333,6 +333,10 @@ ci_run_stages() {
         IFS=$'\x1f' read -r -a _argv <<< "${!_cvar}"
         _rc=0
         if [ "$_mode" = "edits" ] && [ "$_pf" -eq 1 ]; then
+            # CI_FILES is assigned in edits.sh before the dispatch call;
+            # a standalone analysis of this library cannot see that
+            # assignment and misreads the array as a CI_FAILED misspelling.
+            # shellcheck disable=SC2153
             _total=${#CI_FILES[@]}
             if [ "$_total" -eq 0 ]; then
                 printf 'SKIP %s (no files)\n' "$_name" >&2
@@ -413,7 +417,7 @@ ci_check_authors() {
             ci_json "$CI_SCRIPT" "identity" "fail" 1 "unauthorized commit author"
             CI_FAILED=$((CI_FAILED + 1))
         fi
-    done < <(git log --format='%an <%ae>' $_range 2>/dev/null | sort -u)
+    done < <(git log --format='%an <%ae>' "$_range" 2>/dev/null | sort -u)
 }
 
 # ci_verdict SCOPE_NOTE — the end-of-run roll-up. Findings exit 1.
@@ -460,8 +464,12 @@ ci_version_ge() {
     case $b in *-*) rb=${b#*-}; b=${b%%-*} ;; esac
     oldIFS=$IFS
     IFS=.
+    # Version fields split on the dot IFS — the unquoted expansions are
+    # the intended word split; quoting would compare the whole string.
+    # shellcheck disable=SC2086
     set -- $a
     a1=${1:-0}; a2=${2:-0}; a3=${3:-0}
+    # shellcheck disable=SC2086
     set -- $b
     b1=${1:-0}; b2=${2:-0}; b3=${3:-0}
     IFS=$oldIFS
