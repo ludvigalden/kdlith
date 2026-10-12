@@ -19,3 +19,13 @@ schema_version = 1
 # exemption to the harness directory alone; the rule stays armed at its
 # error default everywhere else, pkg/** included. The harness itself
 # carries no #[test] / #[cfg(test)] items either.
+
+# The KDL conformance fixtures redistribute the official test-suite inputs
+# byte for byte: missing final newlines, trailing whitespace, and lone CRs
+# are the syntax under test. The whitespace fixers keep their default
+# exclude and additionally skip those upstream inputs.
+[precommit.hooks.end-of-file-fixer]
+exclude = '^(\.claude|\.codex|\.gemini|\.cursor|\.windsurf|\.work|tools/repoidxd/tests/fixtures)/|^tests/fixtures/(parse|invalid)/kdl-spec/[^/]+/input\.kdl$'
+
+[precommit.hooks.trailing-whitespace]
+exclude = '^(\.claude|\.codex|\.gemini|\.cursor|\.windsurf|\.work|tools/repoidxd/tests/fixtures)/|^tests/fixtures/(parse|invalid)/kdl-spec/[^/]+/input\.kdl$'

@@ -5,7 +5,7 @@
 # by the sync drift report instead, never by this stamp.
 version=1
 input:git.toml=b2cf73a565d89d45599aae468037c469f2d9cc18a1ceaac33dba023f9b50d274
-input:lint.toml=76a45c5d0029820e9a75aee4bb17253c40bdabd6d33d17a5f36a8ecf7c24fc09
+input:lint.toml=96df1d7eaa18fb64d1b6a5d5e613092482b0f8dc2984099eb2d2c3319492e8dd
 input:project.toml=d616000791c5211cd555f9905ec03653d98f7926d6ea952f02600d61657dfe2e
 manifest=d25d7a9a17cc95e0cf5e7f03e6e792cf49fee6895e5b654dcb314e1448a91fdf
 generator=ci-scripts/1
