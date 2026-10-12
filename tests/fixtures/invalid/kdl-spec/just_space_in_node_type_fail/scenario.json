@@ -1,0 +1,8 @@
+{
+  "binary": "kdlith",
+  "description": "KDL spec case tests/test_cases/input/just_space_in_node_type_fail.kdl: invalid KDL v2 is rejected",
+  "args": ["read", "input.kdl"],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

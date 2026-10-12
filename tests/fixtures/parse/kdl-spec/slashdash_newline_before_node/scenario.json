@@ -1,0 +1,8 @@
+{
+  "binary": "kdlith",
+  "description": "KDL spec case tests/test_cases/input/slashdash_newline_before_node.kdl: valid KDL v2 parses clean",
+  "args": ["read", "input.kdl"],
+  "expect": {
+    "exit": 0
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "binary": "kdlith",
+  "description": "KDL spec case tests/test_cases/input/zero_space_before_slashdash_prop.kdl: valid KDL v2 parses clean",
+  "args": ["read", "input.kdl"],
+  "expect": {
+    "exit": 0
+  }
+}

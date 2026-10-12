@@ -1,0 +1,8 @@
+{
+  "binary": "kdlith",
+  "description": "KDL spec case tests/test_cases/input/escline_in_child_block.kdl: valid KDL v2 parses clean",
+  "args": ["read", "input.kdl"],
+  "expect": {
+    "exit": 0
+  }
+}

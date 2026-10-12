@@ -62,6 +62,7 @@ Categories:
 
 | Directory     | Intended use                                                                   |
 | ------------- | ------------------------------------------------------------------------------ |
+| `parse/`      | KDL v2 syntax: documents `kdlith read` must accept                             |
 | `dialect/`    | Dialect definitions: loading, validating, and linking dialect constructs       |
 | `schemas/`    | Schema definitions: types, bindings, context effects, and processing rules     |
 | `processing/` | Processing data documents end to end, plus CLI smoke scenarios                 |
@@ -70,6 +71,14 @@ Categories:
 
 `processing/smoke-help` asserts that `kdlith --help` exits `0` and prints its
 usage text. It keeps the suite non-empty and exercises the harness end to end.
+
+`parse/kdl-spec/` and `invalid/kdl-spec/` hold the official KDL v2 test suite,
+one scenario per upstream case: valid documents must exit `0` under
+`kdlith read input.kdl`, and invalid ones must be rejected with the declared
+code. Each negative control keeps the upstream input byte-for-byte in
+`input.kdl` and declares its codes in a separate `expect-invalid.txt`, so no
+header line alters the document. The pinned upstream commit, the derivation,
+and the declared elisions are in `parse/kdl-spec/PROVENANCE.md`.
 
 ## Scenario format v0
 

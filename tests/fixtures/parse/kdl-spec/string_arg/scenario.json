@@ -1,0 +1,8 @@
+{
+  "binary": "kdlith",
+  "description": "KDL spec case tests/test_cases/input/string_arg.kdl: valid KDL v2 parses clean",
+  "args": ["read", "input.kdl"],
+  "expect": {
+    "exit": 0
+  }
+}

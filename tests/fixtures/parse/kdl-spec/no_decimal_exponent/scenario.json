@@ -1,0 +1,8 @@
+{
+  "binary": "kdlith",
+  "description": "KDL spec case tests/test_cases/input/no_decimal_exponent.kdl: valid KDL v2 parses clean",
+  "args": ["read", "input.kdl"],
+  "expect": {
+    "exit": 0
+  }
+}

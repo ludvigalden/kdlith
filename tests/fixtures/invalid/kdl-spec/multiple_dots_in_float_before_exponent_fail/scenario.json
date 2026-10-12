@@ -1,0 +1,8 @@
+{
+  "binary": "kdlith",
+  "description": "KDL spec case tests/test_cases/input/multiple_dots_in_float_before_exponent_fail.kdl: invalid KDL v2 is rejected",
+  "args": ["read", "input.kdl"],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}
