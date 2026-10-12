@@ -1,8 +1,7 @@
 //! A capacity-bounded stack for the frames of open nodes.
 
-/// A stack that never holds more than its capacity. Storage grows on
-/// demand up to the capacity, so shallow documents stay small and deep
-/// ones fail closed instead of growing without bound.
+/// A stack capped at its capacity: storage grows on demand, and a push
+/// past the cap fails closed instead of growing.
 pub(crate) struct FrameStack<T> {
     frames: Vec<T>,
     capacity: usize,
