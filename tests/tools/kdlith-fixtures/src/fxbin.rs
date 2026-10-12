@@ -1,8 +1,6 @@
-//! The `fx-*` helpers: the harness binary under other names, dispatched on
-//! argv[0]. A run hard-links (or, across filesystems, copies) the harness
-//! into its `bin/` directory under each helper name and puts that
-//! directory first on the processor's PATH. Helpers never invoke the
-//! processor under test.
+//! The `fx-*` helpers: the harness binary under other names,
+//! dispatched on argv[0] and placed first on the processor's PATH.
+//! See `populate_bin` for how the run's `bin/` directory is built.
 
 use std::ffi::OsStr;
 use std::path::Path;
@@ -57,7 +55,9 @@ fn fx_env() -> ExitCode {
     ExitCode::SUCCESS
 }
 
-/// Populate a run's `bin/` with the harness under every helper name.
+/// Populate a run's `bin/` with the harness under every helper name,
+/// hard-linking, or copying across filesystems. Helpers never invoke
+/// the processor under test.
 pub(crate) fn populate_bin(bin_dir: &Path, harness: &Path) -> Result<(), String> {
     std::fs::create_dir_all(bin_dir)
         .map_err(|e| format!("cannot create {}: {e}", bin_dir.display()))?;

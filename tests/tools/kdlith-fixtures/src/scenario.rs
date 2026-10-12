@@ -1,17 +1,5 @@
-//! Scenario format v0: the `scenario.json` manifest, parsed strictly, and
-//! the raw-text `# expect-invalid: <codes>` header of a negative control.
-//!
-//! Manifest keys:
-//! - `binary` (required): `"kdlith"`, the only supported value at v0.
-//! - `description` (optional): a string.
-//! - `args` (required): an array of strings, the argv after the binary.
-//! - `expect`: `{ "exit": int (default 0), "stdout-contains": [string],
-//!   "stderr-contains": [string] }`, the positive control.
-//! - `expect-invalid`: `{ "input": "<relative path>" }`, the negative
-//!   control.
-//!
-//! Exactly one of `expect` / `expect-invalid` is required; any unknown
-//! key at any level is a load error.
+//! Scenario format v0: the `scenario.json` manifest, parsed strictly,
+//! and the raw-text `# expect-invalid:` header of a negative control.
 
 use std::path::{Component, Path, PathBuf};
 
@@ -30,7 +18,10 @@ pub(crate) struct Scenario {
     pub(crate) expectation: Expectation,
 }
 
-/// What a run must show for the scenario to pass.
+/// What a run must show for the scenario to pass. Harness
+/// independence: the harness never asks the processor under test to
+/// interpret an expectation; every assertion is a plain comparison
+/// made here.
 #[derive(Debug)]
 pub(crate) enum Expectation {
     /// Positive control: exact exit code plus stream substrings.
@@ -43,14 +34,16 @@ pub(crate) enum Expectation {
     Invalid { input: PathBuf, codes: Vec<String> },
 }
 
-/// Load and validate a scenario from its source directory. Every error
-/// names what is wrong; the caller turns it into a failed trial.
+/// Load and validate a scenario from its source directory with
+/// `serde_json`. Required: `binary` (`"kdlith"` only), `args`, and
+/// exactly one of `expect` / `expect-invalid`; unknown keys are load
+/// errors; `description` is optional.
 pub(crate) fn load(dir: &Path) -> Result<Scenario, String> {
     let path = dir.join(MANIFEST);
     let text = std::fs::read_to_string(&path)
         .map_err(|e| format!("cannot read {}: {e}", path.display()))?;
-    let value: Value = serde_json::from_str(&text)
-        .map_err(|e| format!("{MANIFEST} is not valid JSON: {e}"))?;
+    let value: Value =
+        serde_json::from_str(&text).map_err(|e| format!("{MANIFEST} is not valid JSON: {e}"))?;
     let root = value
         .as_object()
         .ok_or_else(|| format!("{MANIFEST} must be a JSON object"))?;
@@ -96,6 +89,9 @@ pub(crate) fn load(dir: &Path) -> Result<Scenario, String> {
     Ok(Scenario { args, expectation })
 }
 
+/// Parse the positive control `expect`: optional integer `exit`
+/// (default 0) plus optional `stdout-contains` and `stderr-contains`
+/// string arrays.
 fn positive(value: &Value) -> Result<Expectation, String> {
     let obj = value
         .as_object()
@@ -127,6 +123,9 @@ fn positive(value: &Value) -> Result<Expectation, String> {
     })
 }
 
+/// Parse the negative control `expect-invalid`: `input` names a
+/// relative path inside the scenario whose first line declares the
+/// rejected diagnostic codes.
 fn invalid(dir: &Path, value: &Value) -> Result<Expectation, String> {
     let obj = value
         .as_object()

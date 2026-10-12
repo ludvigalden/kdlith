@@ -1,12 +1,6 @@
-//! The kdlith fixture harness: discovers declarative scenarios under a
-//! suite root, materializes each into a private scratch directory, drives
-//! the built kdlith binary there as a subprocess, and evaluates the
-//! scenario's declared expectations itself.
-//!
-//! Harness independence: the harness never asks the processor under test
-//! to interpret an expectation. Manifests are read with `serde_json`,
-//! negative-control headers are read as raw text, and every assertion is
-//! a plain comparison made here.
+//! The kdlith fixture harness: discovers declarative scenarios under
+//! a suite root, drives the built kdlith binary as a subprocess in a
+//! private scratch directory, and evaluates expectations itself.
 
 mod fxbin;
 mod fxcfg;

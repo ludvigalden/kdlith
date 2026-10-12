@@ -1,7 +1,7 @@
-//! Suite discovery: a directory under the suite root that carries a
-//! `scenario.json` manifest is one scenario, named by its `/`-joined path
-//! relative to the root. Other directories (categories) are descended;
-//! discovery is sorted so listings and trial order are stable.
+//! Suite discovery: a directory under the suite root carrying a
+//! `scenario.json` manifest is one scenario, named by its path
+//! relative to the root. Other directories are descended; results
+//! are sorted for stable order.
 
 use std::path::{Path, PathBuf};
 
@@ -61,8 +61,7 @@ fn walk(dir: &Path, prefix: &str, found: &mut Discovery) -> Result<(), String> {
 
 /// The real (non-symlink) subdirectories of `dir` with their UTF-8 names.
 fn child_dirs(dir: &Path) -> Result<Vec<(String, PathBuf)>, String> {
-    let read =
-        std::fs::read_dir(dir).map_err(|e| format!("cannot read {}: {e}", dir.display()))?;
+    let read = std::fs::read_dir(dir).map_err(|e| format!("cannot read {}: {e}", dir.display()))?;
     let mut out = Vec::new();
     for item in read {
         let item = item.map_err(|e| format!("cannot read {}: {e}", dir.display()))?;

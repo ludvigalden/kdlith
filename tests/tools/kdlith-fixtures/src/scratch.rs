@@ -15,11 +15,13 @@ impl RunDir {
     /// Create `<scratch root>/<run id>` (and the scratch root itself when
     /// absent). The run directory must not already exist.
     pub(crate) fn create(scratch_root: &Path) -> Result<Self, String> {
-        std::fs::create_dir_all(scratch_root).map_err(|e| {
-            format!("cannot create scratch root {}: {e}", scratch_root.display())
-        })?;
+        std::fs::create_dir_all(scratch_root)
+            .map_err(|e| format!("cannot create scratch root {}: {e}", scratch_root.display()))?;
         let scratch_root = std::fs::canonicalize(scratch_root).map_err(|e| {
-            format!("cannot resolve scratch root {}: {e}", scratch_root.display())
+            format!(
+                "cannot resolve scratch root {}: {e}",
+                scratch_root.display()
+            )
         })?;
         let root = scratch_root.join(run_id());
         std::fs::create_dir(&root)
@@ -89,9 +91,8 @@ fn copy_tree(from: &Path, to: &Path) -> Result<(), String> {
                 .map_err(|e| format!("cannot create {}: {e}", dst.display()))?;
             copy_tree(&src, &dst)?;
         } else if file_type.is_file() {
-            std::fs::copy(&src, &dst).map_err(|e| {
-                format!("cannot copy {} to {}: {e}", src.display(), dst.display())
-            })?;
+            std::fs::copy(&src, &dst)
+                .map_err(|e| format!("cannot copy {} to {}: {e}", src.display(), dst.display()))?;
         } else {
             return Err(format!(
                 "{} is neither a regular file nor a directory; scenarios may not contain links or special files",

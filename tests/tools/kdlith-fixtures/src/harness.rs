@@ -1,10 +1,6 @@
 //! The harness run: option validation, fail-closed suite discovery,
-//! scenario selection, trial construction over libtest-mimic, scratch
-//! retention, and the exit classes.
-//!
-//! Exit classes: `0` every selected scenario passed; `1` a scenario failed
-//! or the suite is missing, unreadable, empty, or filtered to nothing;
-//! `2` a usage error.
+//! scenario selection, trials over libtest-mimic, scratch retention,
+//! and the exit classes.
 
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -16,8 +12,12 @@ use crate::outcome::{self, RunEnv};
 use crate::scratch::{self, RunDir};
 use crate::suite::{self, Entry};
 
+/// `0`: every selected scenario passed.
 pub(crate) const EXIT_OK: u8 = 0;
+/// `1`: a scenario failed, or the suite is missing, unreadable, empty,
+/// or filtered to nothing.
 pub(crate) const EXIT_FAIL: u8 = 1;
+/// `2`: a usage error.
 pub(crate) const EXIT_USAGE: u8 = 2;
 
 const USAGE: &str = "usage: kdlith-fixtures --fx-suite <dir> --fx-kdlith <path> \
@@ -70,7 +70,10 @@ fn resolve(path: &Path, what: &str, kind_ok: fn(&Path) -> bool) -> Option<PathBu
     match std::fs::canonicalize(path) {
         Ok(p) if kind_ok(&p) => Some(p),
         Ok(p) => {
-            eprintln!("kdlith-fixtures: FAIL: {what} {} has the wrong kind", p.display());
+            eprintln!(
+                "kdlith-fixtures: FAIL: {what} {} has the wrong kind",
+                p.display()
+            );
             None
         }
         Err(e) => {
