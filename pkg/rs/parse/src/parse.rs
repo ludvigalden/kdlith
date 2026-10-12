@@ -8,13 +8,16 @@ use crate::event::{Entry, Event, Spanned, Value};
 use crate::limits::Limits;
 use crate::scan::{Result, Scanner};
 
-/// A streaming KDL v2 parser over a borrowed source. It yields the
-/// document's events in order, suppresses slashdashed nodes, entries, and
-/// children blocks after validating them, and stops at the first error.
+/// A streaming KDL v2 pull parser over a borrowed source. Each
+/// [`Parser::next_event`] call yields the document's next event; slashdashed
+/// nodes, entries, and children blocks are validated, then suppressed. The
+/// first error ends the stream.
 pub struct Parser<'src> {
     scan: Scanner<'src>,
     state: State,
     blocks: Vec<Block>,
+    /// The error that ended the stream, repeated by every later pull.
+    failed: Option<ParseError>,
 }
 
 #[derive(Clone, Copy)]
@@ -69,6 +72,31 @@ impl<'src> Parser<'src> {
             scan: Scanner::new(source, limits),
             state: State::Begin,
             blocks: Vec::new(),
+            failed: None,
+        }
+    }
+
+    /// Pull the next visible event. `Ok(None)` is a clean end of input:
+    /// every block closed and trailing trivia checked. After an error the
+    /// stream is finished and every later call returns that error again.
+    pub fn next_event(&mut self) -> std::result::Result<Option<Spanned<Event<'src>>>, ParseError> {
+        if let Some(error) = &self.failed {
+            return Err(error.clone());
+        }
+        loop {
+            match self.step() {
+                Ok(None) => return Ok(None),
+                Ok(Some(step)) if step.hidden => {}
+                Ok(Some(step)) => {
+                    let span = ByteSpan::new(offset(step.start), offset(step.end));
+                    return Ok(Some(Spanned::new(step.event, span)));
+                }
+                Err(error) => {
+                    self.state = State::Done;
+                    self.failed = Some(error.clone());
+                    return Err(error);
+                }
+            }
         }
     }
 
@@ -128,10 +156,11 @@ impl<'src> Parser<'src> {
             Some('}') => self.close(start),
             Some(_) => {
                 let slashdashed = self.scan.slashdash()?;
+                let hidden = slashdashed || self.hidden_scope();
+                self.scan.set_skip(hidden);
                 let ty = self.scan.type_annotation()?;
                 self.scan.node_space()?;
                 let name = self.scan.string()?;
-                let hidden = slashdashed || self.hidden_scope();
                 let node = Node {
                     hidden,
                     entries: true,
@@ -211,6 +240,8 @@ impl<'src> Parser<'src> {
         if !slashdashed && !spaced {
             return Err(self.scan.error_here(ErrorKind::ExpectedSpace));
         }
+        let hidden = node.hidden || slashdashed;
+        self.scan.set_skip(hidden);
         let (entry, spaced) = self.entry()?;
         let end = self.scan.at();
         node.entries = true;
@@ -219,7 +250,7 @@ impl<'src> Parser<'src> {
             event: Event::Entry(entry),
             start,
             end,
-            hidden: node.hidden || slashdashed,
+            hidden,
         }))
     }
 
@@ -297,23 +328,15 @@ impl<'src> Parser<'src> {
     }
 }
 
+/// The pull stream as an iterator: each error is yielded once, then the
+/// iterator ends.
 impl<'src> Iterator for Parser<'src> {
     type Item = std::result::Result<Spanned<Event<'src>>, ParseError>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            match self.step() {
-                Ok(None) => return None,
-                Ok(Some(step)) if step.hidden => {}
-                Ok(Some(step)) => {
-                    let span = ByteSpan::new(offset(step.start), offset(step.end));
-                    return Some(Ok(Spanned::new(step.event, span)));
-                }
-                Err(error) => {
-                    self.state = State::Done;
-                    return Some(Err(error));
-                }
-            }
+        if self.failed.is_some() {
+            return None;
         }
+        self.next_event().transpose()
     }
 }

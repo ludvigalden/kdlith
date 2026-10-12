@@ -17,6 +17,9 @@ pub(crate) struct Scanner<'src> {
     src: &'src str,
     at: usize,
     limits: Limits,
+    /// Skip mode, for slashdashed text whose values are never emitted:
+    /// strings are fully validated but not decoded.
+    skip: bool,
 }
 
 /// One line of a multi-line string, as offsets into the decoded buffer.
@@ -29,7 +32,16 @@ struct Line {
 
 impl<'src> Scanner<'src> {
     pub(crate) fn new(src: &'src str, limits: Limits) -> Self {
-        Self { src, at: 0, limits }
+        Self {
+            src,
+            at: 0,
+            limits,
+            skip: false,
+        }
+    }
+
+    pub(crate) fn set_skip(&mut self, skip: bool) {
+        self.skip = skip;
     }
 
     pub(crate) fn at(&self) -> usize {
@@ -369,7 +381,7 @@ impl<'src> Scanner<'src> {
             if !self.newline() {
                 return Err(self.error_here(ErrorKind::ExpectedNewline));
             }
-            return self.multi_line(start, hashes).map(Cow::Owned);
+            return self.multi_line(start, hashes);
         }
         self.single_line(start, hashes)
     }
@@ -391,10 +403,12 @@ impl<'src> Scanner<'src> {
                     return Ok(decoded.map_or(Cow::Borrowed(text), Cow::Owned));
                 }
                 Some('\\') if hashes == 0 => {
-                    let decoded = decoded.get_or_insert_with(|| self.src[body..self.at].to_owned());
+                    let prefix = &self.src[body..self.at];
                     self.bump('\\');
-                    if let Some(ch) = self.escape(start)? {
-                        decoded.push(ch);
+                    let escaped = self.escape(start)?;
+                    if !self.skip {
+                        let decoded = decoded.get_or_insert_with(|| prefix.to_owned());
+                        decoded.extend(escaped);
                     }
                 }
                 Some(ch) if is_newline(ch) => {
@@ -470,9 +484,9 @@ impl<'src> Scanner<'src> {
     }
 
     /// A multi-line string after its opening newline. Each line's
-    /// indentation must start with the closing line's whitespace, which is
-    /// then removed; whitespace-only lines become empty.
-    fn multi_line(&mut self, start: usize, hashes: usize) -> Result<String> {
+    /// indentation must start with the closing line's, which is removed;
+    /// skip mode checks it but never builds the dedented value.
+    fn multi_line(&mut self, start: usize, hashes: usize) -> Result<Cow<'src, str>> {
         let mut decoded = String::new();
         let mut lines: Vec<Option<Line>> = Vec::new();
         let indent = 'lines: loop {
@@ -495,13 +509,16 @@ impl<'src> Scanner<'src> {
                 lines.push(None);
                 continue;
             }
+            // Whether the line holds text after its indentation; in skip
+            // mode that text is validated but never buffered.
+            let mut written = false;
             loop {
                 self.check_token(start)?;
                 match self.peek() {
                     None => return Err(self.unterminated(start)),
                     Some('"') if self.closes(3, hashes) => {
                         self.at += 3 + hashes;
-                        if decoded.len() > text {
+                        if written {
                             return Err(ParseError::new(
                                 ErrorKind::TextBeforeClose,
                                 source_at,
@@ -523,23 +540,29 @@ impl<'src> Scanner<'src> {
                     Some('\\') if hashes == 0 => {
                         self.bump('\\');
                         if let Some(ch) = self.escape(start)? {
-                            decoded.push(ch);
+                            written = true;
+                            if !self.skip {
+                                decoded.push(ch);
+                            }
                         }
                     }
                     Some(ch) if is_disallowed(ch) => {
                         return Err(self.error_here(ErrorKind::DisallowedCharacter(ch)));
                     }
                     Some(ch) => {
-                        decoded.push(ch);
+                        written = true;
+                        if !self.skip {
+                            decoded.push(ch);
+                        }
                         self.bump(ch);
                     }
                 }
             }
         };
         let prefix = &decoded[indent.clone()];
-        let mut out = String::with_capacity(decoded.len());
+        let mut out = String::with_capacity(if self.skip { 0 } else { decoded.len() });
         for (index, line) in lines.iter().enumerate() {
-            if index > 0 {
+            if index > 0 && !self.skip {
                 out.push('\n');
             }
             let Some(line) = line else { continue };
@@ -548,8 +571,14 @@ impl<'src> Scanner<'src> {
                 let kind = ErrorKind::InvalidIndent;
                 return Err(ParseError::new(kind, line.source_at, line.source_at));
             }
-            out.push_str(&decoded[line.start + prefix.len()..line.end]);
+            if !self.skip {
+                out.push_str(&decoded[line.start + prefix.len()..line.end]);
+            }
         }
-        Ok(out)
+        Ok(if self.skip {
+            Cow::Borrowed("")
+        } else {
+            Cow::Owned(out)
+        })
     }
 }
