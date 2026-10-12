@@ -6,16 +6,17 @@ schema_version = 1
 # under pkg/rs/, the CLI under tools/kdlith), the fixture harness and
 # its fixture suite (tests/), the canonical KDL dialect definitions and
 # authored schemas (pkg/kdl/), the dialect-generation fixture
-# entrypoints (contracts/), the Cargo manifests, README.md, and the
-# LICENSE. The repository configuration (.config/) is committed too:
-# its TOML files are hand-authored inputs (project.toml's [environments]
-# block excepted -- sync refreshes it), so the managed-goes-gitignored
-# rule never bites and the directory stays classified in under the
-# default track-config-dir behavior. Everything else -- agent-internal
-# context and work state, local working material, and generated output
-# -- is operator-local, never repository content: hidden wholesale via
-# skip_dirs so the generated .gitignore never even names them, and
-# uncommittable under the deny-by-default root /*.
+# entrypoints (contracts/), the design records (docs/), the Cargo
+# manifests, README.md, and the LICENSE. The repository configuration
+# (.config/) is committed too: its TOML files are hand-authored inputs
+# (project.toml's [environments] block excepted -- sync refreshes it),
+# so the managed-goes-gitignored rule never bites and the directory
+# stays classified in under the default track-config-dir behavior.
+# Everything else -- agent-internal context and work state, local
+# working material, and generated output -- is operator-local, never
+# repository content: hidden wholesale via skip_dirs so the generated
+# .gitignore never even names them, and uncommittable under the
+# deny-by-default root /*.
 #
 # Cargo.lock is committed deliberately (workspace dependencies are
 # exact-pinned and builds must be reproducible offline): the bare-name
@@ -31,6 +32,7 @@ patterns = [
   "pkg/rs/*/src/**",
   "pkg/kdl/**",
   "contracts/**",
+  "docs/**",
   "tools/*/Cargo.toml",
   "tools/*/src/**",
   "tests/tools/*/Cargo.toml",
