@@ -2,16 +2,12 @@
 name = "kdlith-parse"
 version.workspace = true
 edition.workspace = true
-rust-version = "1.93"
+rust-version.workspace = true
 autotests = false
 
 [dependencies]
-displaydoc.workspace = true
-smol_str.workspace = true
-
-[features]
-default = ["std"]
-std = []
+kdlith-diagnostic = { path = "../diagnostic" }
+kdlith-model = { path = "../model" }
 
 [lints]
 workspace = true
