@@ -38,7 +38,7 @@ cargo build --workspace
 To build only the command-line tool and the fixture harness:
 
 ```sh
-cargo build -p kdlith -p kdlith-fixtures
+cargo build -p kdlith-bin -p kdlith-fixtures
 ```
 
 ## Verification

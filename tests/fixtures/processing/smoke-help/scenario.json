@@ -1,0 +1,9 @@
+{
+  "binary": "kdlith",
+  "description": "kdlith --help prints usage text and exits 0",
+  "args": ["--help"],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": ["kdlith", "Usage: kdlith"]
+  }
+}

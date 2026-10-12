@@ -1,36 +1,18 @@
-//! The diagnostic-code registry.
-//!
-//! # Numbering scheme
-//!
-//! A diagnostic code is `KDLITH-<AREA><NNN>`:
-//!
-//! - `KDLITH-` is the fixed product prefix, so kdlith codes never collide
-//!   with codes from a host application or a generated processor's own
-//!   registry.
-//! - `<AREA>` is a three-letter uppercase area from [`AREAS`]. Each area
-//!   is owned by one design surface; a code's home never moves, and each
-//!   code is defined in exactly one area.
-//! - `<NNN>` is a three-digit decimal number, zero-padded. Numbers
-//!   `001`–`199` are allocated by the owning area in ascending order;
-//!   `200`–`999` stay unallocated. `000` is never a code.
-//!
-//! A code is the stable identity of one condition: it is never
-//! renumbered or reused, its severity never changes, and a behavior
-//! change takes a new code. Retired codes stay listed with
-//! `retired: true` so the number is visibly spent.
-//!
-//! Each code carries a stable kebab-case `label` (a short,
-//! presentation-neutral name for the condition), its severity, its exit
-//! class, the trigger, a message template with `<placeholder>` tokens,
-//! and a correction.
+//! The diagnostic-code registry: areas, codes, and the
+//! `KDLITH-<AREA><NNN>` numbering scheme. A code is the stable identity
+//! of one condition: never renumbered or reused; a behavior change takes
+//! a new code.
 
 use crate::record::Severity;
 
-/// The fixed product prefix of every registered code.
+/// The fixed product prefix of every registered code, so kdlith codes
+/// never collide with codes from a host application or a generated
+/// processor's own registry.
 pub const CODE_PREFIX: &str = "KDLITH-";
 
-/// The highest number an area may allocate; numbers above stay
-/// unallocated.
+/// The highest number an area may allocate. `<NNN>` is three zero-padded
+/// decimal digits: `001`-`199` are allocated by the owning area in
+/// ascending order, `200`-`999` stay unallocated, `000` is never a code.
 pub const MAX_ALLOCATED_NUMBER: u16 = 199;
 
 /// One diagnostic-area namespace.
@@ -49,19 +31,24 @@ pub struct AreaDefinition {
 #[non_exhaustive]
 pub struct CodeDefinition {
     pub code: &'static str,
-    /// Stable kebab-case name of the condition.
+    /// Stable kebab-case name of the condition: short and
+    /// presentation-neutral.
     pub label: &'static str,
+    /// Fixed for the life of the code; never changes once registered.
     pub severity: Severity,
     /// Exit status when this code alone decides the outcome and
     /// warnings are not promoted to errors: `2` for invocation errors,
     /// `1` for every other error, `0` for warnings and notes.
     pub exit_class: u8,
+    /// The condition that mints this code.
     pub trigger: &'static str,
     /// Human-readable message with `<placeholder>` tokens filled in
     /// token order by [`render`].
     pub message_template: &'static str,
+    /// How to fix the condition.
     pub correction: &'static str,
-    /// A retired code never mints a diagnostic again.
+    /// A retired code never mints a diagnostic again; it stays listed
+    /// with `retired: true` so its number is visibly spent.
     pub retired: bool,
 }
 
@@ -73,7 +60,9 @@ pub struct CodeParts<'a> {
     pub number: u16,
 }
 
-/// The diagnostic areas, in pipeline order.
+/// The diagnostic areas, in pipeline order. `<AREA>` is one of these
+/// three-letter uppercase names; each area is owned by one design
+/// surface, and a code's home area never moves.
 pub const AREAS: &[AreaDefinition] = &[
     AreaDefinition {
         name: "CLI",
@@ -133,7 +122,8 @@ pub const AREAS: &[AreaDefinition] = &[
 ];
 
 /// The registered codes, grouped by area in [`AREAS`] order and
-/// ascending by number within an area.
+/// ascending by number within an area; each code is defined in exactly
+/// one area.
 pub const CODES: &[CodeDefinition] = &[
     // CLI
     CodeDefinition {
