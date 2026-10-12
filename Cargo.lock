@@ -151,10 +151,17 @@ version = "0.1.0"
 [[package]]
 name = "kdlith-bin"
 version = "0.1.0"
+dependencies = [
+ "kdlith-cli",
+]
 
 [[package]]
 name = "kdlith-cli"
 version = "0.1.0"
+dependencies = [
+ "kdlith-diagnostic",
+ "kdlith-parse",
+]
 
 [[package]]
 name = "kdlith-codegen"
