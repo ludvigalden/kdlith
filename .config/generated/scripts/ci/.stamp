@@ -4,7 +4,7 @@
 # and the manifest only: hand-edited generated scripts are caught
 # by the sync drift report instead, never by this stamp.
 version=1
-input:git.toml=b2cf73a565d89d45599aae468037c469f2d9cc18a1ceaac33dba023f9b50d274
+input:git.toml=8e96016edffd2ff5cbc8169400cc003d289ab96281427cc3d3c95b0ed4fcb4ab
 input:lint.toml=96df1d7eaa18fb64d1b6a5d5e613092482b0f8dc2984099eb2d2c3319492e8dd
 input:project.toml=d616000791c5211cd555f9905ec03653d98f7926d6ea952f02600d61657dfe2e
 manifest=d25d7a9a17cc95e0cf5e7f03e6e792cf49fee6895e5b654dcb314e1448a91fdf
