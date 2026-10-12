@@ -15,7 +15,7 @@ Rust processor for them.
 
 | Path                          | Package             | Role                                                               |
 | ----------------------------- | ------------------- | ------------------------------------------------------------------ |
-| `pkg/rs/kdlith`               | `kdlith-kdlith`     | Public facade over the library crates                              |
+| `pkg/rs/kdlith`               | `kdlith`            | Public facade over the library crates                              |
 | `pkg/rs/parse`                | `kdlith-parse`      | KDL event adapter and source coordinates                           |
 | `pkg/rs/model`                | `kdlith-model`      | Type descriptors, identities, origins, and processing items        |
 | `pkg/rs/runtime`              | `kdlith-runtime`    | Binding frames, context operations, sessions, processor interfaces |
@@ -24,7 +24,7 @@ Rust processor for them.
 | `pkg/rs/codegen`              | `kdlith-codegen`    | Deterministic Rust crate generation from compiled definitions      |
 | `pkg/rs/superproc`            | `kdlith-superproc`  | Hand-maintained reference processor for schema definitions         |
 | `pkg/rs/cli`                  | `kdlith-cli`        | Commands, arguments, and output conventions                        |
-| `tools/kdlith`                | `kdlith`            | Command-line tool                                                  |
+| `tools/kdlith`                | `kdlith-bin`        | Command-line tool                                                  |
 | `tests/tools/kdlith-fixtures` | `kdlith-fixtures`   | Fixture-suite harness                                              |
 
 ## Building

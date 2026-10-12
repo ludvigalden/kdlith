@@ -1,9 +1,13 @@
 [package]
-name = "kdlith"
+name = "kdlith-bin"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 autotests = false
+
+[[bin]]
+name = "kdlith"
+path = "src/main.rs"
 
 [lints]
 workspace = true
