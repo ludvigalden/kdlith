@@ -1,0 +1,158 @@
+// kdlith dialect definition: context slots and context effects.
+//
+// Context is information a node establishes for the nodes that follow it
+// or for its children. The engine manages context; it does not hardcode
+// what any context-producing node means. A schema definition declares
+// typed context slots and, on its context-control nodes, the generic
+// effects that set, remove, or clear those slots. Names such as package,
+// defaults, or clear-defaults gain meaning only through a schema
+// definition, never through the engine.
+//
+// Execution: a node is bound and validated against its incoming context;
+// its effects are then computed from its bound fields. Children effects
+// apply when entering the node's children, so they must be computable
+// from the node's header (its arguments and properties); a children
+// effect that depends on a child field is rejected as incompatible with
+// streaming. Following effects apply only after the node completes
+// successfully. Leaving a boundary restores the caller's context. Removal
+// is distinct from setting null, and a late effect never retroactively
+// changes nodes that were already bound.
+
+dialect kdlith version="0" {
+    types {
+        string SlotName {
+            format kebab-case
+        }
+
+        string NamespaceName {
+            format kebab-case
+        }
+
+        string HandlerName {
+            format kebab-case
+        }
+
+        // A typed context slot. Values set into a slot are validated
+        // against its type; a slot may belong to a namespace that a clear
+        // effect empties at once.
+        object SlotDef {
+            field name SlotName
+            field type TypeExpression
+            field namespace "optional<NamespaceName>"
+            field description "optional<String>"
+        }
+
+        // Where a group of effects takes effect. A node affecting both its
+        // children and its following siblings declares two effect groups.
+        enum EffectTarget {
+            member following description="Following siblings, after the node completes"
+            member children description="The node's children, before they are consumed"
+        }
+
+        object EffectGroup {
+            field target EffectTarget
+            field effects "list<Effect>"
+        }
+
+        union Effect {
+            variant set SetEffect
+            variant remove RemoveEffect
+            variant clear ClearEffect
+            variant handler HandlerEffect
+        }
+
+        // Set a slot from a bound field of the node, or to a literal value
+        // checked against the slot's type. Exactly one of field and value.
+        object SetEffect {
+            field slot SlotName
+            field field "optional<FieldName>"
+            field value "optional<ValueExpr>"
+        }
+
+        // Remove a slot's value; the slot becomes unset, not null.
+        object RemoveEffect {
+            field slot SlotName
+        }
+
+        // Remove every slot in a namespace.
+        object ClearEffect {
+            field namespace NamespaceName
+        }
+
+        // A registered effect: domain-specific computation implemented by
+        // the processor that installs it. A schema naming a handler that
+        // is not installed fails clearly; its behavior is never silently
+        // omitted.
+        object HandlerEffect {
+            field name HandlerName
+        }
+
+        // How a field bound from context (a context source in
+        // bindings.kdl) relates to an explicit value for the same field.
+        enum ContextPolicy {
+            member fallback description="The context value supplies the field only when no explicit value is present"
+            member fixed description="An explicit value must agree with the context value"
+        }
+    }
+
+    // Context declarations in a schema definition.
+
+    node context role=container {
+        parents schema dialect
+        children slot
+    }
+
+    // A context-control node declares its effects in effect groups; its
+    // role is context-control, for example:
+    //
+    //     node locale role=context-control {
+    //         field value Locale arg=0
+    //         effects target=following {
+    //             set locale field=value
+    //         }
+    //     }
+
+    node slot role=declaration type=SlotDef parent=context {
+        field name arg=0
+        field type arg=1
+        field namespace property=namespace
+        field description property=description
+    }
+
+    // The effects of a context-control node, declared inside its node
+    // declaration.
+    node effects type=EffectGroup parent=node {
+        field target property=target
+        field effects {
+            from {
+                children set
+                children remove
+                children clear
+                children handler
+            }
+        }
+    }
+
+    node set type=SetEffect parent=effects {
+        field slot arg=0
+        field field property=field
+        field value property=value
+    }
+
+    node remove type=RemoveEffect parent=effects {
+        field slot arg=0
+    }
+
+    node clear type=ClearEffect parent=effects {
+        field namespace arg=0
+    }
+
+    node handler type=HandlerEffect parent=effects {
+        field name arg=0
+    }
+
+    // Deferred: declared here so the boundary is explicit, not defined.
+    deferred source-context note="Context values inferred from source metadata such as the file path"
+    deferred accumulating-context note="Accumulating context values combined by a declared operation"
+    deferred context-snapshots note="Persisted context snapshots for on-demand resolution of indexed records"
+}

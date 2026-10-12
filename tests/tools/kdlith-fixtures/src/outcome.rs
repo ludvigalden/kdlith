@@ -7,7 +7,7 @@ use std::path::Path;
 use std::process::{Command, Output, Stdio};
 
 use crate::fxbin::{ENV_KDLITH, ENV_SCENARIO, ENV_SCRATCH, ENV_SUITE};
-use crate::scenario::{Expectation, Scenario};
+use crate::scenario::{Expectation, Scenario, expand_args};
 
 /// The paths a run exports to the processor's environment.
 pub(crate) struct RunEnv<'a> {
@@ -26,7 +26,7 @@ pub(crate) fn execute(scenario: &Scenario, cwd: &Path, env: &RunEnv<'_>) -> Resu
         path.push(inherited);
     }
     let output = Command::new(env.kdlith)
-        .args(&scenario.args)
+        .args(expand_args(&scenario.args, env.suite))
         .current_dir(cwd)
         .env("PATH", path)
         .env(ENV_SUITE, env.suite)

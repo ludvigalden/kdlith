@@ -1,0 +1,283 @@
+// kdlith dialect definition: node bindings, roles, and cardinality.
+//
+// A binding maps KDL syntax into a logical field. A logical field is not
+// inherently "argument 0" or "a child named name"; those are its
+// representations in a data document. This document contributes the
+// node declaration, the roles vocabulary, the binding sources
+// (arguments, properties, children, and entries envelopes), the
+// collision and duplicate-key policies, and per-child cardinality.
+//
+// Dispatch is by parent binding, node name, and explicit discriminators,
+// never by trying every schema until one accepts. Bindings are compiled
+// into a plan; the schema's own KDL is not reinterpreted per record.
+
+dialect kdlith version="0" {
+    types {
+        // What the processing session does with a node's bound result.
+        // Structure (bindings) and role (processing) are separate: the
+        // same spelling may carry different roles under different parents.
+        enum Role {
+            member record description="Emit a validated record"
+            member declaration description="Register an identity and expose typed metadata"
+            member contribution description="Preserve an assignment or overlay for later resolution"
+            member context-control description="Apply a declared context transition"
+            member source-import description="Schedule another source invocation"
+            member container description="Process children under structural and scope rules"
+        }
+
+        // A node declaration. parent names the one node it may appear
+        // under; parents lists several. A declaration gives at most one of
+        // the two, and a node with neither is a root node. With type=, its
+        // field bindings bind the fields of that logical object type;
+        // without it, each field binding declares its field inline with a
+        // type expression. A node without role= is bound as part of its
+        // parent (a field value or an envelope entry) and is not a
+        // processing item of its own.
+        object NodeDef {
+            field name NodeName
+            field role "optional<Role>"
+            field type "optional<TypeName>"
+            field parent "optional<NodeName>"
+            field parents "optional<list<NodeName>>"
+            field fields "ordered-map<FieldName, FieldBinding>"
+            field children "ordered-map<NodeName, ChildRule>"
+            field effects "list<EffectGroup>"
+            field groups "list<ExactlyOneGroup>"
+        }
+
+        // One logical field and the sources that populate it. The
+        // shorthand fields abbreviate the common single-source cases and
+        // compile to the same sources as the explicit from block.
+        object FieldBinding {
+            field type "optional<TypeExpression>"
+            field arg "optional<U64>"
+            field property "optional<FieldName>"
+            field child "optional<NodeName>"
+            field context "optional<SlotName>"
+            field sources "list<Source>"
+            field collision "optional<Collision>"
+            field duplicate-keys "optional<DuplicateKeys>"
+        }
+
+        // Where a field's value comes from. Several sources may populate
+        // the same field (alternative spellings); collision decides what
+        // supplying more than one means.
+        union Source {
+            variant argument ArgumentSource
+            variant args ArgsSource
+            variant property PropertySource
+            variant child ChildSource
+            variant children ChildrenSource
+            variant entries EntriesSource
+            variant context ContextSource
+        }
+
+        // One positional argument, by index.
+        object ArgumentSource {
+            field index U64
+        }
+
+        // All remaining positional arguments, in order, as a list.
+        object ArgsSource {
+        }
+
+        object PropertySource {
+            field name FieldName
+        }
+
+        // One child node by name. Without a body, the child binds through
+        // the node declared under this parent with that name when one
+        // exists, and otherwise must carry exactly one positional value.
+        // With a body, the nested sources select from that child's own
+        // entries and children.
+        object ChildSource {
+            field name NodeName
+            field sources "list<Source>"
+        }
+
+        // Repeated children by name, collected as a list in order. Each
+        // child binds as described for a child source.
+        object ChildrenSource {
+            field name NodeName
+            field sources "list<Source>"
+        }
+
+        // An envelope binding for keyed collections: the selected argument
+        // of each entry node supplies the map key and is consumed exactly
+        // once; the remaining node contents bind as the value type.
+        object EntriesSource {
+            field node NodeName
+            field key String
+            field value TypeName
+        }
+
+        // The field reads its value from the active context slot; the
+        // policy (context.kdl) relates it to an explicit value.
+        object ContextSource {
+            field slot SlotName
+            field policy "optional<ContextPolicy>"
+        }
+
+        // Supplying more than one source for a field is an error, even
+        // when the values are equal. No implicit precedence exists.
+        enum Collision {
+            member reject
+        }
+
+        enum DuplicateKeys {
+            member reject
+        }
+
+        // How many children of one name may appear under this node.
+        // A child is permitted when a field binding consumes it or a
+        // children rule names it; any other child is rejected. A children
+        // rule adds occurrence bounds; absent bounds mean zero and
+        // unbounded. Minimum counts are checked at scope completion. These are schema
+        // occurrence rules, never reinterpretations of authored data that
+        // happens to use a property named min-occurs or max-count.
+        object ChildRule {
+            field min-occurs "optional<U64>"
+            field max-occurs "optional<U64>"
+        }
+    }
+
+    // Node declarations in a schema definition.
+
+    node node role=declaration type=NodeDef {
+        parents schema dialect
+        field name arg=0
+        field role property=role
+        field type property=type
+        field parent property=parent
+        field parents {
+            from {
+                child parents {
+                    args
+                }
+            }
+        }
+        field fields {
+            from {
+                entries field key="arg(0)" value=FieldBinding
+            }
+            duplicate-keys reject
+        }
+        field children {
+            from {
+                entries children key="arg(0)" value=ChildRule
+            }
+            duplicate-keys reject
+        }
+        field effects {
+            from {
+                children effects
+            }
+        }
+        field groups {
+            from {
+                children exactly-one
+            }
+        }
+        children parents max-occurs=1
+        children effects max-occurs=2
+    }
+
+    // A field binding. Shorthands abbreviate the common single-source
+    // cases: arg=N is one positional argument, property=NAME one property,
+    // child=NAME one child (bound as described for a child source), and
+    // context=SLOT one context slot. The from block lists explicit sources
+    // for everything else. Shorthands and from blocks compile to the same
+    // representation; the compiler rejects overlapping bindings,
+    // unconsumed arguments, and contradictory ownership of children.
+    node field type=FieldBinding parent=node {
+        field type arg=1
+        field arg property=arg
+        field property property=property
+        field child property=child
+        field context property=context
+        field sources {
+            from {
+                child from {
+                    children argument
+                    children args
+                    children property
+                    children child
+                    children children
+                    children entries
+                    children context
+                }
+            }
+        }
+        field collision child=collision
+        field duplicate-keys child=duplicate-keys
+        children from max-occurs=1
+        children collision max-occurs=1
+        children duplicate-keys max-occurs=1
+    }
+
+    // Source nodes appear in a from block and, nested, inside child and
+    // children sources.
+
+    node argument type=ArgumentSource {
+        parents from child children
+        field index arg=0
+    }
+
+    node args type=ArgsSource {
+        parents from child children
+    }
+
+    node property type=PropertySource {
+        parents from child children
+        field name arg=0
+    }
+
+    node child type=ChildSource {
+        parents from child children
+        field name arg=0
+        field sources {
+            from {
+                children argument
+                children args
+                children property
+                children child
+                children children
+            }
+        }
+    }
+
+    node children type=ChildrenSource {
+        parents from child children
+        field name arg=0
+        field sources {
+            from {
+                children argument
+                children args
+                children property
+                children child
+                children children
+            }
+        }
+    }
+
+    node entries type=EntriesSource parent=from {
+        field node arg=0
+        field key property=key
+        field value property=value
+    }
+
+    node context type=ContextSource parent=from {
+        field slot arg=0
+        field policy property=policy
+    }
+
+    node children type=ChildRule parent=node {
+        field min-occurs property=min-occurs
+        field max-occurs property=max-occurs
+    }
+
+    // Deferred: declared here so the boundary is explicit, not defined.
+    deferred expansion note="Declaration-group expansion (include of a member group)"
+    deferred dependent-binding note="Binding a payload against a declaration's type (against)"
+    deferred case-dispatch note="Binding cases selected by a property value"
+}

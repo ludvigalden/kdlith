@@ -11,6 +11,10 @@ pub(crate) const MANIFEST: &str = "scenario.json";
 /// The header prefix a negative-control input's first line carries.
 const INVALID_HEADER: &str = "# expect-invalid:";
 
+/// The one argument placeholder: it expands to the canonical suite root,
+/// so a scenario can name a committed file outside its own directory.
+pub(crate) const SUITE_PLACEHOLDER: &str = "{fx-suite}";
+
 /// A loaded scenario, ready to materialize and run.
 #[derive(Debug)]
 pub(crate) struct Scenario {
@@ -71,6 +75,7 @@ pub(crate) fn load(dir: &Path) -> Result<Scenario, String> {
         None => return Err(format!("{MANIFEST}: missing required key \"args\"")),
         Some(v) => string_array(v, "args")?,
     };
+    check_placeholders(&args)?;
 
     let expectation = match (root.get("expect"), root.get("expect-invalid")) {
         (Some(_), Some(_)) => {
@@ -191,6 +196,28 @@ fn contained_relative(raw: &str) -> Result<PathBuf, String> {
             "{MANIFEST}: \"expect-invalid.input\" must be a relative path inside the scenario, got {raw:?}"
         ))
     }
+}
+
+/// Reject any `{fx-` token other than the suite placeholder, so a
+/// misspelled placeholder fails the load instead of reaching the binary.
+fn check_placeholders(args: &[String]) -> Result<(), String> {
+    for arg in args {
+        let rest = arg.replace(SUITE_PLACEHOLDER, "");
+        if rest.contains("{fx-") {
+            return Err(format!(
+                "{MANIFEST}: \"args\" entry {arg:?} has an unknown placeholder; only {SUITE_PLACEHOLDER} is supported"
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// The scenario's argv with every suite placeholder expanded.
+pub(crate) fn expand_args(args: &[String], suite: &Path) -> Vec<String> {
+    let root = suite.to_string_lossy();
+    args.iter()
+        .map(|arg| arg.replace(SUITE_PLACEHOLDER, &root))
+        .collect()
 }
 
 fn check_keys(obj: &Map<String, Value>, allowed: &[&str], what: &str) -> Result<(), String> {

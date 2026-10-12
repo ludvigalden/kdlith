@@ -1,0 +1,306 @@
+// kdlith dialect definition: the logical type system.
+//
+// The dialect is the language schema definitions are written in. This
+// document contributes the logical types a schema definition may
+// declare (string, enum, object, union, and map types), the compact
+// type-expression grammar used wherever a field names its type, and the
+// declarative constraints an object type may carry. Logical types are
+// kept separate from their KDL bindings: how a field is spelled in a
+// data document is declared in bindings.kdl, not here.
+//
+// The dialect definition is self-describing: every construct used below
+// is itself declared by the dialect definition documents.
+
+dialect kdlith version="0" {
+    types {
+        // Names used throughout the dialect.
+
+        string TypeName {
+            pattern #"^[A-Z][A-Za-z0-9]*$"#
+        }
+
+        string NodeName {
+            pattern #"^[a-z][a-z0-9]*(-[a-z0-9]+)*$"#
+        }
+
+        string FieldName {
+            pattern #"^[A-Za-z][A-Za-z0-9_-]*$"#
+        }
+
+        string MemberName {
+            min-length 1
+        }
+
+        string ValidatorName {
+            format kebab-case
+        }
+
+        // A type expression: a type-description grammar inside a quoted
+        // string, not an expression evaluator. It names a declared type, a
+        // built-in scalar, or one of the constructors in TypeConstructor,
+        // for example "optional<String>" or "map<Locale, String>". Fields
+        // are required unless their type is optional<T>; absence, null,
+        // and an empty list are distinct states.
+        string TypeExpression {
+            validator type-expression version="0"
+        }
+
+        // The built-in scalar types a type expression may name without a
+        // declaration. ValueExpr is any single KDL scalar value; where a
+        // field holds one (a default, a literal context value), the engine
+        // checks it against the type of the field it belongs to.
+        enum BuiltinType {
+            member String
+            member Bool
+            member Integer
+            member Decimal
+            member U64
+            member ValueExpr
+        }
+
+        // The type-expression constructors.
+        enum TypeConstructor {
+            member optional description="The field may be absent"
+            member nullable description="The field may explicitly contain null"
+            member list description="Ordered collection"
+            member map description="Keyed collection with typed keys"
+            member ordered-map description="Keyed collection that retains declaration order"
+            member union description="One of several alternatives, discriminated explicitly"
+            member ref description="Symbolic reference to a declared entity of the target type"
+        }
+
+        // Built-in string formats. Each has a precisely documented grammar;
+        // zero-padded with width=2 is a two-character digit string, not an
+        // integer that loses its leading zeros.
+        enum StringFormat {
+            member kebab-case
+            member camel-case
+            member lower-snake
+            member upper-snake
+            member uuid
+            member zero-padded
+        }
+
+        // A type declaration, discriminated by the declaring node's name.
+        union TypeDef {
+            variant string StringType
+            variant enum EnumType
+            variant object ObjectType
+            variant union UnionType
+            variant map MapType
+        }
+
+        // A string type: a pattern validates the whole string; a semantic
+        // format such as a locale tag uses a registered validator rather
+        // than an approximate pattern.
+        object StringType {
+            field name TypeName
+            field format "optional<StringFormat>"
+            field width "optional<U64>"
+            field pattern "optional<String>"
+            field validator "optional<ValidatorName>"
+            field validator-version "optional<String>"
+            field min-length "optional<U64>"
+        }
+
+        object EnumType {
+            field name TypeName
+            field members "ordered-map<MemberName, EnumMember>"
+        }
+
+        // Member descriptions remain metadata; they are not discarded
+        // during compilation.
+        // The member's name is the key of the enclosing ordered map.
+        object EnumMember {
+            field description "optional<String>"
+        }
+
+        object ObjectType {
+            field name TypeName
+            field fields "ordered-map<FieldName, FieldDef>"
+            field constraints "list<Constraint>"
+        }
+
+        // A logical field. documented-default is metadata only and never
+        // materializes an absent value; fallback supplies an absent value.
+        // Reading a value from the active context is a binding concern
+        // (bindings.kdl), not part of the logical field.
+        // The field's name is the key of the enclosing ordered map.
+        object FieldDef {
+            field type TypeExpression
+            field description "optional<String>"
+            field documented-default "optional<ValueExpr>"
+            field fallback "optional<ValueExpr>"
+        }
+
+        // A union selects one alternative by explicit discrimination: the
+        // variant's discriminator is the node name that selects it, so no
+        // speculative parsing or backtracking is needed.
+        object UnionType {
+            field name TypeName
+            field variants "ordered-map<NodeName, Variant>"
+        }
+
+        // The variant's discriminator is the key of the enclosing map.
+        object Variant {
+            field type TypeExpression
+        }
+
+        object MapType {
+            field name TypeName
+            field key-type TypeExpression
+            field value-type TypeExpression
+        }
+
+        // Declarative constraints over an object's fields. They are
+        // enforceable policies an author states explicitly, never rules
+        // extracted from descriptions.
+        union Constraint {
+            variant all-or-none AllOrNone
+            variant requires Requires
+        }
+
+        object AllOrNone {
+            field fields "list<FieldName>"
+        }
+
+        object Requires {
+            field field FieldName
+            field required FieldName
+        }
+    }
+
+    // How the type declarations above are spelled in a schema definition.
+    // Inside an `entries` envelope (bindings.kdl), argument 0 of each
+    // entry node is consumed exactly once as the map key; the entry
+    // node's own bindings start at argument 1.
+
+    node string role=declaration type=StringType parent=types {
+        field name arg=0
+        field format {
+            from {
+                child format {
+                    argument 0
+                }
+            }
+        }
+        field width {
+            from {
+                child format {
+                    property width
+                }
+            }
+        }
+        field pattern child=pattern
+        field validator {
+            from {
+                child validator {
+                    argument 0
+                }
+            }
+        }
+        field validator-version {
+            from {
+                child validator {
+                    property version
+                }
+            }
+        }
+        field min-length child=min-length
+        children format max-occurs=1
+        children pattern max-occurs=1
+        children validator max-occurs=1
+        children min-length max-occurs=1
+    }
+
+    node enum role=declaration type=EnumType parent=types {
+        field name arg=0
+        field members {
+            from {
+                entries member key="arg(0)" value=EnumMember
+            }
+            duplicate-keys reject
+        }
+        children member min-occurs=1
+    }
+
+    node member type=EnumMember parent=enum {
+        field description property=description
+    }
+
+    node object role=declaration type=ObjectType parent=types {
+        field name arg=0
+        field fields {
+            from {
+                entries field key="arg(0)" value=FieldDef
+            }
+            duplicate-keys reject
+        }
+        field constraints {
+            from {
+                child constraints {
+                    children all-or-none
+                    children requires
+                }
+            }
+        }
+        children field
+        children constraints max-occurs=1
+    }
+
+    node field type=FieldDef parent=object {
+        field type arg=1
+        field description property=description
+        field documented-default child=documented-default
+        field fallback child=fallback
+        children documented-default max-occurs=1
+        children fallback max-occurs=1
+    }
+
+    node constraints parent=object {
+        children all-or-none
+        children requires
+    }
+
+    node all-or-none type=AllOrNone parent=constraints {
+        field fields {
+            from {
+                args
+            }
+        }
+    }
+
+    node requires type=Requires parent=constraints {
+        field field arg=0
+        field required arg=1
+    }
+
+    node union role=declaration type=UnionType parent=types {
+        field name arg=0
+        field variants {
+            from {
+                entries variant key="arg(0)" value=Variant
+            }
+            duplicate-keys reject
+        }
+        children variant min-occurs=1
+    }
+
+    node variant type=Variant parent=union {
+        field type arg=1
+    }
+
+    node map role=declaration type=MapType parent=types {
+        field name arg=0
+        field key-type child=key-type
+        field value-type child=value-type
+        children key-type min-occurs=1 max-occurs=1
+        children value-type min-occurs=1 max-occurs=1
+    }
+
+    // Deferred: declared here so the boundary is explicit, not defined.
+    deferred generic-types note="Generic type declarations and instantiation T<A>"
+    deferred codecs note="Pattern codecs that decode typed captures from a string, and codec-driven value binding"
+    deferred union-dispatch note="Union discrimination by value prefix or property case; v0 discriminates by node name only"
+    deferred sensitivity note="Field sensitivity metadata and the output policy that enforces it"
+}

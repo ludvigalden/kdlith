@@ -72,6 +72,11 @@ Categories:
 `processing/smoke-help` asserts that `kdlith --help` exits `0` and prints its
 usage text. It keeps the suite non-empty and exercises the harness end to end.
 
+`dialect/canonical-read/` holds one scenario per canonical dialect definition
+file under `pkg/kdl/schemas/dialect/`. Each runs `kdlith read` on the
+committed file through `{fx-suite}` and must exit `0`. Adding a canonical
+dialect file means adding its scenario here.
+
 `parse/kdl-spec/` and `invalid/kdl-spec/` hold the official KDL v2 test suite,
 one scenario per upstream case: valid documents must exit `0` under
 `kdlith read input.kdl`, and invalid ones must be rejected with the declared
@@ -89,11 +94,29 @@ is a load error, and a load error fails the scenario rather than skipping it.
 | ---------------- | -------- | ---------------- | -------------------------------------------------- |
 | `binary`         | yes      | string           | Must be `"kdlith"`, the only supported value at v0 |
 | `description`    | no       | string           | Free-form description                              |
-| `args`           | yes      | array of strings | The arguments passed to the binary                 |
+| `args`           | yes      | array of strings | The arguments passed to the binary (see below)     |
 | `expect`         | one of   | object           | Positive control                                   |
 | `expect-invalid` | one of   | object           | Negative control                                   |
 
 Exactly one of `expect` and `expect-invalid` must be present.
+
+### Argument placeholder: `{fx-suite}`
+
+An `args` entry may contain `{fx-suite}`. The harness replaces every
+occurrence with the canonicalized suite root before running the binary, so a
+scenario can name a committed file outside its own directory instead of
+carrying a copy of it. A copy of a canonical file would drift from the file
+it stands for; the placeholder makes the scenario read the committed file
+itself. For example, with the suite at `tests/fixtures`:
+
+```json
+"args": ["read", "{fx-suite}/../../pkg/kdl/schemas/dialect/types.kdl"]
+```
+
+`{fx-suite}` is the only placeholder. Any other `{fx-` token in `args` is a
+load error, so a misspelled placeholder fails the scenario instead of
+reaching the binary as a literal path. The expansion is plain text
+substitution: the harness interprets nothing else in `args`.
 
 ### Positive control: `expect`
 

@@ -1,0 +1,8 @@
+{
+  "binary": "kdlith",
+  "description": "The committed canonical dialect definition pkg/kdl/schemas/dialect/context.kdl parses as KDL v2",
+  "args": ["read", "{fx-suite}/../../pkg/kdl/schemas/dialect/context.kdl"],
+  "expect": {
+    "exit": 0
+  }
+}
