@@ -12,6 +12,7 @@ mod documents;
 mod extensions;
 mod load;
 mod names;
+mod overlap;
 mod plan;
 mod structure;
 mod summary;

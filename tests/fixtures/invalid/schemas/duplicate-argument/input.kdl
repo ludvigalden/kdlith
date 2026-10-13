@@ -1,0 +1,16 @@
+schema s version="1" {
+    types {
+        object Entry {
+            field id String
+            field name String
+        }
+    }
+    node entry role=record type=Entry {
+        field id arg=0
+        field name {
+            from {
+                argument 0
+            }
+        }
+    }
+}

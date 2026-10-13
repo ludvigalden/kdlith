@@ -23,8 +23,10 @@ use kdlith_runtime::{
 
 use crate::bindings::{ChildPlan, ContextPolicy, NodeDeclId, Role, SetFrom};
 use crate::decode::{self, Decoder};
-use crate::definition::Definition;
+use crate::definition::{Definition, DefinitionKind};
+use crate::diag::CONFLICTING_BINDING;
 use crate::names::Sym;
+use crate::overlap;
 use crate::plan::EffectStep;
 use crate::structure::{ScopeRules, ScopeState, Violation};
 use crate::summary;
@@ -494,6 +496,33 @@ impl<'d, 's> Binder<'d, 's> {
         kept
     }
 
+    /// Whether a node declaration of a definition bound as data of the
+    /// dialect binds two fields to the same syntax, reported with the
+    /// code the definition compiler uses for the same construct.
+    fn overlapping(
+        &mut self,
+        cx: &mut Cx<'_>,
+        frame: &BindFrame,
+        values: &[Option<Value>],
+    ) -> bool {
+        if self.def.kind != DefinitionKind::Dialect
+            || self.name(frame.name) != overlap::NODE_CONSTRUCT
+        {
+            return false;
+        }
+        let infos = &self.tables.decls[frame.owner.index()].fields;
+        let fields: Vec<(&str, &Value)> = infos
+            .iter()
+            .zip(values)
+            .filter_map(|(info, value)| Some((self.def.names.resolve(info.name), value.as_ref()?)))
+            .collect();
+        let found = overlap::in_declaration(&fields);
+        for overlap in &found {
+            self.diagnose(cx, CONFLICTING_BINDING, frame.span, &overlap.values());
+        }
+        !found.is_empty()
+    }
+
     /// Emit the processing item a declared node's role calls for.
     fn emit(&mut self, cx: &mut Cx<'_>, frame: &BindFrame, role: Role, values: Vec<Option<Value>>) {
         let owner = frame.owner;
@@ -616,6 +645,9 @@ impl<'d, 's> Binder<'d, 's> {
             return;
         }
         let def = self.def;
+        if self.overlapping(cx, frame, &values) {
+            return;
+        }
         let role = def.bindings.get(owner).and_then(|decl| decl.role);
         if let Some(role) = role {
             if let Some(plan) = def.plan.node(owner) {

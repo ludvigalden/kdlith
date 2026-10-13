@@ -1,8 +1,8 @@
 //! Node declarations compiled into dispatch and per-scope plans; rejects
-//! overlapping bindings, unconsumed arguments, and contradictory child
-//! ownership.
+//! overlapping bindings (through the shared overlap check), unconsumed
+//! arguments, and contradictory child ownership.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use crate::bindings::{
     Arity, BindingCatalog, ChildPlan, ChildRule, NodeDecl, NodeDeclId, ParentKey, Placement, Scope,
@@ -12,6 +12,7 @@ use crate::compile::Cx;
 use crate::definition::CheckScope;
 use crate::diag::{CONFLICTING_BINDING, INVALID_BINDING, Site, duplicate};
 use crate::names::Sym;
+use crate::overlap::{Consumed, overlaps};
 use crate::structure::{Occurs, OrderRule, ScopeRules};
 
 /// One binding source with the field it populates.
@@ -199,8 +200,7 @@ impl Builder<'_> {
             properties: Vec::new(),
             plans: BTreeMap::new(),
         });
-        let arity = arguments(cx, &input);
-        let properties = properties(cx, &input);
+        let (arity, properties) = arguments_and_properties(cx, &input);
         let (plans, rules) = self.children(cx, &input);
         let scope = &mut self.scopes[id.index()];
         scope.arity = arity;
@@ -408,75 +408,62 @@ impl Builder<'_> {
     }
 }
 
-/// Positional arguments: each index bound once, no gaps below the
-/// highest, and at most one collector of the rest.
-fn arguments(cx: &mut Cx<'_>, input: &ScopeInput<'_>) -> Arity {
+/// Arguments and properties two fields bind (with an entries envelope's
+/// key counted as consumed) are reported as overlaps; the first binding
+/// of each piece of syntax is kept.
+fn arguments_and_properties(cx: &mut Cx<'_>, input: &ScopeInput<'_>) -> (Arity, Vec<Sym>) {
     const KEY: &str = "the entries key";
-    let mut bound: BTreeMap<u64, String> = BTreeMap::new();
-    for key in &input.keys {
-        bound.insert(*key, KEY.to_owned());
+    let names: Vec<String> = input
+        .uses
+        .iter()
+        .map(|usage| cx.names.resolve(usage.field).to_owned())
+        .collect();
+    let mut sites = Vec::new();
+    let mut uses = Vec::new();
+    for (usage, field) in input.uses.iter().zip(&names) {
+        let consumed = match usage.source {
+            Source::Argument(index) => Consumed::Argument(*index),
+            Source::Args => Consumed::Rest,
+            Source::Property(name) => Consumed::Property(cx.names.resolve(*name)),
+            _ => continue,
+        };
+        sites.push((usage.site, usage.source));
+        uses.push((field.as_str(), consumed));
     }
-    let mut rest: Option<Sym> = None;
-    for usage in &input.uses {
-        let field = cx.names.resolve(usage.field).to_owned();
-        match usage.source {
+    let claimed: Vec<(Consumed<'_>, &str)> = input
+        .keys
+        .iter()
+        .map(|key| (Consumed::Argument(*key), KEY))
+        .collect();
+    let found = overlaps(&claimed, &uses);
+    let mut indices: BTreeSet<u64> = input.keys.iter().copied().collect();
+    let mut rest = false;
+    let mut properties = BTreeSet::new();
+    for (at, (site, source)) in sites.iter().enumerate() {
+        if let Some(overlap) = found.iter().find(|o| o.at == at) {
+            cx.diags
+                .error(CONFLICTING_BINDING, *site, &overlap.values());
+            continue;
+        }
+        match source {
             Source::Argument(index) => {
-                if let Some(other) = bound.get(index) {
-                    let syntax = format!("argument {index}");
-                    cx.diags
-                        .error(CONFLICTING_BINDING, usage.site, &[&syntax, other, &field]);
-                    continue;
-                }
-                bound.insert(*index, field);
+                indices.insert(*index);
             }
-            Source::Args => {
-                if let Some(other) = rest {
-                    let other = cx.names.resolve(other).to_owned();
-                    cx.diags.error(
-                        CONFLICTING_BINDING,
-                        usage.site,
-                        &["the remaining arguments", &other, &field],
-                    );
-                    continue;
-                }
-                rest = Some(usage.field);
+            Source::Args => rest = true,
+            Source::Property(name) => {
+                properties.insert(*name);
             }
             _ => {}
         }
     }
-    let indexed = bound
-        .keys()
-        .next_back()
-        .map_or(0, |last| last.saturating_add(1));
-    if indexed > bound.len() as u64 {
-        for index in (0..indexed).filter(|i| !bound.contains_key(i)) {
+    let indexed = indices.last().map_or(0, |last| last.saturating_add(1));
+    if indexed > indices.len() as u64 {
+        for index in (0..indexed).filter(|i| !indices.contains(i)) {
             let reason =
                 format!("argument {index} is not consumed while a later argument is bound");
             cx.diags
                 .error(INVALID_BINDING, input.site, &[&input.label, &reason]);
         }
     }
-    Arity {
-        indexed,
-        rest: rest.is_some(),
-    }
-}
-
-fn properties(cx: &mut Cx<'_>, input: &ScopeInput<'_>) -> Vec<Sym> {
-    let mut bound: BTreeMap<Sym, Sym> = BTreeMap::new();
-    for usage in &input.uses {
-        let Source::Property(name) = usage.source else {
-            continue;
-        };
-        if let Some(other) = bound.get(name) {
-            let syntax = format!("property {}", cx.names.resolve(*name));
-            let other = cx.names.resolve(*other).to_owned();
-            let field = cx.names.resolve(usage.field).to_owned();
-            cx.diags
-                .error(CONFLICTING_BINDING, usage.site, &[&syntax, &other, &field]);
-            continue;
-        }
-        bound.insert(*name, usage.field);
-    }
-    bound.into_keys().collect()
+    (Arity { indexed, rest }, properties.into_iter().collect())
 }
