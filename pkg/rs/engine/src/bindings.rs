@@ -1,0 +1,329 @@
+//! The BindingCatalog: node declarations with their roles, field
+//! bindings, child rules, and the compiled dispatch and scope tables.
+
+use std::collections::BTreeMap;
+
+use kdlith_model::Value;
+
+use crate::diag::Site;
+use crate::names::Sym;
+use crate::structure::ScopeRules;
+use crate::types::TypeExpr;
+
+/// A node declaration in its catalog.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct NodeDeclId(u32);
+
+impl NodeDeclId {
+    pub fn index(self) -> usize {
+        self.0 as usize
+    }
+
+    pub(crate) fn from_index(at: usize) -> Self {
+        Self(u32::try_from(at).unwrap_or(u32::MAX))
+    }
+}
+
+/// What a session does with a node's bound result.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum Role {
+    Record,
+    Declaration,
+    Contribution,
+    ContextControl,
+    SourceImport,
+    Container,
+}
+
+impl Role {
+    pub fn from_name(name: &str) -> Option<Self> {
+        Some(match name {
+            "record" => Role::Record,
+            "declaration" => Role::Declaration,
+            "contribution" => Role::Contribution,
+            "context-control" => Role::ContextControl,
+            "source-import" => Role::SourceImport,
+            "container" => Role::Container,
+            _ => return None,
+        })
+    }
+}
+
+/// Where a node may appear.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum Placement {
+    /// A root node of a document.
+    Root,
+    /// Under any node with one of these names.
+    Under(Vec<Sym>),
+}
+
+/// The parent half of a dispatch key.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[non_exhaustive]
+pub enum ParentKey {
+    Root,
+    Under(Sym),
+}
+
+/// One node declaration, compiled.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct NodeDecl {
+    pub name: Sym,
+    /// `None`: bound as part of its parent, not a processing item.
+    pub role: Option<Role>,
+    /// The logical object type whose fields the bindings populate.
+    pub ty: Option<Sym>,
+    pub placement: Placement,
+    pub fields: Vec<FieldBinding>,
+    pub children: Vec<ChildRule>,
+    pub effects: Vec<EffectGroup>,
+    pub groups: Vec<Vec<Sym>>,
+    pub site: Site,
+}
+
+/// How a scope owner's positional arguments are consumed.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct Arity {
+    /// Arguments `0..indexed` are each bound exactly once, counting the
+    /// argument an entries envelope consumes as the key.
+    pub indexed: u64,
+    /// Arguments from `indexed` on are collected by an `args` source.
+    pub rest: bool,
+}
+
+/// One logical field and the sources that populate it. Shorthands and
+/// `from` blocks compile to the same sources.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct FieldBinding {
+    pub name: Sym,
+    /// An inline type expression; absent when the node's type gives it.
+    pub ty: Option<TypeExpr>,
+    pub sources: Vec<Source>,
+    /// Required when two or more alternative sources (not `children` or
+    /// `context`) populate the field; with `reject`, supplying more than
+    /// one is an error even when the values are equal.
+    pub collision: Option<Collision>,
+    pub duplicate_keys: Option<DuplicateKeys>,
+    pub site: Site,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum Source {
+    Argument(u64),
+    /// The remaining positional arguments, in order.
+    Args,
+    Property(Sym),
+    /// One child by name; nested sources select from its contents.
+    Child {
+        name: Sym,
+        sources: Vec<Source>,
+    },
+    /// Repeated children by name, collected in order.
+    Children {
+        name: Sym,
+        sources: Vec<Source>,
+    },
+    /// A keyed envelope: argument `key` of each `node` child is the map
+    /// key; the rest binds as `value`.
+    Entries {
+        node: Sym,
+        key: u64,
+        value: Sym,
+    },
+    Context {
+        slot: Sym,
+        policy: Option<ContextPolicy>,
+    },
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum Collision {
+    Reject,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum DuplicateKeys {
+    Reject,
+}
+
+/// How a context-bound field relates to an explicit value.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum ContextPolicy {
+    /// The slot supplies the field only when no explicit value is present.
+    Fallback,
+    /// An explicit value must agree with the slot.
+    Fixed,
+}
+
+/// A `children NAME` rule: permission plus occurrence bounds.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct ChildRule {
+    pub name: Sym,
+    pub min: Option<u64>,
+    pub max: Option<u64>,
+    pub site: Site,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum EffectTarget {
+    Following,
+    Children,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct EffectGroup {
+    pub target: EffectTarget,
+    pub effects: Vec<Effect>,
+    pub site: Site,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum Effect {
+    Set {
+        slot: Sym,
+        from: SetFrom,
+    },
+    /// The slot becomes unset, not null.
+    Remove {
+        slot: Sym,
+    },
+    Clear {
+        namespace: Sym,
+    },
+    /// Domain computation the installing processor implements.
+    Handler {
+        name: String,
+    },
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum SetFrom {
+    Field(Sym),
+    Value(Value),
+}
+
+/// A compiled scope: the children of one declared node, of a child a
+/// field consumes with nested sources, or of a document's root.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ScopeId(u32);
+
+impl ScopeId {
+    pub fn index(self) -> usize {
+        self.0 as usize
+    }
+
+    pub(crate) fn from_index(at: usize) -> Self {
+        Self(u32::try_from(at).unwrap_or(u32::MAX))
+    }
+}
+
+/// How a child arriving in a scope binds, decided at compile time.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum ChildPlan {
+    /// Through the node declared for this parent and name; `key` is the
+    /// argument an entries envelope consumes as the map key.
+    Declared { decl: NodeDeclId, key: Option<u64> },
+    /// Through the nested sources of the fields that consume it.
+    Nested(ScopeId),
+    /// A consumed child with no declaration: exactly one positional value.
+    Scalar,
+}
+
+/// Everything a binder needs about one scope, compiled once.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct Scope {
+    /// The name of the node owning the scope; `None` for the root scope.
+    pub name: Option<Sym>,
+    pub decl: Option<NodeDeclId>,
+    pub rules: ScopeRules,
+    /// The owning node's positional arguments the bindings consume.
+    pub arity: Arity,
+    /// The owning node's properties the bindings consume.
+    pub properties: Vec<Sym>,
+    pub(crate) plans: BTreeMap<Sym, ChildPlan>,
+}
+
+impl Scope {
+    /// The plan for a child; `None` when no binding admits it here.
+    pub fn child(&self, name: Sym) -> Option<ChildPlan> {
+        self.plans.get(&name).copied()
+    }
+}
+
+/// Every node declaration of one definition with its dispatch table and
+/// compiled scopes; the root scope dispatches a document's root nodes.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct BindingCatalog {
+    pub(crate) nodes: Vec<NodeDecl>,
+    pub(crate) dispatch: BTreeMap<(ParentKey, Sym), NodeDeclId>,
+    pub(crate) scopes: Vec<Scope>,
+    pub(crate) decl_scopes: Vec<ScopeId>,
+    pub(crate) root: ScopeId,
+}
+
+impl BindingCatalog {
+    pub fn get(&self, id: NodeDeclId) -> Option<&NodeDecl> {
+        self.nodes.get(id.index())
+    }
+
+    /// Every declaration in contribution order.
+    pub fn iter(&self) -> impl Iterator<Item = (NodeDeclId, &NodeDecl)> {
+        self.nodes
+            .iter()
+            .enumerate()
+            .map(|(at, decl)| (NodeDeclId::from_index(at), decl))
+    }
+
+    pub fn len(&self) -> usize {
+        self.nodes.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.nodes.is_empty()
+    }
+
+    /// The declaration for a name under a parent: deterministic, never
+    /// trying declarations in turn.
+    pub fn dispatch(&self, parent: ParentKey, name: Sym) -> Option<NodeDeclId> {
+        self.dispatch.get(&(parent, name)).copied()
+    }
+
+    pub fn root_scope(&self) -> ScopeId {
+        self.root
+    }
+
+    /// The scope of a declared node's children.
+    pub fn decl_scope(&self, id: NodeDeclId) -> Option<ScopeId> {
+        self.decl_scopes.get(id.index()).copied()
+    }
+
+    pub fn scope(&self, id: ScopeId) -> Option<&Scope> {
+        self.scopes.get(id.index())
+    }
+
+    /// The plan for a child arriving in a scope.
+    pub fn child(&self, scope: ScopeId, name: Sym) -> Option<ChildPlan> {
+        self.scope(scope)?.child(name)
+    }
+
+    pub fn scopes(&self) -> &[Scope] {
+        &self.scopes
+    }
+}

@@ -178,6 +178,11 @@ dependencies = [
 [[package]]
 name = "kdlith-engine"
 version = "0.1.0"
+dependencies = [
+ "kdlith-diagnostic",
+ "kdlith-model",
+ "kdlith-parse",
+]
 
 [[package]]
 name = "kdlith-fixtures"

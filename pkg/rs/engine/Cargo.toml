@@ -7,3 +7,8 @@ autotests = false
 
 [lints]
 workspace = true
+
+[dependencies]
+kdlith-diagnostic = { path = "../diagnostic" }
+kdlith-model = { path = "../model" }
+kdlith-parse = { path = "../parse" }
