@@ -20,6 +20,42 @@ pub(crate) const SUITE_PLACEHOLDER: &str = "{fx-suite}";
 pub(crate) struct Scenario {
     pub(crate) args: Vec<String>,
     pub(crate) expectation: Expectation,
+    /// A declared scratch check: violations the harness itself must
+    /// plant and then classify in the materialized copy.
+    pub(crate) scratch_check: Option<ScratchCheck>,
+}
+
+/// A planted violation and the scratch classification it must produce.
+#[derive(Debug)]
+pub(crate) struct ScratchCheck {
+    pub(crate) plants: Vec<Plant>,
+}
+
+/// One entry the harness plants inside the materialized scenario copy
+/// after the run. The path must be foreign to the scenario source, so
+/// the post-run walk classifies it as a foreign entry.
+#[derive(Debug)]
+pub(crate) struct Plant {
+    pub(crate) path: String,
+    pub(crate) kind: PlantKind,
+}
+
+#[derive(Debug)]
+pub(crate) enum PlantKind {
+    /// A symlink, recorded and removed as a link, never followed.
+    Symlink { target: String },
+    /// A regular file the scenario never declared.
+    File,
+}
+
+impl PlantKind {
+    /// The kind name used in classification reports.
+    pub(crate) fn as_str(&self) -> &'static str {
+        match self {
+            PlantKind::Symlink { .. } => "symlink",
+            PlantKind::File => "file",
+        }
+    }
 }
 
 /// What a run must show for the scenario to pass. Harness
@@ -77,7 +113,7 @@ pub(crate) fn load(dir: &Path) -> Result<Scenario, String> {
     };
     check_placeholders(&args)?;
 
-    let expectation = match (root.get("expect"), root.get("expect-invalid")) {
+    let (expectation, scratch_check) = match (root.get("expect"), root.get("expect-invalid")) {
         (Some(_), Some(_)) => {
             return Err(format!(
                 "{MANIFEST}: \"expect\" and \"expect-invalid\" are mutually exclusive"
@@ -88,22 +124,32 @@ pub(crate) fn load(dir: &Path) -> Result<Scenario, String> {
                 "{MANIFEST}: exactly one of \"expect\" or \"expect-invalid\" is required"
             ));
         }
-        (Some(v), None) => positive(v)?,
-        (None, Some(v)) => invalid(dir, v)?,
+        (Some(v), None) => positive(dir, v)?,
+        (None, Some(v)) => (invalid(dir, v)?, None),
     };
-    Ok(Scenario { args, expectation })
+    Ok(Scenario {
+        args,
+        expectation,
+        scratch_check,
+    })
 }
 
 /// Parse the positive control `expect`: optional integer `exit`
-/// (default 0) plus optional `stdout-contains` and `stderr-contains`
-/// string arrays.
-fn positive(value: &Value) -> Result<Expectation, String> {
+/// (default 0), optional `stdout-contains` and `stderr-contains`
+/// string arrays, and an optional `scratch-check` block declaring
+/// violations the harness must plant and classify itself.
+fn positive(dir: &Path, value: &Value) -> Result<(Expectation, Option<ScratchCheck>), String> {
     let obj = value
         .as_object()
         .ok_or_else(|| format!("{MANIFEST}: \"expect\" must be an object"))?;
     check_keys(
         obj,
-        &["exit", "stdout-contains", "stderr-contains"],
+        &[
+            "exit",
+            "stdout-contains",
+            "stderr-contains",
+            "scratch-check",
+        ],
         "\"expect\"",
     )?;
     let exit = match obj.get("exit") {
@@ -121,11 +167,104 @@ fn positive(value: &Value) -> Result<Expectation, String> {
         None => Vec::new(),
         Some(v) => string_array(v, "expect.stderr-contains")?,
     };
-    Ok(Expectation::Positive {
-        exit,
-        stdout_contains,
-        stderr_contains,
-    })
+    let scratch_check = match obj.get("scratch-check") {
+        None => None,
+        Some(v) => Some(scratch_check(dir, v)?),
+    };
+    Ok((
+        Expectation::Positive {
+            exit,
+            stdout_contains,
+            stderr_contains,
+        },
+        scratch_check,
+    ))
+}
+
+/// Parse the `scratch-check` block: a non-empty `plant` array whose
+/// entries name a contained, not-yet-existing path and a plant kind.
+fn scratch_check(dir: &Path, value: &Value) -> Result<ScratchCheck, String> {
+    let obj = value
+        .as_object()
+        .ok_or_else(|| format!("{MANIFEST}: \"expect.scratch-check\" must be an object"))?;
+    check_keys(obj, &["plant"], "\"expect.scratch-check\"")?;
+    let list = match obj.get("plant") {
+        None => {
+            return Err(format!(
+                "{MANIFEST}: \"expect.scratch-check\" is missing required key \"plant\""
+            ));
+        }
+        Some(v) => v.as_array().ok_or_else(|| {
+            format!("{MANIFEST}: \"expect.scratch-check.plant\" must be an array")
+        })?,
+    };
+    if list.is_empty() {
+        return Err(format!(
+            "{MANIFEST}: \"expect.scratch-check.plant\" must not be empty"
+        ));
+    }
+    let mut plants = Vec::new();
+    for item in list {
+        let plant = item
+            .as_object()
+            .ok_or_else(|| format!("{MANIFEST}: each plant must be an object"))?;
+        check_keys(plant, &["path", "kind", "target"], "plant")?;
+        let path = match plant.get("path") {
+            Some(Value::String(s)) => s.clone(),
+            Some(other) => {
+                return Err(format!(
+                    "{MANIFEST}: plant \"path\" must be a string, got {other}"
+                ));
+            }
+            None => {
+                return Err(format!(
+                    "{MANIFEST}: plant is missing required key \"path\""
+                ));
+            }
+        };
+        contained_relative(&path)?;
+        if dir.join(&path).symlink_metadata().is_ok() {
+            return Err(format!(
+                "{MANIFEST}: planted entry {path:?} already exists in the scenario; a planted violation must be foreign to it"
+            ));
+        }
+        let kind = match plant.get("kind") {
+            Some(Value::String(s)) if s == "symlink" || s == "file" => s.clone(),
+            Some(other) => {
+                return Err(format!(
+                    "{MANIFEST}: plant \"kind\" must be \"symlink\" or \"file\", got {other}"
+                ));
+            }
+            None => {
+                return Err(format!(
+                    "{MANIFEST}: plant is missing required key \"kind\""
+                ));
+            }
+        };
+        let kind = if kind == "symlink" {
+            match plant.get("target") {
+                Some(Value::String(t)) if !t.is_empty() => PlantKind::Symlink { target: t.clone() },
+                Some(_) => {
+                    return Err(format!(
+                        "{MANIFEST}: plant \"target\" must be a non-empty string"
+                    ));
+                }
+                None => {
+                    return Err(format!(
+                        "{MANIFEST}: a \"symlink\" plant requires a \"target\""
+                    ));
+                }
+            }
+        } else if let Some(target) = plant.get("target") {
+            return Err(format!(
+                "{MANIFEST}: plant key {target} is only allowed for a \"symlink\" plant"
+            ));
+        } else {
+            PlantKind::File
+        };
+        plants.push(Plant { path, kind });
+    }
+    Ok(ScratchCheck { plants })
 }
 
 /// Parse the negative control `expect-invalid`: `input` names a

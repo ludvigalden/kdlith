@@ -71,6 +71,7 @@ Categories:
 | `processing/` | Processing data documents end to end, plus CLI smoke scenarios                 |
 | `codegen/`    | Processor generation: generated output, ownership, and drift checks            |
 | `invalid/`    | Negative controls: inputs that must be rejected with declared diagnostic codes |
+| `harness/`    | Harness self-checks: the scratch protections must fail closed                  |
 
 `processing/smoke-help` asserts that `kdlith --help` exits `0` and prints its
 usage text. It keeps the suite non-empty and exercises the harness end to end.
@@ -143,6 +144,14 @@ repeated-import policies on the schema path;
 `invalid/dialect/import-repeated-property/` pins the v0 limitation that the
 dialect self-description rejects any `repeated=` property.
 
+`harness/scratch-fail-closed` proves the harness's own scratch
+protections fail closed: after the run, the harness plants a symlink and
+a foreign file inside the materialized copy and then classifies the copy
+against the scenario source, requiring both plants to be reported as
+foreign entries — the link recorded and never followed, neither file
+silently deleted. It exercises the same declaration format as any
+positive scenario plus the `scratch-check` block described below.
+
 `parse/kdl-spec/` and `invalid/kdl-spec/` hold the official KDL v2 test suite,
 one scenario per upstream case: valid documents must exit `0` under
 `kdlith read input.kdl`, and invalid ones must be rejected with the declared
@@ -211,6 +220,39 @@ substitution: the harness interprets nothing else in `args`.
 | `exit`            | `0`     | The exact exit code the run must produce  |
 | `stdout-contains` | `[]`    | Substrings that must all appear in stdout |
 | `stderr-contains` | `[]`    | Substrings that must all appear in stderr |
+| `scratch-check`   | absent  | Violations the harness must plant and then classify itself (see below) |
+
+#### Scratch check: `scratch-check`
+
+The scenario format cannot plant a violation (materialization refuses
+symlinks and special files), so the `scratch-check` block is a
+harness-internal hook: after the processor run, the harness plants the
+declared entries inside the materialized copy and then classifies the
+whole copy against the scenario's source directory with a no-follow
+walk.
+
+```json
+"expect": {
+  "exit": 0,
+  "scratch-check": {
+    "plant": [
+      { "path": "planted-link", "kind": "symlink", "target": "/etc/passwd" },
+      { "path": "planted-foreign.txt", "kind": "file" }
+    ]
+  }
+}
+```
+
+Each plant names a `path` (relative, inside the scenario, not already
+present in the scenario source — a planted violation must be foreign to
+it) and a `kind`: `"symlink"` with a non-empty `target`, or `"file"`
+(which takes no `target`). The check passes only when the classifier
+reports every planted entry as a foreign entry of its planted kind,
+reports nothing else, and the captured tree holds the planted link
+target, the planted file content, and a fresh mtime — all observed
+without following the link. If the classification is ever neutralized,
+the expected foreign-entry reports go missing and the scenario fails,
+which is what makes it a detection meta-fixture.
 
 ### Negative control: `expect-invalid`
 
@@ -258,8 +300,13 @@ The `fx-env` helper in `bin/` prints those resolved paths. It fails when run
 outside a harness run.
 
 A failure report lists every unmet assertion, followed by the captured stdout
-and stderr. After the run, the harness removes the scratch directories, except
-any failed scenario kept with `--fx-keep-failed`.
+and stderr. After the run, the harness removes the scratch directories
+through a no-follow, descriptor-relative remover: a symlink is unlinked as a
+link and never traversed, only the run's own directory is torn down (sibling
+runs are untouched), and anything that cannot be removed — or any foreign
+file left beside a kept failure — is printed on stderr as a leftover rather
+than silently deleted. The only survivors are failed scenarios kept with
+`--fx-keep-failed`.
 
 ## Adding a scenario
 

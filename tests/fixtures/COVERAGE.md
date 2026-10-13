@@ -30,8 +30,8 @@ target/debug/kdlith-fixtures --fx-suite tests/fixtures --fx-kdlith target/debug/
 then diffing the listed names (all except `parse/kdl-spec/*`) against the
 scenario names occurring in this file, in both directions.
 
-Suite state at the time of writing: 485 scenarios — 243 `parse/kdl-spec`,
-242 others — all green.
+Suite state at the time of writing: 486 scenarios — 243 `parse/kdl-spec`,
+243 others — all green.
 
 ## Construct census
 
@@ -217,6 +217,15 @@ invalid/kdl-spec/zero_space_before_second_arg_fail
 | KDLITH-EXP001 | (none) | elided-with-reason — `export` is a stub |
 | KDLITH-EXP002 | (none) | elided-with-reason — `export` is a stub |
 | KDLITH-DLC001 | (none) | elided-with-reason — retired; a node no dialect binding accepts is BND001 on every reading path |
+
+## Harness-protection census
+
+What the suite proves about the harness itself, beyond the processor
+under test.
+
+| Protection | Exercised by | State |
+| --- | --- | --- |
+| Fail-closed scratch classification of a planted violation (symlink and foreign file reported as foreign entries by the harness, link never followed, neither silently deleted) | harness/scratch-fail-closed | covered — doubles as the detection meta-fixture: neutralizing the classification fails the scenario |
 
 ## Verb-contract census
 

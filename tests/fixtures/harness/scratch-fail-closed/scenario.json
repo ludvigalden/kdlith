@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "the harness plants a symlink and a foreign file in the scratch copy and then classifies them as foreign entries itself, never following the link or silently deleting either",
+  "args": ["--help"],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": ["Usage: kdlith"],
+    "scratch-check": {
+      "plant": [
+        { "path": "planted-link", "kind": "symlink", "target": "/etc/passwd" },
+        { "path": "planted-foreign.txt", "kind": "file" }
+      ]
+    }
+  }
+}

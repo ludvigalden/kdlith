@@ -11,6 +11,7 @@ use crate::fxcfg::{self, DEFAULT_SCRATCH_ROOT, FxOptions};
 use crate::outcome::{self, RunEnv};
 use crate::scratch::{self, RunDir};
 use crate::suite::{self, Entry};
+use crate::walk;
 
 /// `0`: every selected scenario passed.
 pub(crate) const EXIT_OK: u8 = 0;
@@ -137,17 +138,30 @@ fn run_trials(
             return EXIT_FAIL;
         }
     };
+    // One descriptor for the whole run: every scratch classification
+    // below walks from here, never following a link.
+    let root_fd = match walk::open_root(&run_dir.root) {
+        Ok(fd) => Arc::new(fd),
+        Err(e) => {
+            eprintln!(
+                "kdlith-fixtures: FAIL: cannot open run root {}: {e}",
+                run_dir.root.display()
+            );
+            run_dir.finish(&[]);
+            return EXIT_FAIL;
+        }
+    };
     let harness = match std::env::current_exe() {
         Ok(p) => p,
         Err(e) => {
             eprintln!("kdlith-fixtures: FAIL: cannot locate the harness binary: {e}");
-            run_dir.finish();
+            run_dir.finish(&[]);
             return EXIT_FAIL;
         }
     };
     if let Err(msg) = crate::fxbin::populate_bin(&run_dir.bin_dir(), &harness) {
         eprintln!("kdlith-fixtures: FAIL: {msg}");
-        run_dir.finish();
+        run_dir.finish(&[]);
         return EXIT_FAIL;
     }
 
@@ -160,6 +174,7 @@ fn run_trials(
             let ctx = TrialCtx {
                 entry: entry.clone(),
                 run_dir: Arc::clone(&run_dir),
+                root_fd: Arc::clone(&root_fd),
                 suite_root: Arc::clone(&suite_root),
                 kdlith: Arc::clone(&kdlith),
                 keep_failed: opts.keep_failed,
@@ -171,9 +186,9 @@ fn run_trials(
 
     let args = Arguments::from_iter(rest);
     let conclusion = libtest_mimic::run(&args, trials);
-    run_dir.finish();
 
     let kept = kept.lock().map(|k| k.clone()).unwrap_or_default();
+    run_dir.finish(&kept);
     for dir in &kept {
         eprintln!("kdlith-fixtures: kept failed scenario at {}", dir.display());
     }
@@ -198,6 +213,7 @@ fn run_trials(
 struct TrialCtx {
     entry: Entry,
     run_dir: Arc<RunDir>,
+    root_fd: Arc<rustix::fd::OwnedFd>,
     suite_root: Arc<Path>,
     kdlith: Arc<Path>,
     keep_failed: bool,
@@ -218,8 +234,9 @@ impl TrialCtx {
             suite: &self.suite_root,
             scratch: &self.run_dir.root,
             bin_dir: &self.run_dir.bin_dir(),
+            root_fd: &self.root_fd,
         };
-        let result = outcome::execute(&scenario, &cwd, &env);
+        let result = outcome::execute(&scenario, &cwd, &env, &self.entry.dir);
         match result {
             Ok(()) => {
                 scratch::remove_scenario(&cwd);

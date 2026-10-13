@@ -2,6 +2,7 @@
 //! a suite root, drives the built kdlith binary as a subprocess in a
 //! private scratch directory, and evaluates expectations itself.
 
+mod cleanrun;
 mod fxbin;
 mod fxcfg;
 mod harness;
@@ -9,6 +10,7 @@ mod outcome;
 mod scenario;
 mod scratch;
 mod suite;
+mod walk;
 
 use std::ffi::OsString;
 use std::process::ExitCode;

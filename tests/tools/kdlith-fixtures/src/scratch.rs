@@ -1,9 +1,11 @@
-//! Scratch materialization: one run directory per harness invocation
-//! (`<scratch root>/<UTC stamp>-<pid>`), one copied scenario directory per
-//! trial, and cleanup of everything that is not a kept failure.
+//! Scratch materialization: one run directory per invocation, one
+//! copied scenario directory per trial, and no-follow teardown with
+//! leftovers recorded loudly.
 
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+use crate::cleanrun;
 
 /// The per-invocation scratch area.
 #[derive(Debug)]
@@ -43,32 +45,73 @@ impl RunDir {
         Ok(target)
     }
 
-    /// Remove the helper directory, then every directory left empty
-    /// (category levels included) and the run directory itself when no
-    /// kept failure remains in it.
-    pub(crate) fn finish(&self) {
-        let _ = std::fs::remove_dir_all(self.bin_dir());
-        prune_empty(&self.root.join("scenarios"));
+    /// Tear the run directory down through the no-follow remover:
+    /// everything when nothing is kept, or every subtree but the kept
+    /// failures and their category scaffold. Leftovers are printed
+    /// loudly, and a link is unlinked as a link, never followed.
+    pub(crate) fn finish(&self, kept: &[PathBuf]) {
+        if kept.is_empty() {
+            let report = cleanrun::teardown_run(&self.root);
+            if !report.clean() {
+                cleanrun::emit_leftovers(&report);
+            }
+            return;
+        }
+        emit_scenario_leftovers(
+            &self.bin_dir(),
+            cleanrun::remove_scenario_dir(&self.bin_dir()),
+        );
+        prune(&self.root.join("scenarios"), kept);
         let _ = std::fs::remove_dir(&self.root);
     }
 }
 
-/// Remove `dir` and its descendants bottom-up wherever they are empty
-/// directories; anything holding a file (a kept failure) survives.
-fn prune_empty(dir: &Path) {
-    if let Ok(read) = std::fs::read_dir(dir) {
-        for item in read.flatten() {
-            if item.file_type().is_ok_and(|t| t.is_dir()) {
-                prune_empty(&item.path());
-            }
+/// Remove the subtrees of `dir` that hold no kept failure: a kept
+/// directory stays untouched, a directory above one keeps its scaffold,
+/// and every other subtree goes through the no-follow remover.
+fn prune(dir: &Path, kept: &[PathBuf]) {
+    let Ok(read) = std::fs::read_dir(dir) else {
+        return;
+    };
+    let mut items: Vec<_> = read.flatten().collect();
+    items.sort_by_key(std::fs::DirEntry::file_name);
+    for item in items {
+        let path = item.path();
+        let is_dir = item.file_type().is_ok_and(|t| t.is_dir());
+        if !is_dir {
+            eprintln!(
+                "kdlith-fixtures: leftover: foreign file {} left in place (not deleted)",
+                path.display()
+            );
+            continue;
+        }
+        if kept.iter().any(|k| k == &path) {
+            continue;
+        }
+        if kept.iter().any(|k| k.starts_with(&path)) {
+            prune(&path, kept);
+            let _ = std::fs::remove_dir(&path);
+        } else {
+            emit_scenario_leftovers(&path, cleanrun::remove_scenario_dir(&path));
         }
     }
-    let _ = std::fs::remove_dir(dir);
 }
 
-/// Remove one materialized scenario directory.
+/// Print one subtree's unremovable leftovers loudly.
+fn emit_scenario_leftovers(dir: &Path, leftovers: Vec<String>) {
+    for path in leftovers {
+        eprintln!(
+            "kdlith-fixtures: leftover: could not remove {path} under {}",
+            dir.display()
+        );
+    }
+}
+
+/// Remove one materialized scenario directory through the no-follow
+/// remover; a planted symlink goes as a link, and any leftover is
+/// recorded loudly instead of silently kept.
 pub(crate) fn remove_scenario(dir: &Path) {
-    let _ = std::fs::remove_dir_all(dir);
+    emit_scenario_leftovers(dir, cleanrun::remove_scenario_dir(dir));
 }
 
 /// Recursive copy of regular files and directories. Symlinks and special
