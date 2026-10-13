@@ -1,7 +1,6 @@
-//! Node declarations compiled into the dispatch table and per-scope
-//! plans: child bindings, occurrence counters, exactly-one groups, and
-//! the root order rule. Overlapping bindings, unconsumed arguments, and
-//! contradictory child ownership are rejected here.
+//! Node declarations compiled into dispatch and per-scope plans; rejects
+//! overlapping bindings, unconsumed arguments, and contradictory child
+//! ownership.
 
 use std::collections::BTreeMap;
 
