@@ -10,7 +10,7 @@ mod number;
 mod parse;
 mod scan;
 
-pub use coords::locate;
+pub use coords::{Locator, locate};
 pub use error::{Construct, ErrorKind, Limit, ParseError};
 pub use event::{Entry, Event, Number, NumberKind, Radix, Spanned, Value};
 pub use limits::Limits;

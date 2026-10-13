@@ -1,0 +1,4 @@
+group g {
+    label a "x"
+    label a "y"
+}

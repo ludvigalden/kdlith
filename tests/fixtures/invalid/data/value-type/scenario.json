@@ -1,0 +1,22 @@
+{
+  "binary": "kdlith",
+  "description": "Values that do not decode as their field's type are rejected: an enum member, a patterned string, a format, and an unsigned integer",
+  "args": [
+    "vet",
+    "data",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/types.kdl",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/bindings.kdl",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/context.kdl",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/documents.kdl",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

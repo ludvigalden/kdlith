@@ -1,0 +1,18 @@
+locale en-gb
+region se
+section "S" {
+    public
+    item one kind=book
+    override fr-fr {
+        item two kind=book region=se
+    }
+    item three kind=book locale=de
+    stamp
+}
+forget-region
+reset
+english
+section "T" {
+    private
+    item four kind=film
+}

@@ -71,7 +71,7 @@ fn list(n: &Names, syms: &[Sym]) -> String {
     format!("[{}]", spelled.join(","))
 }
 
-fn expr(n: &Names, ty: &TypeExpr) -> String {
+pub(crate) fn expr(n: &Names, ty: &TypeExpr) -> String {
     let apply = |head: &str, args: &[&TypeExpr]| {
         let args: Vec<String> = args.iter().map(|a| expr(n, a)).collect();
         format!("{head}<{}>", args.join(", "))

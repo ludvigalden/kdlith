@@ -1,0 +1,15 @@
+schema s version="1" {
+    types {
+        string Locale {
+            format kebab-case
+        }
+    }
+    context {
+        slot locale Locale
+    }
+    node english role=context-control {
+        effects target=following {
+            set locale value="EN_GB"
+        }
+    }
+}

@@ -132,6 +132,8 @@ where
     document: Option<Scope>,
     source_id: SourceId,
     next_node: u32,
+    /// The span of the latest event, where the document ends.
+    last: ByteSpan,
     limits: SessionLimits,
     state: State,
 }
@@ -162,6 +164,7 @@ where
             document,
             source_id,
             next_node: 0,
+            last: ByteSpan::new(0, 0),
             limits: SessionLimits::DEFAULT,
             state: State::Running,
         }
@@ -233,6 +236,7 @@ where
 
     fn step(&mut self, event: SourceEvent<S::Node, S::Entry>) -> Result<(), SessionError> {
         let span = event.span;
+        self.last = span;
         if self.skipping > 0 {
             match event.step {
                 Step::Node(_) => self.skipping += 1,
@@ -386,6 +390,15 @@ where
         if self.skipping > 0 || !self.frames.is_empty() {
             return Err(SessionError::Protocol("input ended inside a node"));
         }
+        let mut cx = Cx {
+            context: &self.context,
+            items: &mut self.items,
+            source: self.source_id,
+            node: NodeId::new(self.source_id, self.next_node),
+            depth: 0,
+            span: self.last,
+        };
+        self.processor.finish(&mut cx);
         if let Some(scope) = self.document.take() {
             self.context.leave(scope)?;
         }

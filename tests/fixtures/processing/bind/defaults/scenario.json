@@ -1,0 +1,26 @@
+{
+  "binary": "kdlith",
+  "description": "Absent fields resolve by the schema: an unsupplied list or map binds empty, a fallback fills an absent value, an absent optional field is omitted, and slashdashed syntax is never bound",
+  "args": [
+    "vet",
+    "data",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/types.kdl",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/bindings.kdl",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/context.kdl",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/documents.kdl",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":1},\"identity\":{\"domain\":\"Group\",\"name\":[\"bare\"]},\"type_name\":\"Group\",\"fields\":[{\"name\":\"name\",\"value\":{\"kind\":\"string\",\"value\":\"bare\"},\"origin\":1},{\"name\":\"labels\",\"value\":{\"kind\":\"map\",\"value\":[]},\"origin\":1}],\"origin\":1,\"validation\":\"valid\"}}",
+      "\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"one\"},\"origin\":4},{\"name\":\"kind\",\"value\":{\"kind\":\"string\",\"value\":\"book\"},\"origin\":4},{\"name\":\"locale\",\"value\":{\"kind\":\"string\",\"value\":\"en-gb\"},\"origin\":4},{\"name\":\"tags\",\"value\":{\"kind\":\"list\",\"value\":[]},\"origin\":4},{\"name\":\"copies\",\"value\":{\"kind\":\"number\",\"value\":\"1\"},\"origin\":4},{\"name\":\"media\",\"value\":{\"kind\":\"list\",\"value\":[]},\"origin\":4}],\"origin\":4,\"validation\":\"provisional\"}}\n{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":{\"source\":0,\"index\":2}}}\n{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":null}}\n"
+    ]
+  }
+}

@@ -1,0 +1,19 @@
+schema slots version="1" {
+    types {
+        string Locale {
+            format kebab-case
+        }
+    }
+    context {
+        slot locale Locale
+    }
+    node locale role=context-control {
+        field value String arg=0
+        effects target=following {
+            set locale field=value
+        }
+    }
+    node note role=record {
+        field at Locale context=locale
+    }
+}

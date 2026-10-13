@@ -1,0 +1,7 @@
+locale en-gb
+section "S" {
+    public
+    item a kind=book title="x" {
+        title "x"
+    }
+}

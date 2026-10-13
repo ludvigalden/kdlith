@@ -1,0 +1,7 @@
+locale en-gb
+reset
+section "S" {
+    public
+    item a kind=book locale=sv
+    stamp
+}

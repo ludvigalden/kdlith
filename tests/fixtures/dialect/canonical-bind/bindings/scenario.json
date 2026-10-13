@@ -1,0 +1,23 @@
+{
+  "binary": "kdlith",
+  "description": "bindings.kdl binds as a data document of the canonical dialect through the session, with no diagnostic: every declaration and container in it is described by the dialect's compiled bindings",
+  "args": [
+    "vet",
+    "data",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/types.kdl",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/bindings.kdl",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/context.kdl",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/documents.kdl",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/bindings.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":null}}\n"
+    ]
+  }
+}

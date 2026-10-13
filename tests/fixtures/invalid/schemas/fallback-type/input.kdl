@@ -1,0 +1,9 @@
+schema s version="1" {
+    types {
+        object Entry {
+            field count U64 {
+                fallback "many"
+            }
+        }
+    }
+}

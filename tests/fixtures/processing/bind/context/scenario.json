@@ -1,0 +1,29 @@
+{
+  "binary": "kdlith",
+  "description": "Context follows the execution rule: following effects reach later siblings only, a children effect reaches only that node's children and is restored on leaving, a fallback slot fills an absent field, a fixed slot agrees with an explicit value, remove and clear unset slots, and a literal set applies",
+  "args": [
+    "vet",
+    "data",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/types.kdl",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/bindings.kdl",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/context.kdl",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/documents.kdl",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"one\"},\"origin\":4},{\"name\":\"kind\",\"value\":{\"kind\":\"string\",\"value\":\"book\"},\"origin\":4},{\"name\":\"locale\",\"value\":{\"kind\":\"string\",\"value\":\"en-gb\"},\"origin\":4},{\"name\":\"region\",\"value\":{\"kind\":\"string\",\"value\":\"se\"},\"origin\":4},",
+      "{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"two\"},\"origin\":6},{\"name\":\"kind\",\"value\":{\"kind\":\"string\",\"value\":\"book\"},\"origin\":6},{\"name\":\"locale\",\"value\":{\"kind\":\"string\",\"value\":\"fr-fr\"},\"origin\":6},{\"name\":\"region\",\"value\":{\"kind\":\"string\",\"value\":\"se\"},\"origin\":6},",
+      "{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"three\"},\"origin\":7},{\"name\":\"kind\",\"value\":{\"kind\":\"string\",\"value\":\"book\"},\"origin\":7},{\"name\":\"locale\",\"value\":{\"kind\":\"string\",\"value\":\"de\"},\"origin\":7},{\"name\":\"region\",\"value\":{\"kind\":\"string\",\"value\":\"se\"},\"origin\":7},",
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":8},\"type_name\":\"stamp\",\"fields\":[{\"name\":\"at\",\"value\":{\"kind\":\"string\",\"value\":\"en-gb\"},\"origin\":8}],\"origin\":8,\"validation\":\"valid\"}}",
+      "{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"four\"},\"origin\":14},{\"name\":\"kind\",\"value\":{\"kind\":\"string\",\"value\":\"film\"},\"origin\":14},{\"name\":\"locale\",\"value\":{\"kind\":\"string\",\"value\":\"en\"},\"origin\":14},{\"name\":\"tags\",\"value\":{\"kind\":\"list\",\"value\":[]},\"origin\":14},{\"name\":\"copies\",\"value\":{\"kind\":\"number\",\"value\":\"1\"},\"origin\":14},{\"name\":\"media\",\"value\":{\"kind\":\"list\",\"value\":[]},\"origin\":14}],"
+    ]
+  }
+}

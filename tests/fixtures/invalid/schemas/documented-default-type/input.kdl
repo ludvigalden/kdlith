@@ -1,0 +1,13 @@
+schema s version="1" {
+    types {
+        enum Mode {
+            member fast
+            member slow
+        }
+        object Entry {
+            field mode "optional<Mode>" {
+                documented-default medium
+            }
+        }
+    }
+}

@@ -119,4 +119,11 @@ pub trait Processor {
         frame: Self::Frame,
         following: &mut FollowingEffects<'_>,
     ) -> Completion;
+
+    /// The input ended cleanly with every node closed, before the
+    /// document's scope completion is yielded: the point for checks over
+    /// the document's root nodes. `cx.node()` is one past the last node.
+    fn finish(&mut self, cx: &mut Cx<'_>) {
+        let _ = cx;
+    }
 }

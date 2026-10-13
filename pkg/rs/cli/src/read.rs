@@ -41,7 +41,7 @@ pub fn read(path: &Path) -> ExitStatus {
 }
 
 /// A source-area record with its registered template filled.
-fn source_error(code: &str, values: &[&str]) -> DiagnosticRecord {
+pub(crate) fn source_error(code: &str, values: &[&str]) -> DiagnosticRecord {
     let record = DiagnosticRecord::from_code(code).expect("source codes are registered and live");
     match lookup(code) {
         Some(definition) => record.with_message(render(definition.message_template, values)),

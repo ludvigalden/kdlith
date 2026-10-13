@@ -330,6 +330,16 @@ pub const CODES: &[CodeDefinition] = &[
         correction: "Declare it in a contributing document, or fix the reference",
         retired: false,
     },
+    CodeDefinition {
+        code: "KDLITH-DLC009",
+        label: "dialect-literal-type-mismatch",
+        severity: Severity::Error,
+        exit_class: 1,
+        trigger: "a literal in a dialect definition (a fallback, a documented default, or a set value) does not decode as its declared type",
+        message_template: "<owner>: literal <literal> does not decode as <type>",
+        correction: "Write a literal of the declared type, or change the type",
+        retired: false,
+    },
     // SCH
     CodeDefinition {
         code: "KDLITH-SCH001",
@@ -401,6 +411,16 @@ pub const CODES: &[CodeDefinition] = &[
         correction: "Bind the field from an argument, property, or context, or apply the effect to following siblings",
         retired: false,
     },
+    CodeDefinition {
+        code: "KDLITH-SCH008",
+        label: "schema-literal-type-mismatch",
+        severity: Severity::Error,
+        exit_class: 1,
+        trigger: "a literal in a schema definition (a fallback, a documented default, or a set value) does not decode as its declared type",
+        message_template: "<owner>: literal <literal> does not decode as <type>",
+        correction: "Write a literal of the declared type, or change the type",
+        retired: false,
+    },
     // BND
     CodeDefinition {
         code: "KDLITH-BND001",
@@ -442,6 +462,36 @@ pub const CODES: &[CodeDefinition] = &[
         correction: "Add the required field",
         retired: false,
     },
+    CodeDefinition {
+        code: "KDLITH-BND005",
+        label: "unbound-entry",
+        severity: Severity::Error,
+        exit_class: 1,
+        trigger: "a data document node carries an argument, property, or type annotation no binding consumes",
+        message_template: "<entry> of <node> is not bound",
+        correction: "Remove it, or bind it in the schema",
+        retired: false,
+    },
+    CodeDefinition {
+        code: "KDLITH-BND006",
+        label: "duplicate-key",
+        severity: Severity::Error,
+        exit_class: 1,
+        trigger: "a keyed envelope repeats a map key under the duplicate-key policy reject",
+        message_template: "key <key> of <field> given more than once",
+        correction: "Keep one entry per key",
+        retired: false,
+    },
+    CodeDefinition {
+        code: "KDLITH-BND007",
+        label: "source-collision",
+        severity: Severity::Error,
+        exit_class: 1,
+        trigger: "more than one binding source supplies a field whose collision policy is reject",
+        message_template: "<field> of <node> is supplied more than once",
+        correction: "Supply the field through one source",
+        retired: false,
+    },
     // CTX
     CodeDefinition {
         code: "KDLITH-CTX001",
@@ -451,6 +501,16 @@ pub const CODES: &[CodeDefinition] = &[
         trigger: "a binding reads a context value no enclosing control provides",
         message_template: "context <name> is not available here",
         correction: "Nest the node under a control that provides the context",
+        retired: false,
+    },
+    CodeDefinition {
+        code: "KDLITH-CTX002",
+        label: "context-disagreement",
+        severity: Severity::Error,
+        exit_class: 1,
+        trigger: "an explicit value disagrees with the context slot a field reads under policy fixed",
+        message_template: "<field> is <value> but context <slot> holds <held>",
+        correction: "Remove the explicit value, or make it agree with the context",
         retired: false,
     },
     // REF

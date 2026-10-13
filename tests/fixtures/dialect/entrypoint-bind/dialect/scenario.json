@@ -1,0 +1,27 @@
+{
+  "binary": "kdlith",
+  "description": "The dialect-generation entrypoint binds as a data document of the canonical dialect: its four import nodes yield four import requests in written order, then the dialect root's scope completion",
+  "args": [
+    "vet",
+    "data",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/types.kdl",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/bindings.kdl",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/context.kdl",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/documents.kdl",
+    "{fx-suite}/../../contracts/super-schemas/dialect.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"expression\":\"../../pkg/kdl/schemas/dialect/types.kdl\"",
+      "\"origin\":1}}\n{\"item\":\"import\",\"data\":{\"node\":{\"source\":0,\"index\":2},\"expression\":\"../../pkg/kdl/schemas/dialect/bindings.kdl\"",
+      "\"origin\":2}}\n{\"item\":\"import\",\"data\":{\"node\":{\"source\":0,\"index\":3},\"expression\":\"../../pkg/kdl/schemas/dialect/context.kdl\"",
+      "\"origin\":3}}\n{\"item\":\"import\",\"data\":{\"node\":{\"source\":0,\"index\":4},\"expression\":\"../../pkg/kdl/schemas/dialect/documents.kdl\"",
+      "\"origin\":4}}\n{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":{\"source\":0,\"index\":0}}}\n{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":null}}\n"
+    ]
+  }
+}

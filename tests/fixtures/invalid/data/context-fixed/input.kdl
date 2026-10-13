@@ -1,0 +1,6 @@
+locale en-gb
+region se
+section "S" {
+    public
+    item a kind=book region=dk
+}

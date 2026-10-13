@@ -5,6 +5,7 @@
 mod conform;
 mod document;
 mod link;
+mod literals;
 mod nodes;
 mod reader;
 mod scopes;
@@ -176,6 +177,9 @@ fn run(
     let symbols = SymbolCatalog::build(&bindings);
     if scope == CheckScope::Complete && !cx.diags.has_errors() {
         link::run(&mut cx, &bindings, &symbols);
+        if !cx.diags.has_errors() {
+            literals::run(&mut cx, &bindings);
+        }
     }
     if cx.diags.has_errors() {
         return Err(cx.diags.into_records());

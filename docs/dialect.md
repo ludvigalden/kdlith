@@ -82,14 +82,21 @@ instead of a copy that could drift (see `tests/fixtures/README.md`).
 | `tests/fixtures/dialect/canonical-vet/*-local/scenario.json`    | Each canonical file passes local checking on its own     |
 | `tests/fixtures/dialect/canonical-vet/merged/scenario.json`     | The four files link and describe themselves completely   |
 | `tests/fixtures/dialect/entrypoint-vet/dialect/scenario.json`   | The entrypoint yields the same dialect as the four files |
+| `tests/fixtures/dialect/canonical-bind/*/scenario.json`          | Each canonical file binds as data of the dialect         |
+| `tests/fixtures/dialect/entrypoint-bind/dialect/scenario.json`   | The entrypoint binds to its four import requests         |
+| `tests/fixtures/processing/bind/*/scenario.json`                 | A small schema binds data documents into item streams    |
 
 The `-read` scenarios prove syntax. The `-vet` scenarios run
 `kdlith vet dialect`, which resolves imports, links every reference, and
 walks each document through the dialect's own compiled bindings. The
 entrypoint and the merged files must print the same digest of the
-dialect's canonical summary. Negative controls under
-`tests/fixtures/invalid/dialect/` and `tests/fixtures/invalid/schemas/`
-each name the diagnostic code of one rejected construct.
+dialect's canonical summary. The `-bind` scenarios run `kdlith vet data`
+with the dialect as the schema: each definition document is bound as a
+data document of the dialect it is written in, through the same session
+and binder every processor uses. Negative controls under
+`tests/fixtures/invalid/dialect/`, `tests/fixtures/invalid/schemas/`, and
+`tests/fixtures/invalid/data/` each name the diagnostic code of one
+rejected construct.
 
 ## In-scope mechanisms
 
@@ -241,6 +248,38 @@ dialect for every processor, hand-written or generated:
 8. **Fail closed.** Reject a definition that relies on a deferred
    mechanism or names a handler or validator that is not installed. The
    `type-expression` validator at version `0` is required.
+
+### Binding data documents
+
+The engine's binder (`pkg/rs/engine/src/bind/`) is the runtime processor
+that turns a data document into processing items. It is built from a
+compiled definition once and never reads the definition's KDL:
+
+- **Dispatch.** Each node is matched by its parent's compiled scope and
+  its name, never by trying declarations in turn. The scope's structural
+  rules admit it as it arrives; minimum counts, exactly-one groups, and
+  the document's first-node rule are checked when the scope completes.
+- **Fields.** Arguments, properties, and children land in the fields
+  their bindings name and are decoded against the field's type as they
+  arrive. An entries envelope consumes its key argument once; a repeated
+  key under `duplicate-keys reject` and a second source under
+  `collision reject` are rejected. A union value is kept under the name
+  of the node that spelled its variant.
+- **Context.** A context-bound field takes the slot's value only when no
+  explicit value is present (`fallback`), and an explicit value must
+  agree with the slot (`fixed`). A field read only from context fails
+  where no control provides the slot. Effects follow the execution
+  timing above, and a node that fails applies no following effects.
+- **Items.** A bound node yields the item its role names: a record, a
+  declaration with its identity, a contribution preserved unresolved, an
+  import request, or a container's scope completion. Context controls
+  yield their effects only. Fields holding references stay provisional
+  until linking resolves them. Every diagnostic is an item in the same
+  stream.
+
+Literals a definition writes (fallbacks, documented defaults, and `set`
+values) are decoded against their types when the definition compiles,
+through the same decoder.
 
 ### superproc
 

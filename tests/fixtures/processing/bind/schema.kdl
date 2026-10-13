@@ -1,0 +1,181 @@
+// A small schema the binding scenarios share: every binding source, the
+// collision and duplicate-key policies, context slots under fallback and
+// fixed policies, children and following effects, cardinality, an
+// exactly-one group, a document rule, and each processing role.
+schema shelf version="1" {
+    types {
+        string Locale {
+            format kebab-case
+        }
+        string Code {
+            pattern #"[A-Z]{2}[0-9]+"#
+        }
+        enum Kind {
+            member book
+            member film
+        }
+        object Item {
+            field id String
+            field kind Kind
+            field locale Locale
+            field region "optional<Locale>"
+            field title "optional<String>"
+            field tags "list<String>"
+            field group "optional<ref<Group>>"
+            field code "optional<Code>"
+            field copies "optional<U64>" {
+                fallback 1
+            }
+            field media "list<Media>"
+        }
+        union Media {
+            variant image Image
+            variant video Video
+        }
+        object Image {
+            field src String
+        }
+        object Video {
+            field src String
+            field seconds "optional<U64>"
+        }
+        object Group {
+            field name String
+            field labels "ordered-map<String, Label>"
+        }
+        object Label {
+            field text String
+        }
+        object Section {
+            field title String
+        }
+        object Setting {
+            field target "ref<Group>"
+            field value String
+        }
+    }
+    context {
+        slot locale Locale namespace=defaults
+        slot region Locale namespace=defaults
+    }
+    node group role=declaration type=Group {
+        field name arg=0
+        field labels {
+            from {
+                entries label key="arg(0)" value=Label
+            }
+            duplicate-keys reject
+        }
+    }
+    node label type=Label parent=group {
+        field text arg=1
+    }
+    node section role=container type=Section {
+        field title arg=0
+        children item min-occurs=1
+        children override
+        children stamp
+        children public max-occurs=1
+        children private max-occurs=1
+        exactly-one public private
+    }
+    node public parent=section
+    node private parent=section
+    node item role=record type=Item {
+        parents section override
+        field id arg=0
+        field kind property=kind
+        field locale {
+            from {
+                property locale
+                context locale policy=fallback
+            }
+        }
+        field region {
+            from {
+                property region
+                context region policy=fixed
+            }
+        }
+        field title {
+            from {
+                property title
+                child title
+            }
+            collision reject
+        }
+        field tags {
+            from {
+                child tags {
+                    args
+                }
+            }
+        }
+        field group property=group
+        field code property=code
+        field copies property=copies
+        field media {
+            from {
+                children image
+                children video
+            }
+        }
+    }
+    node image type=Image parent=item {
+        field src arg=0
+    }
+    node video type=Video parent=item {
+        field src arg=0
+        field seconds property=seconds
+    }
+    node stamp role=record parent=section {
+        field at Locale context=locale
+    }
+    node override role=context-control parent=section {
+        field value Locale arg=0
+        effects target=children {
+            set locale field=value
+        }
+        children item
+    }
+    node locale role=context-control {
+        field value Locale arg=0
+        effects target=following {
+            set locale field=value
+        }
+    }
+    node region role=context-control {
+        field value Locale arg=0
+        effects target=following {
+            set region field=value
+        }
+    }
+    node forget-region role=context-control {
+        effects target=following {
+            remove region
+        }
+    }
+    node reset role=context-control {
+        effects target=following {
+            clear defaults
+        }
+    }
+    node english role=context-control {
+        effects target=following {
+            set locale value=en
+        }
+    }
+    node setting role=contribution type=Setting {
+        field target arg=0
+        field value arg=1
+    }
+    node use role=source-import {
+        field path String arg=0
+    }
+    document {
+        first {
+            exactly-one locale group
+        }
+        following group locale region forget-region reset english section setting use
+    }
+}

@@ -4,4 +4,4 @@ mod report;
 mod vet;
 
 pub use read::read;
-pub use vet::{VET_USAGE, VetTarget, vet, vet_command};
+pub use vet::{VET_USAGE, VetTarget, vet, vet_command, vet_data};

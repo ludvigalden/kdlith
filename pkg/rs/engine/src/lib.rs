@@ -1,8 +1,10 @@
-//! The kdlith engine: loads definitions with their imports and compiles
-//! them once into linked catalogs and a processing plan that processors
-//! consume without reading definition KDL again.
+//! The kdlith engine: loads definitions with their imports, compiles
+//! them once into linked catalogs and a processing plan, and binds data
+//! documents through that plan without reading definition KDL again.
+mod bind;
 mod bindings;
 mod compile;
+mod decode;
 mod deferred;
 mod definition;
 mod diag;
@@ -17,6 +19,7 @@ mod syntax;
 mod type_expr;
 mod types;
 
+pub use bind::{BindFrame, Binder, BindingSession, EntryValue, NodeStart, ParseEvents};
 pub use bindings::{
     Arity, BindingCatalog, ChildPlan, ChildRule, Collision, ContextPolicy, DuplicateKeys, Effect,
     EffectGroup, EffectTarget, FieldBinding, NodeDecl, NodeDeclId, ParentKey, Placement, Role,

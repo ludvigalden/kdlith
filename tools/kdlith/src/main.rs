@@ -10,6 +10,7 @@ Usage: kdlith [--help | --version]
        kdlith read <file>
        kdlith vet dialect [--scope local|complete] <file>...
        kdlith vet schema --dialect <file>... [--scope local|complete] <file>...
+       kdlith vet data --dialect <file>... [--schema <file>]... <file>...
 
 Commands:
   read <file>    Parse a KDL document; exit 0 when it is valid KDL, or print
@@ -21,6 +22,11 @@ Commands:
                  imports, links references, and checks self-description
   vet schema     Vet a schema definition under the dialect given by
                  --dialect, which is itself vetted with complete checking
+  vet data       Bind data documents against the schema given by --schema
+                 under the dialect given by --dialect, or against the
+                 dialect itself without --schema; print each bound item
+                 to stdout as one JSON line, every diagnostic to stderr,
+                 and exit nonzero on any error
 
 Options:
   -h, --help     Print this help and exit

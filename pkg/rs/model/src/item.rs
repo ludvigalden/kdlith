@@ -100,6 +100,83 @@ pub struct ScopeCompletion {
     pub scope: Option<NodeId>,
 }
 
+impl BoundRecord {
+    pub fn new(
+        node: NodeId,
+        type_name: impl Into<String>,
+        fields: Vec<Field>,
+        origin: OriginId,
+        validation: ValidationState,
+    ) -> Self {
+        Self {
+            node,
+            type_name: type_name.into(),
+            fields,
+            origin,
+            validation,
+        }
+    }
+}
+
+impl BoundDeclaration {
+    pub fn new(
+        node: NodeId,
+        identity: Identity,
+        type_name: impl Into<String>,
+        fields: Vec<Field>,
+        origin: OriginId,
+        validation: ValidationState,
+    ) -> Self {
+        Self {
+            node,
+            identity,
+            type_name: type_name.into(),
+            fields,
+            origin,
+            validation,
+        }
+    }
+}
+
+impl BoundContribution {
+    /// A contribution with no layer or application scope yet.
+    pub fn new(
+        node: NodeId,
+        target: Reference,
+        value: Value,
+        origin: OriginId,
+        validation: ValidationState,
+    ) -> Self {
+        Self {
+            node,
+            target,
+            value,
+            layer: None,
+            scope: None,
+            origin,
+            validation,
+        }
+    }
+}
+
+impl ImportRequest {
+    /// A request without an alias.
+    pub fn new(
+        node: NodeId,
+        expression: impl Into<String>,
+        site: Location,
+        origin: OriginId,
+    ) -> Self {
+        Self {
+            node,
+            expression: expression.into(),
+            alias: None,
+            site,
+            origin,
+        }
+    }
+}
+
 impl ScopeCompletion {
     pub fn new(source: SourceId, scope: Option<NodeId>) -> Self {
         Self { source, scope }
@@ -121,13 +198,15 @@ pub enum Item {
     ScopeComplete(ScopeCompletion),
 }
 
-/// One item of a schema-bound session without symbol roles: records,
-/// imports, diagnostics, and scope ends. Every bound item is an item.
+/// One item of a schema-bound session: the role vocabulary a binder
+/// yields without deferred mechanisms. Every bound item is an item.
 #[derive(Clone, Debug, Serialize)]
 #[serde(tag = "item", content = "data", rename_all = "kebab-case")]
 #[non_exhaustive]
 pub enum BoundItem {
     Record(BoundRecord),
+    Declaration(BoundDeclaration),
+    Contribution(Box<BoundContribution>),
     Import(ImportRequest),
     Diagnostic(Box<DiagnosticRecord>),
     ScopeComplete(ScopeCompletion),
@@ -137,9 +216,29 @@ impl From<BoundItem> for Item {
     fn from(item: BoundItem) -> Self {
         match item {
             BoundItem::Record(record) => Item::Record(record),
+            BoundItem::Declaration(declaration) => Item::Declaration(declaration),
+            BoundItem::Contribution(contribution) => Item::Contribution(*contribution),
             BoundItem::Import(request) => Item::Import(request),
             BoundItem::Diagnostic(record) => Item::Diagnostic(record),
             BoundItem::ScopeComplete(completion) => Item::ScopeComplete(completion),
         }
+    }
+}
+
+/// An item outside the bound vocabulary (pending bindings, expansions)
+/// is handed back unchanged.
+impl TryFrom<Item> for BoundItem {
+    type Error = Item;
+
+    fn try_from(item: Item) -> Result<Self, Item> {
+        Ok(match item {
+            Item::Record(record) => BoundItem::Record(record),
+            Item::Declaration(declaration) => BoundItem::Declaration(declaration),
+            Item::Contribution(contribution) => BoundItem::Contribution(Box::new(contribution)),
+            Item::Import(request) => BoundItem::Import(request),
+            Item::Diagnostic(record) => BoundItem::Diagnostic(record),
+            Item::ScopeComplete(completion) => BoundItem::ScopeComplete(completion),
+            other => return Err(other),
+        })
     }
 }

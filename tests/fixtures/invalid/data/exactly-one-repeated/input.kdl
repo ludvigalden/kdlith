@@ -1,0 +1,6 @@
+locale en-gb
+section "S" {
+    public
+    private
+    item a kind=book
+}

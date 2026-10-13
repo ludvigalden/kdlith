@@ -1,0 +1,4 @@
+section "S" {
+    public
+    item a kind=book
+}

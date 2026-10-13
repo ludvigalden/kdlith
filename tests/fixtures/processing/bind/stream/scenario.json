@@ -1,0 +1,29 @@
+{
+  "binary": "kdlith",
+  "description": "A data document binds into one ordered stream: a declaration with an entries envelope, records with every source kind, a contribution, an import, container scope completions, and the document's scope completion last",
+  "args": [
+    "vet",
+    "data",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/types.kdl",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/bindings.kdl",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/context.kdl",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/documents.kdl",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":1},\"identity\":{\"domain\":\"Group\",\"name\":[\"shelf\"]},\"type_name\":\"Group\",\"fields\":[{\"name\":\"name\",\"value\":{\"kind\":\"string\",\"value\":\"shelf\"},\"origin\":1},{\"name\":\"labels\",\"value\":{\"kind\":\"map\",\"value\":[{\"key\":\"a\",\"value\":{\"kind\":\"map\",\"value\":[{\"key\":\"text\",\"value\":{\"kind\":\"string\",\"value\":\"First\"}}]}},{\"key\":\"b\",\"value\":{\"kind\":\"map\",\"value\":[{\"key\":\"text\",\"value\":{\"kind\":\"string\",\"value\":\"Second\"}}]}}]},\"origin\":1}],\"origin\":1,\"validation\":\"valid\"}}\n{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":6},\"type_name\":\"Item\",\"fields\":[",
+      "{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"one\"},\"origin\":6},{\"name\":\"kind\",\"value\":{\"kind\":\"string\",\"value\":\"book\"},\"origin\":6},{\"name\":\"locale\",\"value\":{\"kind\":\"string\",\"value\":\"en-gb\"},\"origin\":6},{\"name\":\"title\",\"value\":{\"kind\":\"string\",\"value\":\"Dune\"},\"origin\":6},{\"name\":\"tags\",\"value\":{\"kind\":\"list\",\"value\":[{\"kind\":\"string\",\"value\":\"x\"},{\"kind\":\"string\",\"value\":\"y\"}]},\"origin\":6},{\"name\":\"group\",\"value\":{\"kind\":\"reference\",\"value\":{\"domain\":\"Group\",\"name\":[\"shelf\"],\"qualifiers\":[],\"written\":\"shelf\",",
+      "{\"name\":\"code\",\"value\":{\"kind\":\"string\",\"value\":\"AB12\"},\"origin\":6},{\"name\":\"copies\",\"value\":{\"kind\":\"number\",\"value\":\"2\"},\"origin\":6},{\"name\":\"media\",\"value\":{\"kind\":\"list\",\"value\":[{\"kind\":\"map\",\"value\":[{\"key\":\"image\",\"value\":{\"kind\":\"map\",\"value\":[{\"key\":\"src\",\"value\":{\"kind\":\"string\",\"value\":\"cover.png\"}}]}}]},{\"kind\":\"map\",\"value\":[{\"key\":\"video\",\"value\":{\"kind\":\"map\",\"value\":[{\"key\":\"src\",\"value\":{\"kind\":\"string\",\"value\":\"trailer.mp4\"}},{\"key\":\"seconds\",\"value\":{\"kind\":\"number\",\"value\":\"90\"}}]}}]}]},\"origin\":6}],\"origin\":6,\"validation\":\"provisional\"}}\n{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":{\"source\":0,\"index\":4}}}\n{\"item\":\"contribution\",\"data\":{\"node\":{\"source\":0,\"index\":11},\"target\":{\"domain\":\"Group\",\"name\":[\"shelf\"]",
+      "\"validation\":\"provisional\"}}\n{\"item\":\"import\",\"data\":{\"node\":{\"source\":0,\"index\":12},\"expression\":\"other.kdl\",\"alias\":null,",
+      "\"origin\":12}}\n{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":null}}\n"
+    ]
+  }
+}

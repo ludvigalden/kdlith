@@ -93,6 +93,14 @@ digest. `schemas/vet/` holds schema definitions that must pass
 `invalid/schemas/` hold broken definitions, each rejected with its
 declared code.
 
+`dialect/canonical-bind/` and `dialect/entrypoint-bind/` run `kdlith vet
+data` with the canonical dialect as the schema, binding each committed
+file as a data document of the dialect. `processing/bind/` holds one
+small schema (`schema.kdl`) and scenarios that bind data documents
+against it; each asserts the ordered JSON-line item stream on stdout.
+`invalid/data/` holds data documents bound against the same schema, each
+rejected with its declared code.
+
 `parse/kdl-spec/` and `invalid/kdl-spec/` hold the official KDL v2 test suite,
 one scenario per upstream case: valid documents must exit `0` under
 `kdlith read input.kdl`, and invalid ones must be rejected with the declared
