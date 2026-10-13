@@ -1,0 +1,24 @@
+{
+  "binary": "kdlith",
+  "description": "A schema definition with an import resolved relative to it, typed context slots, a ref<T> to a declared type, following and children effects computed from the header, and a document rule compiles with complete checking under the canonical dialect",
+  "args": [
+    "vet",
+    "schema",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/types.kdl",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/bindings.kdl",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/context.kdl",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/documents.kdl",
+    "schema.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "ok: schema catalog version 1 scope=complete documents=2 ",
+      "slots=1 "
+    ]
+  }
+}

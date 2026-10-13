@@ -1,0 +1,8 @@
+{
+  "binary": "kdlith",
+  "description": "A second import of the same source is rejected when the request leaves repeated at its fallback, reject",
+  "args": ["vet", "dialect", "input.kdl"],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

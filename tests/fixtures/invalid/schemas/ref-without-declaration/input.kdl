@@ -1,0 +1,13 @@
+schema s version="1" {
+    types {
+        object Group {
+            field name String
+        }
+        object Entry {
+            field group "ref<Group>"
+        }
+    }
+    node entry role=record type=Entry {
+        field group arg=0
+    }
+}

@@ -1,0 +1,8 @@
+{
+  "binary": "kdlith",
+  "description": "An import that re-enters a document active on the invocation stack is diagnosed as a cycle",
+  "args": ["vet", "dialect", "input.kdl"],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

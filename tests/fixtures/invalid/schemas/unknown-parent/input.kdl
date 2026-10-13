@@ -1,0 +1,5 @@
+schema s version="1" {
+    node item role=record parent=missing {
+        field id String arg=0
+    }
+}

@@ -1,0 +1,5 @@
+schema s version="1" {
+    import "part.kdl" {
+        project locale
+    }
+}

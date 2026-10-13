@@ -72,18 +72,24 @@ Scenarios run under the `kdlith-fixtures` harness. The `{fx-suite}`
 argument placeholder lets a scenario read a committed file in place
 instead of a copy that could drift (see `tests/fixtures/README.md`).
 
-| Scenario                                                        | Proves                                                 |
-| --------------------------------------------------------------- | ------------------------------------------------------ |
-| `tests/fixtures/dialect/canonical-read/types/scenario.json`     | `types.kdl` parses as KDL v2                           |
-| `tests/fixtures/dialect/canonical-read/bindings/scenario.json`  | `bindings.kdl` parses as KDL v2                        |
-| `tests/fixtures/dialect/canonical-read/context/scenario.json`   | `context.kdl` parses as KDL v2                         |
-| `tests/fixtures/dialect/canonical-read/documents/scenario.json` | `documents.kdl` parses as KDL v2                       |
-| `tests/fixtures/dialect/entrypoint-read/dialect/scenario.json`  | `contracts/super-schemas/dialect.kdl` parses as KDL v2 |
+| Scenario                                                        | Proves                                                   |
+| --------------------------------------------------------------- | -------------------------------------------------------- |
+| `tests/fixtures/dialect/canonical-read/types/scenario.json`     | `types.kdl` parses as KDL v2                             |
+| `tests/fixtures/dialect/canonical-read/bindings/scenario.json`  | `bindings.kdl` parses as KDL v2                          |
+| `tests/fixtures/dialect/canonical-read/context/scenario.json`   | `context.kdl` parses as KDL v2                           |
+| `tests/fixtures/dialect/canonical-read/documents/scenario.json` | `documents.kdl` parses as KDL v2                         |
+| `tests/fixtures/dialect/entrypoint-read/dialect/scenario.json`  | `contracts/super-schemas/dialect.kdl` parses as KDL v2   |
+| `tests/fixtures/dialect/canonical-vet/*-local/scenario.json`    | Each canonical file passes local checking on its own     |
+| `tests/fixtures/dialect/canonical-vet/merged/scenario.json`     | The four files link and describe themselves completely   |
+| `tests/fixtures/dialect/entrypoint-vet/dialect/scenario.json`   | The entrypoint yields the same dialect as the four files |
 
-These scenarios prove syntax only. Nothing yet checks the dialect's
-semantic self-consistency (that every referenced type and node is
-declared) or resolves the entrypoint's imports; see
-[Known deferral: import resolution](#known-deferral-import-resolution).
+The `-read` scenarios prove syntax. The `-vet` scenarios run
+`kdlith vet dialect`, which resolves imports, links every reference, and
+walks each document through the dialect's own compiled bindings. The
+entrypoint and the merged files must print the same digest of the
+dialect's canonical summary. Negative controls under
+`tests/fixtures/invalid/dialect/` and `tests/fixtures/invalid/schemas/`
+each name the diagnostic code of one rejected construct.
 
 ## In-scope mechanisms
 
@@ -189,19 +195,18 @@ domains and lookup policies are `symbol-catalogs`. The `contribution`
 role preserves an assignment for later resolution; resolving it is
 `contribution-resolution`.
 
-## Known deferral: import resolution
+## Import resolution
 
-Resolving `import` nodes is engine work and is not implemented yet. The
-entrypoint scenario proves only that `contracts/super-schemas/dialect.kdl`
-parses. Nothing loads the imported files, merges their contributions,
-checks for duplicate declarations across them, or detects cycles. An
-entrypoint that names a missing canonical file would still pass the
-parse scenario.
-
-Until the engine resolves imports, the guard is a static existence check:
-every `import` path in the entrypoint, resolved relative to
-`contracts/super-schemas/`, names an existing file under
-`pkg/kdl/schemas/dialect/`, and together they name every file there.
+The engine resolves `import` nodes when it loads a definition with
+complete checking. Paths are resolved relative to the importing document
+and followed in written order, and every document reached contributes to
+the one definition. An import that does not resolve fails with
+`KDLITH-IMP001`, a cycle on the active invocation stack with
+`KDLITH-IMP002`, and a repeat under `repeated=reject` with
+`KDLITH-IMP003`. Each imported document gets a context of its own holding
+only the projected slots, so its mutations never reach the caller. Local
+checking (`--scope local`) reads the named documents alone and follows
+no imports.
 
 ## Contract for the engine and the reference processor
 

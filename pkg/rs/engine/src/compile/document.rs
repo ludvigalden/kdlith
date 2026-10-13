@@ -4,7 +4,9 @@
 use crate::compile::Cx;
 use crate::compile::reader::Construct;
 use crate::deferred::{defers, is_discovery_path};
-use crate::definition::{Deferral, DocumentRule, ImportDecl, Repeated, SlotDecl};
+use kdlith_runtime::Repeated;
+
+use crate::definition::{Deferral, DocumentRule, ImportDecl, SlotDecl};
 use crate::diag::{DEFERRED_MECHANISM, Site, duplicate};
 use crate::names::Sym;
 use crate::syntax::SyntaxNode;

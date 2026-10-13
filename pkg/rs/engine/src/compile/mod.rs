@@ -2,7 +2,9 @@
 //! definition with its catalogs out. Compilation runs once per definition;
 //! nothing downstream reads definition KDL again.
 
+mod conform;
 mod document;
+mod link;
 mod nodes;
 mod reader;
 mod scopes;
@@ -12,13 +14,17 @@ use kdlith_diagnostic::DiagnosticRecord;
 
 use crate::bindings::NodeDecl;
 use crate::deferred::{Spelling, deferred_by};
-use crate::definition::{Deferral, Definition, DefinitionKind, DocumentRule, ImportDecl, SlotDecl};
+use crate::definition::{
+    CheckScope, Deferral, Definition, DefinitionKind, DocumentRule, ImportDecl, SlotDecl,
+};
 use crate::diag::{
     DEFERRED_MECHANISM, Diagnostics, MALFORMED, NOT_INSTALLED, ROOT_MISMATCH, Site,
     TYPE_EXPRESSION, UNKNOWN_CONSTRUCT,
 };
 use crate::extensions::{Extensions, TYPE_EXPRESSION_VALIDATOR, TYPE_EXPRESSION_VERSION};
 use crate::names::Names;
+use crate::plan;
+use crate::symbols::SymbolCatalog;
 use crate::syntax::{ParsedDocument, SyntaxNode};
 use crate::type_expr::{self, ExprError};
 use crate::types::{TypeCatalog, TypeExpr};
@@ -36,25 +42,55 @@ pub struct Compiled {
     pub schema: Definition,
 }
 
-/// Compile a dialect definition from its contributing documents.
+/// Compile a dialect definition from its contributing documents, with
+/// complete checking.
 pub fn compile_dialect(
     documents: &[ParsedDocument],
     extensions: &Extensions,
 ) -> Result<Definition, Vec<DiagnosticRecord>> {
-    run(DefinitionKind::Dialect, documents, None, extensions)
+    compile_dialect_scoped(documents, extensions, CheckScope::Complete)
+}
+
+/// Compile a dialect definition with the given checking scope. Complete
+/// checking links every reference and checks that the dialect describes
+/// every construct its own documents use.
+pub fn compile_dialect_scoped(
+    documents: &[ParsedDocument],
+    extensions: &Extensions,
+    scope: CheckScope,
+) -> Result<Definition, Vec<DiagnosticRecord>> {
+    run(DefinitionKind::Dialect, documents, None, extensions, scope)
 }
 
 /// Compile a schema definition under its governing dialect, whose
-/// deferrals decide which constructs fail closed.
+/// deferrals decide which constructs fail closed, with complete checking.
 pub fn compile_schema(
     dialect: &Definition,
     documents: &[ParsedDocument],
     extensions: &Extensions,
 ) -> Result<Definition, Vec<DiagnosticRecord>> {
-    run(DefinitionKind::Schema, documents, Some(dialect), extensions)
+    compile_schema_scoped(dialect, documents, extensions, CheckScope::Complete)
 }
 
-/// Compile a dialect, then a schema under it.
+/// Compile a schema definition with the given checking scope. Complete
+/// checking links every reference and checks the documents against the
+/// governing dialect's compiled bindings.
+pub fn compile_schema_scoped(
+    dialect: &Definition,
+    documents: &[ParsedDocument],
+    extensions: &Extensions,
+    scope: CheckScope,
+) -> Result<Definition, Vec<DiagnosticRecord>> {
+    run(
+        DefinitionKind::Schema,
+        documents,
+        Some(dialect),
+        extensions,
+        scope,
+    )
+}
+
+/// Compile a dialect, then a schema under it, with complete checking.
 pub fn compile_pair(
     dialect: &[ParsedDocument],
     schema: &[ParsedDocument],
@@ -68,6 +104,7 @@ pub fn compile_pair(
 /// The state of one compilation.
 pub(crate) struct Cx<'d> {
     pub(crate) kind: DefinitionKind,
+    pub(crate) scope: CheckScope,
     pub(crate) diags: Diagnostics<'d>,
     pub(crate) names: Names,
     pub(crate) extensions: &'d Extensions,
@@ -91,11 +128,13 @@ fn run(
     documents: &[ParsedDocument],
     governing: Option<&Definition>,
     extensions: &Extensions,
+    scope: CheckScope,
 ) -> Result<Definition, Vec<DiagnosticRecord>> {
     let mut names = Names::default();
     let types = TypeCatalog::with_builtins(&mut names);
     let mut cx = Cx {
         kind,
+        scope,
         diags: Diagnostics::new(documents, kind.origin()),
         names,
         extensions,
@@ -134,10 +173,15 @@ fn run(
         root_children(&mut cx, doc, node);
     }
     let bindings = scopes::build(&mut cx);
+    let symbols = SymbolCatalog::build(&bindings);
+    if scope == CheckScope::Complete && !cx.diags.has_errors() {
+        link::run(&mut cx, &bindings, &symbols);
+    }
     if cx.diags.has_errors() {
         return Err(cx.diags.into_records());
     }
-    Ok(Definition {
+    let plan = plan::build(&cx.slots, &cx.types, &bindings, &symbols);
+    let definition = Definition {
         kind,
         name: root.name,
         version: root.version,
@@ -145,11 +189,22 @@ fn run(
         names: cx.names,
         types: cx.types,
         bindings,
+        symbols,
+        plan,
         slots: cx.slots,
         imports: cx.imports,
         deferrals: cx.deferrals,
         document_rule: cx.document_rule,
-    })
+        scope,
+    };
+    if scope == CheckScope::Complete {
+        let describing = governing.unwrap_or(&definition);
+        conform::run(&mut cx.diags, kind, describing, documents);
+        if cx.diags.has_errors() {
+            return Err(cx.diags.into_records());
+        }
+    }
+    Ok(definition)
 }
 
 /// Read each document's single root and check every document repeats the

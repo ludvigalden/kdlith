@@ -1,0 +1,4 @@
+dialect repeated version="0" {
+    import "part.kdl"
+    import "./part.kdl"
+}

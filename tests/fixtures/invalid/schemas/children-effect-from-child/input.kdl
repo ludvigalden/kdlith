@@ -1,0 +1,11 @@
+schema s version="1" {
+    context {
+        slot locale String
+    }
+    node scope role=context-control {
+        field value String child=value
+        effects target=children {
+            set locale field=value
+        }
+    }
+}

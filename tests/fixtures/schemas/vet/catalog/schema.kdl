@@ -1,0 +1,54 @@
+schema catalog version="1" {
+    import "parts.kdl"
+    types {
+        string Locale {
+            format kebab-case
+        }
+        object Entry {
+            field id String
+            field locale "optional<Locale>"
+            field group "optional<ref<Group>>"
+        }
+        object Group {
+            field name String
+        }
+    }
+    context {
+        slot locale Locale namespace=defaults
+    }
+    node group role=declaration type=Group {
+        field name arg=0
+    }
+    node entry role=record type=Entry {
+        parents locale
+        field id arg=0
+        field locale {
+            from {
+                property locale
+                context locale policy=fallback
+            }
+        }
+        field group property=group
+    }
+    node locale role=context-control {
+        field value Locale arg=0
+        effects target=following {
+            set locale field=value
+        }
+        effects target=children {
+            set locale field=value
+        }
+        children entry
+    }
+    node defaults-reset role=context-control {
+        effects target=following {
+            clear defaults
+        }
+    }
+    document {
+        first {
+            exactly-one locale group
+        }
+        following group locale defaults-reset
+    }
+}

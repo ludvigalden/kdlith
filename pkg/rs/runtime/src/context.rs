@@ -60,6 +60,11 @@ impl ContextLayout {
         self.namespace_of.len()
     }
 
+    /// Every slot in declaration order.
+    pub fn slots(&self) -> impl Iterator<Item = SlotId> + '_ {
+        (0..self.namespace_of.len()).map(|at| SlotId(index_u32(at)))
+    }
+
     pub fn namespace_of(&self, slot: SlotId) -> Option<NamespaceId> {
         self.namespace_of.get(slot.index()).copied().flatten()
     }

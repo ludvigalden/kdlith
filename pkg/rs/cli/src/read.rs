@@ -1,12 +1,13 @@
 //! `kdlith read <file>`: parse one document to its clean end and report
 //! the first failure as a registered diagnostic on stderr.
 
-use std::fmt::Write as _;
 use std::path::Path;
 
 use kdlith_diagnostic::registry::{lookup, render};
 use kdlith_diagnostic::{DiagnosticRecord, ExitStatus};
 use kdlith_parse::Parser;
+
+use crate::report::report;
 
 /// Read `path` and drain its pull-event stream. Success prints nothing;
 /// a failure prints one diagnostic line to stderr and fails with the
@@ -46,21 +47,4 @@ fn source_error(code: &str, values: &[&str]) -> DiagnosticRecord {
         Some(definition) => record.with_message(render(definition.message_template, values)),
         None => record,
     }
-}
-
-/// Print `record` as `error[CODE]: message` with its location, and map
-/// it to its exit stratum.
-fn report(record: &DiagnosticRecord) -> ExitStatus {
-    let mut line = format!("error[{}]", record.code);
-    if let Some(message) = &record.message {
-        let _ = write!(line, ": {message}");
-    }
-    if let Some(path) = &record.source_path {
-        let _ = write!(line, "\n  --> {path}");
-        if let (Some(row), Some(col)) = (record.line, record.col) {
-            let _ = write!(line, ":{row}:{col}");
-        }
-    }
-    eprintln!("{line}");
-    ExitStatus::from_diagnostics([(record.code.as_str(), record.severity)], false)
 }

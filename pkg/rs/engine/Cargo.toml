@@ -12,3 +12,4 @@ workspace = true
 kdlith-diagnostic = { path = "../diagnostic" }
 kdlith-model = { path = "../model" }
 kdlith-parse = { path = "../parse" }
+kdlith-runtime = { path = "../runtime" }

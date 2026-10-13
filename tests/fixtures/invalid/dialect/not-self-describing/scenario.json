@@ -1,0 +1,8 @@
+{
+  "binary": "kdlith",
+  "description": "A dialect whose own declarations do not describe the constructs its document uses fails the self-description check",
+  "args": ["vet", "dialect", "input.kdl"],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

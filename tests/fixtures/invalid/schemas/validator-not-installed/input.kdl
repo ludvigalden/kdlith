@@ -1,0 +1,7 @@
+schema s version="1" {
+    types {
+        string Locale {
+            validator locale-tag version="1"
+        }
+    }
+}

@@ -10,4 +10,5 @@ workspace = true
 
 [dependencies]
 kdlith-diagnostic = { path = "../diagnostic" }
+kdlith-engine = { path = "../engine" }
 kdlith-parse = { path = "../parse" }

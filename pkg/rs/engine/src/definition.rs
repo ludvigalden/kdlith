@@ -1,9 +1,13 @@
 //! A compiled dialect or schema definition: the catalogs plus the
 //! declarations later compile stages consume.
 
+use kdlith_runtime::Repeated;
+
 use crate::bindings::BindingCatalog;
 use crate::diag::Site;
 use crate::names::{Names, Sym};
+use crate::plan::ProcessingPlan;
+use crate::symbols::SymbolCatalog;
 use crate::types::{TypeCatalog, TypeExpr};
 
 /// Which authoring level a definition belongs to.
@@ -30,6 +34,29 @@ impl DefinitionKind {
     }
 }
 
+/// How much of a definition's checking runs.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum CheckScope {
+    /// Syntax, constructs, and bindings of the named documents alone:
+    /// the checks one document supports while it streams. Imports are
+    /// recorded but not followed, and nothing is linked.
+    Local,
+    /// Additionally resolve imports, link every reference across the
+    /// contributing documents, and check self-description.
+    #[default]
+    Complete,
+}
+
+impl CheckScope {
+    pub fn name(self) -> &'static str {
+        match self {
+            CheckScope::Local => "local",
+            CheckScope::Complete => "complete",
+        }
+    }
+}
+
 /// One definition compiled from its contributing documents. Records are
 /// processed against these tables; the definition's KDL is never read
 /// again.
@@ -44,10 +71,14 @@ pub struct Definition {
     pub names: Names,
     pub types: TypeCatalog,
     pub bindings: BindingCatalog,
+    pub symbols: SymbolCatalog,
+    pub plan: ProcessingPlan,
     pub slots: Vec<SlotDecl>,
     pub imports: Vec<ImportDecl>,
     pub deferrals: Vec<Deferral>,
     pub document_rule: Option<DocumentRule>,
+    /// The checks this definition passed.
+    pub scope: CheckScope,
 }
 
 impl Definition {
@@ -68,16 +99,7 @@ pub struct SlotDecl {
     pub site: Site,
 }
 
-/// How a source imported twice in one session is handled.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-#[non_exhaustive]
-pub enum Repeated {
-    Reject,
-    Coalesce,
-    Instantiate,
-}
-
-/// A source import as written; resolving it is a later stage.
+/// A source import as written; the loader resolves it before compiling.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct ImportDecl {

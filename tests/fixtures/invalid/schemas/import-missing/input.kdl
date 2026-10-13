@@ -1,0 +1,3 @@
+schema s version="1" {
+    import "missing.kdl"
+}

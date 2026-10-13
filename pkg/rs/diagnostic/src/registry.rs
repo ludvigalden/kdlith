@@ -239,6 +239,16 @@ pub const CODES: &[CodeDefinition] = &[
         correction: "Break the cycle by removing one of the imports",
         retired: false,
     },
+    CodeDefinition {
+        code: "KDLITH-IMP003",
+        label: "import-repeated",
+        severity: Severity::Error,
+        exit_class: 1,
+        trigger: "a source already invoked in the session is imported again by a request whose repeated policy is reject",
+        message_template: "<target> is already imported in this session",
+        correction: "Import the source once, or declare repeated=coalesce or repeated=instantiate on the request",
+        retired: false,
+    },
     // DLC
     CodeDefinition {
         code: "KDLITH-DLC001",
@@ -310,6 +320,16 @@ pub const CODES: &[CodeDefinition] = &[
         correction: "Write a declared type, a built-in scalar, or a constructor applied to its arguments",
         retired: false,
     },
+    CodeDefinition {
+        code: "KDLITH-DLC008",
+        label: "unresolved-dialect-reference",
+        severity: Severity::Error,
+        exit_class: 1,
+        trigger: "a dialect definition references a type, node, field, slot, or namespace it does not declare, or uses a construct its own declarations do not describe",
+        message_template: "<kind> <name> is not declared",
+        correction: "Declare it in a contributing document, or fix the reference",
+        retired: false,
+    },
     // SCH
     CodeDefinition {
         code: "KDLITH-SCH001",
@@ -359,6 +379,26 @@ pub const CODES: &[CodeDefinition] = &[
         trigger: "a node declaration's bindings, child rules, or groups contradict each other or leave an argument unconsumed",
         message_template: "node <node>: <reason>",
         correction: "Bind every argument, property, and child exactly once and consistently",
+        retired: false,
+    },
+    CodeDefinition {
+        code: "KDLITH-SCH006",
+        label: "unresolved-schema-reference",
+        severity: Severity::Error,
+        exit_class: 1,
+        trigger: "a schema definition references a node, field, slot, namespace, or reference target it does not declare",
+        message_template: "<kind> <name> is not declared",
+        correction: "Declare it in a contributing document, or fix the reference",
+        retired: false,
+    },
+    CodeDefinition {
+        code: "KDLITH-SCH007",
+        label: "children-effect-not-streamable",
+        severity: Severity::Error,
+        exit_class: 1,
+        trigger: "a children effect reads a field bound from a child, so it cannot be computed from the node header",
+        message_template: "node <node>: children effect on <slot> reads field <field>, which is bound from a child",
+        correction: "Bind the field from an argument, property, or context, or apply the effect to following siblings",
         retired: false,
     },
     // BND

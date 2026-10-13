@@ -160,6 +160,7 @@ name = "kdlith-cli"
 version = "0.1.0"
 dependencies = [
  "kdlith-diagnostic",
+ "kdlith-engine",
  "kdlith-parse",
 ]
 
@@ -182,6 +183,7 @@ dependencies = [
  "kdlith-diagnostic",
  "kdlith-model",
  "kdlith-parse",
+ "kdlith-runtime",
 ]
 
 [[package]]

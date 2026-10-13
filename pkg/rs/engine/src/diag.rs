@@ -20,6 +20,16 @@ pub(crate) const CONFLICTING_BINDING: &str = "KDLITH-SCH003";
 pub(crate) const DUPLICATE_DECLARATION: &str = "KDLITH-SCH004";
 pub(crate) const INVALID_BINDING: &str = "KDLITH-SCH005";
 pub(crate) const DUPLICATE_PROPERTY: &str = "KDLITH-SYN003";
+pub(crate) const UNRESOLVED_DIALECT: &str = "KDLITH-DLC008";
+pub(crate) const UNKNOWN_TYPE: &str = "KDLITH-SCH001";
+pub(crate) const UNRESOLVED_SCHEMA: &str = "KDLITH-SCH006";
+pub(crate) const NOT_STREAMABLE: &str = "KDLITH-SCH007";
+pub(crate) const IMPORT_UNRESOLVED: &str = "KDLITH-IMP001";
+pub(crate) const IMPORT_CYCLE: &str = "KDLITH-IMP002";
+pub(crate) const IMPORT_REPEATED: &str = "KDLITH-IMP003";
+pub(crate) const SOURCE_UNREADABLE: &str = "KDLITH-SRC001";
+pub(crate) const SOURCE_NOT_UTF8: &str = "KDLITH-SRC002";
+pub(crate) const SOURCE_LIMIT: &str = "KDLITH-SRC003";
 
 /// Where a construct was written: the contributing document's position
 /// in the compiler input and the byte span of the node.
@@ -91,26 +101,38 @@ impl<'d> Diagnostics<'d> {
     }
 
     fn record(&self, code: &'static str, values: &[&str]) -> DiagnosticRecord {
-        let record = DiagnosticRecord::from_code(code)
-            .expect("engine diagnostic codes are registered and never retired");
-        let record = match lookup(code) {
-            Some(definition) => record.with_message(render(definition.message_template, values)),
-            None => record,
-        };
-        record.with_origin(self.origin)
+        record(code, values, self.origin)
     }
 
     fn located(&self, record: DiagnosticRecord, site: Site) -> DiagnosticRecord {
-        let Some(document) = self.documents.get(site.document) else {
-            return record;
-        };
-        let start = locate(document.text(), site.span).start;
-        record.with_source(document.path()).with_span(
-            site.span,
-            Some(start.line),
-            Some(start.column),
-        )
+        match self.documents.get(site.document) {
+            Some(document) => located(record, document, site.span),
+            None => record,
+        }
     }
+}
+
+/// A registered code with its message rendered and its origin set.
+pub(crate) fn record(code: &'static str, values: &[&str], origin: &str) -> DiagnosticRecord {
+    let record = DiagnosticRecord::from_code(code)
+        .expect("engine diagnostic codes are registered and never retired");
+    let record = match lookup(code) {
+        Some(definition) => record.with_message(render(definition.message_template, values)),
+        None => record,
+    };
+    record.with_origin(origin)
+}
+
+/// A record placed at a span of a parsed document.
+pub(crate) fn located(
+    record: DiagnosticRecord,
+    document: &ParsedDocument,
+    span: ByteSpan,
+) -> DiagnosticRecord {
+    let start = locate(document.text(), span).start;
+    record
+        .with_source(document.path())
+        .with_span(span, Some(start.line), Some(start.column))
 }
 
 /// Report a declaration made twice: a dialect construct, a schema type,

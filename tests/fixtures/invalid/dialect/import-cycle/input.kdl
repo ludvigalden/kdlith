@@ -1,0 +1,3 @@
+dialect cyclic version="0" {
+    import "inner.kdl"
+}

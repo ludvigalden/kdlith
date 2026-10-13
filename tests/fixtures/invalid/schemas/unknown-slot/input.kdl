@@ -1,0 +1,9 @@
+schema s version="1" {
+    node entry role=record {
+        field locale String {
+            from {
+                context locale policy=fallback
+            }
+        }
+    }
+}

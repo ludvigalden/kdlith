@@ -1,0 +1,20 @@
+{
+  "binary": "kdlith",
+  "description": "A children effect that reads a field bound from a child cannot be computed from the node header and is rejected as incompatible with streaming",
+  "args": [
+    "vet",
+    "schema",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/types.kdl",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/bindings.kdl",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/context.kdl",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/documents.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

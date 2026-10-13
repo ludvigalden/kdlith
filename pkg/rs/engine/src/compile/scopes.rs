@@ -9,6 +9,7 @@ use crate::bindings::{
     ScopeId, Source,
 };
 use crate::compile::Cx;
+use crate::definition::CheckScope;
 use crate::diag::{CONFLICTING_BINDING, INVALID_BINDING, Site, duplicate};
 use crate::names::Sym;
 use crate::structure::{Occurs, OrderRule, ScopeRules};
@@ -297,6 +298,11 @@ impl Builder<'_> {
         };
         if consumed.is_empty() {
             let Some(decl) = declared else {
+                // Another contributing document may declare it; only
+                // complete checking sees every contribution.
+                if cx.scope == CheckScope::Local {
+                    return None;
+                }
                 invalid(
                     cx,
                     format!(

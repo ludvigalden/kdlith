@@ -84,6 +84,15 @@ nothing of its own. Each scenario runs `kdlith read` on the committed
 entrypoint through `{fx-suite}` and must exit `0`; it proves the entrypoint
 parses, not that its imports resolve.
 
+`dialect/canonical-vet/` and `dialect/entrypoint-vet/` run `kdlith vet
+dialect` on the same committed files. Each canonical file must pass
+`--scope local` alone. The four files together, and the entrypoint
+through its imports, must pass complete checking and print the same
+digest. `schemas/vet/` holds schema definitions that must pass
+`kdlith vet schema` under the canonical dialect. `invalid/dialect/` and
+`invalid/schemas/` hold broken definitions, each rejected with its
+declared code.
+
 `parse/kdl-spec/` and `invalid/kdl-spec/` hold the official KDL v2 test suite,
 one scenario per upstream case: valid documents must exit `0` under
 `kdlith read input.kdl`, and invalid ones must be rejected with the declared

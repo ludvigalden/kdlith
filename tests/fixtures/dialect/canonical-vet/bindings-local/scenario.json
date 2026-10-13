@@ -1,0 +1,9 @@
+{
+  "binary": "kdlith",
+  "description": "The committed canonical dialect definition pkg/kdl/schemas/dialect/bindings.kdl passes local checking on its own: constructs, bindings, and the invariants one document supports",
+  "args": ["vet", "dialect", "--scope", "local", "{fx-suite}/../../pkg/kdl/schemas/dialect/bindings.kdl"],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": ["ok: dialect kdlith version 0 scope=local documents=1 "]
+  }
+}

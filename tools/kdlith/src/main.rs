@@ -8,10 +8,19 @@ kdlith - typed, streaming KDL processing and Rust processor generation
 
 Usage: kdlith [--help | --version]
        kdlith read <file>
+       kdlith vet dialect [--scope local|complete] <file>...
+       kdlith vet schema --dialect <file>... [--scope local|complete] <file>...
 
 Commands:
   read <file>    Parse a KDL document; exit 0 when it is valid KDL, or print
                  the first diagnostic to stderr and exit nonzero
+  vet dialect    Load a dialect definition with its imports, compile, link,
+                 and check it; print every diagnostic to stderr and exit
+                 nonzero on any error. --scope local checks the named
+                 documents alone; complete (the default) also resolves
+                 imports, links references, and checks self-description
+  vet schema     Vet a schema definition under the dialect given by
+                 --dialect, which is itself vetted with complete checking
 
 Options:
   -h, --help     Print this help and exit
@@ -35,6 +44,7 @@ fn main() -> ExitCode {
             eprintln!("kdlith: usage: kdlith read <file>");
             ExitCode::from(2)
         }
+        [verb, rest @ ..] if verb == "vet" => kdlith_cli::vet_command(rest).into(),
         // Every other verb stays fail-closed until it is wired, rather
         // than pretending to work.
         _ => {
