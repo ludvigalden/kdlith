@@ -101,6 +101,14 @@ against it; each asserts the ordered JSON-line item stream on stdout.
 `invalid/data/` holds data documents bound against the same schema, each
 rejected with its declared code.
 
+`dialect/canonical-inspect/`, `dialect/entrypoint-inspect/`, and
+`schemas/inspect/` run `kdlith inspect`, which reads definitions through
+the reference processor and prints each typed item as one JSON line.
+Each scenario asserts ordered runs of the expected declaration items and
+scope completions. `invalid/schemas/inspect-*` hold schema definitions
+the reference processor rejects while binding them, each with its
+declared code.
+
 `parse/kdl-spec/` and `invalid/kdl-spec/` hold the official KDL v2 test suite,
 one scenario per upstream case: valid documents must exit `0` under
 `kdlith read input.kdl`, and invalid ones must be rejected with the declared

@@ -1,0 +1,25 @@
+{
+  "binary": "kdlith",
+  "description": "The type-system constructs the other schemas leave out read through the reference processor: a map type, object constraints, enum member and field descriptions, a documented default, and string widths, minimum lengths, and validators",
+  "args": [
+    "inspect",
+    "schema",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/types.kdl",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/bindings.kdl",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/context.kdl",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/documents.kdl",
+    "schema.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"path\":\"schema.kdl\"}}\n{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":2},\"identity\":{\"domain\":\"StringType\",\"name\":[\"Day\"]},\"type\":\"StringType\",\"value\":{\"name\":\"Day\",\"format\":\"zero-padded\",\"width\":2}}}\n{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":4},\"identity\":{\"domain\":\"StringType\",\"name\":[\"Label\"]},\"type\":\"StringType\",\"value\":{\"name\":\"Label\",\"min-length\":1}}}\n{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":6},\"identity\":{\"domain\":\"StringType\",\"name\":[\"Tag\"]},\"type\":\"StringType\",\"value\":{\"name\":\"Tag\",\"validator\":\"type-expression\",\"validator-version\":\"0\"}}}\n{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":8},\"identity\":{\"domain\":\"EnumType\",\"name\":[\"Tier\"]},\"type\":\"EnumType\",\"value\":{\"name\":\"Tier\",\"members\":{\"basic\":{\"description\":\"The default tier\"},\"premium\":{}}}}}\n{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":11},\"identity\":{\"domain\":\"MapType\",\"name\":[\"Labels\"]},\"type\":\"MapType\",\"value\":{\"name\":\"Labels\",\"key-type\":\"Day\",\"value-type\":\"Label\"}}}\n",
+      "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":14},\"identity\":{\"domain\":\"ObjectType\",\"name\":[\"Plan\"]},\"type\":\"ObjectType\",\"value\":{\"name\":\"Plan\",\"fields\":{\"tier\":{\"type\":\"Tier\",\"description\":\"The plan's tier\",\"documented-default\":{\"kind\":\"string\",\"value\":\"basic\"}},\"start\":{\"type\":\"optional<Day>\"},\"end\":{\"type\":\"optional<Day>\"},\"owner\":{\"type\":\"optional<String>\"},\"contact\":{\"type\":\"optional<String>\"}},\"constraints\":[{\"all-or-none\":{\"fields\":[\"start\",\"end\"]}},{\"requires\":{\"field\":\"contact\",\"required\":\"owner\"}}]}}}\n{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":{\"source\":0,\"index\":1}}}\n",
+      "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":24},\"identity\":{\"domain\":\"NodeDef\",\"name\":[\"plan\"]},\"type\":\"NodeDef\",\"value\":{\"name\":\"plan\",\"role\":\"record\",\"type\":\"Plan\",\"fields\":{\"tier\":{\"property\":\"tier\",\"sources\":[]},\"start\":{\"property\":\"start\",\"sources\":[]},\"end\":{\"property\":\"end\",\"sources\":[]},\"owner\":{\"property\":\"owner\",\"sources\":[]},\"contact\":{\"property\":\"contact\",\"sources\":[]}},\"children\":{},\"effects\":[],\"groups\":[]}}}\n{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":{\"source\":0,\"index\":0}}}\n{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":null}}\n"
+    ]
+  }
+}

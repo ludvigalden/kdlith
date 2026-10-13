@@ -1,0 +1,45 @@
+// A schema definition that uses each type-system construct the
+// catalog and shelf schemas leave out: a map type, object constraints,
+// enum member descriptions, field descriptions and documented
+// defaults, and string widths, minimum lengths, and validators.
+schema constructs version="1" {
+    types {
+        string Day {
+            format zero-padded width=2
+        }
+        string Label {
+            min-length 1
+        }
+        string Tag {
+            validator type-expression version="0"
+        }
+        enum Tier {
+            member basic description="The default tier"
+            member premium
+        }
+        map Labels {
+            key-type Day
+            value-type Label
+        }
+        object Plan {
+            field tier Tier description="The plan's tier" {
+                documented-default basic
+            }
+            field start "optional<Day>"
+            field end "optional<Day>"
+            field owner "optional<String>"
+            field contact "optional<String>"
+            constraints {
+                all-or-none start end
+                requires contact owner
+            }
+        }
+    }
+    node plan role=record type=Plan {
+        field tier property=tier
+        field start property=start
+        field end property=end
+        field owner property=owner
+        field contact property=contact
+    }
+}

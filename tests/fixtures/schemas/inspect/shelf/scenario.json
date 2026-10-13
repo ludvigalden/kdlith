@@ -1,0 +1,31 @@
+{
+  "binary": "kdlith",
+  "description": "The binding scenarios' shared schema reads through the reference processor: enum, object, and union types, a fallback, every binding source, an entries envelope, an exactly-one group, a literal set effect, each processing role, and the document rule arrive as typed declarations",
+  "args": [
+    "inspect",
+    "schema",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/types.kdl",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/bindings.kdl",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/context.kdl",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/documents.kdl",
+    "{fx-suite}/processing/bind/schema.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":6},\"identity\":{\"domain\":\"EnumType\",\"name\":[\"Kind\"]},\"type\":\"EnumType\",\"value\":{\"name\":\"Kind\",\"members\":{\"book\":{},\"film\":{}}}}}\n",
+      "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":9},\"identity\":{\"domain\":\"ObjectType\",\"name\":[\"Item\"]},\"type\":\"ObjectType\",\"value\":{\"name\":\"Item\",\"fields\":{\"id\":{\"type\":\"String\"},\"kind\":{\"type\":\"Kind\"},\"locale\":{\"type\":\"Locale\"},\"region\":{\"type\":\"optional<Locale>\"},\"title\":{\"type\":\"optional<String>\"},\"tags\":{\"type\":\"list<String>\"},\"group\":{\"type\":\"optional<ref<Group>>\"},\"code\":{\"type\":\"optional<Code>\"},\"copies\":{\"type\":\"optional<U64>\",\"fallback\":{\"kind\":\"number\",\"value\":\"1\"}},\"media\":{\"type\":\"list<Media>\"}},\"constraints\":[]}}}\n",
+      "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":21},\"identity\":{\"domain\":\"UnionType\",\"name\":[\"Media\"]},\"type\":\"UnionType\",\"value\":{\"name\":\"Media\",\"variants\":{\"image\":{\"type\":\"Image\"},\"video\":{\"type\":\"Video\"}}}}}\n",
+      "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":42},\"identity\":{\"domain\":\"NodeDef\",\"name\":[\"group\"]},\"type\":\"NodeDef\",\"value\":{\"name\":\"group\",\"role\":\"declaration\",\"type\":\"Group\",\"fields\":{\"name\":{\"arg\":0,\"sources\":[]},\"labels\":{\"sources\":[{\"entries\":{\"node\":\"label\",\"key\":\"arg(0)\",\"value\":\"Label\"}}],\"duplicate-keys\":\"reject\"}},\"children\":{},\"effects\":[],\"groups\":[]}}}\n",
+      "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":50},\"identity\":{\"domain\":\"NodeDef\",\"name\":[\"section\"]},\"type\":\"NodeDef\",\"value\":{\"name\":\"section\",\"role\":\"container\",\"type\":\"Section\",\"fields\":{\"title\":{\"arg\":0,\"sources\":[]}},\"children\":{\"item\":{\"min-occurs\":1},\"override\":{},\"stamp\":{},\"public\":{\"max-occurs\":1},\"private\":{\"max-occurs\":1}},\"effects\":[],\"groups\":[{\"nodes\":[\"public\",\"private\"]}]}}}\n",
+      "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":60},\"identity\":{\"domain\":\"NodeDef\",\"name\":[\"item\"]},\"type\":\"NodeDef\",\"value\":{\"name\":\"item\",\"role\":\"record\",\"type\":\"Item\",\"parents\":[\"section\",\"override\"],\"fields\":{\"id\":{\"arg\":0,\"sources\":[]},\"kind\":{\"property\":\"kind\",\"sources\":[]},\"locale\":{\"sources\":[{\"property\":{\"name\":\"locale\"}},{\"context\":{\"slot\":\"locale\",\"policy\":\"fallback\"}}]},\"region\":{\"sources\":[{\"property\":{\"name\":\"region\"}},{\"context\":{\"slot\":\"region\",\"policy\":\"fixed\"}}]},\"title\":{\"sources\":[{\"property\":{\"name\":\"title\"}},{\"child\":{\"name\":\"title\",\"sources\":[]}}],\"collision\":\"reject\"},\"tags\":{\"sources\":[{\"child\":{\"name\":\"tags\",\"sources\":[{\"args\":{}}]}}]},\"group\":{\"property\":\"group\",\"sources\":[]},\"code\":{\"property\":\"code\",\"sources\":[]},\"copies\":{\"property\":\"copies\",\"sources\":[]},\"media\":{\"sources\":[{\"children\":{\"name\":\"image\",\"sources\":[]}},{\"children\":{\"name\":\"video\",\"sources\":[]}}]}},\"children\":{},\"effects\":[],\"groups\":[]}}}\n",
+      "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":114},\"identity\":{\"domain\":\"NodeDef\",\"name\":[\"english\"]},\"type\":\"NodeDef\",\"value\":{\"name\":\"english\",\"role\":\"context-control\",\"fields\":{},\"children\":{},\"effects\":[{\"target\":\"following\",\"effects\":[{\"set\":{\"slot\":\"locale\",\"value\":{\"kind\":\"string\",\"value\":\"en\"}}}]}],\"groups\":[]}}}\n",
+      "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":117},\"identity\":{\"domain\":\"NodeDef\",\"name\":[\"setting\"]},\"type\":\"NodeDef\",\"value\":{\"name\":\"setting\",\"role\":\"contribution\",\"type\":\"Setting\",\"fields\":{\"target\":{\"arg\":0,\"sources\":[]},\"value\":{\"arg\":1,\"sources\":[]}},\"children\":{},\"effects\":[],\"groups\":[]}}}\n",
+      "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":120},\"identity\":{\"domain\":\"NodeDef\",\"name\":[\"use\"]},\"type\":\"NodeDef\",\"value\":{\"name\":\"use\",\"role\":\"source-import\",\"fields\":{\"path\":{\"type\":\"String\",\"arg\":0,\"sources\":[]}},\"children\":{},\"effects\":[],\"groups\":[]}}}\n{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":122},\"identity\":{\"domain\":\"DocumentRule\",\"name\":[]},\"type\":\"DocumentRule\",\"value\":{\"first\":{\"exactly-one\":[\"locale\",\"group\"]},\"following\":[\"group\",\"locale\",\"region\",\"forget-region\",\"reset\",\"english\",\"section\",\"setting\",\"use\"]}}}\n{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":{\"source\":0,\"index\":0}}}\n{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":null}}\n"
+    ]
+  }
+}

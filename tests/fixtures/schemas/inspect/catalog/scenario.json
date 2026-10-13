@@ -1,0 +1,27 @@
+{
+  "binary": "kdlith",
+  "description": "A schema definition reads through the reference processor: its import is followed at its site with its projection and repeat policy, the imported document's record node arrives before the importing document continues, and the slot, record and context-control nodes, and document rule arrive as typed declarations",
+  "args": [
+    "inspect",
+    "schema",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/types.kdl",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/bindings.kdl",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/context.kdl",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/documents.kdl",
+    "{fx-suite}/schemas/vet/catalog/schema.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"import\",\"data\":{\"node\":{\"source\":0,\"index\":1},\"expression\":\"parts.kdl\",\"alias\":null,\"project\":[],\"repeated\":\"reject\",\"site\":{\"source\":0,\"span\":{\"start\":{\"offset\":33,\"line\":2,\"column\":5},\"end\":{\"offset\":39,\"line\":2,\"column\":11}}},\"origin\":1}}\n{\"item\":\"document\",\"data\":{\"source\":1,\"path\":\"",
+      "schemas/vet/catalog/parts.kdl\"}}\n{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":1,\"index\":1},\"identity\":{\"domain\":\"NodeDef\",\"name\":[\"note\"]},\"type\":\"NodeDef\",\"value\":{\"name\":\"note\",\"role\":\"record\",\"fields\":{\"text\":{\"type\":\"String\",\"arg\":0,\"sources\":[]}},\"children\":{},\"effects\":[],\"groups\":[]}}}\n",
+      "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":1,\"index\":1},\"identity\":{\"domain\":\"NodeDef\",\"name\":[\"note\"]},\"type\":\"NodeDef\",\"value\":{\"name\":\"note\",\"role\":\"record\",\"fields\":{\"text\":{\"type\":\"String\",\"arg\":0,\"sources\":[]}},\"children\":{},\"effects\":[],\"groups\":[]}}}\n{\"item\":\"scope-complete\",\"data\":{\"source\":1,\"scope\":{\"source\":1,\"index\":0}}}\n{\"item\":\"scope-complete\",\"data\":{\"source\":1,\"scope\":null}}\n{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":3},\"identity\":{\"domain\":\"StringType\",\"name\":[\"Locale\"]},\"type\":\"StringType\",\"value\":{\"name\":\"Locale\",\"format\":\"kebab-case\"}}}\n",
+      "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":12},\"identity\":{\"domain\":\"SlotDef\",\"name\":[\"locale\"]},\"type\":\"SlotDef\",\"value\":{\"name\":\"locale\",\"type\":\"Locale\",\"namespace\":\"defaults\"}}}\n{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":{\"source\":0,\"index\":11}}}\n",
+      "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":15},\"identity\":{\"domain\":\"NodeDef\",\"name\":[\"entry\"]},\"type\":\"NodeDef\",\"value\":{\"name\":\"entry\",\"role\":\"record\",\"type\":\"Entry\",\"parents\":[\"locale\"],\"fields\":{\"id\":{\"arg\":0,\"sources\":[]},\"locale\":{\"sources\":[{\"property\":{\"name\":\"locale\"}},{\"context\":{\"slot\":\"locale\",\"policy\":\"fallback\"}}]},\"group\":{\"property\":\"group\",\"sources\":[]}},\"children\":{},\"effects\":[],\"groups\":[]}}}\n{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":23},\"identity\":{\"domain\":\"NodeDef\",\"name\":[\"locale\"]},\"type\":\"NodeDef\",\"value\":{\"name\":\"locale\",\"role\":\"context-control\",\"fields\":{\"value\":{\"type\":\"Locale\",\"arg\":0,\"sources\":[]}},\"children\":{\"entry\":{}},\"effects\":[{\"target\":\"following\",\"effects\":[{\"set\":{\"slot\":\"locale\",\"field\":\"value\"}}]},{\"target\":\"children\",\"effects\":[{\"set\":{\"slot\":\"locale\",\"field\":\"value\"}}]}],\"groups\":[]}}}\n{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":30},\"identity\":{\"domain\":\"NodeDef\",\"name\":[\"defaults-reset\"]},\"type\":\"NodeDef\",\"value\":{\"name\":\"defaults-reset\",\"role\":\"context-control\",\"fields\":{},\"children\":{},\"effects\":[{\"target\":\"following\",\"effects\":[{\"clear\":{\"namespace\":\"defaults\"}}]}],\"groups\":[]}}}\n{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":33},\"identity\":{\"domain\":\"DocumentRule\",\"name\":[]},\"type\":\"DocumentRule\",\"value\":{\"first\":{\"exactly-one\":[\"locale\",\"group\"]},\"following\":[\"group\",\"locale\",\"defaults-reset\"]}}}\n{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":{\"source\":0,\"index\":0}}}\n{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":null}}\n"
+    ]
+  }
+}
