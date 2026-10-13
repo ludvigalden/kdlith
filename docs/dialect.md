@@ -82,9 +82,9 @@ instead of a copy that could drift (see `tests/fixtures/README.md`).
 | `tests/fixtures/dialect/canonical-vet/*-local/scenario.json`    | Each canonical file passes local checking on its own     |
 | `tests/fixtures/dialect/canonical-vet/merged/scenario.json`     | The four files link and describe themselves completely   |
 | `tests/fixtures/dialect/entrypoint-vet/dialect/scenario.json`   | The entrypoint yields the same dialect as the four files |
-| `tests/fixtures/dialect/canonical-bind/*/scenario.json`          | Each canonical file binds as data of the dialect         |
-| `tests/fixtures/dialect/entrypoint-bind/dialect/scenario.json`   | The entrypoint binds to its four import requests         |
-| `tests/fixtures/processing/bind/*/scenario.json`                 | A small schema binds data documents into item streams    |
+| `tests/fixtures/dialect/canonical-bind/*/scenario.json`         | Each canonical file binds as data of the dialect         |
+| `tests/fixtures/dialect/entrypoint-bind/dialect/scenario.json`  | The entrypoint binds to its four import requests         |
+| `tests/fixtures/processing/bind/*/scenario.json`                | A small schema binds data documents into item streams    |
 
 The `-read` scenarios prove syntax. The `-vet` scenarios run
 `kdlith vet dialect`, which resolves imports, links every reference, and
