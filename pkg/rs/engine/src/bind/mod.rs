@@ -49,6 +49,9 @@ const CONTEXT_DISAGREES: &str = "KDLITH-CTX002";
 
 const DOCUMENT_ROOT: &str = "the document root";
 
+/// The dialect construct a schema definition's root node is written as.
+const SCHEMA_ROOT: &str = "schema";
+
 /// The node-start payload the binder consumes: the name, borrowed from
 /// the source where the parser could, and whether it is type-annotated.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -589,6 +592,35 @@ impl<'d, 's> Binder<'d, 's> {
         !found.is_empty()
     }
 
+    /// Whether a schema root of a definition read as data of the dialect
+    /// states its `version`, with the code the compiler reports for the
+    /// same construct; dialect roots declare theirs required already.
+    fn root_without_version(
+        &mut self,
+        cx: &mut Cx<'_>,
+        frame: &BindFrame,
+        values: &[Option<Value>],
+        root: bool,
+    ) -> bool {
+        if !root || self.def.kind != DefinitionKind::Dialect || self.name(frame.name) != SCHEMA_ROOT
+        {
+            return false;
+        }
+        let infos = &self.tables.decls[frame.owner.index()].fields;
+        let Some((_, version)) = infos
+            .iter()
+            .zip(values)
+            .find(|(info, _)| self.def.names.resolve(info.name) == "version")
+        else {
+            return false;
+        };
+        if version.is_some() {
+            return false;
+        }
+        self.diagnose(cx, MISSING_FIELD, frame.span, &[SCHEMA_ROOT, "version"]);
+        true
+    }
+
     /// Emit the processing item a declared node's role calls for.
     fn emit(&mut self, cx: &mut Cx<'_>, frame: &BindFrame, role: Role, values: Vec<Option<Value>>) {
         let owner = frame.owner;
@@ -740,6 +772,9 @@ impl<'d, 's> Binder<'d, 's> {
         }
         let def = self.def;
         if self.overlapping(cx, frame, &values) {
+            return;
+        }
+        if self.root_without_version(cx, frame, &values, parent.is_none()) {
             return;
         }
         let role = def.bindings.get(owner).and_then(|decl| decl.role);

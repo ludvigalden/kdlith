@@ -297,8 +297,8 @@ fn roots<'d>(cx: &mut Cx<'d>, documents: &'d [ParsedDocument]) -> Option<Root<'d
             ok = false;
             continue;
         };
-        if cx.kind == DefinitionKind::Dialect && version.is_none() {
-            cx.missing(Site::new(doc, node.span), "dialect", "version");
+        if version.is_none() {
+            cx.missing(Site::new(doc, node.span), expected, "version");
             ok = false;
         }
         cx.kebab(

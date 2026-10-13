@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "Two fields of one node collecting the remaining arguments are rejected by the reference processor with the code the compiler reports",
+  "args": [
+    "inspect",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

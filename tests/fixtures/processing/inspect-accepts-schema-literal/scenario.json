@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "Inspect runs the reader path, so an input whose only fault is a compiler-only check is accepted: the same input vet rejects with KDLITH-SCH008 (a literal of the wrong type) reads through to completion",
+  "args": [
+    "inspect",
+    "schema",
+    "{fx-suite}/invalid/schemas/documented-default-type/input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":null}"
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "Two fields of one node collecting the remaining arguments are an overlapping binding the compiler rejects",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

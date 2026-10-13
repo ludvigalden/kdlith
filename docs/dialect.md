@@ -316,7 +316,7 @@ when a processor such as superproc binds it (`inspect`).
 | A node no binding accepts in its position, including a missing or extra root                      | `KDLITH-BND001` |
 | A child that occurs more or fewer times than its rule allows, including the first-node rule       | `KDLITH-BND002` |
 | A value that does not decode as its declared type, such as a name with the wrong format           | `KDLITH-BND003` |
-| A required field or argument that is absent                                                       | `KDLITH-BND004` |
+| A required field or argument that is absent, such as a definition root without `version=`         | `KDLITH-BND004` |
 | An argument, property, or type annotation that no binding consumes                                | `KDLITH-BND005` |
 | A repeated key of a keyed collection, such as two fields of one object or two bindings of a field | `KDLITH-BND006` |
 | A value that names no member of its enum, such as an unknown `role=` or string `format`           | `KDLITH-BND008` |
@@ -327,14 +327,22 @@ when a processor such as superproc binds it (`inspect`).
 
 A bad type expression (`KDLITH-DLC007`) and an unknown enum value
 (`KDLITH-BND008`) are distinct from a plain value-type mismatch
-(`KDLITH-BND003`). The remaining definition codes (`KDLITH-SCH001`,
-`KDLITH-SCH002`, `KDLITH-SCH004`, `KDLITH-SCH005`, `KDLITH-SCH007`,
-`KDLITH-SCH008`, `KDLITH-DLC005`, and `KDLITH-DLC006`) come from
-linking, plan building, and extension checks that only the compiler
-runs, so they occur on that path alone. A diagnostic may sit at a
-different span on each path: binding reports a node-level check such as
-an overlapping binding at the node declaration, while the compiler
-reports it at the field.
+(`KDLITH-BND003`). Every definition root — dialect or schema — states
+its `version` property; a root without one is a missing required field,
+rejected with `KDLITH-BND004` on both reading paths.
+
+The remaining definition codes (`KDLITH-SCH001`, `KDLITH-SCH002`,
+`KDLITH-SCH004`, `KDLITH-SCH005`, `KDLITH-SCH007`, `KDLITH-SCH008`,
+`KDLITH-DLC005`, and `KDLITH-DLC006`) come from linking, plan building,
+and extension checks that only the compiler runs. That split is a
+deliberate product decision, not an accident: `inspect` runs the reader
+path and performs only the checks the dialect's declarations own, so it
+accepts an input whose only faults are compiler-only checks, while
+`vet` hands the same reading to the compiler and adds them. Fixture
+scenarios pin that acceptance, so it is committed behavior rather than
+an accident. A diagnostic may sit at a different span on each path:
+binding reports a node-level check such as an overlapping binding at
+the node declaration, while the compiler reports it at the field.
 
 ### superproc
 

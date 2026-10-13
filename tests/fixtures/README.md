@@ -107,7 +107,10 @@ the reference processor and prints each typed item as one JSON line.
 Each scenario asserts ordered runs of the expected declaration items and
 scope completions. `invalid/schemas/inspect-*` hold schema definitions
 the reference processor rejects while binding them, each with its
-declared code.
+declared code. `processing/inspect-accepts-*` pin the reader-path
+decision those negatives imply: each reads, through `inspect schema`,
+the same input a `vet schema` scenario rejects with a compiler-only
+code, and asserts the reading completes and accepts it.
 
 `parse/kdl-spec/` and `invalid/kdl-spec/` hold the official KDL v2 test suite,
 one scenario per upstream case: valid documents must exit `0` under

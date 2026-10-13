@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A schema root without its version property is a definition root missing a required field: the compiler rejects it",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

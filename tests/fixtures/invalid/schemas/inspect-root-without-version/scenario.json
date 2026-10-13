@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A schema root without its version property is rejected by the reference processor with the code the compiler reports",
+  "args": [
+    "inspect",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

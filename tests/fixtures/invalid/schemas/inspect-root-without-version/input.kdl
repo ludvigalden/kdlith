@@ -1,0 +1,7 @@
+schema s {
+    types {
+        object Entry {
+            field id String
+        }
+    }
+}
