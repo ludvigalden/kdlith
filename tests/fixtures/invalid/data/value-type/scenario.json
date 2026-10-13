@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "Values that do not decode as their field's type are rejected: an enum member, a patterned string, a format, and an unsigned integer",
+  "description": "Values that do not decode as their field's type are rejected: a patterned string, a format, and an unsigned integer",
   "args": [
     "vet",
     "data",

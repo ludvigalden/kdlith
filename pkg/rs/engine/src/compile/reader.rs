@@ -1,11 +1,13 @@
 //! Reading one construct node: its arguments and properties are taken
-//! explicitly, and whatever was not taken fails closed on finish.
+//! explicitly, and whatever was not taken fails closed on finish, with
+//! the binding codes every processor of the document reports.
 
 use kdlith_model::Value;
 
 use crate::compile::Cx;
+use crate::decode::found;
 use crate::deferred::{Spelling, deferred_by};
-use crate::diag::{DEFERRED_MECHANISM, DUPLICATE_PROPERTY, Site};
+use crate::diag::{DEFERRED_MECHANISM, DUPLICATE_PROPERTY, Site, UNBOUND_ENTRY};
 use crate::syntax::{Scalar, SyntaxNode, parse_u64};
 
 /// A construct node being read.
@@ -24,13 +26,12 @@ impl<'n> Construct<'n> {
             args: vec![false; node.args.len()],
             props: vec![false; node.props.len()],
         };
-        let label = construct.label();
+        let unbound = |cx: &mut Cx<'_>, span, what: &str| {
+            let site = Site::new(doc, span);
+            cx.diags.error(UNBOUND_ENTRY, site, &[what, &node.name]);
+        };
         if node.annotated {
-            cx.malformed(
-                construct.site(),
-                &label,
-                "type annotations are not part of the dialect",
-            );
+            unbound(cx, node.span, "the type annotation");
         }
         for (at, (name, scalar)) in node.props.iter().enumerate() {
             let site = Site::new(doc, scalar.span);
@@ -38,12 +39,15 @@ impl<'n> Construct<'n> {
                 cx.diags.error(DUPLICATE_PROPERTY, site, &[name]);
             }
             if scalar.annotated {
-                cx.malformed(site, &label, "type annotations are not part of the dialect");
+                let what = format!("the type annotation of property {name}");
+                unbound(cx, scalar.span, &what);
             }
         }
-        for scalar in node.args.iter().filter(|scalar| scalar.annotated) {
-            let site = Site::new(doc, scalar.span);
-            cx.malformed(site, &label, "type annotations are not part of the dialect");
+        for (at, scalar) in node.args.iter().enumerate() {
+            if scalar.annotated {
+                let what = format!("the type annotation of argument {at}");
+                unbound(cx, scalar.span, &what);
+            }
         }
         construct
     }
@@ -66,12 +70,17 @@ impl<'n> Construct<'n> {
         Some(scalar)
     }
 
+    /// A required argument is absent.
+    fn missing(&self, cx: &mut Cx<'_>, what: &str) {
+        cx.missing(self.site(), &self.node.name, what);
+    }
+
     /// A required string argument.
     pub(crate) fn string_arg(&mut self, cx: &mut Cx<'_>, at: usize, what: &str) -> Option<String> {
         match self.arg(at) {
             Some(scalar) => self.string(cx, scalar, what),
             None => {
-                cx.malformed(self.site(), &self.label(), &format!("missing {what}"));
+                self.missing(cx, what);
                 None
             }
         }
@@ -93,7 +102,7 @@ impl<'n> Construct<'n> {
         match self.arg(at) {
             Some(scalar) => self.unsigned(cx, scalar, what),
             None => {
-                cx.malformed(self.site(), &self.label(), &format!("missing {what}"));
+                self.missing(cx, what);
                 None
             }
         }
@@ -104,7 +113,7 @@ impl<'n> Construct<'n> {
         match self.arg(at) {
             Some(scalar) => Some(scalar.value.clone()),
             None => {
-                cx.malformed(self.site(), &self.label(), &format!("missing {what}"));
+                self.missing(cx, what);
                 None
             }
         }
@@ -153,7 +162,8 @@ impl<'n> Construct<'n> {
             return Some(text.clone());
         }
         let site = Site::new(self.doc, scalar.span);
-        cx.malformed(site, &self.label(), &format!("{what} must be a string"));
+        let what = format!("{what} of {}", self.node.name);
+        cx.mistyped(site, &what, "String", &found(&scalar.value));
         None
     }
 
@@ -164,21 +174,20 @@ impl<'n> Construct<'n> {
             return Some(number);
         }
         let site = Site::new(self.doc, scalar.span);
-        cx.malformed(
-            site,
-            &self.label(),
-            &format!("{what} must be a non-negative integer"),
-        );
+        let what = format!("{what} of {}", self.node.name);
+        cx.mistyped(site, &what, "U64", &found(&scalar.value));
         None
     }
 
     /// Reject every argument and property that was not read.
     pub(crate) fn finish(self, cx: &mut Cx<'_>) {
         let label = self.label();
+        let node = self.node.name.as_str();
         for (at, scalar) in self.node.args.iter().enumerate() {
             if !self.args[at] {
                 let site = Site::new(self.doc, scalar.span);
-                cx.malformed(site, &label, &format!("unexpected argument {at}"));
+                let what = format!("argument {at}");
+                cx.diags.error(UNBOUND_ENTRY, site, &[&what, node]);
             }
         }
         for (at, (name, scalar)) in self.node.props.iter().enumerate() {
@@ -197,7 +206,10 @@ impl<'n> Construct<'n> {
                     cx.diags
                         .error(DEFERRED_MECHANISM, site, &[&construct, &mechanism]);
                 }
-                None => cx.malformed(site, &label, &format!("unknown property {name}")),
+                None => {
+                    let what = format!("property {name}");
+                    cx.diags.error(UNBOUND_ENTRY, site, &[&what, node]);
+                }
             }
         }
     }

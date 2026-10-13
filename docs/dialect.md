@@ -281,6 +281,38 @@ Literals a definition writes (fallbacks, documented defaults, and `set`
 values) are decoded against their types when the definition compiles,
 through the same decoder.
 
+### One code per rejected construct
+
+A definition document is a data document of its dialect. A construct
+the dialect's declarations reject therefore gets one diagnostic code on
+every reading path: when the engine compiles the definition (`vet`) and
+when a processor such as superproc binds it (`inspect`).
+
+| Rejected construct                                                                                | Code            |
+| ------------------------------------------------------------------------------------------------- | --------------- |
+| A node no binding accepts in its position, including a missing or extra root                      | `KDLITH-BND001` |
+| A child that occurs more or fewer times than its rule allows, including the first-node rule       | `KDLITH-BND002` |
+| A value that does not decode as its declared type, such as a name with the wrong format           | `KDLITH-BND003` |
+| A required field or argument that is absent                                                       | `KDLITH-BND004` |
+| An argument, property, or type annotation that no binding consumes                                | `KDLITH-BND005` |
+| A repeated key of a keyed collection, such as two fields of one object or two bindings of a field | `KDLITH-BND006` |
+| A value that names no member of its enum, such as an unknown `role=` or string `format`           | `KDLITH-BND008` |
+| A type expression that breaks the type-expression grammar                                         | `KDLITH-DLC007` |
+| A spelling of a deferred mechanism (a node, a property, a policy value, or a generic name)        | `KDLITH-DLC003` |
+| Two fields bound to the same argument, property, or rest arguments                                | `KDLITH-SCH003` |
+| An import that projects a slot the dialect does not declare                                       | `KDLITH-SCH006` |
+
+A bad type expression (`KDLITH-DLC007`) and an unknown enum value
+(`KDLITH-BND008`) are distinct from a plain value-type mismatch
+(`KDLITH-BND003`). The remaining definition codes (`KDLITH-SCH001`,
+`KDLITH-SCH002`, `KDLITH-SCH004`, `KDLITH-SCH005`, `KDLITH-SCH007`,
+`KDLITH-SCH008`, `KDLITH-DLC005`, and `KDLITH-DLC006`) come from
+linking, plan building, and extension checks that only the compiler
+runs, so they occur on that path alone. A diagnostic may sit at a
+different span on each path: binding reports a node-level check such as
+an overlapping binding at the node declaration, while the compiler
+reports it at the field.
+
 ### superproc
 
 The reference processor (`pkg/rs/superproc`) reads schema definitions in

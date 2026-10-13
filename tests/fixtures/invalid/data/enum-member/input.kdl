@@ -1,0 +1,5 @@
+locale en-gb
+section "S" {
+    public
+    item a kind=music
+}

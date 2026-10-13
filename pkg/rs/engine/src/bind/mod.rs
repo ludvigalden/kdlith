@@ -22,9 +22,13 @@ use kdlith_runtime::{
 };
 
 use crate::bindings::{ChildPlan, ContextPolicy, NodeDeclId, Role, SetFrom};
-use crate::decode::{self, Decoder};
+use crate::decode::{self, Decoder, Mismatch};
+use crate::deferred::{Spelling, deferred_by, defers, is_discovery_path};
 use crate::definition::{Definition, DefinitionKind};
-use crate::diag::CONFLICTING_BINDING;
+use crate::diag::{
+    CONFLICTING_BINDING, DEFERRED_MECHANISM, DUPLICATE_KEY, MALFORMED, MISSING_FIELD,
+    TYPE_EXPRESSION, UNBOUND_ENTRY, UNKNOWN_MEMBER, UNKNOWN_NODE, VALUE_TYPE,
+};
 use crate::names::Sym;
 use crate::overlap;
 use crate::plan::EffectStep;
@@ -38,11 +42,6 @@ pub use source::ParseEvents;
 use frame::{Kind, Opened, Supplied};
 use tables::{Bind, Collect, Mode, Tables};
 
-const UNKNOWN_NODE: &str = "KDLITH-BND001";
-const VALUE_TYPE: &str = "KDLITH-BND003";
-const MISSING_FIELD: &str = "KDLITH-BND004";
-const UNBOUND_ENTRY: &str = "KDLITH-BND005";
-const DUPLICATE_KEY: &str = "KDLITH-BND006";
 const COLLISION: &str = "KDLITH-BND007";
 const DUPLICATE_PROPERTY: &str = "KDLITH-SYN003";
 const CONTEXT_UNAVAILABLE: &str = "KDLITH-CTX001";
@@ -102,6 +101,8 @@ pub struct Binder<'d, 's> {
     /// A root node broke the document's order rule, so the missing first
     /// node is not reported again at the end.
     order_broken: bool,
+    /// The name of the document's first root node, once it opened.
+    root_name: Option<String>,
     errors: u64,
 }
 
@@ -127,6 +128,7 @@ impl<'d, 's> Binder<'d, 's> {
             source,
             root,
             order_broken: false,
+            root_name: None,
             errors: 0,
         }
     }
@@ -134,6 +136,69 @@ impl<'d, 's> Binder<'d, 's> {
     /// The number of error diagnostics emitted so far.
     pub fn errors(&self) -> u64 {
         self.errors
+    }
+
+    /// The name of the document's first root node, once it has opened.
+    pub fn root_name(&self) -> Option<&str> {
+        self.root_name.as_deref()
+    }
+
+    /// The deferrals that decide how a definition document spells a
+    /// deferred mechanism: the dialect's own when the document being
+    /// bound is a definition of it, none for any other data document.
+    fn deferrals(&self) -> Option<&'d [crate::definition::Deferral]> {
+        let def = self.def;
+        (def.kind == DefinitionKind::Dialect).then_some(def.deferrals.as_slice())
+    }
+
+    /// A node no binding accepts here, or the spelling of a mechanism the
+    /// dialect defers when the document is one of its definitions.
+    fn unknown(&mut self, cx: &mut Cx<'_>, span: ByteSpan, node: &str, owner: &str) {
+        let deferred = self
+            .deferrals()
+            .and_then(|deferrals| deferred_by(deferrals, Spelling::Node(node)));
+        match deferred {
+            Some(mechanism) => {
+                let construct = format!("{node} under {owner}");
+                self.diagnose(cx, DEFERRED_MECHANISM, span, &[&construct, mechanism]);
+            }
+            None => self.diagnose(cx, UNKNOWN_NODE, span, &[node, owner]),
+        }
+    }
+
+    /// Report a value that did not decode as `ty`, under the code that
+    /// names why: see [`decode::mismatch`].
+    fn mismatched(
+        &mut self,
+        cx: &mut Cx<'_>,
+        ty: &TypeExpr,
+        what: &str,
+        value: &Value,
+        span: ByteSpan,
+    ) {
+        let def = self.def;
+        let found = decode::found(value);
+        let deferrals = self.deferrals().unwrap_or_default();
+        match decode::mismatch(&def.types, &def.names, ty, value, deferrals) {
+            Mismatch::Value => {
+                let expected = summary::expr(&def.names, ty);
+                self.diagnose(cx, VALUE_TYPE, span, &[what, &expected, &found]);
+            }
+            Mismatch::Member { ty } => {
+                self.diagnose(cx, UNKNOWN_MEMBER, span, &[what, &ty, &found]);
+            }
+            Mismatch::TypeExpression { reason } => {
+                let text = match value {
+                    Value::String(text) => text.as_str(),
+                    _ => "",
+                };
+                self.diagnose(cx, TYPE_EXPRESSION, span, &[text, &reason]);
+            }
+            Mismatch::Deferred { mechanism } => {
+                let construct = format!("{what} {found}");
+                self.diagnose(cx, DEFERRED_MECHANISM, span, &[&construct, &mechanism]);
+            }
+        }
     }
 
     fn name(&self, sym: Sym) -> &'d str {
@@ -162,9 +227,12 @@ impl<'d, 's> Binder<'d, 's> {
     fn violation(&mut self, cx: &mut Cx<'_>, span: ByteSpan, owner: &str, violation: &Violation) {
         let code = violation.code();
         let (what, count, expected) = match violation {
-            Violation::NotPermitted { child }
-            | Violation::FirstNotAllowed { child }
-            | Violation::NotFollowing { child } => {
+            Violation::NotPermitted { child } => {
+                let child = self.name(*child);
+                self.unknown(cx, span, child, owner);
+                return;
+            }
+            Violation::FirstNotAllowed { child } | Violation::NotFollowing { child } => {
                 let child = self.name(*child);
                 let place = match violation {
                     Violation::FirstNotAllowed { .. } => format!("{owner} as its first node"),
@@ -276,9 +344,7 @@ impl<'d, 's> Binder<'d, 's> {
             .decoder
             .decode(&self.def.types, &self.def.names, &ty, &value, site);
         if decoded.is_none() {
-            let expected = summary::expr(&self.def.names, &ty);
-            let found = decode::found(&value);
-            self.diagnose(cx, VALUE_TYPE, span, &[what, &expected, &found]);
+            self.mismatched(cx, &ty, what, &value, span);
         }
         decoded
     }
@@ -592,17 +658,16 @@ impl<'d, 's> Binder<'d, 's> {
             Role::SourceImport => {
                 let site = self.location(frame.span);
                 let expression = path.unwrap_or_default();
+                if !self.literal_import(cx, frame.span, &expression) {
+                    return;
+                }
                 let policy = match repeated.as_deref().map(Repeated::from_name) {
                     None => Repeated::default(),
                     Some(Some(policy)) => policy,
                     Some(None) => {
-                        let found = format!("{:?}", repeated.unwrap_or_default());
-                        let values = [
-                            "import repeated",
-                            "reject, coalesce, or instantiate",
-                            &found,
-                        ];
-                        self.diagnose(cx, VALUE_TYPE, frame.span, &values);
+                        let found = format!("string {:?}", repeated.unwrap_or_default());
+                        let values = ["import.repeated", "RepeatedImport", &found];
+                        self.diagnose(cx, UNKNOWN_MEMBER, frame.span, &values);
                         return;
                     }
                 };
@@ -618,6 +683,35 @@ impl<'d, 's> Binder<'d, 's> {
         cx.emit(item);
     }
 
+    /// Whether a definition document's import path is literal, reported
+    /// as the compiler reports it when empty or in discovery syntax.
+    /// Other documents' import paths are left to resolution.
+    fn literal_import(&mut self, cx: &mut Cx<'_>, span: ByteSpan, path: &str) -> bool {
+        let Some(deferrals) = self.deferrals() else {
+            return true;
+        };
+        if path.is_empty() {
+            self.diagnose(cx, MALFORMED, span, &["import", "empty path"]);
+            return false;
+        }
+        if !is_discovery_path(path) {
+            return true;
+        }
+        let construct = format!("import {path:?}");
+        if defers(deferrals, "discovery-grammars") {
+            let values = [construct.as_str(), "discovery-grammars"];
+            self.diagnose(cx, DEFERRED_MECHANISM, span, &values);
+        } else {
+            self.diagnose(
+                cx,
+                MALFORMED,
+                span,
+                &[&construct, "import paths are literal"],
+            );
+        }
+        false
+    }
+
     fn close_declared(
         &mut self,
         cx: &mut Cx<'_>,
@@ -627,7 +721,7 @@ impl<'d, 's> Binder<'d, 's> {
         following: &mut FollowingEffects<'_>,
     ) {
         let owner = frame.owner;
-        if key.is_some() && frame.key.is_none() {
+        if key.is_some() && frame.key.is_none() && !frame.key_rejected {
             let node = self.name(frame.name);
             self.diagnose(cx, MISSING_FIELD, frame.span, &[node, "key argument"]);
         }
@@ -751,8 +845,11 @@ impl<'s> Processor for Binder<'_, 's> {
             Some(frame) => frame.scope,
             None => Some(def.bindings.root_scope()),
         };
+        if parent.is_none() && self.root_name.is_none() {
+            self.root_name = Some(node.name.to_string());
+        }
         let (Some(sym), Some(scope_id)) = (def.names.get(&node.name), scope) else {
-            self.diagnose(cx, UNKNOWN_NODE, span, &[&node.name, owner_label]);
+            self.unknown(cx, span, &node.name, owner_label);
             return Disposition::Skip;
         };
         let Some(scope) = def.bindings.scope(scope_id) else {
@@ -785,7 +882,7 @@ impl<'s> Processor for Binder<'_, 's> {
             (Some(ChildPlan::Nested(inner)), Some(owner)) => (Kind::Nested, owner, Some(inner)),
             (Some(ChildPlan::Scalar), Some(owner)) => (Kind::Scalar, owner, None),
             _ => {
-                self.diagnose(cx, UNKNOWN_NODE, span, &[&node.name, owner_label]);
+                self.unknown(cx, span, &node.name, owner_label);
                 return Disposition::Skip;
             }
         };
@@ -842,6 +939,7 @@ impl<'s> Processor for Binder<'_, 's> {
                         let what = format!("the key of {node}");
                         let found = decode::found(&other);
                         self.diagnose(cx, VALUE_TYPE, span, &[&what, "String", &found]);
+                        frame.key_rejected = true;
                     }
                 }
                 return;
@@ -869,8 +967,19 @@ impl<'s> Processor for Binder<'_, 's> {
                 self.take(cx, frame, bind, entry.value, span);
             }
             _ => {
-                let what = format!("property {name}");
-                self.diagnose(cx, UNBOUND_ENTRY, span, &[&what, node]);
+                let deferred = self
+                    .deferrals()
+                    .and_then(|deferrals| deferred_by(deferrals, Spelling::Property(&name)));
+                match deferred {
+                    Some(mechanism) => {
+                        let construct = format!("{node} property {name}");
+                        self.diagnose(cx, DEFERRED_MECHANISM, span, &[&construct, mechanism]);
+                    }
+                    None => {
+                        let what = format!("property {name}");
+                        self.diagnose(cx, UNBOUND_ENTRY, span, &[&what, node]);
+                    }
+                }
             }
         }
     }
@@ -1027,6 +1136,11 @@ impl<'d, 's> BindingSession<'d, 's> {
                 }
             }
         }
+    }
+
+    /// The name of the document's first root node, once it has opened.
+    pub fn root_name(&self) -> Option<&str> {
+        self.session.processor().root_name()
     }
 
     /// Whether the document failed: an error diagnostic was emitted, or

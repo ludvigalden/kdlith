@@ -9,7 +9,7 @@ use crate::compile::Cx;
 use crate::compile::reader::Construct;
 use crate::compile::types::field_name;
 use crate::deferred::defers;
-use crate::diag::{DEFERRED_MECHANISM, INVALID_BINDING, NOT_INSTALLED, Site};
+use crate::diag::{DEFERRED_MECHANISM, INVALID_BINDING, NOT_INSTALLED, Site, duplicate_key};
 use crate::names::Sym;
 use crate::syntax::{SyntaxNode, parse_u64};
 
@@ -32,10 +32,11 @@ pub(crate) fn declaration(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) {
     let role = role.and_then(|role| match Role::from_name(&role) {
         Some(parsed) => Some(parsed),
         None => {
-            cx.malformed(site, &label, &format!("unknown role {role}"));
+            cx.not_member(site, "node.role", "Role", &role);
             None
         }
     });
+    let typed = ty.is_some();
     let ty = ty
         .filter(|ty| cx.type_name(site, &label, ty))
         .map(|ty| cx.names.intern(&ty));
@@ -57,20 +58,11 @@ pub(crate) fn declaration(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) {
                 }
             }
             "field" => {
-                if let Some(field) = field_binding(cx, doc, child, &label, ty.is_some()) {
-                    if fields.iter().any(|f| f.name == field.name) {
+                if let Some(field) = field_binding(cx, doc, child, &label, typed) {
+                    if let Some(earlier) = fields.iter().find(|f| f.name == field.name) {
                         let spelled = cx.names.resolve(field.name).to_owned();
-                        let earlier = fields.iter().find(|f| f.name == field.name).map(|f| f.site);
-                        if let Some(earlier) = earlier {
-                            let what = format!("field binding of {label}");
-                            crate::diag::duplicate(
-                                &mut cx.diags,
-                                cx.kind,
-                                (child_site, earlier),
-                                &what,
-                                &spelled,
-                            );
-                        }
+                        let sites = (child_site, earlier.site);
+                        duplicate_key(&mut cx.diags, sites, &spelled, "node.fields");
                         continue;
                     }
                     fields.push(field);
@@ -80,21 +72,15 @@ pub(crate) fn declaration(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) {
                 if let Some(rule) = child_rule(cx, doc, child, &label) {
                     if let Some(earlier) = children.iter().find(|r| r.name == rule.name) {
                         let spelled = cx.names.resolve(rule.name).to_owned();
-                        let what = format!("children rule of {label}");
-                        crate::diag::duplicate(
-                            &mut cx.diags,
-                            cx.kind,
-                            (child_site, earlier.site),
-                            &what,
-                            &spelled,
-                        );
+                        let sites = (child_site, earlier.site);
+                        duplicate_key(&mut cx.diags, sites, &spelled, "node.children");
                         continue;
                     }
                     children.push(rule);
                 }
             }
             "effects" => {
-                if let Some(group) = effect_group(cx, doc, child, &label) {
+                if let Some(group) = effect_group(cx, doc, child) {
                     if effects.iter().any(|g| g.target == group.target) {
                         cx.diags.error(
                             INVALID_BINDING,
@@ -164,6 +150,11 @@ pub(crate) fn declaration(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) {
         }
         under.push(sym);
     }
+    if typed && ty.is_none() {
+        // The rejected type= is reported; its fields are not also
+        // reported as untyped.
+        return;
+    }
     cx.nodes.push(NodeDecl {
         name: cx.names.intern(&name),
         role,
@@ -189,6 +180,7 @@ fn field_binding(
     typed_owner: bool,
 ) -> Option<FieldBinding> {
     let site = Site::new(doc, node.span);
+    let mark = cx.diags.count();
     let mut part = Construct::new(cx, doc, node);
     let name = part.string_arg(cx, 0, "field name");
     let inline = part.opt_string_arg(cx, 1, "field type");
@@ -271,17 +263,24 @@ fn field_binding(
         match value.as_deref() {
             Some("reject") if slot == 1 => collision = Some(Collision::Reject),
             Some("reject") => duplicate_keys = Some(DuplicateKeys::Reject),
-            Some(other) => cx.malformed(
-                child_site,
-                &label,
-                &format!("unknown {} policy {other}", child.name),
-            ),
+            Some(other) => {
+                let (what, ty) = if slot == 1 {
+                    ("field.collision", "Collision")
+                } else {
+                    ("field.duplicate-keys", "DuplicateKeys")
+                };
+                cx.not_member(child_site, what, ty, other);
+            }
             None => {}
         }
     }
     if sources.is_empty() {
-        let reason = format!("field {name} has no source");
-        cx.diags.error(INVALID_BINDING, site, &[owner, &reason]);
+        // A source rejected while reading is reported already; the field
+        // is not also reported as having none.
+        if cx.diags.count() == mark {
+            let reason = format!("field {name} has no source");
+            cx.diags.error(INVALID_BINDING, site, &[owner, &reason]);
+        }
         return None;
     }
     let spellings = sources
@@ -400,7 +399,7 @@ fn source_list(
                         None
                     }
                     Some(other) => {
-                        cx.malformed(site, &label, &format!("unknown context policy {other}"));
+                        cx.not_member(site, "context.policy", "ContextPolicy", other);
                         None
                     }
                 };
@@ -432,7 +431,7 @@ fn entries(
     value: Option<String>,
 ) -> Option<Source> {
     let Some(key) = key else {
-        cx.malformed(site, label, "missing key");
+        cx.missing(site, "entries", "key");
         return None;
     };
     let index = key
@@ -444,7 +443,7 @@ fn entries(
         return None;
     };
     let Some(value) = value else {
-        cx.malformed(site, label, "missing value");
+        cx.missing(site, "entries", "value");
         return None;
     };
     let node = node.filter(|node| cx.kebab(site, label, node, "entry node"))?;
@@ -486,12 +485,7 @@ fn child_rule(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode, owner: &str) -> Op
     })
 }
 
-fn effect_group(
-    cx: &mut Cx<'_>,
-    doc: usize,
-    node: &SyntaxNode,
-    owner: &str,
-) -> Option<EffectGroup> {
+fn effect_group(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) -> Option<EffectGroup> {
     let site = Site::new(doc, node.span);
     let mut part = Construct::new(cx, doc, node);
     let target = part.string_prop(cx, "target");
@@ -500,11 +494,11 @@ fn effect_group(
         Some("following") => EffectTarget::Following,
         Some("children") => EffectTarget::Children,
         Some(other) => {
-            cx.malformed(site, owner, &format!("unknown effect target {other}"));
+            cx.not_member(site, "effects.target", "EffectTarget", other);
             return None;
         }
         None => {
-            cx.malformed(site, owner, "effects needs target=");
+            cx.missing(site, "effects", "target");
             return None;
         }
     };

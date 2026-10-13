@@ -29,7 +29,7 @@ pub(crate) fn deferrals(cx: &mut Cx<'_>, doc: usize, root: &SyntaxNode) {
             continue;
         }
         let Some(note) = note else {
-            cx.malformed(site, &format!("deferred {mechanism}"), "missing note");
+            cx.missing(site, "deferred", "note");
             continue;
         };
         if let Some(first) = cx
@@ -136,7 +136,7 @@ pub(crate) fn rule(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) {
                     first = Some(name_list(cx, doc, inner, "exactly-one"));
                 }
                 if group.is_none() {
-                    cx.malformed(child_site, "first", "missing exactly-one");
+                    cx.cardinality(child_site, "exactly-one under first", "0", "at least 1");
                 }
             }
             "following" => {
@@ -202,7 +202,7 @@ pub(crate) fn import(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) {
         None => Repeated::Reject,
         Some((_, Some(policy))) => policy,
         Some((other, None)) => {
-            cx.malformed(site, "import", &format!("unknown repeated policy {other}"));
+            cx.not_member(site, "import.repeated", "RepeatedImport", other);
             return;
         }
     };

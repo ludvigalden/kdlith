@@ -2,14 +2,16 @@
 
 use crate::compile::Cx;
 use crate::compile::reader::Construct;
+use crate::decode::found;
 use crate::deferred::defers;
-use crate::diag::{DEFERRED_MECHANISM, MALFORMED, NOT_INSTALLED, Site, duplicate};
+use crate::diag::{DEFERRED_MECHANISM, NOT_INSTALLED, Site, duplicate, duplicate_key};
 use crate::names::Sym;
 use crate::syntax::SyntaxNode;
 use crate::types::{
     Constraint, EnumMember, EnumType, FieldDef, FormatRule, MapType, ObjectType, StringFormat,
     StringType, TypeDecl, TypeExpr, TypeKind, UnionType, ValidatorUse, Variant,
 };
+use kdlith_model::Value;
 
 pub(crate) fn container(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) {
     Construct::new(cx, doc, node).finish(cx);
@@ -126,7 +128,7 @@ fn format_rule(
     width: Option<u64>,
 ) -> Option<FormatRule> {
     let Some(parsed) = StringFormat::from_name(format) else {
-        cx.malformed(site, label, &format!("unknown format {format}"));
+        cx.not_member(site, "string.format", "StringFormat", format);
         return None;
     };
     match (parsed, width) {
@@ -173,7 +175,6 @@ fn validator_use(
 fn enumeration(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) -> Option<(String, TypeKind)> {
     let (construct, name) = header(cx, doc, node);
     construct.finish(cx);
-    let label = format!("enum {}", name.as_deref().unwrap_or("?"));
     let mut members: Vec<(EnumMember, Site)> = Vec::new();
     for child in &node.children {
         if child.name != "member" {
@@ -187,12 +188,12 @@ fn enumeration(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) -> Option<(String
         part.finish_leaf(cx);
         let Some(member) = member else { continue };
         if member.is_empty() {
-            cx.malformed(site, &label, "member names are at least one character");
+            let empty = found(&Value::String(member));
+            cx.mistyped(site, "the key of member", "MemberName", &empty);
             continue;
         }
         if let Some((_, first)) = members.iter().find(|(m, _)| m.name == member) {
-            let what = format!("member of {label}");
-            duplicate(&mut cx.diags, cx.kind, (site, *first), &what, &member);
+            duplicate_key(&mut cx.diags, (site, *first), &member, "enum.members");
             continue;
         }
         members.push((
@@ -203,12 +204,9 @@ fn enumeration(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) -> Option<(String
             site,
         ));
     }
-    if members.is_empty() {
-        cx.malformed(
-            Site::new(doc, node.span),
-            &label,
-            "an enum needs at least one member",
-        );
+    if !node.children.iter().any(|child| child.name == "member") {
+        let site = Site::new(doc, node.span);
+        cx.cardinality(site, "member under enum", "0", "at least 1");
     }
     let members = members.into_iter().map(|(member, _)| member).collect();
     Some((name?, TypeKind::Enum(EnumType { members })))
@@ -229,9 +227,8 @@ fn object(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) -> Option<(String, Typ
                     continue;
                 };
                 if let Some((_, first)) = fields.iter().find(|(f, _)| f.name == field.name) {
-                    let what = format!("field of {label}");
                     let spelled = cx.names.resolve(field.name).to_owned();
-                    duplicate(&mut cx.diags, cx.kind, (site, *first), &what, &spelled);
+                    duplicate_key(&mut cx.diags, (site, *first), &spelled, "object.fields");
                     continue;
                 }
                 fields.push((field, site));
@@ -306,14 +303,8 @@ fn field_def(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) -> Option<FieldDef>
     }
     let name = name?;
     if !field_name(&name) {
-        cx.diags.error(
-            MALFORMED,
-            site,
-            &[
-                &label,
-                "field names start with a letter and hold letters, digits, '_' and '-'",
-            ],
-        );
+        let spelled = found(&Value::String(name));
+        cx.mistyped(site, "the key of field", "FieldName", &spelled);
         return None;
     }
     let ty = cx.type_expr(site, &ty?)?;
@@ -388,13 +379,11 @@ fn union(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) -> Option<(String, Type
         };
         let sym = cx.names.intern(&discriminator);
         if let Some((_, first)) = variants.iter().find(|(v, _)| v.discriminator == sym) {
-            let what = format!("variant of {label}");
-            duplicate(
+            duplicate_key(
                 &mut cx.diags,
-                cx.kind,
                 (site, *first),
-                &what,
                 &discriminator,
+                "union.variants",
             );
             continue;
         }
@@ -406,12 +395,9 @@ fn union(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) -> Option<(String, Type
             site,
         ));
     }
-    if variants.is_empty() {
-        cx.malformed(
-            Site::new(doc, node.span),
-            &label,
-            "a union needs at least one variant",
-        );
+    if !node.children.iter().any(|child| child.name == "variant") {
+        let site = Site::new(doc, node.span);
+        cx.cardinality(site, "variant under union", "0", "at least 1");
     }
     let variants = variants.into_iter().map(|(variant, _)| variant).collect();
     Some((name?, TypeKind::Union(UnionType { variants })))
@@ -443,11 +429,14 @@ fn map(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) -> Option<(String, TypeKi
     }
     let [key, value] = parts;
     let site = Site::new(doc, node.span);
-    if seen[0].is_none() {
-        cx.malformed(site, &label, "missing key-type");
-    }
-    if seen[1].is_none() {
-        cx.malformed(site, &label, "missing value-type");
+    for (at, child) in ["key-type", "value-type"].into_iter().enumerate() {
+        if seen[at].is_none() {
+            // As binding reports it: the child is below its min-occurs,
+            // and the field it supplies is missing.
+            let what = format!("{child} under map");
+            cx.cardinality(site, &what, "0", "at least 1");
+            cx.missing(site, "map", child);
+        }
     }
     Some((
         name?,

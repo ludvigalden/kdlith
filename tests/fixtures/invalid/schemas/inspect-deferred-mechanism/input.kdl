@@ -1,0 +1,4 @@
+schema s version="1" {
+    profile strict {
+    }
+}

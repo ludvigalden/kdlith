@@ -61,6 +61,9 @@ pub struct BindFrame {
     pub(crate) rejected: Vec<usize>,
     /// The entries-envelope key, once argument `key` arrives.
     pub(crate) key: Option<(String, ByteSpan)>,
+    /// The key argument arrived but was rejected, so it is not also
+    /// reported missing.
+    pub(crate) key_rejected: bool,
     /// A scalar node's single value.
     pub(crate) scalar: Option<(Value, ByteSpan)>,
     /// The binder's error count when the node opened.
@@ -98,6 +101,7 @@ impl BindFrame {
             carried: Vec::new(),
             rejected: Vec::new(),
             key: None,
+            key_rejected: false,
             scalar: None,
             mark: opened.mark,
             excluded: 0,

@@ -1,0 +1,5 @@
+schema s version="1" {
+    node Entry role=record {
+        field id String arg=0
+    }
+}

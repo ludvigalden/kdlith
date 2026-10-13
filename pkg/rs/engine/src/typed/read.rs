@@ -14,8 +14,8 @@ use serde::Serialize;
 
 use crate::bind::BindingSession;
 use crate::bindings::Role;
-use crate::definition::Definition;
-use crate::diag::{IMPORT_UNRESOLVED, record};
+use crate::definition::{Definition, DefinitionKind};
+use crate::diag::{UNRESOLVED_DIALECT, UNRESOLVED_SCHEMA, record};
 use crate::documents::{import_failure, read_text};
 use crate::typed::conform;
 use crate::typed::shape::{Declarations, Handler};
@@ -278,9 +278,17 @@ impl<T: 'static> Reading<'_, '_, T> {
             {
                 Some(slot) => slots.push(slot),
                 None => {
-                    let target =
-                        format!("{} (projects undeclared slot {name})", request.expression);
-                    let record = record(IMPORT_UNRESOLVED, &[&target], ORIGIN);
+                    // The code the definition loader reports for the same
+                    // projection: by the kind of the importing definition.
+                    let code = match (def.kind, session.root_name()) {
+                        (DefinitionKind::Dialect, Some(root))
+                            if root == DefinitionKind::Dialect.root_name() =>
+                        {
+                            UNRESOLVED_DIALECT
+                        }
+                        _ => UNRESOLVED_SCHEMA,
+                    };
+                    let record = record(code, &["context slot", name], ORIGIN);
                     self.diagnose(at_request(record, shown, request));
                     return None;
                 }

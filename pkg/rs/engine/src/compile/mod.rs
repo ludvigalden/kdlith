@@ -14,13 +14,13 @@ mod types;
 use kdlith_diagnostic::DiagnosticRecord;
 
 use crate::bindings::NodeDecl;
-use crate::deferred::{Spelling, deferred_by};
+use crate::deferred::{Spelling, deferred_by, defers, generic_spelling};
 use crate::definition::{
     CheckScope, Deferral, Definition, DefinitionKind, DocumentRule, ImportDecl, SlotDecl,
 };
 use crate::diag::{
-    DEFERRED_MECHANISM, Diagnostics, MALFORMED, NOT_INSTALLED, ROOT_MISMATCH, Site,
-    TYPE_EXPRESSION, UNKNOWN_CONSTRUCT,
+    CARDINALITY, DEFERRED_MECHANISM, Diagnostics, MALFORMED, MISSING_FIELD, NOT_INSTALLED,
+    ROOT_MISMATCH, Site, TYPE_EXPRESSION, UNKNOWN_MEMBER, UNKNOWN_NODE, VALUE_TYPE,
 };
 use crate::extensions::{Extensions, TYPE_EXPRESSION_VALIDATOR, TYPE_EXPRESSION_VERSION};
 use crate::names::Names;
@@ -227,22 +227,33 @@ fn roots<'d>(cx: &mut Cx<'d>, documents: &'d [ParsedDocument]) -> Option<Root<'d
     for (doc, document) in documents.iter().enumerate() {
         let nodes = document.nodes();
         let Some(node) = nodes.first() else {
-            let reason = format!("expected one {expected} root, found an empty document");
-            cx.diags.unsited(ROOT_MISMATCH, &[document.path(), &reason]);
+            let site = Site::new(doc, kdlith_diagnostic::ByteSpan::new(0, 0));
+            cx.cardinality(
+                site,
+                "the first node of the document root",
+                "0",
+                "exactly 1",
+            );
             ok = false;
             continue;
         };
-        if let Some(extra) = nodes.get(1) {
-            let reason = format!(
-                "expected one {expected} root, found {} root nodes",
-                nodes.len()
-            );
-            cx.diags.error(
-                ROOT_MISMATCH,
-                Site::new(doc, extra.span),
-                &[document.path(), &reason],
+        for extra in &nodes[1..] {
+            let site = Site::new(doc, extra.span);
+            let place = "the document root after its first node";
+            cx.diags.error(UNKNOWN_NODE, site, &[&extra.name, place]);
+            ok = false;
+        }
+        if !matches!(node.name.as_str(), "dialect" | "schema") {
+            let site = Site::new(doc, node.span);
+            cx.unknown(doc, node, "the document root");
+            cx.cardinality(
+                site,
+                "the first node of the document root",
+                "0",
+                "exactly 1",
             );
             ok = false;
+            continue;
         }
         if node.name != expected {
             let reason = format!("expected a {expected} root, found {}", node.name);
@@ -263,11 +274,7 @@ fn roots<'d>(cx: &mut Cx<'d>, documents: &'d [ParsedDocument]) -> Option<Root<'d
             continue;
         };
         if cx.kind == DefinitionKind::Dialect && version.is_none() {
-            cx.malformed(
-                Site::new(doc, node.span),
-                &format!("dialect {name}"),
-                "missing version",
-            );
+            cx.missing(Site::new(doc, node.span), "dialect", "version");
             ok = false;
         }
         cx.kebab(
@@ -332,8 +339,33 @@ fn root_children(cx: &mut Cx<'_>, doc: usize, root: &SyntaxNode) {
 }
 
 impl Cx<'_> {
+    /// A rule of a dialect construct its dialect's declarations cannot
+    /// state. A rule they state is reported with its binding code, the
+    /// one every processor binding the document reports.
     pub(crate) fn malformed(&mut self, site: Site, construct: &str, reason: &str) {
         self.diags.error(MALFORMED, site, &[construct, reason]);
+    }
+
+    /// A required field of a construct is absent.
+    pub(crate) fn missing(&mut self, site: Site, construct: &str, field: &str) {
+        self.diags.error(MISSING_FIELD, site, &[construct, field]);
+    }
+
+    /// A value does not decode as the type the dialect declares for it.
+    pub(crate) fn mistyped(&mut self, site: Site, what: &str, expected: &str, found: &str) {
+        self.diags.error(VALUE_TYPE, site, &[what, expected, found]);
+    }
+
+    /// A value names no member of the dialect enum `ty`.
+    pub(crate) fn not_member(&mut self, site: Site, what: &str, ty: &str, value: &str) {
+        let found = format!("string {value:?}");
+        self.diags.error(UNKNOWN_MEMBER, site, &[what, ty, &found]);
+    }
+
+    /// A child occurs more or fewer times than its dialect rule allows.
+    pub(crate) fn cardinality(&mut self, site: Site, what: &str, count: &str, expected: &str) {
+        self.diags
+            .error(CARDINALITY, site, &[what, count, expected]);
     }
 
     /// A child node no construct reading admits: a deferred mechanism's
@@ -345,7 +377,7 @@ impl Cx<'_> {
             Some(mechanism) => self
                 .diags
                 .error(DEFERRED_MECHANISM, site, &[&construct, mechanism]),
-            None => self.diags.error(UNKNOWN_CONSTRUCT, site, &[&construct]),
+            None => self.diags.error(UNKNOWN_NODE, site, &[&node.name, parent]),
         }
     }
 
@@ -358,7 +390,8 @@ impl Cx<'_> {
         child: &str,
     ) -> bool {
         if seen.is_some() {
-            self.malformed(site, owner, &format!("more than one {child}"));
+            let what = format!("{child} under {owner}");
+            self.cardinality(site, &what, "2", "at most 1");
             return false;
         }
         *seen = Some(site);
@@ -392,24 +425,31 @@ impl Cx<'_> {
         if crate::types::StringFormat::KebabCase.matches(name, None) {
             return true;
         }
-        self.malformed(
+        let what = format!("{what} of {construct}");
+        self.mistyped(
             site,
-            construct,
-            &format!("{what} {name:?} is not kebab-case"),
+            &what,
+            "a kebab-case name",
+            &format!("string {name:?}"),
         );
         false
     }
 
-    /// Check a type name: an uppercase ASCII letter, then letters and digits.
+    /// Check a type name: an uppercase ASCII letter, then letters and
+    /// digits. A generic spelling `Name<...>` relies on `generic-types`
+    /// when the dialect defers it.
     pub(crate) fn type_name(&mut self, site: Site, construct: &str, name: &str) -> bool {
         if type_expr::is_type_name(name) {
             return true;
         }
-        self.malformed(
-            site,
-            construct,
-            &format!("type name {name:?} must start uppercase and hold only letters and digits"),
-        );
+        if generic_spelling(name) && defers(&self.deferrals, "generic-types") {
+            let construct = format!("{construct} type {name}");
+            self.diags
+                .error(DEFERRED_MECHANISM, site, &[&construct, "generic-types"]);
+            return false;
+        }
+        let what = format!("type name of {construct}");
+        self.mistyped(site, &what, "TypeName", &format!("string {name:?}"));
         false
     }
 }

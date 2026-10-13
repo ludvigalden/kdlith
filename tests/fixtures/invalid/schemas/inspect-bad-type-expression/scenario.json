@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "A field type that breaks the type-expression grammar fails to decode as TypeExpression when the reference processor binds the schema",
+  "description": "A field type that breaks the type-expression grammar is rejected by the reference processor with the code the compiler reports",
   "args": [
     "inspect",
     "schema",

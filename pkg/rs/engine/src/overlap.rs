@@ -1,9 +1,6 @@
 //! Overlapping bindings: two fields of one node bound to the same
-//! positional argument, the same property, or both collecting the
-//! remaining arguments. Every path that reads node declarations reports
-//! an overlap through this check with one code: the definition compiler,
-//! and the binder reading a definition as a data document of the dialect
-//! (which every typed reader of definitions goes through).
+//! argument, property, or remaining arguments. The compiler and the
+//! binder both report an overlap through this check, with one code.
 
 use kdlith_model::Value;
 

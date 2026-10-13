@@ -1,0 +1,20 @@
+{
+  "binary": "kdlith",
+  "description": "A field type that breaks the type-expression grammar is rejected by the compiler with the code the reference processor reports",
+  "args": [
+    "vet",
+    "schema",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/types.kdl",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/bindings.kdl",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/context.kdl",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/documents.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

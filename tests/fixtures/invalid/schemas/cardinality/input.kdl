@@ -1,0 +1,8 @@
+schema s version="1" {
+    types {
+        string Code {
+            pattern #"[A-Z]+"#
+            pattern #"[0-9]+"#
+        }
+    }
+}

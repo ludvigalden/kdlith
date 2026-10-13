@@ -9,6 +9,9 @@ use crate::definition::Deferral;
 pub(crate) enum Spelling<'s> {
     Node(&'s str),
     Property(&'s str),
+    /// A value of the dialect enum named first that the enum does not
+    /// list because the mechanism it belongs to is deferred.
+    Member(&'s str, &'s str),
 }
 
 /// Node and property names that belong to deferred mechanisms, from the
@@ -27,6 +30,14 @@ const SPELLINGS: &[(&str, Spelling<'static>)] = &[
     ("source-context", Spelling::Node("source-context")),
     ("source-context", Spelling::Node("path-stem")),
     ("accumulating-context", Spelling::Node("accumulate")),
+    (
+        "accumulating-context",
+        Spelling::Member("ContextPolicy", "accumulate"),
+    ),
+    (
+        "accumulating-context",
+        Spelling::Member("ContextPolicy", "accumulating"),
+    ),
     ("context-snapshots", Spelling::Node("snapshot")),
     ("profiles", Spelling::Node("profile")),
     ("descendant-rules", Spelling::Node("descendants")),
@@ -66,6 +77,13 @@ pub(crate) fn defers(deferrals: &[Deferral], mechanism: &str) -> bool {
     deferrals
         .iter()
         .any(|deferral| deferral.mechanism == mechanism)
+}
+
+/// Whether a name is spelled as a generic instantiation `Name<...>` of
+/// a type name, which relies on `generic-types`.
+pub(crate) fn generic_spelling(text: &str) -> bool {
+    text.split_once('<')
+        .is_some_and(|(head, _)| crate::type_expr::is_type_name(head))
 }
 
 /// Whether an import path uses discovery syntax rather than a literal

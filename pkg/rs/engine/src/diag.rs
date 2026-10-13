@@ -8,7 +8,6 @@ use kdlith_parse::locate;
 use crate::definition::DefinitionKind;
 use crate::syntax::ParsedDocument;
 
-pub(crate) const UNKNOWN_CONSTRUCT: &str = "KDLITH-DLC001";
 pub(crate) const DUPLICATE_CONSTRUCT: &str = "KDLITH-DLC002";
 pub(crate) const DEFERRED_MECHANISM: &str = "KDLITH-DLC003";
 pub(crate) const ROOT_MISMATCH: &str = "KDLITH-DLC004";
@@ -32,6 +31,16 @@ pub(crate) const IMPORT_REPEATED: &str = "KDLITH-IMP003";
 pub(crate) const SOURCE_UNREADABLE: &str = "KDLITH-SRC001";
 pub(crate) const SOURCE_NOT_UTF8: &str = "KDLITH-SRC002";
 pub(crate) const SOURCE_LIMIT: &str = "KDLITH-SRC003";
+
+// Binding codes. A definition is a data document of its dialect, so a
+// construct the dialect rejects gets these codes on every reading path.
+pub(crate) const UNKNOWN_NODE: &str = "KDLITH-BND001";
+pub(crate) const CARDINALITY: &str = "KDLITH-BND002";
+pub(crate) const VALUE_TYPE: &str = "KDLITH-BND003";
+pub(crate) const MISSING_FIELD: &str = "KDLITH-BND004";
+pub(crate) const UNBOUND_ENTRY: &str = "KDLITH-BND005";
+pub(crate) const DUPLICATE_KEY: &str = "KDLITH-BND006";
+pub(crate) const UNKNOWN_MEMBER: &str = "KDLITH-BND008";
 
 /// Where a construct was written: the contributing document's position
 /// in the compiler input and the byte span of the node.
@@ -98,6 +107,11 @@ impl<'d> Diagnostics<'d> {
         !self.records.is_empty()
     }
 
+    /// The number of diagnostics so far, to tell whether a step added one.
+    pub(crate) fn count(&self) -> usize {
+        self.records.len()
+    }
+
     pub(crate) fn into_records(self) -> Vec<DiagnosticRecord> {
         self.records
     }
@@ -135,6 +149,19 @@ pub(crate) fn located(
     record
         .with_source(document.path())
         .with_span(span, Some(start.line), Some(start.column))
+}
+
+/// Report a key repeated in a keyed collection of a construct, such as
+/// two fields of one object: the dialect binds these collections with
+/// `duplicate-keys reject`, so this is the binding code on every path.
+pub(crate) fn duplicate_key(diags: &mut Diagnostics<'_>, sites: (Site, Site), key: &str, of: &str) {
+    diags.labelled(
+        DUPLICATE_KEY,
+        sites.0,
+        sites.1,
+        &[key, of],
+        "first given here",
+    );
 }
 
 /// Report a declaration made twice: a dialect construct, a schema type,
