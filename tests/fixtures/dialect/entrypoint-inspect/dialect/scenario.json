@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "The dialect-generation entrypoint reads end to end through the reference processor: each import is followed where it is written, so the four canonical documents' typed declarations arrive in import order, each document opened and completed in turn",
+  "description": "The dialect-generation entrypoint reads end to end through the reference processor: each import is followed where it is written, so the four canonical documents' typed declarations and records arrive in import order, each document opened and completed in turn",
   "args": [
     "inspect",
     "dialect",
@@ -26,7 +26,7 @@
       "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":1,\"index\":36},\"identity\":{\"domain\":\"UnionType\",\"name\":[\"TypeDef\"]},\"type\":\"UnionType\",\"value\":{\"name\":\"TypeDef\",\"variants\":{\"string\":{\"type\":\"StringType\"},\"enum\":{\"type\":\"EnumType\"},\"object\":{\"type\":\"ObjectType\"},\"union\":{\"type\":\"UnionType\"},\"map\":{\"type\":\"MapType\"}}}}}\n",
       "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":2,\"index\":61},\"identity\":{\"domain\":\"NodeDef\",\"name\":[\"node\"]},\"type\":\"NodeDef\",\"value\":{\"name\":\"node\",\"role\":\"declaration\",\"type\":\"NodeDef\",\"parents\":[\"schema\",\"dialect\"],\"fields\":{\"name\":{\"arg\":0,\"sources\":[]},\"role\":{\"property\":\"role\",\"sources\":[]},\"type\":{\"property\":\"type\",\"sources\":[]},\"parent\":{\"property\":\"parent\",\"sources\":[]},\"parents\":{\"sources\":[{\"child\":{\"name\":\"parents\",\"sources\":[{\"args\":{}}]}}]},\"fields\":{\"sources\":[{\"entries\":{\"node\":\"field\",\"key\":\"arg(0)\",\"value\":\"FieldBinding\"}}],\"duplicate-keys\":\"reject\"},\"children\":{\"sources\":[{\"entries\":{\"node\":\"children\",\"key\":\"arg(0)\",\"value\":\"ChildRule\"}}],\"duplicate-keys\":\"reject\"},\"effects\":{\"sources\":[{\"children\":{\"name\":\"effects\",\"sources\":[]}}]},\"groups\":{\"sources\":[{\"children\":{\"name\":\"exactly-one\",\"sources\":[]}}]}},\"children\":{\"parents\":{\"max-occurs\":1},\"effects\":{\"max-occurs\":2}},\"effects\":[],\"groups\":[]}}}\n",
       "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":3,\"index\":40},\"identity\":{\"domain\":\"NodeDef\",\"name\":[\"slot\"]},\"type\":\"NodeDef\",\"value\":{\"name\":\"slot\",\"role\":\"declaration\",\"type\":\"SlotDef\",\"parent\":\"context\",\"fields\":{\"name\":{\"arg\":0,\"sources\":[]},\"type\":{\"arg\":1,\"sources\":[]},\"namespace\":{\"property\":\"namespace\",\"sources\":[]},\"description\":{\"property\":\"description\",\"sources\":[]}},\"children\":{},\"effects\":[],\"groups\":[]}}}\n",
-      "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":4,\"index\":88},\"identity\":{\"domain\":\"DocumentRule\",\"name\":[]},\"type\":\"DocumentRule\",\"value\":{\"first\":{\"exactly-one\":[\"dialect\",\"schema\"]},\"following\":[]}}}\n",
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":4,\"index\":88},\"type\":\"DocumentRule\",\"value\":{\"first\":{\"exactly-one\":[\"dialect\",\"schema\"]},\"following\":[]}}}\n",
       "{\"item\":\"scope-complete\",\"data\":{\"source\":4,\"scope\":null}}\n{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":{\"source\":0,\"index\":0}}}\n{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":null}}\n"
     ]
   }

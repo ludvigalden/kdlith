@@ -126,9 +126,11 @@ dialect kdlith version="0" {
         children map
     }
 
-    // Structural rules.
+    // Structural rules. A document rule is a record: a validated
+    // statement about the documents a definition reads, with no identity
+    // of its own and never referenced by name.
 
-    node document role=declaration type=DocumentRule {
+    node document role=record type=DocumentRule {
         parents dialect schema
         field first child=first
         field following {

@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "documents.kdl reads end to end through the reference processor: document types, the import declaration, the document rule, and deferrals arrive as typed declarations",
+  "description": "documents.kdl reads end to end through the reference processor: document types, the import declaration, and deferrals arrive as typed declarations, and the document rule arrives as a typed record",
   "args": [
     "inspect",
     "dialect",
@@ -20,6 +20,7 @@
       "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":25},\"identity\":{\"domain\":\"ObjectType\",\"name\":[\"ImportRequest\"]},\"type\":\"ObjectType\",\"value\":{\"name\":\"ImportRequest\",\"fields\":{\"path\":{\"type\":\"String\"},\"project\":{\"type\":\"optional<list<SlotName>>\"},\"repeated\":{\"type\":\"RepeatedImport\",\"fallback\":{\"kind\":\"string\",\"value\":\"reject\"}}},\"constraints\":[]}}}\n",
       "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":76},\"identity\":{\"domain\":\"NodeDef\",\"name\":[\"import\"]},\"type\":\"NodeDef\",\"value\":{\"name\":\"import\",\"role\":\"source-import\",\"type\":\"ImportRequest\",\"parents\":[\"dialect\",\"schema\"],\"fields\":{\"path\":{\"arg\":0,\"sources\":[]},\"project\":{\"sources\":[{\"child\":{\"name\":\"project\",\"sources\":[{\"args\":{}}]}}]},\"repeated\":{\"property\":\"repeated\",\"sources\":[]}},\"children\":{\"project\":{\"max-occurs\":1}},\"effects\":[],\"groups\":[]}}}\n",
       "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":99},\"identity\":{\"domain\":\"Deferral\",\"name\":[\"secret-providers\"]},\"type\":\"Deferral\",\"value\":{\"mechanism\":\"secret-providers\",\"note\":\"Secret-provider descriptors and their sensitivity policy; never executed\"}}}\n",
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":88},\"type\":\"DocumentRule\",\"value\":{\"first\":{\"exactly-one\":[\"dialect\",\"schema\"]},\"following\":[]}}}\n",
       "{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":{\"source\":0,\"index\":0}}}\n{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":null}}\n"
     ]
   }

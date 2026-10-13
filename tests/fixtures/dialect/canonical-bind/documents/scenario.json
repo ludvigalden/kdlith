@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "documents.kdl binds as a data document of the canonical dialect through the session, with no diagnostic: every declaration and container in it is described by the dialect's compiled bindings",
+  "description": "documents.kdl binds as a data document of the canonical dialect through the session, with no diagnostic: every declaration, record, and container in it is described by the dialect's compiled bindings",
   "args": [
     "vet",
     "data",
@@ -17,6 +17,7 @@
   "expect": {
     "exit": 0,
     "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":88},\"type_name\":\"DocumentRule\",\"fields\":[{\"name\":\"first\",\"value\":{\"kind\":\"map\",\"value\":[{\"key\":\"exactly-one\",\"value\":{\"kind\":\"list\",\"value\":[{\"kind\":\"string\",\"value\":\"dialect\"},{\"kind\":\"string\",\"value\":\"schema\"}]}}]},\"origin\":88},{\"name\":\"following\",\"value\":{\"kind\":\"list\",\"value\":[]},\"origin\":88}],\"origin\":88,\"validation\":\"valid\"}}\n",
       "{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":null}}\n"
     ]
   }

@@ -11,7 +11,7 @@ pub(crate) const NODES: &[NodeShape] = &[
         .container(),
     NodeShape::new("document")
         .under(&["dialect", "schema"])
-        .declaration()
+        .record()
         .ty("DocumentRule"),
     NodeShape::new("first").under(&["document"]).ty("FirstRule"),
     NodeShape::new("exactly-one")
