@@ -1,0 +1,9 @@
+{
+  "binary": "kdlith",
+  "description": "The export verb is a fail-closed stub: it exits 1 and says it is not implemented yet",
+  "args": ["export"],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": ["kdlith: export is not implemented yet"]
+  }
+}

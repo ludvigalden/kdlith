@@ -1,0 +1,16 @@
+schema s version="1" {
+    types {
+        object Entry {
+            field id String
+        }
+    }
+    node entry role=record type=Entry {
+        field id arg=0
+    }
+    node warm {
+        field value String arg=0
+        effects target=following {
+            set locale field=value
+        }
+    }
+}

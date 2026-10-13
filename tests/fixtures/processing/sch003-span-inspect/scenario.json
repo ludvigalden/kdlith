@@ -1,0 +1,9 @@
+{
+  "binary": "kdlith",
+  "description": "Pinned property: an overlapping binding (KDLITH-SCH003) is reported at the same span on both reading paths, at the node declaration (line 7, column 5); the reader path inspect schema reports it at that identical span",
+  "args": ["inspect", "schema", "input.kdl"],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": ["KDLITH-SCH003", "  --> input.kdl:7:5"]
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "The committed dialect-to-schema-to-data round trip: a catalog-shaped data document vets through the committed catalog schema (itself valid under the canonical dialect), printing the entry record and the group declaration as one ordered stream",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/schemas/vet/catalog/schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":1},\"type_name\":\"Entry\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"e1\"}",
+      "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":2},\"identity\":{\"domain\":\"Group\",\"name\":[\"archive\"]}",
+      "{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":null}}"
+    ]
+  }
+}

@@ -340,9 +340,10 @@ path and performs only the checks the dialect's declarations own, so it
 accepts an input whose only faults are compiler-only checks, while
 `vet` hands the same reading to the compiler and adds them. Fixture
 scenarios pin that acceptance, so it is committed behavior rather than
-an accident. A diagnostic may sit at a different span on each path:
-binding reports a node-level check such as an overlapping binding at
-the node declaration, while the compiler reports it at the field.
+an accident. A node-level check such as an overlapping binding sits at the same
+span on both reading paths: the reader-path binder check reports it at
+the node declaration, and it fires first in `vet`, so the compiler's
+field-span report of the same fault is not reached.
 
 ### superproc
 

@@ -1,0 +1,3 @@
+dialect parts version="0" {
+    import "part.kdl" repeated=coalesce
+}

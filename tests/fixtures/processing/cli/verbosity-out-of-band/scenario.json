@@ -1,0 +1,9 @@
+{
+  "binary": "kdlith",
+  "description": "--verbosity rejects a number outside the 0-10 band before any verb runs: a clap value error exits 2",
+  "args": ["--verbosity", "11", "--help"],
+  "expect": {
+    "exit": 2,
+    "stderr-contains": ["verbosity takes a number from 0 to 10"]
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "A nullable<T> field is required but accepts null: one record binds the null keyword and one binds a string, and both bind as valid",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"name\":\"text\",\"value\":{\"kind\":\"null\"}",
+      "{\"name\":\"text\",\"value\":{\"kind\":\"string\",\"value\":\"hello\"}"
+    ]
+  }
+}

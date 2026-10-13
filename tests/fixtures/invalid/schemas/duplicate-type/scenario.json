@@ -1,0 +1,8 @@
+{
+  "binary": "kdlith",
+  "description": "The same type declared in two contributing schema documents is rejected: linking reports the second declaration",
+  "args": ["vet", "schema", "doc1.kdl", "doc2.kdl"],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

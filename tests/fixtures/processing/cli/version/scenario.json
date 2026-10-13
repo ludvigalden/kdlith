@@ -1,0 +1,9 @@
+{
+  "binary": "kdlith",
+  "description": "--version prints the binary name and version on stdout and exits 0",
+  "args": ["--version"],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": ["kdlith"]
+  }
+}

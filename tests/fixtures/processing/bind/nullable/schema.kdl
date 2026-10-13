@@ -1,0 +1,12 @@
+schema notes version="1" {
+    types {
+        object Note {
+            field id String
+            field text "nullable<String>"
+        }
+    }
+    node note role=record type=Note {
+        field id arg=0
+        field text property=text
+    }
+}

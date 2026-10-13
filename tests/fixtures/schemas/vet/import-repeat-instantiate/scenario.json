@@ -1,0 +1,9 @@
+{
+  "binary": "kdlith",
+  "description": "Two imports of the same empty source under repeated=instantiate are two separate invocations: the part is read twice (three documents total), and because it declares nothing, the invocations cannot collide",
+  "args": ["vet", "schema", "schema.kdl"],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": ["ok: schema catalog version 1 scope=complete documents=3 types=0 nodes=0"]
+  }
+}

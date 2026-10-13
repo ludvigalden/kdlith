@@ -1,0 +1,8 @@
+{
+  "binary": "kdlith",
+  "description": "A node declared twice in one schema document is rejected as a duplicate declaration",
+  "args": ["vet", "schema", "input.kdl"],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

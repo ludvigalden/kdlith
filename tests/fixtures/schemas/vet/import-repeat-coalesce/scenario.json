@@ -1,0 +1,9 @@
+{
+  "binary": "kdlith",
+  "description": "Two imports of the same source under repeated=coalesce reuse the first invocation: the part is read once (one document, one node) instead of twice",
+  "args": ["vet", "schema", "schema.kdl"],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": ["ok: schema catalog version 1 scope=complete documents=2 types=0 nodes=1"]
+  }
+}

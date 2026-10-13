@@ -1,0 +1,21 @@
+{
+  "binary": "kdlith",
+  "description": "read data with --entry binds the entry document first, establishing its declarations, then the read document as source 1: the printed record carries source 1, proving both documents composed into one session",
+  "args": [
+    "read",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "--entry",
+    "entry.kdl",
+    "data.kdl",
+    "one"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":1,\"index\":3},\"type_name\":\"Item\"",
+      "{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"one\"}"
+    ]
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "binary": "kdlith",
+  "description": "Declared elision: codegen is not implemented, so no generated output is compared and the oracle comparison is never reported passed. This scenario pins the first real precondition step any future generator must satisfy: the dialect-generation entrypoint contracts/super-schemas/dialect.kdl parses under kdlith read",
+  "args": ["read", "{fx-suite}/../../contracts/super-schemas/dialect.kdl"],
+  "expect": {
+    "exit": 0
+  }
+}

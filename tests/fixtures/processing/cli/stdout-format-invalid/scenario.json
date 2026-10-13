@@ -1,0 +1,9 @@
+{
+  "binary": "kdlith",
+  "description": "--stdout-format rejects a value other than text before any verb runs: a clap value error exits 2",
+  "args": ["--stdout-format", "json", "--help"],
+  "expect": {
+    "exit": 2,
+    "stderr-contains": ["only the text stdout format is supported for now, not json"]
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "binary": "kdlith",
+  "description": "Running kdlith with no arguments is a usage error: clap prints the top-level help to stderr and exits 2",
+  "args": [],
+  "expect": {
+    "exit": 2,
+    "stderr-contains": ["Usage: kdlith [OPTIONS] <COMMAND>"]
+  }
+}

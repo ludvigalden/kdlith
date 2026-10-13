@@ -1,0 +1,4 @@
+schema catalog version="1" {
+    import "parts.kdl" repeated=coalesce
+    import "./parts.kdl" repeated=coalesce
+}

@@ -1,0 +1,278 @@
+# Fixture suite coverage map
+
+This file is the census of record for the committed fixture suite: which
+dialect constructs, diagnostic codes, and CLI verb contracts the suite
+exercises, and which gaps are declared elisions rather than silently
+uncovered. The suite itself lives in this directory and runs under the
+`kdlith-fixtures` harness (see `README.md`).
+
+## Maintenance rule
+
+The map is hand-maintained, and two invariants keep it honest:
+
+1. Every scenario name written in this file must appear in the output of
+   `kdlith-fixtures --fx-list` for the committed suite. A name that names
+   no real scenario is a bug in this file.
+2. Every non-parse scenario in `--fx-list` output must appear somewhere in
+   the census tables below. `parse/kdl-spec` (243 scenarios, one per
+   upstream KDL v2 positive case) is covered as a single row: the official
+   KDL v2 suite, traced in `parse/kdl-spec/PROVENANCE.md`. The upstream
+   negative cases live one-per-scenario under `invalid/kdl-spec/` and are
+   named individually in the code census.
+
+Adding or renaming a scenario means updating this file in the same commit.
+The census is re-checkable by hand:
+
+```sh
+target/debug/kdlith-fixtures --fx-suite tests/fixtures --fx-kdlith target/debug/kdlith --fx-list
+```
+
+then diffing the listed names (all except `parse/kdl-spec/*`) against the
+scenario names occurring in this file, in both directions.
+
+Suite state at the time of writing: 485 scenarios — 243 `parse/kdl-spec`,
+242 others — all green.
+
+## Construct census
+
+One row per in-scope mechanism row of the design record
+(`docs/dialect.md`). "Defining file" is the canonical dialect document
+that declares the mechanism.
+
+### Logical types (`pkg/kdl/schemas/dialect/types.kdl`)
+
+| Mechanism | Defining file | Covering scenarios | Notes |
+| --- | --- | --- | --- |
+| Logical types separate from bindings | types.kdl | schemas/inspect/constructs, schemas/inspect/shelf, schemas/vet/catalog | The separation is what every type-then-binding scenario exercises |
+| Type declarations (`string`/`enum`/`object`/`union`/`map`) | types.kdl | schemas/inspect/constructs, schemas/inspect/shelf, schemas/vet/catalog, dialect/canonical-vet/merged | Includes contributing-document merge |
+| Type expressions | types.kdl | schemas/inspect/constructs, invalid/schemas/bad-type-expression, invalid/schemas/inspect-bad-type-expression | Grammar negatives on both reading paths |
+| Type constructors (`optional`/`nullable`/`list`/`map`/`ordered-map`/`union`/`ref`) | types.kdl | schemas/inspect/shelf, schemas/vet/catalog, processing/bind/nullable, processing/bind/value-expr, invalid/schemas/ref-without-declaration | `nullable<T>` and `ValueExpr` positives landed with the gap fill |
+| Ordered keyed collections | types.kdl | schemas/inspect/shelf, schemas/vet/catalog | Unique keys, declaration order retained |
+| Built-in scalars (incl. `U64`, `ValueExpr`) | types.kdl | schemas/inspect/shelf, processing/bind/value-expr | |
+| Patterned strings (`pattern`/`min-length`/`format`/`validator`) | types.kdl | schemas/inspect/constructs, schemas/inspect/shelf, invalid/schemas/pattern-invalid, invalid/schemas/unknown-format, invalid/schemas/name-format, invalid/schemas/inspect-name-format, processing/inspect-accepts-malformed-pattern | |
+| Enum member metadata | types.kdl | schemas/inspect/constructs | Descriptions survive compilation |
+| Discriminated unions by node name | types.kdl | schemas/inspect/shelf, invalid/data/union-variant | |
+| Maps (`key-type`/`value-type`) | types.kdl | schemas/vet/catalog, schemas/inspect/constructs | |
+| Documented default versus fallback | types.kdl | schemas/inspect/constructs, schemas/inspect/shelf, processing/bind/defaults, invalid/schemas/documented-default-type, invalid/schemas/fallback-type, processing/inspect-accepts-schema-literal | Literal-decode negatives are SCH008 |
+| Object constraints (`all-or-none`/`requires`) | types.kdl | schemas/inspect/constructs | |
+
+### Bindings, roles, and cardinality (`pkg/kdl/schemas/dialect/bindings.kdl`)
+
+| Mechanism | Defining file | Covering scenarios | Notes |
+| --- | --- | --- | --- |
+| Roles vocabulary (all six roles) | bindings.kdl | schemas/vet/catalog, schemas/inspect/shelf, invalid/schemas/unknown-role, invalid/schemas/inspect-unknown-role | record, declaration, contribution, context-control, source-import, container |
+| Node declarations | bindings.kdl | dialect/canonical-vet/merged, schemas/vet/catalog, invalid/schemas/unknown-node | `role=`, `type=`, `parent=`/`parents` |
+| Parent-sensitive dispatch | bindings.kdl | schemas/inspect/shelf, schemas/vet/catalog, invalid/schemas/unknown-parent | Same name under different parents |
+| Binding shorthands (`arg=`/`property=`/`child=`/`context=`) | bindings.kdl | schemas/inspect/shelf | |
+| Explicit `from` sources | bindings.kdl | schemas/inspect/shelf | `argument`/`args`/`property`/`child`/`children`/`entries`/`context` |
+| Collection bindings (`args`/`children`) | bindings.kdl | schemas/inspect/shelf | |
+| Entries envelope | bindings.kdl | schemas/inspect/shelf, invalid/data/entries-key | Key consumed exactly once |
+| Multiple spellings and collision reject | bindings.kdl | invalid/data/collision | |
+| Duplicate keys reject | bindings.kdl | invalid/data/duplicate-key, invalid/schemas/duplicate-binding | |
+| Compile-time binding checks (overlaps, unconsumed arguments) | bindings.kdl | invalid/schemas/duplicate-argument, invalid/schemas/rest-arguments-overlap, invalid/schemas/inspect-duplicate-argument, invalid/schemas/inspect-duplicate-nested-argument, invalid/schemas/inspect-duplicate-property, invalid/schemas/inspect-rest-arguments-overlap, processing/sch003-span-vet, processing/sch003-span-inspect | Span pinned: SCH003 reports the node declaration on both reading paths |
+| Child permission and cardinality | bindings.kdl | invalid/schemas/cardinality, invalid/schemas/inspect-cardinality, invalid/data/min-occurs, invalid/data/max-occurs | Minimums at scope completion |
+| Compiled plans | bindings.kdl | processing/bind/stream, processing/bind/context | Item streams come from the compiled plan, not re-reading the schema KDL |
+
+### Context (`pkg/kdl/schemas/dialect/context.kdl`)
+
+| Mechanism | Defining file | Covering scenarios | Notes |
+| --- | --- | --- | --- |
+| Engine-managed, schema-defined context | context.kdl | schemas/vet/catalog, schemas/inspect/shelf, processing/bind/context | |
+| Typed slots | context.kdl | schemas/vet/catalog, invalid/data/slot-type, invalid/schemas/unknown-slot | Slot-typed values validated |
+| Effect targets (`following`/`children`) | context.kdl | schemas/inspect/shelf, invalid/schemas/effects-without-context-control, invalid/schemas/children-effect-from-child | |
+| Generic effects (`set`/`remove`/`clear`) | context.kdl | schemas/inspect/shelf, invalid/data/failed-control | Both targets |
+| Registered handlers | context.kdl | invalid/schemas/handler-not-installed, invalid/schemas/validator-not-installed, processing/inspect-accepts-handler-not-installed | Fail-closed when not installed |
+| Context-bound fields and policies (`fallback`/`fixed`) | context.kdl | processing/bind/context, invalid/data/context-fixed, invalid/data/context-unavailable | |
+| Execution timing | context.kdl | invalid/schemas/children-effect-from-child, invalid/data/failed-control | Children effects from node header only; failed node applies no following effects |
+
+### Documents, structure, and imports (`pkg/kdl/schemas/dialect/documents.kdl`)
+
+| Mechanism | Defining file | Covering scenarios | Notes |
+| --- | --- | --- | --- |
+| Dialect and schema roots | documents.kdl | dialect/canonical-vet/merged, dialect/entrypoint-vet/dialect, invalid/schemas/root-not-schema | |
+| Contributing documents | documents.kdl | dialect/canonical-vet/merged, invalid/schemas/duplicate-type, processing/inspect-accepts-duplicate-type | Repeated declaration rejected, not merged |
+| First-node rule | documents.kdl | invalid/data/first-node, schemas/inspect/shelf | |
+| Following rule | documents.kdl | invalid/data/not-following | |
+| Exactly-one groups | documents.kdl | invalid/data/exactly-one-missing, invalid/data/exactly-one-repeated | Checked at scope completion |
+| Source imports | documents.kdl | dialect/entrypoint-vet/dialect, invalid/dialect/import-missing, invalid/dialect/import-cycle, invalid/schemas/import-missing | Projection only, mutations never escape |
+| Repeated imports (`reject`/`coalesce`/`instantiate`) | documents.kdl | invalid/dialect/import-repeated, schemas/vet/import-repeat-coalesce, schemas/vet/import-repeat-instantiate, invalid/dialect/import-repeated-property | Positives pinned on the schema path; the dialect self-description rejects any `repeated=` property at v0 (see elisions) |
+| Deferral marker | documents.kdl | dialect/canonical-vet/merged, invalid/schemas/deferred-mechanism, invalid/schemas/inspect-deferred-mechanism | `deferrals=19` pinned in the merged digest line |
+| This dialect's own document rule | documents.kdl | invalid/dialect/not-self-describing, invalid/schemas/root-not-schema | |
+| Document rules are records | documents.kdl | schemas/inspect/shelf, processing/round-trip/data-through-schema | |
+| Self-hosted reader | documents.kdl | dialect/canonical-inspect/merged, dialect/entrypoint-inspect/dialect | Reading the canonical files through the reader they seed |
+
+## Code census
+
+The diagnostic registry (`pkg/rs/diagnostic/src/registry.rs`) is the
+census authority: every registered code appears below with an explicit
+status — `covered`, `UNCOVERED`, or `elided-with-reason` — even when the
+code is absent from the design record's table.
+
+### Definition-surface codes
+
+| Code | Exercising scenarios | Status |
+| --- | --- | --- |
+| KDLITH-BND001 | invalid/data/first-node, invalid/data/not-following, invalid/data/union-variant, invalid/data/unknown-node, invalid/schemas/unknown-node, invalid/schemas/inspect-unknown-node | covered |
+| KDLITH-BND002 | invalid/data/exactly-one-missing, invalid/data/exactly-one-repeated, invalid/data/max-occurs, invalid/data/min-occurs, invalid/schemas/cardinality, invalid/schemas/inspect-cardinality | covered |
+| KDLITH-BND003 | invalid/data/failed-control, invalid/data/slot-type, invalid/data/value-type, invalid/schemas/name-format, invalid/schemas/inspect-name-format | covered |
+| KDLITH-BND004 | invalid/data/entries-key, invalid/data/failed-control, invalid/data/missing-field, invalid/schemas/missing-argument, invalid/schemas/root-without-version, invalid/schemas/inspect-missing-argument, invalid/schemas/inspect-root-without-version | covered |
+| KDLITH-BND005 | invalid/data/unbound-entry, invalid/schemas/unbound-property, invalid/schemas/inspect-unbound-property | covered |
+| KDLITH-BND006 | invalid/data/duplicate-key, invalid/schemas/duplicate-binding, invalid/schemas/inspect-duplicate-binding | covered |
+| KDLITH-BND007 | invalid/data/collision | covered |
+| KDLITH-BND008 | invalid/data/enum-member, invalid/schemas/unknown-format, invalid/schemas/unknown-role, invalid/schemas/inspect-unknown-format, invalid/schemas/inspect-unknown-role | covered |
+| KDLITH-DLC002 | (none) | UNCOVERED — reachable (a dialect document declaring one construct twice is rejected with it), no fixture yet |
+| KDLITH-DLC003 | invalid/schemas/deferred-mechanism, invalid/schemas/inspect-deferred-mechanism | covered |
+| KDLITH-DLC004 | invalid/schemas/root-not-schema | covered |
+| KDLITH-DLC005 | invalid/schemas/pattern-invalid, processing/inspect-accepts-malformed-pattern | covered |
+| KDLITH-DLC006 | invalid/schemas/handler-not-installed, invalid/schemas/validator-not-installed, processing/inspect-accepts-handler-not-installed | covered |
+| KDLITH-DLC007 | invalid/schemas/bad-type-expression, invalid/schemas/inspect-bad-type-expression | covered |
+| KDLITH-DLC008 | invalid/dialect/import-repeated-property, invalid/dialect/not-self-describing, invalid/dialect/unknown-type | covered |
+| KDLITH-SCH001 | invalid/schemas/unknown-type, processing/inspect-accepts-unknown-type | covered |
+| KDLITH-SCH002 | invalid/schemas/duplicate-type, processing/inspect-accepts-duplicate-type | covered |
+| KDLITH-SCH003 | invalid/schemas/duplicate-argument, invalid/schemas/inspect-duplicate-argument, invalid/schemas/inspect-duplicate-nested-argument, invalid/schemas/inspect-duplicate-property, invalid/schemas/inspect-rest-arguments-overlap, invalid/schemas/rest-arguments-overlap, processing/sch003-span-inspect, processing/sch003-span-vet | covered |
+| KDLITH-SCH004 | invalid/schemas/duplicate-declaration | covered |
+| KDLITH-SCH005 | invalid/schemas/effects-without-context-control | covered |
+| KDLITH-SCH006 | invalid/schemas/import-projects-unknown-slot, invalid/schemas/inspect-import-projects-unknown-slot, invalid/schemas/ref-without-declaration, invalid/schemas/unknown-field, invalid/schemas/unknown-parent, invalid/schemas/unknown-slot | covered |
+| KDLITH-SCH007 | invalid/schemas/children-effect-from-child, processing/inspect-accepts-not-streamable | covered |
+| KDLITH-SCH008 | invalid/schemas/documented-default-type, invalid/schemas/fallback-type, invalid/schemas/set-value-type, processing/inspect-accepts-schema-literal | covered |
+| KDLITH-IMP001 | invalid/dialect/import-missing, invalid/schemas/import-missing | covered |
+| KDLITH-IMP002 | invalid/dialect/import-cycle | covered |
+| KDLITH-IMP003 | invalid/dialect/import-repeated | covered |
+| KDLITH-CTX001 | invalid/data/context-unavailable, invalid/data/slot-type | covered |
+| KDLITH-CTX002 | invalid/data/context-fixed | covered |
+| KDLITH-GEN003 | invalid/dialect/processor-mismatch | covered |
+| KDLITH-SYN001 | the 94 kdl-spec negative controls listed below | covered |
+| KDLITH-SYN002 | invalid/kdl-spec/unterminated_empty_node_fail, invalid/data/syntax | covered |
+| KDLITH-SYN003 | invalid/data/duplicate-property | covered |
+
+The KDLITH-SYN001 kdl-spec negatives (one scenario per upstream invalid
+case; every `invalid/kdl-spec/` scenario except the SYN002 one above):
+
+```
+invalid/kdl-spec/bare_ident_numeric_dot_fail, invalid/kdl-spec/bare_ident_numeric_fail,
+invalid/kdl-spec/bare_ident_numeric_sign_fail, invalid/kdl-spec/bom_later_fail,
+invalid/kdl-spec/dot_but_no_fraction_before_exponent_fail, invalid/kdl-spec/dot_but_no_fraction_fail,
+invalid/kdl-spec/dot_in_exponent_fail, invalid/kdl-spec/dot_zero_fail,
+invalid/kdl-spec/empty_arg_type_fail, invalid/kdl-spec/empty_node_type_fail,
+invalid/kdl-spec/empty_prop_type_fail, invalid/kdl-spec/err_backslash_in_bare_id_fail,
+invalid/kdl-spec/false_prop_key_fail, invalid/kdl-spec/floating_point_keyword_identifier_strings_fail,
+invalid/kdl-spec/hash_in_id_fail, invalid/kdl-spec/illegal_char_in_binary_fail,
+invalid/kdl-spec/illegal_char_in_hex_fail, invalid/kdl-spec/illegal_char_in_octal_fail,
+invalid/kdl-spec/just_space_in_arg_type_fail, invalid/kdl-spec/just_space_in_node_type_fail,
+invalid/kdl-spec/just_space_in_prop_type_fail, invalid/kdl-spec/just_type_no_arg_fail,
+invalid/kdl-spec/just_type_no_node_id_fail, invalid/kdl-spec/just_type_no_prop_fail,
+invalid/kdl-spec/legacy_raw_string_fail, invalid/kdl-spec/legacy_raw_string_hash_fail,
+invalid/kdl-spec/multiline_raw_string_non_matching_prefix_character_error_fail,
+invalid/kdl-spec/multiline_raw_string_non_matching_prefix_count_error_fail,
+invalid/kdl-spec/multiline_raw_string_single_line_err_fail, invalid/kdl-spec/multiline_raw_string_single_quote_err_fail,
+invalid/kdl-spec/multiline_string_escape_newline_at_end_fail, invalid/kdl-spec/multiline_string_final_whitespace_escape_fail,
+invalid/kdl-spec/multiline_string_non_literal_prefix_fail,
+invalid/kdl-spec/multiline_string_non_matching_prefix_character_error_fail,
+invalid/kdl-spec/multiline_string_non_matching_prefix_count_error_fail,
+invalid/kdl-spec/multiline_string_single_line_err_fail, invalid/kdl-spec/multiline_string_single_quote_err_fail,
+invalid/kdl-spec/multiple_dots_in_float_before_exponent_fail, invalid/kdl-spec/multiple_dots_in_float_fail,
+invalid/kdl-spec/multiple_es_in_float_fail, invalid/kdl-spec/multiple_x_in_hex_fail,
+invalid/kdl-spec/no_digits_in_hex_fail, invalid/kdl-spec/no_integer_digit_fail,
+invalid/kdl-spec/no_solidus_escape_fail, invalid/kdl-spec/null_prop_key_fail,
+invalid/kdl-spec/parens_in_bare_id_fail, invalid/kdl-spec/quote_in_bare_id_fail,
+invalid/kdl-spec/raw_string_just_quote_fail, invalid/kdl-spec/semicolon_missing_after_children_fail,
+invalid/kdl-spec/slashdash_after_arg_type_fail, invalid/kdl-spec/slashdash_after_node_type_fail,
+invalid/kdl-spec/slashdash_after_prop_key_fail, invalid/kdl-spec/slashdash_after_prop_val_type_fail,
+invalid/kdl-spec/slashdash_after_type_fail, invalid/kdl-spec/slashdash_before_children_end_fail,
+invalid/kdl-spec/slashdash_before_eof_fail, invalid/kdl-spec/slashdash_before_prop_value_fail,
+invalid/kdl-spec/slashdash_before_semicolon_fail, invalid/kdl-spec/slashdash_between_child_blocks_fail,
+invalid/kdl-spec/slashdash_child_block_before_entry_err_fail, invalid/kdl-spec/slashdash_inside_arg_type_fail,
+invalid/kdl-spec/slashdash_inside_node_type_fail, invalid/kdl-spec/slash_in_bare_id_fail,
+invalid/kdl-spec/square_bracket_in_bare_id_fail, invalid/kdl-spec/true_prop_key_fail,
+invalid/kdl-spec/type_before_prop_key_fail, invalid/kdl-spec/unbalanced_raw_hashes_fail,
+invalid/kdl-spec/underscore_at_start_of_fraction_fail, invalid/kdl-spec/underscore_at_start_of_hex_fail,
+invalid/kdl-spec/unicode_delete_fail, invalid/kdl-spec/unicode_escaped_above_max_fail,
+invalid/kdl-spec/unicode_escaped_h1_fail, invalid/kdl-spec/unicode_escaped_h2_fail,
+invalid/kdl-spec/unicode_escaped_h3_fail, invalid/kdl-spec/unicode_escaped_h4_fail,
+invalid/kdl-spec/unicode_escaped_l1_fail, invalid/kdl-spec/unicode_escaped_l2_fail,
+invalid/kdl-spec/unicode_escaped_l3_fail, invalid/kdl-spec/unicode_escaped_too_long_lead0_fail,
+invalid/kdl-spec/unicode_fsi_fail, invalid/kdl-spec/unicode_lre_fail, invalid/kdl-spec/unicode_lri_fail,
+invalid/kdl-spec/unicode_lrm_fail, invalid/kdl-spec/unicode_lro_fail, invalid/kdl-spec/unicode_pdf_fail,
+invalid/kdl-spec/unicode_pdi_fail, invalid/kdl-spec/unicode_rle_fail, invalid/kdl-spec/unicode_rli_fail,
+invalid/kdl-spec/unicode_rlm_fail, invalid/kdl-spec/unicode_rlo_fail, invalid/kdl-spec/unicode_under_0x20_fail,
+invalid/kdl-spec/zero_space_before_first_arg_fail, invalid/kdl-spec/zero_space_before_prop_fail,
+invalid/kdl-spec/zero_space_before_second_arg_fail
+```
+
+### Codes outside the definition surface
+
+| Code | Exercising scenarios | Status |
+| --- | --- | --- |
+| KDLITH-CLI001 | (none) | elided-with-reason — no emitting path at v0; argument-form rejections are clap usage errors (exit 2) without a registered code |
+| KDLITH-CLI002 | (none) | elided-with-reason — no emitting path at v0; no conflicting-option pair exists yet |
+| KDLITH-CLI003 | (none) | elided-with-reason — `--stdout-format` rejection is a clap value error (processing/cli/stdout-format-invalid pins exit 2 and the message, not the code) |
+| KDLITH-SRC001 | (none) | UNCOVERED — reachable (an unreadable named document reports it), no fixture yet |
+| KDLITH-SRC002 | (none) | UNCOVERED — reachable (a non-UTF-8 document reports it), no fixture yet; needs a committed non-UTF-8 input |
+| KDLITH-SRC003 | invalid/data/source-limit | covered — 600-deep nesting input rejected at the limit |
+| KDLITH-DLC009 | (none) | UNCOVERED — reachable (a dialect-definition literal that does not decode as its type reports it), no fixture yet |
+| KDLITH-REF001 | (none) | elided-with-reason — no emitting path at v0; references bind provisionally and linking never fails a run |
+| KDLITH-REF002 | (none) | elided-with-reason — no emitting path at v0; symbol-identity clashes surface as DLC002/SCH002/SCH004 first |
+| KDLITH-GEN001 | (none) | elided-with-reason — `gen` is a stub and never writes |
+| KDLITH-GEN002 | (none) | elided-with-reason — `gen --check` does not exist while `gen` is a stub |
+| KDLITH-EXP001 | (none) | elided-with-reason — `export` is a stub |
+| KDLITH-EXP002 | (none) | elided-with-reason — `export` is a stub |
+| KDLITH-DLC001 | (none) | elided-with-reason — retired; a node no dialect binding accepts is BND001 on every reading path |
+
+## Verb-contract census
+
+| Verb contract | Exercised by | State |
+| --- | --- | --- |
+| `vet dialect` local scope, one file each | dialect/canonical-vet/bindings-local, dialect/canonical-vet/context-local, dialect/canonical-vet/documents-local, dialect/canonical-vet/types-local | covered |
+| `vet dialect` complete, digest pin | dialect/canonical-vet/merged, dialect/entrypoint-vet/dialect | covered — same digest `a01c83f83f57d364` on both paths |
+| `vet schema` bundled default | processing/vet-schema-default, schemas/vet/catalog | covered — catalog digest pinned |
+| `vet schema` `--dialect` override | processing/vet-schema-override | covered — same digest as the default |
+| `vet schema` multi-document and import policies | schemas/vet/import-repeat-coalesce, schemas/vet/import-repeat-instantiate, invalid/schemas/duplicate-type | covered |
+| `vet data` item stream | processing/bind/stream, processing/bind/context, processing/bind/defaults, processing/bind/nullable, processing/bind/value-expr, dialect/canonical-bind/bindings, dialect/canonical-bind/context, dialect/canonical-bind/documents, dialect/canonical-bind/types, dialect/entrypoint-bind/dialect | covered |
+| `vet data` negatives | every invalid/data/ scenario (see code census) | covered |
+| `inspect dialect` | dialect/canonical-inspect/bindings, dialect/canonical-inspect/context, dialect/canonical-inspect/documents, dialect/canonical-inspect/merged, dialect/canonical-inspect/types, dialect/entrypoint-inspect/dialect | covered |
+| `inspect schema` | schemas/inspect/catalog, schemas/inspect/constructs, schemas/inspect/shelf | covered |
+| `inspect data` | processing/inspect-data, processing/round-trip/inspect-data-catalog | covered |
+| `inspect --view` fail-closed | processing/inspect-view-bound, processing/inspect-view-context, processing/inspect-view-effective, processing/inspect-view-origins, processing/inspect-view-plan, processing/inspect-view-references | covered — all six unimplemented views pinned as fail-closed |
+| `read` bare form | dialect/canonical-read/bindings, dialect/canonical-read/context, dialect/canonical-read/documents, dialect/canonical-read/types, dialect/entrypoint-read/dialect | covered |
+| `read file` | processing/read-file-form | covered |
+| `read data` found / missing | processing/read-data-found, processing/read-data-missing | covered |
+| `read data --entry` | processing/read-data-entry | covered — composition pinned via the source index |
+| round trip dialect to schema to data | processing/round-trip/data-through-schema, processing/round-trip/inspect-data-catalog | covered — full chain over the committed catalog schema |
+| `--help` | processing/smoke-help | covered |
+| `--version` | processing/cli/version | covered |
+| `help` verb | processing/cli/help-verb, processing/cli/help-vet | covered |
+| stub verbs fail closed | processing/cli/stub-gen, processing/cli/stub-export, processing/cli/stub-list, processing/cli/stub-cache, processing/cli/stub-changelog, codegen/gen-dialect-stub-fail-closed | covered — exit 1 plus "not implemented yet" |
+| `--stdout-format` non-text | processing/cli/stdout-format-invalid | covered — exit 2 |
+| `--verbosity` out of band | processing/cli/verbosity-out-of-band | covered — exit 2 |
+| bare `kdlith` no args | processing/cli/no-args | covered — exit 2, usage on stderr |
+| `gen dialect <entrypoint>` | codegen/gen-dialect-entrypoint-read, codegen/gen-dialect-entrypoint-vet | elided — see the declared elisions below; the entrypoint preconditions are pinned, generation is not |
+
+## Declared elisions
+
+Each row names a gap the suite deliberately does not exercise, why, and
+the condition that reopens it. No scenario anywhere reports an elided
+behavior as passed.
+
+| Gap | Why it is not exercised | Reopen condition |
+| --- | --- | --- |
+| Generation oracle comparison (generate from `contracts/super-schemas/dialect.kdl` into scratch, compare against `pkg/rs/superproc` excluding the generated marker, compile, exercise) | Codegen is skeleton-only; the `gen` verb is a fail-closed stub that writes nothing | `gen dialect` is implemented and the harness can express multi-step runs and file comparison — add the oracle scenarios under `codegen/` |
+| The `gen dialect <entrypoint>` invocation form | While `gen` is a skeleton it takes no positional arguments; the subcommand form is a clap usage error (exit 2) before the stub runs | The codegen story adds the subcommand form — rewrite `codegen/gen-dialect-stub-fail-closed` into the real invocation |
+| Stub verbs beyond fail-closed (`gen`, `export`, `list`, `cache`, `changelog`) | The verbs are stubs; only their exit-1 "not implemented yet" contract exists | Each verb is implemented — replace its processing/cli stub pin with the real contract scenarios |
+| Unimplemented `inspect --view` views beyond the six fail-closed pins | The views do not exist; the pins prove the fail-closed rejection, not view content | A view is implemented — flip its inspect-view pin to the real output |
+| Compiler-only codes accepted on the inspect path | Deliberate product decision: `inspect` runs only the checks the dialect's declarations own, so it accepts inputs whose only faults are compiler-only checks (pinned by the six inspect-accepts scenarios) | The product decision changes — the inspect-accepts pins and the design record change together |
+| `repeated=coalesce`/`instantiate` on dialect documents | The dialect self-description rejects any `repeated=` property at v0 (KDLITH-DLC008, pinned by `invalid/dialect/import-repeated-property`); the policies are pinned on the schema path only | The dialect conform walk admits the property — rewrite the negative into dialect-path positives |
+| Reference resolution failures (`KDLITH-REF001`/`REF002`) | References bind provisionally at v0; linking never fails a run, so `read data --entry` composition is pinned via the source index rather than resolution | Linking gains a failure surface — add resolution negatives and tighten `processing/read-data-entry` |
+| Registered CLI/export/generation error codes (`KDLITH-CLI001`-`003`, `EXP001`-`002`, `GEN001`-`002`) | No emitting path exists at v0: usage errors are clap's exit-2 stratum, and `export`/`gen` are stubs | The emitting paths land — add one negative control per code |
+| Committed run commands name the `target/debug` build path | The committed commands are the contract; on hosts where that build path is unavailable a host-local substitution runs the same binaries | None — host note only |
+
+## Story checklist
+
+The acceptance criteria this suite answers to, with their gate commands:
+
+- [ ] `cargo build --workspace` exits 0 (run unpiped; record the literal exit code)
+- [ ] `repoci check` exits 0 (run unpiped; record the literal exit code)
+- [ ] `/usr/bin/rg --no-ignore --hidden -n 'cfg\(test\)|#\[test\]' pkg tools tests --glob '*.rs'` returns zero matches
+- [ ] `target/debug/kdlith-fixtures --fx-suite tests/fixtures --fx-kdlith target/debug/kdlith` exits 0 unpiped, with all counts recorded
+- [ ] Each commit subject is conventional, lowercase, at most 72 characters, with no body (`git log --format=%s%n%b`)
+- [ ] The harness output names the codegen elision explicitly; no scenario reports the oracle comparison as passed
+- [ ] Every `tests/fixtures/invalid/` scenario carries an `expect-invalid` code line

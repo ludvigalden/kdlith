@@ -1,0 +1,9 @@
+locale en-gb
+section "Main" {
+    public
+    item one kind=book group=shelf {
+        tags x
+        title "Dune"
+        image "cover.png"
+    }
+}

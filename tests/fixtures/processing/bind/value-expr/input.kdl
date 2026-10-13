@@ -1,0 +1,3 @@
+mark m1 raw=42
+mark m2 raw=#true
+mark m3 raw="text"

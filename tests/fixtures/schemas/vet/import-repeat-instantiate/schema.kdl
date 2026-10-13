@@ -1,0 +1,4 @@
+schema catalog version="1" {
+    import "parts.kdl" repeated=instantiate
+    import "./parts.kdl" repeated=instantiate
+}

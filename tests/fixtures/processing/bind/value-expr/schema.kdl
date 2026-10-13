@@ -1,0 +1,12 @@
+schema marks version="1" {
+    types {
+        object Mark {
+            field id String
+            field raw ValueExpr
+        }
+    }
+    node mark role=record type=Mark {
+        field id arg=0
+        field raw property=raw
+    }
+}

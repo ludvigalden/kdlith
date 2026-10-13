@@ -1,0 +1,9 @@
+{
+  "binary": "kdlith",
+  "description": "The help verb prints the top-level usage text on stdout and exits 0",
+  "args": ["help"],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": ["Usage: kdlith [OPTIONS] <COMMAND>"]
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "The same catalog-shaped data document reads through the reader path: inspect data prints the same ordered stream through the committed catalog schema",
+  "args": [
+    "inspect",
+    "data",
+    "--schema",
+    "{fx-suite}/schemas/vet/catalog/schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":1},\"type_name\":\"Entry\"",
+      "{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":null}}"
+    ]
+  }
+}

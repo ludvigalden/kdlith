@@ -1,0 +1,5 @@
+schema catalog version="1" {
+    node note role=record {
+        field text String arg=0
+    }
+}

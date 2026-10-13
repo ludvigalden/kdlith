@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "A ValueExpr field accepts any single KDL scalar kept as bound: number, boolean, and string scalars each bind and validate",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"name\":\"raw\",\"value\":{\"kind\":\"number\",\"value\":\"42\"}",
+      "{\"name\":\"raw\",\"value\":{\"kind\":\"bool\",\"value\":true}",
+      "{\"name\":\"raw\",\"value\":{\"kind\":\"string\",\"value\":\"text\"}"
+    ]
+  }
+}

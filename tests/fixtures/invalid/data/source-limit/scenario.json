@@ -1,0 +1,8 @@
+{
+  "binary": "kdlith",
+  "description": "A document nested past the parser's depth limit of 512 is rejected with the source limit code before any reading runs",
+  "args": ["read", "input.kdl"],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

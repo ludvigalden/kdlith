@@ -4,6 +4,9 @@ This directory is the committed fixture suite for kdlith. The
 `kdlith-fixtures` harness (`tests/tools/kdlith-fixtures`) runs every scenario
 in it against a built `kdlith` binary. The harness, not kdlith, judges each
 run: kdlith's output is evidence and never interprets an expectation.
+[COVERAGE.md](COVERAGE.md) is the census of record for the suite: which
+dialect constructs, diagnostic codes, and verb contracts the scenarios
+exercise, and which gaps are declared elisions.
 
 ## Running the suite
 
@@ -95,11 +98,14 @@ declared code.
 
 `dialect/canonical-bind/` and `dialect/entrypoint-bind/` run `kdlith vet
 data` with the canonical dialect as the schema, binding each committed
-file as a data document of the dialect. `processing/bind/` holds one
-small schema (`schema.kdl`) and scenarios that bind data documents
-against it; each asserts the ordered JSON-line item stream on stdout.
-`invalid/data/` holds data documents bound against the same schema, each
-rejected with its declared code.
+file as a data document of the dialect. `processing/bind/` holds small
+schemas and scenarios that bind data documents against them, each asserting
+the ordered JSON-line item stream on stdout; most scenarios share one
+`schema.kdl`, while `processing/bind/nullable/` and
+`processing/bind/value-expr/` carry their own schemas for the `nullable<T>`
+type constructor and the `ValueExpr` scalar. `invalid/data/` holds data
+documents bound against the shared schema, each rejected with its declared
+code.
 
 `dialect/canonical-inspect/`, `dialect/entrypoint-inspect/`, and
 `schemas/inspect/` run `kdlith inspect`, which reads definitions through
@@ -112,6 +118,31 @@ decision those negatives imply: each reads, through `inspect schema`,
 the same input a `vet schema` scenario rejects with a compiler-only
 code, and asserts the reading completes and accepts it.
 
+`processing/sch003-span-vet/` and `processing/sch003-span-inspect/` pin the
+span of one diagnostic: an overlapping binding (`KDLITH-SCH003`) is reported
+at the node declaration, at the same span on both reading paths, because the
+reader-path binder check fires first in `vet`.
+
+`processing/cli/` holds the CLI-surface contracts: the five stub verbs
+(`gen`, `export`, `list`, `cache`, `changelog`) each fail closed with exit 1
+and a "not implemented yet" message, `--version`, the `help` verb, the
+exit-2 rejections of a non-text `--stdout-format` and an out-of-band
+`--verbosity`, and the bare no-arguments invocation.
+
+`processing/round-trip/` runs the full chain entrypoint to dialect to
+schema to data over the committed catalog schema: `vet data` and
+`inspect data` each bind a catalog-shaped data document end to end.
+
+`processing/read-data-entry/` pins the `read data --entry` form: the entry
+document's declarations compose with the read document, observed through
+the bound record's source index.
+
+`schemas/vet/import-repeat-coalesce/` and
+`schemas/vet/import-repeat-instantiate/` pin the two non-default
+repeated-import policies on the schema path;
+`invalid/dialect/import-repeated-property/` pins the v0 limitation that the
+dialect self-description rejects any `repeated=` property.
+
 `parse/kdl-spec/` and `invalid/kdl-spec/` hold the official KDL v2 test suite,
 one scenario per upstream case: valid documents must exit `0` under
 `kdlith read input.kdl`, and invalid ones must be rejected with the declared
@@ -119,6 +150,18 @@ code. Each negative control keeps the upstream input byte-for-byte in
 `input.kdl` and declares its codes in a separate `expect-invalid.txt`, so no
 header line alters the document. The pinned upstream commit, the derivation,
 and the declared elisions are in `parse/kdl-spec/PROVENANCE.md`.
+
+## Codegen: declared elision
+
+`codegen/` holds the reference-generation scenarios, and codegen is
+skeleton-only. The generation oracle comparison — generate from
+`contracts/super-schemas/dialect.kdl` into scratch, compare against
+`pkg/rs/superproc` excluding only the generated marker, compile, and
+exercise — is not implemented and is never reported passed. These scenarios
+pin the steps that exist: the entrypoint parses and vets (to the canonical
+digest), and the `gen` verb fails closed with exit 1 and a "not implemented
+yet" message, writing nothing anywhere. [COVERAGE.md](COVERAGE.md) carries
+the full elision table with its reopen conditions.
 
 ## Scenario format v0
 

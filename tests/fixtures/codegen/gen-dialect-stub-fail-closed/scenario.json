@@ -1,0 +1,9 @@
+{
+  "binary": "kdlith",
+  "description": "Declared elision: codegen is not implemented, so the generation oracle comparison (generate from contracts/super-schemas/dialect.kdl into scratch, compare against pkg/rs/superproc excluding the generated marker, compile) is never run and never reported passed. This scenario pins the real gen step that exists: the fail-closed stub, which exits 1 with 'kdlith: gen is not implemented yet' on stderr and writes nothing anywhere. Probed behavior note: the documented 'gen dialect <entrypoint>' form is itself rejected fail-closed by argument parsing (exit 2, the verb takes no arguments while codegen is a skeleton), so the stub contract is pinned through the bare verb",
+  "args": ["gen"],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": ["kdlith: gen is not implemented yet"]
+  }
+}
