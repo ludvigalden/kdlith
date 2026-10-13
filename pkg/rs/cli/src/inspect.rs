@@ -2,62 +2,25 @@
 //! the reference processor and print each typed item as one JSON line
 //! (the bound view); diagnostics go to stderr.
 
-use std::ffi::OsString;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use kdlith_diagnostic::{DiagnosticRecord, ExitStatus};
 use kdlith_engine::{CheckScope, Extensions, TypedItem};
 use kdlith_superproc::{Item, load_dialect};
 
+use crate::InspectCommand;
 use crate::report::report_all;
 
-/// The usage line of the `inspect` verb.
-pub const INSPECT_USAGE: &str = "kdlith inspect dialect|schema --dialect <file>... <file>...";
-
-/// Run `kdlith inspect` over the arguments after the verb. A usage error
-/// prints the usage line and exits 2.
-pub fn inspect_command(args: &[OsString]) -> ExitStatus {
-    match parse(args) {
-        Ok((dialect, entries)) => {
-            let dialect: Vec<&Path> = dialect.iter().map(Path::new).collect();
-            let entries: Vec<&Path> = entries.iter().map(Path::new).collect();
-            inspect(&dialect, &entries)
-        }
-        Err(reason) => {
-            eprintln!("kdlith: {reason}\nusage: {INSPECT_USAGE}");
-            ExitStatus::Usage
-        }
-    }
-}
-
-type Parsed = (Vec<OsString>, Vec<OsString>);
-
-fn parse(args: &[OsString]) -> Result<Parsed, String> {
-    let (level, rest) = args
-        .split_first()
-        .ok_or("inspect needs dialect or schema")?;
-    if !matches!(level.to_str(), Some("dialect" | "schema")) {
-        return Err(format!(
-            "unknown inspect target {}",
-            level.to_string_lossy()
-        ));
-    }
-    let (mut dialect, mut entries) = (Vec::new(), Vec::new());
-    let mut iter = rest.iter();
-    while let Some(arg) = iter.next() {
-        match arg.to_str() {
-            Some("--dialect") => dialect.push(iter.next().ok_or("--dialect needs a file")?.clone()),
-            Some(flag) if flag.starts_with('-') => return Err(format!("unknown option {flag}")),
-            _ => entries.push(arg.clone()),
-        }
-    }
-    if dialect.is_empty() {
-        return Err("inspect needs --dialect".to_owned());
-    }
-    if entries.is_empty() {
-        return Err("inspect needs at least one definition document".to_owned());
-    }
-    Ok((dialect, entries))
+/// Run a parsed `inspect` subcommand. Both targets share the reading
+/// surface; the target name records what kind of definition the
+/// documents are expected to hold.
+pub(crate) fn run(command: InspectCommand) -> ExitStatus {
+    let args = match command {
+        InspectCommand::Dialect(args) | InspectCommand::Schema(args) => args,
+    };
+    let dialect: Vec<&Path> = args.dialect.iter().map(PathBuf::as_path).collect();
+    let entries: Vec<&Path> = args.files.iter().map(PathBuf::as_path).collect();
+    inspect(&dialect, &entries)
 }
 
 /// Read `entries` and their imports as definitions written in the
