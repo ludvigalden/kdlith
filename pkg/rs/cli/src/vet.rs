@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use kdlith_diagnostic::{DiagnosticRecord, ExitStatus};
 use kdlith_engine::{BindingSession, CheckScope, Definition, Extensions};
 use kdlith_model::{BoundItem, SourceId};
-use kdlith_superproc::{load_dialect, load_schema};
+use kdlith_superproc::{load_dialect, load_schema, seed};
 
 use crate::report::report_all;
 use crate::{ScopeArg, VetCommand};
@@ -17,19 +17,19 @@ pub(crate) fn run(command: VetCommand) -> ExitStatus {
     match command {
         VetCommand::Dialect(args) => vet(
             VetTarget::Dialect,
-            &[],
+            None,
             &paths(&args.files),
             scope_of(args.scope),
         ),
         VetCommand::Schema(args) => vet(
             VetTarget::Schema,
-            &paths(&args.dialect),
+            args.dialect.as_deref(),
             &paths(&args.files),
             scope_of(args.scope),
         ),
         VetCommand::Data(args) => vet_data(
-            &paths(&args.dialect),
-            &paths(&args.schema),
+            args.dialect.as_deref(),
+            args.schema.as_deref(),
             &paths(&args.files),
         ),
     }
@@ -46,30 +46,45 @@ fn scope_of(scope: ScopeArg) -> CheckScope {
     }
 }
 
+/// The governing dialect: the bundled canonical dialect, or the one
+/// entry document an explicit `--dialect` names, itself loaded with
+/// complete checking.
+pub(crate) fn governing_dialect(
+    dialect: Option<&Path>,
+    extensions: &Extensions,
+) -> Result<Definition, Vec<DiagnosticRecord>> {
+    match dialect {
+        Some(file) => load_dialect(&[file], extensions, CheckScope::Complete),
+        None => seed(extensions),
+    }
+}
+
 /// The definition level being vetted.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum VetTarget {
     Dialect,
-    /// A schema definition, under a dialect loaded first.
+    /// A schema definition, under the bundled dialect or the one given
+    /// by an explicit `--dialect`.
     Schema,
     /// Data documents, bound against a schema loaded under a dialect.
     Data,
 }
 
 /// Vet the definition whose entry documents are `entries`. A schema is
-/// vetted under the dialect loaded from `dialect`, which is itself
-/// vetted with complete checking first.
+/// vetted under the bundled dialect, or the dialect loaded from the one
+/// document `dialect` names, which is itself vetted with complete
+/// checking first.
 pub fn vet(
     target: VetTarget,
-    dialect: &[&Path],
+    dialect: Option<&Path>,
     entries: &[&Path],
     scope: CheckScope,
 ) -> ExitStatus {
     let extensions = Extensions::standard();
     let loaded = match target {
         VetTarget::Dialect => load_dialect(entries, &extensions, scope),
-        VetTarget::Schema => match load_dialect(dialect, &extensions, CheckScope::Complete) {
+        VetTarget::Schema => match governing_dialect(dialect, &extensions) {
             Ok(governing) => load_schema(&governing, entries, &extensions, scope),
             Err(records) => Err(records),
         },
@@ -107,17 +122,15 @@ fn summary_line(definition: &Definition) -> String {
     )
 }
 
-/// Bind each data document against `schema` under `dialect`, or against
-/// the dialect itself when `schema` is empty. Bound items go to stdout as
-/// JSON lines; diagnostics also go to stderr.
-pub fn vet_data(dialect: &[&Path], schema: &[&Path], entries: &[&Path]) -> ExitStatus {
+/// Bind each data document against `schema` under the governing
+/// dialect — the bundled one, or the single document `dialect` names —
+/// or against the dialect itself when `schema` is absent. Bound items
+/// go to stdout as JSON lines; diagnostics go to stderr.
+pub fn vet_data(dialect: Option<&Path>, schema: Option<&Path>, entries: &[&Path]) -> ExitStatus {
     let extensions = Extensions::standard();
-    let loaded = load_dialect(dialect, &extensions, CheckScope::Complete).and_then(|governing| {
-        if schema.is_empty() {
-            Ok(governing)
-        } else {
-            load_schema(&governing, schema, &extensions, CheckScope::Complete)
-        }
+    let loaded = governing_dialect(dialect, &extensions).and_then(|governing| match schema {
+        None => Ok(governing),
+        Some(file) => load_schema(&governing, &[file], &extensions, CheckScope::Complete),
     });
     let definition = match loaded {
         Ok(definition) => definition,
@@ -164,7 +177,7 @@ fn write_item(out: &mut impl std::io::Write, item: &BoundItem) -> std::io::Resul
 }
 
 /// A data document's text, or the registered source diagnostic.
-fn read_text(path: &Path, shown: &str) -> Result<String, Box<DiagnosticRecord>> {
+pub(crate) fn read_text(path: &Path, shown: &str) -> Result<String, Box<DiagnosticRecord>> {
     let bytes = std::fs::read(path).map_err(|error| {
         let reason = error.to_string();
         Box::new(crate::read::source_error(

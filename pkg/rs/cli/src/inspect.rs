@@ -1,36 +1,72 @@
-//! `kdlith inspect dialect|schema`: read definition documents through
-//! the reference processor and print each typed item as one JSON line
-//! (the bound view); diagnostics go to stderr.
+//! `kdlith inspect dialect|schema|data`: read documents through the
+//! reference processor and print each item as one JSON line (the source
+//! view); diagnostics go to stderr.
 
 use std::path::{Path, PathBuf};
 
 use kdlith_diagnostic::{DiagnosticRecord, ExitStatus};
-use kdlith_engine::{CheckScope, Extensions, TypedItem};
-use kdlith_superproc::{Item, load_dialect};
+use kdlith_engine::{Extensions, TypedItem};
+use kdlith_superproc::{Item, reader};
 
 use crate::InspectCommand;
+use crate::ViewArg;
 use crate::report::report_all;
+use crate::vet::governing_dialect;
 
-/// Run a parsed `inspect` subcommand. Both targets share the reading
-/// surface; the target name records what kind of definition the
-/// documents are expected to hold.
+/// Run a parsed `inspect` subcommand. Every target shares the reading
+/// surface; the target name records what kind of document the entries
+/// are expected to hold. Only the source view exists; every other view
+/// of the draft fails closed rather than printing a poorer stand-in.
 pub(crate) fn run(command: InspectCommand) -> ExitStatus {
-    let args = match command {
-        InspectCommand::Dialect(args) | InspectCommand::Schema(args) => args,
-    };
-    let dialect: Vec<&Path> = args.dialect.iter().map(PathBuf::as_path).collect();
-    let entries: Vec<&Path> = args.files.iter().map(PathBuf::as_path).collect();
-    inspect(&dialect, &entries)
+    match command {
+        InspectCommand::Dialect(args) => {
+            if let Some(status) = reject_view(args.view) {
+                return status;
+            }
+            inspect(args.dialect.as_deref(), &paths(&args.files))
+        }
+        InspectCommand::Schema(args) => {
+            if let Some(status) = reject_view(args.view) {
+                return status;
+            }
+            inspect(args.dialect.as_deref(), &paths(&args.files))
+        }
+        InspectCommand::Data(args) => {
+            if let Some(status) = reject_view(args.view) {
+                return status;
+            }
+            crate::vet::vet_data(
+                args.dialect.as_deref(),
+                args.schema.as_deref(),
+                &paths(&args.files),
+            )
+        }
+    }
 }
 
-/// Read `entries` and their imports as definitions written in the
-/// dialect loaded from `dialect`.
-pub fn inspect(dialect: &[&Path], entries: &[&Path]) -> ExitStatus {
-    let compiled = match load_dialect(dialect, &Extensions::standard(), CheckScope::Complete) {
+fn paths(files: &[PathBuf]) -> Vec<&Path> {
+    files.iter().map(PathBuf::as_path).collect()
+}
+
+/// The exit of an unimplemented view, or `None` when the source view
+/// was asked for.
+fn reject_view(view: ViewArg) -> Option<ExitStatus> {
+    (view != ViewArg::Source).then(|| {
+        eprintln!("kdlith: the {} view is not implemented yet", view.name());
+        ExitStatus::Failure
+    })
+}
+
+/// Read `entries` and their imports as definition documents written in
+/// the governing dialect — the bundled one, or the single document
+/// `dialect` names.
+pub fn inspect(dialect: Option<&Path>, entries: &[&Path]) -> ExitStatus {
+    let extensions = Extensions::standard();
+    let compiled = match governing_dialect(dialect, &extensions) {
         Ok(compiled) => compiled,
         Err(records) => return report_all(&records),
     };
-    let reader = match kdlith_superproc::reader(&compiled) {
+    let reader = match reader(&compiled) {
         Ok(reader) => reader,
         Err(records) => return report_all(&records),
     };

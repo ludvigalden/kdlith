@@ -1,13 +1,35 @@
-//! `kdlith read <file>`: parse one document to its clean end and report
-//! the first failure as a registered diagnostic on stderr.
+//! `kdlith read file <FILE>` (bare `kdlith read <FILE>` accepted as a
+//! compatibility alias) parses one document to its clean end; `read
+//! data` binds a data document through a schema and prints the one
+//! record whose identity was asked for.
 
 use std::path::Path;
 
 use kdlith_diagnostic::registry::{lookup, render};
 use kdlith_diagnostic::{DiagnosticRecord, ExitStatus};
+use kdlith_engine::{BindingSession, CheckScope, Extensions};
+use kdlith_model::{BoundItem, SourceId, Value};
 use kdlith_parse::Parser;
+use kdlith_superproc::{load_schema, seed};
 
-use crate::report::report;
+use crate::ReadArgs;
+use crate::report::{report, report_all};
+
+/// Run a parsed `read` argument set: the explicit `file` and `data`
+/// subcommands, or the bare one-argument compatibility form.
+pub(crate) fn run(args: &ReadArgs) -> ExitStatus {
+    match &args.command {
+        Some(crate::ReadCommand::File(file)) => read(&file.file),
+        Some(crate::ReadCommand::Data(data)) => read_data(data),
+        None => match &args.file {
+            Some(file) => read(file),
+            None => {
+                eprintln!("kdlith: read requires a document or a subcommand");
+                ExitStatus::Usage
+            }
+        },
+    }
+}
 
 /// Read `path` and drain its pull-event stream. Success prints nothing;
 /// a failure prints one diagnostic line to stderr and fails with the
@@ -47,4 +69,107 @@ pub(crate) fn source_error(code: &str, values: &[&str]) -> DiagnosticRecord {
         Some(definition) => record.with_message(render(definition.message_template, values)),
         None => record,
     }
+}
+
+/// Bind the data document (after the entry document, when one is
+/// given) through the schema under the bundled dialect, print the one
+/// record item whose identity was asked for as a single JSON line, and
+/// report a missing identity as a failure with a clear diagnostic. The
+/// binding always runs to the end, so a diagnostic anywhere in the
+/// documents fails the read even after the record is found.
+pub(crate) fn read_data(args: &crate::ReadDataArgs) -> ExitStatus {
+    let extensions = Extensions::standard();
+    let governing = match seed(&extensions) {
+        Ok(governing) => governing,
+        Err(records) => return report_all(&records),
+    };
+    let definition = match load_schema(
+        &governing,
+        &[args.schema.as_path()],
+        &extensions,
+        CheckScope::Complete,
+    ) {
+        Ok(definition) => definition,
+        Err(records) => return report_all(&records),
+    };
+    let mut documents: Vec<&Path> = Vec::with_capacity(2);
+    if let Some(entry) = args.entry.as_deref() {
+        documents.push(entry);
+    }
+    documents.push(args.file.as_path());
+    let mut records: Vec<DiagnosticRecord> = Vec::new();
+    let mut found: Option<BoundItem> = None;
+    for (at, entry) in documents.iter().enumerate() {
+        let shown = entry.display().to_string();
+        let text = match crate::vet::read_text(entry, &shown) {
+            Ok(text) => text,
+            Err(record) => {
+                records.push(*record);
+                continue;
+            }
+        };
+        let source = SourceId(u32::try_from(at).unwrap_or(u32::MAX));
+        let mut session = BindingSession::new(&definition, source, &shown, &text);
+        loop {
+            match session.next_item() {
+                Ok(Some(item)) => {
+                    if let BoundItem::Diagnostic(record) = &item {
+                        records.push((**record).clone());
+                    }
+                    if found.is_none() && identity_of(&item) == Some(args.id.as_str()) {
+                        found = Some(item);
+                    }
+                }
+                Ok(None) => break,
+                Err(error) => {
+                    report_all(&records);
+                    eprintln!("kdlith: {shown}: {error}");
+                    return ExitStatus::Failure;
+                }
+            }
+        }
+    }
+    match found {
+        Some(item) => {
+            let mut out = std::io::stdout().lock();
+            let written = write_item(&mut out, &item).is_ok();
+            drop(out);
+            if written {
+                report_all(&records)
+            } else {
+                ExitStatus::Failure
+            }
+        }
+        None => {
+            report_all(&records);
+            eprintln!(
+                "kdlith: no record with identity {} in {}",
+                args.id,
+                args.file.display()
+            );
+            ExitStatus::Failure
+        }
+    }
+}
+
+/// A record item's lookup identity: the string value of its bound
+/// `id` field. Records carry no registered identity of their own, and
+/// the schemas read here bind their record identity from that field.
+fn identity_of(item: &BoundItem) -> Option<&str> {
+    let BoundItem::Record(record) = item else {
+        return None;
+    };
+    record
+        .fields
+        .iter()
+        .find(|field| field.name == "id")
+        .and_then(|field| match &field.value {
+            Value::String(id) => Some(id.as_str()),
+            _ => None,
+        })
+}
+
+fn write_item(out: &mut impl std::io::Write, item: &BoundItem) -> std::io::Result<()> {
+    serde_json::to_writer(&mut *out, item)?;
+    out.write_all(b"\n")
 }

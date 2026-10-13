@@ -95,12 +95,13 @@ enum VetCommand {
     /// Load a dialect definition with its imports, compile, link, and
     /// check it
     Dialect(VetDialectArgs),
-    /// Vet a schema definition under the dialect given by --dialect,
-    /// which is itself vetted with complete checking
+    /// Vet a schema definition under the bundled dialect, or the one
+    /// `--dialect` names, itself vetted with complete checking
     Schema(VetSchemaArgs),
-    /// Bind data documents against the schema given by --schema under
-    /// the dialect given by --dialect, or against the dialect itself
-    /// without --schema; bound items go to stdout as one JSON line each
+    /// Bind data documents against the schema `--schema` names, under
+    /// the bundled dialect or the one `--dialect` names, or against
+    /// the dialect itself without `--schema`; bound items go to stdout
+    /// as one JSON line each
     Data(VetDataArgs),
 }
 
@@ -117,9 +118,10 @@ struct VetDialectArgs {
 
 #[derive(Args)]
 struct VetSchemaArgs {
-    /// Dialect definition documents
-    #[arg(long = "dialect", required = true)]
-    dialect: Vec<PathBuf>,
+    /// A dialect definition document replacing the bundled one; it is
+    /// itself vetted with complete checking
+    #[arg(long = "dialect", value_name = "FILE")]
+    dialect: Option<PathBuf>,
     /// Check the named documents alone (local) or also resolve imports,
     /// link references, and check self-description (complete)
     #[arg(long, value_enum, default_value_t = ScopeArg::Complete)]
@@ -131,13 +133,13 @@ struct VetSchemaArgs {
 
 #[derive(Args)]
 struct VetDataArgs {
-    /// Dialect definition documents
-    #[arg(long = "dialect", required = true)]
-    dialect: Vec<PathBuf>,
-    /// Schema definition documents; without one, data binds against the
-    /// dialect itself
-    #[arg(long = "schema")]
-    schema: Vec<PathBuf>,
+    /// A dialect definition document replacing the bundled one
+    #[arg(long = "dialect", value_name = "FILE")]
+    dialect: Option<PathBuf>,
+    /// A schema definition document; without one, data binds against
+    /// the dialect itself
+    #[arg(long = "schema", value_name = "FILE")]
+    schema: Option<PathBuf>,
     /// Data documents
     #[arg(required = true)]
     files: Vec<PathBuf>,
@@ -150,7 +152,7 @@ enum ScopeArg {
     Complete,
 }
 
-/// `kdlith inspect dialect|schema`.
+/// `kdlith inspect dialect|schema|data`.
 #[derive(Args)]
 struct InspectArgs {
     #[command(subcommand)]
@@ -162,28 +164,114 @@ enum InspectCommand {
     /// Read dialect definition documents and their imports through the
     /// reference processor; each typed item goes to stdout as one JSON
     /// line
-    Dialect(InspectTargetArgs),
+    Dialect(InspectDefinitionArgs),
     /// Read schema definition documents and their imports through the
     /// reference processor; each typed item goes to stdout as one JSON
     /// line
-    Schema(InspectTargetArgs),
+    Schema(InspectDefinitionArgs),
+    /// Bind data documents under the bundled dialect (or the one given
+    /// by --dialect) and the schema given by --schema, or against the
+    /// dialect itself without --schema; each bound item goes to stdout
+    /// as one JSON line
+    Data(InspectDataArgs),
 }
 
 #[derive(Args)]
-struct InspectTargetArgs {
-    /// Dialect definition documents
-    #[arg(long = "dialect", required = true)]
-    dialect: Vec<PathBuf>,
+struct InspectDefinitionArgs {
+    /// A dialect definition document replacing the bundled one
+    #[arg(long = "dialect", value_name = "FILE")]
+    dialect: Option<PathBuf>,
+    /// The item view to print; only the source view exists for now
+    #[arg(long, value_enum, default_value_t = ViewArg::Source)]
+    view: ViewArg,
     /// Definition documents
     #[arg(required = true)]
     files: Vec<PathBuf>,
 }
 
-/// `kdlith read <file>`.
+#[derive(Args)]
+struct InspectDataArgs {
+    /// A dialect definition document replacing the bundled one
+    #[arg(long = "dialect", value_name = "FILE")]
+    dialect: Option<PathBuf>,
+    /// A schema definition document; without one, data binds against
+    /// the dialect itself
+    #[arg(long = "schema", value_name = "FILE")]
+    schema: Option<PathBuf>,
+    /// The item view to print; only the source view exists for now
+    #[arg(long, value_enum, default_value_t = ViewArg::Source)]
+    view: ViewArg,
+    /// Data documents
+    #[arg(required = true)]
+    files: Vec<PathBuf>,
+}
+
+/// The `--view` value of `inspect`: the item view to print.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
+enum ViewArg {
+    Source,
+    Bound,
+    Effective,
+    Origins,
+    References,
+    Context,
+    Plan,
+}
+
+impl ViewArg {
+    fn name(self) -> &'static str {
+        match self {
+            ViewArg::Source => "source",
+            ViewArg::Bound => "bound",
+            ViewArg::Effective => "effective",
+            ViewArg::Origins => "origins",
+            ViewArg::References => "references",
+            ViewArg::Context => "context",
+            ViewArg::Plan => "plan",
+        }
+    }
+}
+
+/// `kdlith read [file <FILE>|data ...]`, with the bare one-argument
+/// form `kdlith read <FILE>` accepted as a compatibility alias of
+/// `read file`.
 #[derive(Args)]
 struct ReadArgs {
+    /// A KDL document, in the bare compatibility form `kdlith read
+    /// <FILE>`; a document named `file` or `data` needs the explicit
+    /// `read file` form
+    file: Option<PathBuf>,
+    #[command(subcommand)]
+    command: Option<ReadCommand>,
+}
+
+#[derive(Subcommand)]
+enum ReadCommand {
+    /// Parse one document to its clean end
+    File(ReadFileArgs),
+    /// Read one indexed data record by its identity through a schema
+    Data(ReadDataArgs),
+}
+
+#[derive(Args)]
+struct ReadFileArgs {
     /// A KDL document
     file: PathBuf,
+}
+
+#[derive(Args)]
+struct ReadDataArgs {
+    /// A schema definition document, read under the bundled dialect
+    #[arg(long, required = true)]
+    schema: PathBuf,
+    /// An entry document bound before the read document, establishing
+    /// its declarations and context
+    #[arg(long)]
+    entry: Option<PathBuf>,
+    /// The data document holding the record
+    file: PathBuf,
+    /// The identity of the record to read
+    id: String,
 }
 
 /// Parse the process arguments, dispatch the verb, and resolve the
@@ -211,7 +299,7 @@ pub fn run() -> ExitStatus {
         Command::Export => stub("export"),
         Command::Inspect(args) => inspect::run(args.command),
         Command::List => stub("list"),
-        Command::Read(args) => read::read(&args.file),
+        Command::Read(args) => read::run(&args),
         Command::Cache => stub("cache"),
         Command::Changelog => stub("changelog"),
         Command::Help(args) => help(&args.command),

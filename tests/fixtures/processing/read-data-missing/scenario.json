@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "read data with an identity no record in the document carries fails with a clear diagnostic and a nonzero exit",
+  "args": [
+    "read",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "{fx-suite}/processing/bind/stream/input.kdl",
+    "no-such-record"
+  ],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": [
+      "kdlith: no record with identity no-such-record in"
+    ]
+  }
+}

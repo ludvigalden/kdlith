@@ -1,19 +1,11 @@
 {
   "binary": "kdlith",
-  "description": "A dialect contribution the reference processor does not declare makes the processor refuse to read, before any document is bound",
+  "description": "A dialect contribution the reference processor does not declare makes the processor refuse to read, before any document is bound: the override imports the canonical documents and adds one undeclared string type",
   "args": [
     "inspect",
     "dialect",
     "--dialect",
-    "{fx-suite}/../../pkg/kdl/schemas/dialect/types.kdl",
-    "--dialect",
-    "{fx-suite}/../../pkg/kdl/schemas/dialect/bindings.kdl",
-    "--dialect",
-    "{fx-suite}/../../pkg/kdl/schemas/dialect/context.kdl",
-    "--dialect",
-    "{fx-suite}/../../pkg/kdl/schemas/dialect/documents.kdl",
-    "--dialect",
-    "extra.kdl",
+    "{fx-suite}/invalid/dialect/processor-mismatch/extra.kdl",
     "{fx-suite}/../../contracts/super-schemas/dialect.kdl"
   ],
   "expect-invalid": {

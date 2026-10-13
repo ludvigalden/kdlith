@@ -1,7 +1,13 @@
 // A fifth contribution to the canonical dialect: one string type the
-// reference processor does not declare. The dialect still compiles; the
-// processor must refuse to read with it.
+// reference processor does not declare. The document imports the four
+// canonical dialect definition documents and adds the contribution, so
+// the governing dialect is the canonical one plus the extra type. The
+// dialect still compiles; the processor must refuse to read with it.
 dialect kdlith version="0" {
+    import "../../../../../pkg/kdl/schemas/dialect/types.kdl"
+    import "../../../../../pkg/kdl/schemas/dialect/bindings.kdl"
+    import "../../../../../pkg/kdl/schemas/dialect/context.kdl"
+    import "../../../../../pkg/kdl/schemas/dialect/documents.kdl"
     types {
         string Extra {
             min-length 1

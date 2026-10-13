@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "A data document reads through inspect data in the source view: the same bound item stream vet data prints, one JSON line per item",
+  "args": [
+    "inspect",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "{fx-suite}/processing/bind/stream/input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":1},\"identity\":{\"domain\":\"Group\",\"name\":[\"shelf\"]}",
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":6},\"type_name\":\"Item\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"one\"}"
+    ]
+  }
+}

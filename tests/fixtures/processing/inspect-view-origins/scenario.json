@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "The origins view of inspect is parsed and rejected fail-closed: only the source view is implemented",
+  "args": [
+    "inspect",
+    "dialect",
+    "--view",
+    "origins",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/types.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": [
+      "kdlith: the origins view is not implemented yet"
+    ]
+  }
+}

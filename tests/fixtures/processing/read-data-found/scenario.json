@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "read data binds the data document through the schema and prints exactly the record whose identity was asked for, as one JSON line",
+  "args": [
+    "read",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "{fx-suite}/processing/bind/stream/input.kdl",
+    "one"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":6},\"type_name\":\"Item\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"one\"}"
+    ]
+  }
+}

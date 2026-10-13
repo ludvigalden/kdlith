@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "A single-file --dialect override selects the dialect-generation entrypoint, which imports the four canonical documents: the schema vets to the same digest as the bundled default",
+  "args": [
+    "vet",
+    "schema",
+    "--dialect",
+    "{fx-suite}/../../contracts/super-schemas/dialect.kdl",
+    "{fx-suite}/schemas/vet/catalog/schema.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "ok: schema catalog version 1 scope=complete documents=2 ",
+      "digest=e62487cbe1138e7f"
+    ]
+  }
+}

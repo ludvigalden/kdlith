@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "The dialect-generation entrypoint handed to vet schema is rejected: its root declares a dialect, and a schema vet expects a schema root",
+  "args": [
+    "vet",
+    "schema",
+    "{fx-suite}/../../contracts/super-schemas/dialect.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

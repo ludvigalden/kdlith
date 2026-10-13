@@ -1,0 +1,13 @@
+{
+  "binary": "kdlith",
+  "description": "The explicit read file form parses one document to its clean end, exactly like the bare compatibility form",
+  "args": [
+    "read",
+    "file",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/types.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": []
+  }
+}

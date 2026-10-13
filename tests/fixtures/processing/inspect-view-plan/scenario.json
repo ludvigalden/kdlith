@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "The plan view of inspect is parsed and rejected fail-closed: only the source view is implemented",
+  "args": [
+    "inspect",
+    "dialect",
+    "--view",
+    "plan",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/types.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": [
+      "kdlith: the plan view is not implemented yet"
+    ]
+  }
+}

@@ -4,14 +4,6 @@
   "args": [
     "inspect",
     "schema",
-    "--dialect",
-    "{fx-suite}/../../pkg/kdl/schemas/dialect/types.kdl",
-    "--dialect",
-    "{fx-suite}/../../pkg/kdl/schemas/dialect/bindings.kdl",
-    "--dialect",
-    "{fx-suite}/../../pkg/kdl/schemas/dialect/context.kdl",
-    "--dialect",
-    "{fx-suite}/../../pkg/kdl/schemas/dialect/documents.kdl",
     "input.kdl"
   ],
   "expect-invalid": {
