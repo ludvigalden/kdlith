@@ -6,8 +6,8 @@ use std::ffi::OsString;
 use std::path::Path;
 
 use kdlith_diagnostic::{DiagnosticRecord, ExitStatus};
-use kdlith_engine::{CheckScope, Extensions, TypedItem, load_dialect};
-use kdlith_superproc::Item;
+use kdlith_engine::{CheckScope, Extensions, TypedItem};
+use kdlith_superproc::{Item, load_dialect};
 
 use crate::report::report_all;
 

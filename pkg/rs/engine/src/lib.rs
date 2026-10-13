@@ -10,7 +10,6 @@ mod definition;
 mod diag;
 mod documents;
 mod extensions;
-mod load;
 mod names;
 mod overlap;
 mod plan;
@@ -28,17 +27,19 @@ pub use bindings::{
     EffectGroup, EffectTarget, FieldBinding, NodeDecl, NodeDeclId, ParentKey, Placement, Role,
     Scope, ScopeId, SetFrom, Source,
 };
-pub use compile::{
-    Compiled, DIALECT_VERSION, compile_dialect, compile_dialect_scoped, compile_pair,
-    compile_schema, compile_schema_scoped,
+pub use compile::input::{
+    ChildRuleInput, ConstraintInput, Construct, DeferralInput, DefinitionInput, DocumentInput,
+    DocumentRuleInput, EffectGroupInput, EffectInput, FieldBindingInput, FieldInput, FormatInput,
+    ImportInput, Located, MemberInput, NodeInput, SlotInput, SourceInput, TypeInput,
+    ValidatorInput, VariantInput,
 };
+pub use compile::{DIALECT_VERSION, compile_dialect, compile_dialect_input, compile_schema_input};
 pub use definition::{
     CheckScope, Deferral, Definition, DefinitionKind, DocumentRule, ImportDecl, SlotDecl,
 };
 pub use diag::Site;
 pub use documents::MAX_DOCUMENT_BYTES;
 pub use extensions::{Extensions, TYPE_EXPRESSION_VALIDATOR, TYPE_EXPRESSION_VERSION};
-pub use load::{MAX_DEFINITION_BYTES, load_dialect, load_schema};
 pub use names::{Names, Sym};
 pub use plan::{ContextPlan, ContextRead, DeferredBinding, EffectStep, NodePlan, ProcessingPlan};
 pub use structure::{Occurs, OrderRule, ScopeRules, ScopeState, Violation};

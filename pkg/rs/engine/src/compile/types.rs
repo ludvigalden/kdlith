@@ -32,7 +32,7 @@ pub(crate) fn container(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) {
     }
 }
 
-fn declare(cx: &mut Cx<'_>, site: Site, name: String, kind: TypeKind) {
+pub(crate) fn declare(cx: &mut Cx<'_>, site: Site, name: String, kind: TypeKind) {
     let sym = cx.names.intern(&name);
     let decl = TypeDecl {
         name: sym,
@@ -120,7 +120,7 @@ fn string(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) -> Option<(String, Typ
     Some((name?, TypeKind::String(ty)))
 }
 
-fn format_rule(
+pub(crate) fn format_rule(
     cx: &mut Cx<'_>,
     site: Site,
     label: &str,
@@ -151,7 +151,7 @@ fn format_rule(
     }
 }
 
-fn validator_use(
+pub(crate) fn validator_use(
     cx: &mut Cx<'_>,
     site: Site,
     label: &str,

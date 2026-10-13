@@ -630,13 +630,13 @@ impl<'d, 's> Binder<'d, 's> {
             .collect();
         let item = match role {
             Role::Record => BoundItem::Record(BoundRecord::new(
-                node, type_name, fields, origin, validation,
+                node, type_name, fields, origin, validation, frame.span,
             )),
             Role::Declaration => {
                 let name = QualifiedName(identity.into_iter().collect());
                 let identity = Identity::new(type_name.clone(), name);
                 BoundItem::Declaration(BoundDeclaration::new(
-                    node, identity, type_name, fields, origin, validation,
+                    node, identity, type_name, fields, origin, validation, frame.span,
                 ))
             }
             Role::Contribution => {

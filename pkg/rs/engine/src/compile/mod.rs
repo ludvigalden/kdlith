@@ -1,9 +1,11 @@
-//! The schema compiler: contributing definition documents in, one merged
-//! definition with its catalogs out. Compilation runs once per definition;
-//! nothing downstream reads definition KDL again.
+//! The schema compiler: a reader's input in, one merged definition with
+//! its catalogs out. The seed bootstrap (`compile_dialect`) reads syntax
+//! directly and compiles only the canonical dialect; see docs/dialect.md.
 
+mod collect;
 mod conform;
 mod document;
+pub mod input;
 mod link;
 mod literals;
 mod nodes;
@@ -30,76 +32,94 @@ use crate::syntax::{ParsedDocument, SyntaxNode};
 use crate::type_expr::{self, ExprError};
 use crate::types::{TypeCatalog, TypeExpr};
 
+use input::DefinitionInput;
 use reader::Construct;
 
 /// The dialect version this engine compiles definitions against.
 pub const DIALECT_VERSION: &str = "0";
 
-/// A dialect and a schema definition compiled together.
-#[derive(Clone, Debug)]
-#[non_exhaustive]
-pub struct Compiled {
-    pub dialect: Definition,
-    pub schema: Definition,
-}
-
-/// Compile a dialect definition from its contributing documents, with
-/// complete checking.
-pub fn compile_dialect(
-    documents: &[ParsedDocument],
-    extensions: &Extensions,
-) -> Result<Definition, Vec<DiagnosticRecord>> {
-    compile_dialect_scoped(documents, extensions, CheckScope::Complete)
-}
-
-/// Compile a dialect definition with the given checking scope. Complete
-/// checking links every reference and checks that the dialect describes
-/// every construct its own documents use.
-pub fn compile_dialect_scoped(
-    documents: &[ParsedDocument],
+/// Compile a dialect definition from a reader's input, with the given
+/// checking scope. This is the path every definition takes: the
+/// reference processor's typed reader produced the input, and its
+/// binding diagnostics were reported before compilation began.
+pub fn compile_dialect_input(
+    input: &DefinitionInput,
     extensions: &Extensions,
     scope: CheckScope,
 ) -> Result<Definition, Vec<DiagnosticRecord>> {
-    run(DefinitionKind::Dialect, documents, None, extensions, scope)
+    compile_input(DefinitionKind::Dialect, input, None, extensions, scope)
 }
 
-/// Compile a schema definition under its governing dialect, whose
-/// deferrals decide which constructs fail closed, with complete checking.
-pub fn compile_schema(
+/// Compile a schema definition from a reader's input, under its
+/// governing dialect, whose deferrals decide which constructs fail
+/// closed, with the given checking scope.
+pub fn compile_schema_input(
     dialect: &Definition,
-    documents: &[ParsedDocument],
-    extensions: &Extensions,
-) -> Result<Definition, Vec<DiagnosticRecord>> {
-    compile_schema_scoped(dialect, documents, extensions, CheckScope::Complete)
-}
-
-/// Compile a schema definition with the given checking scope. Complete
-/// checking links every reference and checks the documents against the
-/// governing dialect's compiled bindings.
-pub fn compile_schema_scoped(
-    dialect: &Definition,
-    documents: &[ParsedDocument],
+    input: &DefinitionInput,
     extensions: &Extensions,
     scope: CheckScope,
 ) -> Result<Definition, Vec<DiagnosticRecord>> {
-    run(
+    compile_input(
         DefinitionKind::Schema,
-        documents,
+        input,
         Some(dialect),
         extensions,
         scope,
     )
 }
 
-/// Compile a dialect, then a schema under it, with complete checking.
-pub fn compile_pair(
-    dialect: &[ParsedDocument],
-    schema: &[ParsedDocument],
+/// Compile a dialect definition straight from its documents, with
+/// complete checking. This is the seed bootstrap: it exists only to
+/// compile the canonical dialect a typed reader is constructed over,
+/// because reading that dialect's own documents through a reader
+/// already needs a compiled dialect.
+pub fn compile_dialect(
+    documents: &[ParsedDocument],
     extensions: &Extensions,
-) -> Result<Compiled, Vec<DiagnosticRecord>> {
-    let dialect = compile_dialect(dialect, extensions)?;
-    let schema = compile_schema(&dialect, schema, extensions)?;
-    Ok(Compiled { dialect, schema })
+) -> Result<Definition, Vec<DiagnosticRecord>> {
+    let mut cx = start(
+        DefinitionKind::Dialect,
+        CheckScope::Complete,
+        documents,
+        extensions,
+        None,
+    )?;
+    let Some(root) = roots(&mut cx, documents) else {
+        return Err(cx.diags.into_records());
+    };
+    for &(doc, node) in &root.nodes {
+        document::deferrals(&mut cx, doc, node);
+    }
+    for &(doc, node) in &root.nodes {
+        root_children(&mut cx, doc, node);
+    }
+    finish(cx, documents, None)
+}
+
+fn compile_input(
+    kind: DefinitionKind,
+    input: &DefinitionInput,
+    governing: Option<&Definition>,
+    extensions: &Extensions,
+    scope: CheckScope,
+) -> Result<Definition, Vec<DiagnosticRecord>> {
+    let mut parsed = Vec::with_capacity(input.documents.len());
+    for document in &input.documents {
+        match ParsedDocument::parse(document.path.clone(), &document.text) {
+            Ok(document) => parsed.push(document),
+            Err(record) => return Err(vec![*record]),
+        }
+    }
+    let documents = &parsed[..];
+    let mut cx = start(kind, scope, documents, extensions, governing)?;
+    if kind == DefinitionKind::Dialect {
+        collect::deferrals(&mut cx, input);
+    }
+    if roots(&mut cx, documents).is_none() {
+        return Err(cx.diags.into_records());
+    }
+    collect::all(&mut cx, input);
+    finish(cx, documents, governing)
 }
 
 /// The state of one compilation.
@@ -115,6 +135,9 @@ pub(crate) struct Cx<'d> {
     pub(crate) slots: Vec<SlotDecl>,
     pub(crate) imports: Vec<ImportDecl>,
     pub(crate) document_rule: Option<DocumentRule>,
+    /// The identity every contributing document repeats, read by `roots`.
+    pub(crate) name: Option<String>,
+    pub(crate) version: Option<String>,
 }
 
 /// The identity every contributing document repeats.
@@ -124,13 +147,13 @@ struct Root<'d> {
     nodes: Vec<(usize, &'d SyntaxNode)>,
 }
 
-fn run(
+fn start<'d>(
     kind: DefinitionKind,
-    documents: &[ParsedDocument],
-    governing: Option<&Definition>,
-    extensions: &Extensions,
     scope: CheckScope,
-) -> Result<Definition, Vec<DiagnosticRecord>> {
+    documents: &'d [ParsedDocument],
+    extensions: &'d Extensions,
+    governing: Option<&Definition>,
+) -> Result<Cx<'d>, Vec<DiagnosticRecord>> {
     let mut names = Names::default();
     let types = TypeCatalog::with_builtins(&mut names);
     let mut cx = Cx {
@@ -145,6 +168,8 @@ fn run(
         slots: Vec::new(),
         imports: Vec::new(),
         document_rule: None,
+        name: None,
+        version: None,
     };
     if !extensions.has_validator(TYPE_EXPRESSION_VALIDATOR, Some(TYPE_EXPRESSION_VERSION)) {
         let wanted = format!("{TYPE_EXPRESSION_VALIDATOR} version {TYPE_EXPRESSION_VERSION}");
@@ -162,20 +187,19 @@ fn run(
         }
         cx.deferrals.clone_from(&dialect.deferrals);
     }
-    let Some(root) = roots(&mut cx, documents) else {
-        return Err(cx.diags.into_records());
-    };
-    if kind == DefinitionKind::Dialect {
-        for &(doc, node) in &root.nodes {
-            document::deferrals(&mut cx, doc, node);
-        }
-    }
-    for &(doc, node) in &root.nodes {
-        root_children(&mut cx, doc, node);
-    }
+    Ok(cx)
+}
+
+/// Complete a compilation: scopes, linking, literal checks, the plan,
+/// and the self-description walk, then the merged definition.
+fn finish<'d>(
+    mut cx: Cx<'d>,
+    documents: &'d [ParsedDocument],
+    governing: Option<&Definition>,
+) -> Result<Definition, Vec<DiagnosticRecord>> {
     let bindings = scopes::build(&mut cx);
     let symbols = SymbolCatalog::build(&bindings);
-    if scope == CheckScope::Complete && !cx.diags.has_errors() {
+    if cx.scope == CheckScope::Complete && !cx.diags.has_errors() {
         link::run(&mut cx, &bindings, &symbols);
         if !cx.diags.has_errors() {
             literals::run(&mut cx, &bindings);
@@ -186,9 +210,9 @@ fn run(
     }
     let plan = plan::build(&cx.slots, &cx.types, &bindings, &symbols);
     let definition = Definition {
-        kind,
-        name: root.name,
-        version: root.version,
+        kind: cx.kind,
+        name: cx.name.clone().unwrap_or_default(),
+        version: cx.version.clone(),
         documents: documents.iter().map(|d| d.path().to_owned()).collect(),
         names: cx.names,
         types: cx.types,
@@ -199,11 +223,11 @@ fn run(
         imports: cx.imports,
         deferrals: cx.deferrals,
         document_rule: cx.document_rule,
-        scope,
+        scope: cx.scope,
     };
-    if scope == CheckScope::Complete {
+    if cx.scope == CheckScope::Complete {
         let describing = governing.unwrap_or(&definition);
-        conform::run(&mut cx.diags, kind, describing, documents);
+        conform::run(&mut cx.diags, cx.kind, describing, documents);
         if cx.diags.has_errors() {
             return Err(cx.diags.into_records());
         }
@@ -285,6 +309,8 @@ fn roots<'d>(cx: &mut Cx<'d>, documents: &'d [ParsedDocument]) -> Option<Root<'d
         );
         match &mut root {
             None => {
+                cx.name = Some(name.clone());
+                cx.version = version.clone();
                 root = Some(Root {
                     name,
                     version,

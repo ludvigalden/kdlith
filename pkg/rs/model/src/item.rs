@@ -1,4 +1,4 @@
-use kdlith_diagnostic::DiagnosticRecord;
+use kdlith_diagnostic::{ByteSpan, DiagnosticRecord};
 use serde::{Deserialize, Serialize};
 
 use crate::identity::{Identity, NodeId, Reference};
@@ -26,6 +26,10 @@ pub struct BoundRecord {
     pub fields: Vec<Field>,
     pub origin: OriginId,
     pub validation: ValidationState,
+    /// The span of the node this record is; not part of the item's
+    /// serialized form.
+    #[serde(skip)]
+    pub span: ByteSpan,
 }
 
 /// A node of the declaration role: registers an identity and exposes
@@ -39,6 +43,10 @@ pub struct BoundDeclaration {
     pub fields: Vec<Field>,
     pub origin: OriginId,
     pub validation: ValidationState,
+    /// The span of the node this declaration is; not part of the item's
+    /// serialized form.
+    #[serde(skip)]
+    pub span: ByteSpan,
 }
 
 /// An assignment or overlay preserved unresolved, so a resolver can apply
@@ -137,6 +145,7 @@ impl BoundRecord {
         fields: Vec<Field>,
         origin: OriginId,
         validation: ValidationState,
+        span: ByteSpan,
     ) -> Self {
         Self {
             node,
@@ -144,6 +153,7 @@ impl BoundRecord {
             fields,
             origin,
             validation,
+            span,
         }
     }
 }
@@ -156,6 +166,7 @@ impl BoundDeclaration {
         fields: Vec<Field>,
         origin: OriginId,
         validation: ValidationState,
+        span: ByteSpan,
     ) -> Self {
         Self {
             node,
@@ -164,6 +175,7 @@ impl BoundDeclaration {
             fields,
             origin,
             validation,
+            span,
         }
     }
 }

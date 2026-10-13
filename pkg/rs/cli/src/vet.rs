@@ -6,10 +6,9 @@ use std::ffi::OsString;
 use std::path::Path;
 
 use kdlith_diagnostic::{DiagnosticRecord, ExitStatus};
-use kdlith_engine::{
-    BindingSession, CheckScope, Definition, Extensions, load_dialect, load_schema,
-};
+use kdlith_engine::{BindingSession, CheckScope, Definition, Extensions};
 use kdlith_model::{BoundItem, SourceId};
+use kdlith_superproc::{load_dialect, load_schema};
 
 use crate::report::report_all;
 

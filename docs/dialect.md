@@ -250,6 +250,28 @@ dialect for every processor, hand-written or generated:
    mechanism or names a handler or validator that is not installed. The
    `type-expression` validator at version `0` is required.
 
+### Self-hosted compilation
+
+Loading a definition is reading it: `vet` and `inspect` both hand their
+entry documents to the reference processor's typed reader, and the
+engine compiles what the reader gives it — one construct per
+declaration, already validated by binding, with the span it was written
+at. The reader binds dialect documents against the canonical dialect
+(the definition language every dialect is written in) and schema
+documents against their governing dialect, so a construct the governing
+dialect does not admit is rejected with the binding code any processor
+binding it reports.
+
+One cycle cannot close: a reader needs a compiled dialect before it can
+read one, so the canonical dialect's own compilation cannot flow through
+a reader built on it. `superproc::seed` breaks it the only way possible —
+the engine's seed bootstrap (`compile_dialect`), the one remaining
+hand-written reader of definition syntax, compiles the four canonical
+documents embedded beside the reference processor's declarations. The
+bootstrap compiles nothing else, and the equivalence it exists for is
+fixture-pinned: reading the canonical files through the reader they seed
+reproduces the seed's own digest.
+
 ### Binding data documents
 
 The engine's binder (`pkg/rs/engine/src/bind/`) is the runtime processor
@@ -323,10 +345,13 @@ this dialect:
    the expected declaration and record items.
 2. It holds only the dialect's own type and binding declarations plus
    glue. Every reusable decision lives in the engine or runtime.
-3. Conformance fixtures bind positive cases to expected items, and
+3. It hosts the compiler entry point (`load_dialect`, `load_schema`,
+   `seed`): the engine compiles the item stream this processor reads,
+   as [Self-hosted compilation](#self-hosted-compilation) records.
+4. Conformance fixtures bind positive cases to expected items, and
    negative controls each name the diagnostic codes of one rejected
    construct.
-4. It is the code-generation oracle: generating from
+5. It is the code-generation oracle: generating from
    `contracts/super-schemas/dialect.kdl` must reproduce its source, apart
    from the defined generated-marker header. It is reviewed by hand and
    never overwritten by the generator.

@@ -4,8 +4,8 @@
 
 use std::path::Path;
 
-use kdlith_diagnostic::DiagnosticRecord;
 use kdlith_diagnostic::registry::{lookup, render};
+use kdlith_diagnostic::{ByteSpan, DiagnosticRecord};
 use kdlith_model::{
     BoundContribution, BoundItem, Field, Identity, ImportRequest, NodeId, ScopeCompletion, SourceId,
 };
@@ -33,6 +33,10 @@ pub enum TypedItem<T> {
     Document {
         source: SourceId,
         path: String,
+        /// The document's text, so a compiler consuming the stream can
+        /// locate its diagnostics; not part of the item's serialized form.
+        #[serde(skip)]
+        text: String,
     },
     /// A record, read as the processor's type for it.
     Record {
@@ -40,6 +44,10 @@ pub enum TypedItem<T> {
         #[serde(rename = "type")]
         type_name: String,
         value: T,
+        /// The span of the node the record is; not part of the item's
+        /// serialized form.
+        #[serde(skip)]
+        span: ByteSpan,
     },
     /// A declaration with its identity, read as the processor's type.
     Declaration {
@@ -48,6 +56,10 @@ pub enum TypedItem<T> {
         #[serde(rename = "type")]
         type_name: String,
         value: T,
+        /// The span of the node the declaration is; not part of the
+        /// item's serialized form.
+        #[serde(skip)]
+        span: ByteSpan,
     },
     Contribution(Box<BoundContribution>),
     /// An import as written; the imported document's items follow it.
@@ -109,12 +121,33 @@ impl<'d, T: 'static> TypedReader<'d, T> {
         entries: &[&Path],
         sink: &mut dyn FnMut(TypedItem<T>),
     ) -> Result<bool, ReadError> {
+        self.read_scoped(entries, sink, true)
+    }
+
+    /// Read the named entry documents only, giving each import request
+    /// as an item without following it: local checking reads named
+    /// documents only.
+    pub fn read_local(
+        &self,
+        entries: &[&Path],
+        sink: &mut dyn FnMut(TypedItem<T>),
+    ) -> Result<bool, ReadError> {
+        self.read_scoped(entries, sink, false)
+    }
+
+    fn read_scoped(
+        &self,
+        entries: &[&Path],
+        sink: &mut dyn FnMut(TypedItem<T>),
+        follow: bool,
+    ) -> Result<bool, ReadError> {
         let mut reading = Reading {
             reader: self,
             invocations: Invocations::new(),
             sink,
             failed: false,
             broken: None,
+            follow,
         };
         let layout = self.def.plan.context.layout.clone();
         for entry in entries {
@@ -168,6 +201,9 @@ struct Reading<'r, 'd, T: 'static> {
     sink: &'r mut dyn FnMut(TypedItem<T>),
     failed: bool,
     broken: Option<ReadError>,
+    /// Whether import requests are followed; a local reading gives each
+    /// request as an item and stops there.
+    follow: bool,
 }
 
 impl<T: 'static> Reading<'_, '_, T> {
@@ -197,18 +233,21 @@ impl<T: 'static> Reading<'_, '_, T> {
         (self.sink)(TypedItem::Document {
             source,
             path: shown.to_owned(),
+            text: text.to_owned(),
         });
         let mut session = BindingSession::with_context(def, source, shown, text, context);
         while self.broken.is_none() {
             match session.next_item() {
                 Ok(Some(item)) => {
                     if let BoundItem::Import(request) = &item {
-                        let projected = self.projection(&session, request, shown);
-                        (self.sink)(TypedItem::Import(request.clone()));
-                        if let Some(context) = projected {
-                            self.import(request, shown, context);
+                        if self.follow {
+                            let projected = self.projection(&session, request, shown);
+                            (self.sink)(TypedItem::Import(request.clone()));
+                            if let Some(context) = projected {
+                                self.import(request, shown, context);
+                            }
+                            continue;
                         }
-                        continue;
                     }
                     self.item(item);
                 }
@@ -223,23 +262,27 @@ impl<T: 'static> Reading<'_, '_, T> {
         let reader = self.reader;
         let typed = match item {
             BoundItem::Record(record) => {
+                let span = record.span;
                 match reader.value(Role::Record, &record.type_name, &record.fields) {
                     Ok(value) => TypedItem::Record {
                         node: record.node,
                         type_name: record.type_name,
                         value,
+                        span,
                     },
                     Err(diagnostic) => return self.diagnose(*diagnostic),
                 }
             }
             BoundItem::Declaration(declaration) => {
-                let fields = &declaration.fields;
-                match reader.value(Role::Declaration, &declaration.type_name, fields) {
+                let span = declaration.span;
+                let fields = declaration.fields;
+                match reader.value(Role::Declaration, &declaration.type_name, &fields) {
                     Ok(value) => TypedItem::Declaration {
                         node: declaration.node,
                         identity: declaration.identity,
                         type_name: declaration.type_name,
                         value,
+                        span,
                     },
                     Err(diagnostic) => return self.diagnose(*diagnostic),
                 }
