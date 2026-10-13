@@ -1,0 +1,10 @@
+// A fifth contribution to the canonical dialect: one string type the
+// reference processor does not declare. The dialect still compiles; the
+// processor must refuse to read with it.
+dialect kdlith version="0" {
+    types {
+        string Extra {
+            min-length 1
+        }
+    }
+}

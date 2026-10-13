@@ -37,6 +37,18 @@ pub enum Role {
 }
 
 impl Role {
+    /// The role as a definition spells it.
+    pub fn name(self) -> &'static str {
+        match self {
+            Role::Record => "record",
+            Role::Declaration => "declaration",
+            Role::Contribution => "contribution",
+            Role::ContextControl => "context-control",
+            Role::SourceImport => "source-import",
+            Role::Container => "container",
+        }
+    }
+
     pub fn from_name(name: &str) -> Option<Self> {
         Some(match name {
             "record" => Role::Record,

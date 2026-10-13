@@ -12,13 +12,13 @@ use kdlith_diagnostic::registry::{lookup, render};
 use kdlith_diagnostic::{ByteSpan, DiagnosticRecord};
 use kdlith_model::{
     BoundContribution, BoundDeclaration, BoundItem, BoundRecord, Entry, Field, Identity,
-    ImportRequest, Location, OriginId, QualifiedName, Reference, ScopeCompletion, SourceId,
-    ValidationState, Value,
+    ImportRequest, Location, OriginId, QualifiedName, Reference, Repeated, ScopeCompletion,
+    SourceId, ValidationState, Value,
 };
 use kdlith_parse::{Locator, Parser};
 use kdlith_runtime::{
-    Completion, ContextEffect, Cx, Disposition, FollowingEffects, HeaderEffects, Processor,
-    Session, SessionError, SlotValue,
+    Completion, Context, ContextEffect, Cx, Disposition, FollowingEffects, HeaderEffects,
+    Processor, Session, SessionError, SlotValue,
 };
 
 use crate::bindings::{ChildPlan, ContextPolicy, NodeDeclId, Role, SetFrom};
@@ -512,6 +512,17 @@ impl<'d, 's> Binder<'d, 's> {
         };
         let identity = text_of(info.identity);
         let path = text_of(info.path);
+        let repeated = text_of(info.repeated);
+        let project: Vec<String> = match info.project.and_then(|at| values.get(at)?.as_ref()) {
+            Some(Value::List(names)) => names
+                .iter()
+                .filter_map(|name| match name {
+                    Value::String(name) => Some(name.clone()),
+                    _ => None,
+                })
+                .collect(),
+            _ => Vec::new(),
+        };
         let reference = info.references.iter().find_map(|at| match values.get(*at) {
             Some(Some(Value::Reference(reference))) => Some(reference.clone()),
             _ => None,
@@ -552,7 +563,22 @@ impl<'d, 's> Binder<'d, 's> {
             Role::SourceImport => {
                 let site = self.location(frame.span);
                 let expression = path.unwrap_or_default();
-                BoundItem::Import(ImportRequest::new(node, expression, site, origin))
+                let policy = match repeated.as_deref().map(Repeated::from_name) {
+                    None => Repeated::default(),
+                    Some(Some(policy)) => policy,
+                    Some(None) => {
+                        let found = format!("{:?}", repeated.unwrap_or_default());
+                        let values = [
+                            "import repeated",
+                            "reject, coalesce, or instantiate",
+                            &found,
+                        ];
+                        self.diagnose(cx, VALUE_TYPE, frame.span, &values);
+                        return;
+                    }
+                };
+                let request = ImportRequest::new(node, expression, site, origin);
+                BoundItem::Import(request.with_policy(project, policy))
             }
             Role::Container => {
                 BoundItem::ScopeComplete(ScopeCompletion::new(self.source, Some(node)))
@@ -913,14 +939,32 @@ pub struct BindingSession<'d, 's> {
 impl<'d, 's> BindingSession<'d, 's> {
     /// Bind `text`, read from `path`, against `def` as source `source`.
     pub fn new(def: &'d Definition, source: SourceId, path: &str, text: &'s str) -> Self {
+        let context = Context::new(def.plan.context.layout.clone());
+        Self::with_context(def, source, path, text, context)
+    }
+
+    /// Bind starting from `context`, such as an import's projection of
+    /// its caller's context.
+    pub fn with_context(
+        def: &'d Definition,
+        source: SourceId,
+        path: &str,
+        text: &'s str,
+        context: Context,
+    ) -> Self {
         let events = ParseEvents::new(Parser::new(text), text, path);
         let binder = Binder::new(def, source, path, text);
-        let layout = def.plan.context.layout.clone();
         Self {
-            session: Session::new(source, events, binder, layout),
+            session: Session::with_context(source, events, binder, context),
             ended: false,
             stopped: false,
         }
+    }
+
+    /// The context as the latest item left it: at an import request, the
+    /// context of the import site.
+    pub fn context(&self) -> &Context {
+        self.session.context()
     }
 
     /// The next bound item. `Ok(None)` ends the stream; an `Err` is a

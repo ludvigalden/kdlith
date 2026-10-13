@@ -13,17 +13,15 @@ use kdlith_runtime::{
 use crate::compile::{compile_dialect_scoped, compile_schema_scoped};
 use crate::deferred::is_discovery_path;
 use crate::definition::{CheckScope, Definition, DefinitionKind};
-use crate::diag::{
-    IMPORT_CYCLE, IMPORT_REPEATED, IMPORT_UNRESOLVED, SOURCE_LIMIT, SOURCE_NOT_UTF8,
-    SOURCE_UNREADABLE, UNRESOLVED_DIALECT, UNRESOLVED_SCHEMA, located, record,
-};
+use crate::diag::{IMPORT_UNRESOLVED, UNRESOLVED_DIALECT, UNRESOLVED_SCHEMA, located, record};
+use crate::documents::{MAX_DOCUMENT_BYTES, import_failure, read_text};
 use crate::extensions::Extensions;
 use crate::names::Names;
 use crate::plan::ContextPlan;
 use crate::syntax::{ParsedDocument, SyntaxNode};
 
 /// A definition document larger than this is refused before it is read.
-pub const MAX_DEFINITION_BYTES: u64 = 16 * 1024 * 1024;
+pub const MAX_DEFINITION_BYTES: u64 = MAX_DOCUMENT_BYTES;
 
 /// Load a dialect definition from its entry documents and compile it.
 pub fn load_dialect(
@@ -175,31 +173,10 @@ impl Loader<'_> {
     fn read(&mut self, id: InvocationId) -> Option<ParsedDocument> {
         let invocation = self.invocations.get(id)?;
         let (path, shown) = (invocation.path.clone(), invocation.shown.clone());
-        let origin = self.kind.origin();
-        let size = std::fs::metadata(&path).map(|meta| meta.len());
-        if let Ok(size) = size
-            && size > MAX_DEFINITION_BYTES
-        {
-            let max = MAX_DEFINITION_BYTES.to_string();
-            let error = record(SOURCE_LIMIT, &["definition size", &max], origin);
-            self.records.push(error.with_source(shown));
-            return None;
-        }
-        let bytes = match std::fs::read(&path) {
-            Ok(bytes) => bytes,
-            Err(error) => {
-                let reason = error.to_string();
-                let error = record(SOURCE_UNREADABLE, &[&shown, &reason], origin);
-                self.records.push(error.with_source(shown));
-                return None;
-            }
-        };
-        let text = match String::from_utf8(bytes) {
+        let text = match read_text(&path, &shown, "definition size", self.kind.origin()) {
             Ok(text) => text,
-            Err(error) => {
-                let at = error.utf8_error().valid_up_to().to_string();
-                let error = record(SOURCE_NOT_UTF8, &[&shown, &at], origin);
-                self.records.push(error.with_source(shown));
+            Err(record) => {
+                self.records.push(*record);
                 return None;
             }
         };
@@ -213,21 +190,7 @@ impl Loader<'_> {
     }
 
     fn failure(&self, failure: ImportFailure) -> DiagnosticRecord {
-        let origin = self.kind.origin();
-        match failure {
-            ImportFailure::Unresolved { target, .. } => {
-                record(IMPORT_UNRESOLVED, &[&target], origin)
-            }
-            ImportFailure::Cycle { chain } => record(IMPORT_CYCLE, &[&chain.join(" -> ")], origin),
-            ImportFailure::Repeated { target, .. } => record(IMPORT_REPEATED, &[&target], origin),
-            ImportFailure::Limit { limit, max } => {
-                record(SOURCE_LIMIT, &[limit, &max.to_string()], origin)
-            }
-            ImportFailure::Projection(error) => {
-                record(IMPORT_UNRESOLVED, &[&error.to_string()], origin)
-            }
-            _ => record(IMPORT_UNRESOLVED, &["(unknown request)"], origin),
-        }
+        import_failure(failure, self.kind.origin())
     }
 }
 
@@ -253,9 +216,7 @@ fn request(node: &SyntaxNode) -> Option<Request> {
     let repeated = match node.props.iter().find(|(key, _)| key == "repeated") {
         None => Repeated::Reject,
         Some((_, scalar)) => match &scalar.value {
-            Value::String(text) if text == "reject" => Repeated::Reject,
-            Value::String(text) if text == "coalesce" => Repeated::Coalesce,
-            Value::String(text) if text == "instantiate" => Repeated::Instantiate,
+            Value::String(text) => Repeated::from_name(text)?,
             _ => return None,
         },
     };

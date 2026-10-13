@@ -11,6 +11,7 @@ Usage: kdlith [--help | --version]
        kdlith vet dialect [--scope local|complete] <file>...
        kdlith vet schema --dialect <file>... [--scope local|complete] <file>...
        kdlith vet data --dialect <file>... [--schema <file>]... <file>...
+       kdlith inspect dialect|schema --dialect <file>... <file>...
 
 Commands:
   read <file>    Parse a KDL document; exit 0 when it is valid KDL, or print
@@ -27,6 +28,10 @@ Commands:
                  dialect itself without --schema; print each bound item
                  to stdout as one JSON line, every diagnostic to stderr,
                  and exit nonzero on any error
+  inspect        Read definition documents and their imports through the
+                 reference processor for the dialect given by --dialect;
+                 print each typed item to stdout as one JSON line, every
+                 diagnostic to stderr, and exit nonzero on any error
 
 Options:
   -h, --help     Print this help and exit
@@ -51,6 +56,7 @@ fn main() -> ExitCode {
             ExitCode::from(2)
         }
         [verb, rest @ ..] if verb == "vet" => kdlith_cli::vet_command(rest).into(),
+        [verb, rest @ ..] if verb == "inspect" => kdlith_cli::inspect_command(rest).into(),
         // Every other verb stays fail-closed until it is wired, rather
         // than pretending to work.
         _ => {

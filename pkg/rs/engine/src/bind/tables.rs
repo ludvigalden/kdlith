@@ -65,8 +65,11 @@ pub(crate) struct DeclInfo {
     pub(crate) type_name: String,
     /// The field carrying a declaration's identity.
     pub(crate) identity: Option<usize>,
-    /// The field an import's path is bound to (argument 0).
+    /// The fields of an import's path (argument 0), its projected slots
+    /// (`project`), and its repeat policy (`repeated`).
     pub(crate) path: Option<usize>,
+    pub(crate) project: Option<usize>,
+    pub(crate) repeated: Option<usize>,
     /// Fields holding `ref<T>` values, which keep the item provisional.
     pub(crate) references: Vec<usize>,
     pub(crate) provisional: bool,
@@ -283,6 +286,8 @@ fn decl_info(def: &Definition, id: NodeDeclId, decl: &NodeDecl) -> DeclInfo {
         }
     }
     let position = |name: Sym| fields.iter().position(|f| f.name == name);
+    let import = decl.role == Some(Role::SourceImport);
+    let import_field = |name: &str| def.names.get(name).and_then(position).filter(|_| import);
     let identity = def
         .symbols
         .declaration(id)
@@ -299,7 +304,9 @@ fn decl_info(def: &Definition, id: NodeDeclId, decl: &NodeDecl) -> DeclInfo {
     DeclInfo {
         type_name: def.names.resolve(decl.ty.unwrap_or(decl.name)).to_owned(),
         identity,
-        path: path.filter(|_| decl.role == Some(Role::SourceImport)),
+        path: path.filter(|_| import),
+        project: import_field("project"),
+        repeated: import_field("repeated"),
         references,
         provisional: !deferred.is_empty(),
         fields,

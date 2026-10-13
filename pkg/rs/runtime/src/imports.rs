@@ -4,21 +4,9 @@
 
 use std::path::{Path, PathBuf};
 
-use crate::context::{Context, ContextError, SlotId};
+pub use kdlith_model::Repeated;
 
-/// How a source imported again in one session is handled.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-#[non_exhaustive]
-pub enum Repeated {
-    /// A second import of the same source is an error.
-    #[default]
-    Reject,
-    /// A second import under an equal projected context reuses the first
-    /// invocation.
-    Coalesce,
-    /// Each import is a separate invocation.
-    Instantiate,
-}
+use crate::context::{Context, ContextError, SlotId};
 
 /// Imports nest at most this deep; deeper chains fail closed.
 pub const MAX_IMPORT_DEPTH: usize = 64;
@@ -120,16 +108,27 @@ impl Invocations {
         project: &[SlotId],
     ) -> Result<Admission, ImportFailure> {
         let Some(&importer) = self.active.last() else {
-            return Err(ImportFailure::Unresolved {
-                target: target.to_owned(),
-                reason: "no importing document is active".to_owned(),
-            });
+            return Err(no_importer(target));
         };
-        let caller = &self.invocations[importer.index()];
-        let context = caller
+        let context = self.invocations[importer.index()]
             .context
             .project(project)
             .map_err(ImportFailure::Projection)?;
+        self.request_projected(target, repeated, context)
+    }
+
+    /// Resolve a request whose projection the caller made from its live
+    /// context, as a streaming session does at the import site.
+    pub fn request_projected(
+        &mut self,
+        target: &str,
+        repeated: Repeated,
+        context: Context,
+    ) -> Result<Admission, ImportFailure> {
+        let Some(&importer) = self.active.last() else {
+            return Err(no_importer(target));
+        };
+        let caller = &self.invocations[importer.index()];
         let base = caller.path.parent().unwrap_or(Path::new(""));
         let shown_base = Path::new(&caller.shown).parent().unwrap_or(Path::new(""));
         let shown = shown_base.join(target).display().to_string();
@@ -154,16 +153,18 @@ impl Invocations {
         }
         if let Some(first) = self.find(&resolved) {
             match repeated {
-                Repeated::Reject => {
+                Repeated::Coalesce if same(&self.invocations[first.index()].context, &context) => {
+                    return Ok(Admission::Reuse(first));
+                }
+                Repeated::Coalesce | Repeated::Instantiate => {}
+                // Reject, and any policy this stack does not know, fails
+                // closed.
+                _ => {
                     return Err(ImportFailure::Repeated {
                         target: shown,
                         first,
                     });
                 }
-                Repeated::Coalesce if same(&self.invocations[first.index()].context, &context) => {
-                    return Ok(Admission::Reuse(first));
-                }
-                Repeated::Coalesce | Repeated::Instantiate => {}
             }
         }
         self.push(resolved, shown, context, Some(importer))
@@ -223,6 +224,13 @@ impl Invocations {
         });
         self.active.push(id);
         Ok(id)
+    }
+}
+
+fn no_importer(target: &str) -> ImportFailure {
+    ImportFailure::Unresolved {
+        target: target.to_owned(),
+        reason: "no importing document is active".to_owned(),
     }
 }
 

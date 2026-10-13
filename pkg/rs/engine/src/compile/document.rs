@@ -195,11 +195,13 @@ pub(crate) fn import(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) {
             project = name_list(cx, doc, child, "project");
         }
     }
-    let repeated = match repeated.as_deref() {
-        None | Some("reject") => Repeated::Reject,
-        Some("coalesce") => Repeated::Coalesce,
-        Some("instantiate") => Repeated::Instantiate,
-        Some(other) => {
+    let repeated = match repeated
+        .as_deref()
+        .map(|name| (name, Repeated::from_name(name)))
+    {
+        None => Repeated::Reject,
+        Some((_, Some(policy))) => policy,
+        Some((other, None)) => {
             cx.malformed(site, "import", &format!("unknown repeated policy {other}"));
             return;
         }

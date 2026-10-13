@@ -1,5 +1,5 @@
 use kdlith_diagnostic::DiagnosticRecord;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::identity::{Identity, NodeId, Reference};
 use crate::origin::OriginId;
@@ -56,15 +56,45 @@ pub struct BoundContribution {
 }
 
 /// A request to invoke another source: the original expression, any
-/// alias it binds, and the import site. Scheduling is not done here.
+/// alias it binds, the caller's slots it projects, its repeat policy, and
+/// the import site. Scheduling is not done here.
 #[derive(Clone, Debug, Serialize)]
 #[non_exhaustive]
 pub struct ImportRequest {
     pub node: NodeId,
     pub expression: String,
     pub alias: Option<String>,
+    /// The caller's context slots the imported source receives, by name.
+    pub project: Vec<String>,
+    pub repeated: Repeated,
     pub site: Location,
     pub origin: OriginId,
+}
+
+/// How a source imported again in one session is handled.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+#[non_exhaustive]
+pub enum Repeated {
+    /// A second import of the same source is an error.
+    #[default]
+    Reject,
+    /// A second import under an equal projected context reuses the first
+    /// invocation.
+    Coalesce,
+    /// Each import is a separate invocation.
+    Instantiate,
+}
+
+impl Repeated {
+    pub fn from_name(name: &str) -> Option<Self> {
+        Some(match name {
+            "reject" => Repeated::Reject,
+            "coalesce" => Repeated::Coalesce,
+            "instantiate" => Repeated::Instantiate,
+            _ => return None,
+        })
+    }
 }
 
 /// A value whose expected type comes from a referenced declaration, kept
@@ -160,7 +190,7 @@ impl BoundContribution {
 }
 
 impl ImportRequest {
-    /// A request without an alias.
+    /// A request without an alias or projection that rejects repeats.
     pub fn new(
         node: NodeId,
         expression: impl Into<String>,
@@ -171,9 +201,19 @@ impl ImportRequest {
             node,
             expression: expression.into(),
             alias: None,
+            project: Vec::new(),
+            repeated: Repeated::default(),
             site,
             origin,
         }
+    }
+
+    /// The request with the projection and repeat policy it was written with.
+    #[must_use]
+    pub fn with_policy(mut self, project: Vec<String>, repeated: Repeated) -> Self {
+        self.project = project;
+        self.repeated = repeated;
+        self
     }
 }
 

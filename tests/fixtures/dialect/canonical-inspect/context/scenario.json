@@ -1,0 +1,26 @@
+{
+  "binary": "kdlith",
+  "description": "context.kdl reads end to end through the reference processor: context types, effect node declarations, and deferrals arrive as typed declarations",
+  "args": [
+    "inspect",
+    "dialect",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/types.kdl",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/bindings.kdl",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/context.kdl",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/documents.kdl",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/context.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":19},\"identity\":{\"domain\":\"UnionType\",\"name\":[\"Effect\"]},\"type\":\"UnionType\",\"value\":{\"name\":\"Effect\",\"variants\":{\"set\":{\"type\":\"SetEffect\"},\"remove\":{\"type\":\"RemoveEffect\"},\"clear\":{\"type\":\"ClearEffect\"},\"handler\":{\"type\":\"HandlerEffect\"}}}}}\n",
+      "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":53},\"identity\":{\"domain\":\"NodeDef\",\"name\":[\"set\"]},\"type\":\"NodeDef\",\"value\":{\"name\":\"set\",\"type\":\"SetEffect\",\"parent\":\"effects\",\"fields\":{\"slot\":{\"arg\":0,\"sources\":[]},\"field\":{\"property\":\"field\",\"sources\":[]},\"value\":{\"property\":\"value\",\"sources\":[]}},\"children\":{},\"effects\":[],\"groups\":[]}}}\n",
+      "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":65},\"identity\":{\"domain\":\"Deferral\",\"name\":[\"context-snapshots\"]},\"type\":\"Deferral\",\"value\":{\"mechanism\":\"context-snapshots\",\"note\":\"Persisted context snapshots for on-demand resolution of indexed records\"}}}\n",
+      "{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":{\"source\":0,\"index\":0}}}\n{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":null}}\n"
+    ]
+  }
+}

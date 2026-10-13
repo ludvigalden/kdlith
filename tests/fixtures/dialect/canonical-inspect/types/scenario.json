@@ -1,0 +1,26 @@
+{
+  "binary": "kdlith",
+  "description": "types.kdl reads end to end through the reference processor: its logical types, the node declarations that spell them, and its deferrals arrive as typed declarations",
+  "args": [
+    "inspect",
+    "dialect",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/types.kdl",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/bindings.kdl",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/context.kdl",
+    "--dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/documents.kdl",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/types.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":36},\"identity\":{\"domain\":\"UnionType\",\"name\":[\"TypeDef\"]},\"type\":\"UnionType\",\"value\":{\"name\":\"TypeDef\",\"variants\":{\"string\":{\"type\":\"StringType\"},\"enum\":{\"type\":\"EnumType\"},\"object\":{\"type\":\"ObjectType\"},\"union\":{\"type\":\"UnionType\"},\"map\":{\"type\":\"MapType\"}}}}}\n",
+      "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":81},\"identity\":{\"domain\":\"NodeDef\",\"name\":[\"string\"]},\"type\":\"NodeDef\",\"value\":{\"name\":\"string\",\"role\":\"declaration\",\"type\":\"StringType\",\"parent\":\"types\",\"fields\":{\"name\":{\"arg\":0,\"sources\":[]},\"format\":{\"sources\":[{\"child\":{\"name\":\"format\",\"sources\":[{\"argument\":{\"index\":0}}]}}]},\"width\":{\"sources\":[{\"child\":{\"name\":\"format\",\"sources\":[{\"property\":{\"name\":\"width\"}}]}}]},\"pattern\":{\"child\":\"pattern\",\"sources\":[]},\"validator\":{\"sources\":[{\"child\":{\"name\":\"validator\",\"sources\":[{\"argument\":{\"index\":0}}]}}]},\"validator-version\":{\"sources\":[{\"child\":{\"name\":\"validator\",\"sources\":[{\"property\":{\"name\":\"version\"}}]}}]},\"min-length\":{\"child\":\"min-length\",\"sources\":[]}},\"children\":{\"format\":{\"max-occurs\":1},\"pattern\":{\"max-occurs\":1},\"validator\":{\"max-occurs\":1},\"min-length\":{\"max-occurs\":1}},\"effects\":[],\"groups\":[]}}}\n",
+      "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":160},\"identity\":{\"domain\":\"Deferral\",\"name\":[\"codecs\"]},\"type\":\"Deferral\",\"value\":{\"mechanism\":\"codecs\",\"note\":\"Pattern codecs that decode typed captures from a string, and codec-driven value binding\"}}}\n",
+      "{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":{\"source\":0,\"index\":0}}}\n{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":null}}\n"
+    ]
+  }
+}

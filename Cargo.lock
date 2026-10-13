@@ -172,6 +172,7 @@ dependencies = [
  "kdlith-engine",
  "kdlith-model",
  "kdlith-parse",
+ "kdlith-superproc",
  "serde_json",
 ]
 
@@ -196,6 +197,7 @@ dependencies = [
  "kdlith-parse",
  "kdlith-runtime",
  "regex",
+ "serde",
 ]
 
 [[package]]
@@ -233,6 +235,10 @@ dependencies = [
 [[package]]
 name = "kdlith-superproc"
 version = "0.1.0"
+dependencies = [
+ "kdlith-diagnostic",
+ "kdlith-engine",
+]
 
 [[package]]
 name = "libtest-mimic"

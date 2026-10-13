@@ -147,15 +147,7 @@ fn kind(n: &Names, kind: &TypeKind) -> String {
 }
 
 fn node_line(n: &Names, node: &NodeDecl) -> String {
-    let role = match node.role {
-        None => "-",
-        Some(Role::Record) => "record",
-        Some(Role::Declaration) => "declaration",
-        Some(Role::Contribution) => "contribution",
-        Some(Role::ContextControl) => "context-control",
-        Some(Role::SourceImport) => "source-import",
-        Some(Role::Container) => "container",
-    };
+    let role = node.role.map_or("-", Role::name);
     let ty = node.ty.map_or("-", |ty| n.resolve(ty));
     let placement = match &node.placement {
         Placement::Root => "root".to_owned(),

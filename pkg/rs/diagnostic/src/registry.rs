@@ -555,6 +555,16 @@ pub const CODES: &[CodeDefinition] = &[
         correction: "Re-run generation without --check",
         retired: false,
     },
+    CodeDefinition {
+        code: "KDLITH-GEN003",
+        label: "processor-definition-mismatch",
+        severity: Severity::Error,
+        exit_class: 1,
+        trigger: "a typed processor's declared types, nodes, slots, or handlers disagree with the compiled definition it reads",
+        message_template: "processor <processor> disagrees with its definition: <subject>: <reason>",
+        correction: "Regenerate the processor from its definition, or bring its declarations in line",
+        retired: false,
+    },
     // EXP
     CodeDefinition {
         code: "KDLITH-EXP001",
