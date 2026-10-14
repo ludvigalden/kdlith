@@ -12,9 +12,9 @@ use std::collections::BTreeMap;
 use kdlith_diagnostic::registry::{lookup, render};
 use kdlith_diagnostic::{ByteSpan, DiagnosticRecord};
 use kdlith_model::{
-    BoundContribution, BoundDeclaration, BoundItem, BoundRecord, Entry, Field, Identity,
-    ImportRequest, Location, OriginId, QualifiedName, Reference, Repeated, ScopeCompletion,
-    SourceId, ValidationState, Value,
+    BoundContribution, BoundDeclaration, BoundItem, BoundRecord, Derivation, Entry, Field,
+    Identity, ImportRequest, Location, OriginId, QualifiedName, Reference, Repeated,
+    ScopeCompletion, SourceId, Trace, ValidationState, Value,
 };
 use kdlith_parse::{Locator, Parser};
 use kdlith_runtime::{
@@ -35,7 +35,7 @@ use crate::overlap;
 use crate::plan::EffectStep;
 use crate::structure::{ScopeRules, ScopeState, Violation};
 use crate::summary;
-use crate::types::{OutputPolicy, TypeExpr, TypeKind, Variant};
+use crate::types::{OutputPolicy, Sensitivity, TypeExpr, TypeKind, Variant};
 
 pub use frame::BindFrame;
 pub use source::ParseEvents;
@@ -51,6 +51,10 @@ const CONTEXT_ACCUMULATE: &str = "KDLITH-CTX003";
 const PROFILE_NOT_SELECTED: &str = "KDLITH-SCH011";
 
 const DOCUMENT_ROOT: &str = "the document root";
+
+/// What a diagnostic shows in place of a value the output policy
+/// withholds.
+const CONCEALED: &str = "a withheld sensitive value";
 
 /// The outcome of a node's case dispatch.
 enum CaseSelection {
@@ -268,8 +272,26 @@ impl<'d, 's> Binder<'d, 's> {
         value: &Value,
         span: ByteSpan,
     ) {
+        self.mismatched_as(cx, ty, what, value, span, false);
+    }
+
+    /// Report a value that fails its type; a concealed value never
+    /// reaches the diagnostic, only the fact that it failed.
+    fn mismatched_as(
+        &mut self,
+        cx: &mut Cx<'_>,
+        ty: &TypeExpr,
+        what: &str,
+        value: &Value,
+        span: ByteSpan,
+        conceal: bool,
+    ) {
         let def = self.def;
-        let found = decode::found(value);
+        let found = if conceal {
+            CONCEALED.to_owned()
+        } else {
+            decode::found(value)
+        };
         match decode::mismatch(&def.types, &def.names, ty, value) {
             Mismatch::Value => {
                 let expected = summary::expr(&def.names, ty);
@@ -280,6 +302,7 @@ impl<'d, 's> Binder<'d, 's> {
             }
             Mismatch::TypeExpression { reason } => {
                 let text = match value {
+                    _ if conceal => CONCEALED,
                     Value::String(text) => text.as_str(),
                     _ => "",
                 };
@@ -433,6 +456,20 @@ impl<'d, 's> Binder<'d, 's> {
         value: Value,
         span: ByteSpan,
     ) -> Option<Value> {
+        self.check_as(cx, ty, what, value, span, false)
+    }
+
+    /// Check a scalar against `ty`; a concealed value's mismatch never
+    /// names the value.
+    fn check_as(
+        &mut self,
+        cx: &mut Cx<'_>,
+        ty: Option<TypeExpr>,
+        what: &str,
+        value: Value,
+        span: ByteSpan,
+        conceal: bool,
+    ) -> Option<Value> {
         let Some(ty) = ty else {
             return Some(value);
         };
@@ -441,9 +478,25 @@ impl<'d, 's> Binder<'d, 's> {
             .decoder
             .decode(&self.def.types, &self.def.names, &ty, &value, site);
         if decoded.is_none() {
-            self.mismatched(cx, &ty, what, &value, span);
+            self.mismatched_as(cx, &ty, what, &value, span, conceal);
         }
         decoded
+    }
+
+    /// The policy a sensitive field's value passes on every output
+    /// surface: the explicit one, or the sensitivity's fail-closed
+    /// default.
+    fn policy_for(&self, sensitivity: Sensitivity) -> OutputPolicy {
+        self.output_policy
+            .unwrap_or_else(|| OutputPolicy::default_for(sensitivity))
+    }
+
+    /// Whether a field's value is withheld from output, and so from
+    /// every diagnostic that would otherwise quote it.
+    fn conceals(&self, owner: NodeDeclId, field: usize) -> bool {
+        self.tables.decls[owner.index()].fields[field]
+            .sensitivity
+            .is_some_and(|sensitivity| self.policy_for(sensitivity) != OutputPolicy::Emit)
     }
 
     /// Decode one scalar of a node's syntax and hand it to its field.
@@ -458,7 +511,8 @@ impl<'d, 's> Binder<'d, 's> {
         let owner = frame.owner;
         let ty = self.item_type(owner, bind).cloned();
         let what = self.field_label(owner, bind.field);
-        match self.check(cx, ty, &what, value, span) {
+        let conceal = self.conceals(owner, bind.field);
+        match self.check_as(cx, ty, &what, value, span, conceal) {
             Some(value) => self.route(cx, frame, bind, value, span),
             None => frame.rejected.push(bind.field),
         }
@@ -490,8 +544,12 @@ impl<'d, 's> Binder<'d, 's> {
                 None => *slot = Some(Supplied::new(Value::List(vec![value]), span)),
                 Some(Supplied {
                     value: Value::List(items),
+                    more,
                     ..
-                }) => items.push(value),
+                }) => {
+                    items.push(value);
+                    more.push(span);
+                }
                 Some(_) => self.diagnose(cx, COLLISION, span, &[&label, node]),
             },
             Mode::Keyed => {
@@ -505,6 +563,7 @@ impl<'d, 's> Binder<'d, 's> {
                     None => *slot = Some(Supplied::new(Value::Map(vec![entry]), span)),
                     Some(Supplied {
                         value: Value::Map(entries),
+                        more,
                         ..
                     }) => {
                         if entries.iter().any(|held| held.key == entry.key) {
@@ -512,6 +571,7 @@ impl<'d, 's> Binder<'d, 's> {
                             self.diagnose(cx, DUPLICATE_KEY, span, &[&key, &label]);
                         } else {
                             entries.push(entry);
+                            more.push(span);
                         }
                     }
                     Some(_) => self.diagnose(cx, COLLISION, span, &[&label, node]),
@@ -542,29 +602,39 @@ impl<'d, 's> Binder<'d, 's> {
         let owner = frame.owner;
         let count = self.tables.decls[owner.index()].fields.len();
         let mut values = Vec::with_capacity(count);
+        let mut traces = Vec::with_capacity(count);
+        let site = self.location(frame.span);
         for at in 0..count {
             let info = self.tables.decls[owner.index()].fields[at].clone();
             let explicit = frame.fields[at].take();
             let held = info
                 .context
                 .and_then(|context| cx.context().get(context.slot))
-                .map(|held| held.value.clone());
-            let value = match (explicit, info.context) {
+                .cloned();
+            let explicit_trace = explicit
+                .as_ref()
+                .map(|supplied| self.supplied_trace(supplied));
+            let (value, mut trace) = match (explicit, info.context) {
                 (Some(supplied), Some(context)) => {
                     if context.policy == Some(ContextPolicy::Fixed)
                         && let Some(held) = &held
-                        && *held != supplied.value
+                        && held.value != supplied.value
                     {
                         let field = self.field_label(owner, at);
-                        let ours = decode::found(&supplied.value);
-                        let theirs = decode::found(held);
+                        let (ours, theirs) = if self.conceals(owner, at) {
+                            (CONCEALED.to_owned(), CONCEALED.to_owned())
+                        } else {
+                            (decode::found(&supplied.value), decode::found(&held.value))
+                        };
                         let slot = self.name(context.name);
                         let values = [field.as_str(), &ours, slot, &theirs];
                         self.diagnose(cx, CONTEXT_DISAGREES, supplied.span, &values);
                     }
-                    Some(supplied.value)
+                    (Some(supplied.value), explicit_trace.unwrap_or_default())
                 }
-                (Some(supplied), None) => Some(supplied.value),
+                (Some(supplied), None) => {
+                    (Some(supplied.value), explicit_trace.unwrap_or_default())
+                }
                 (None, Some(context)) => {
                     if held.is_none()
                         && context.policy.is_none()
@@ -574,37 +644,56 @@ impl<'d, 's> Binder<'d, 's> {
                         let slot = self.name(context.name);
                         self.diagnose(cx, CONTEXT_UNAVAILABLE, frame.span, &[slot]);
                         values.push(None);
+                        traces.push(Trace::default());
                         continue;
                     }
-                    held
+                    match held {
+                        Some(held) => (
+                            Some(held.value),
+                            Trace::derived(Derivation::Context, site, vec![held.trace]),
+                        ),
+                        None => (None, Trace::default()),
+                    }
                 }
-                (None, None) => None,
+                (None, None) => (None, Trace::default()),
             };
+            let defaulted = value.is_none();
             let value = value.or(info.fallback).or(match info.collect {
                 Collect::List => Some(Value::List(Vec::new())),
                 Collect::Map => Some(Value::Map(Vec::new())),
                 Collect::No => None,
             });
+            if defaulted && value.is_some() {
+                trace = Trace::derived(Derivation::Default, site, Vec::new());
+            }
+            let expands = !self.tables.decls[owner.index()].fields[at]
+                .expand
+                .is_empty();
             let value = match value {
-                Some(Value::Map(entries))
-                    if !self.tables.decls[owner.index()].fields[at]
-                        .expand
-                        .is_empty() =>
-                {
+                Some(Value::Map(entries)) if expands => {
                     let mut entries = entries;
+                    let before = entries.len();
                     self.splice_expansions(cx, owner, at, frame.span, &mut entries);
+                    if entries.len() > before {
+                        trace = Trace::derived(Derivation::Expansion, site, vec![trace]);
+                    }
                     Some(Value::Map(entries))
                 }
-                None if !self.tables.decls[owner.index()].fields[at]
-                    .expand
-                    .is_empty() =>
-                {
+                None if expands => {
                     let mut entries = Vec::new();
                     self.splice_expansions(cx, owner, at, frame.span, &mut entries);
+                    if !entries.is_empty() {
+                        trace = Trace::derived(Derivation::Expansion, site, Vec::new());
+                    }
                     (!entries.is_empty()).then_some(Value::Map(entries))
                 }
                 other => other,
             };
+            traces.push(if value.is_some() {
+                trace
+            } else {
+                Trace::default()
+            });
             if value.is_none() && info.required && !frame.rejected.contains(&at) {
                 let node = self.name(frame.name);
                 let field = self.name(info.name);
@@ -612,7 +701,31 @@ impl<'d, 's> Binder<'d, 's> {
             }
             values.push(value);
         }
+        frame.traces = traces;
         values
+    }
+
+    /// How an explicitly supplied value came to be: written literally
+    /// at its span, or — for a collection gathered from several
+    /// supplies — merged at the node from each literal supply.
+    fn supplied_trace(&mut self, supplied: &Supplied) -> Trace {
+        let first = Trace::literal(self.location(supplied.span));
+        if supplied.more.is_empty() {
+            return first;
+        }
+        let mut inputs = vec![first];
+        for span in &supplied.more {
+            inputs.push(Trace::literal(self.location(*span)));
+        }
+        let start = supplied.span.start;
+        let end = supplied
+            .more
+            .iter()
+            .map(|span| span.end)
+            .max()
+            .unwrap_or(start);
+        let gathered = self.location(ByteSpan::new(start, end.max(supplied.span.end)));
+        Trace::derived(Derivation::Merge, gathered, inputs)
     }
 
     /// Splice the entries of every expansion a field's sources declare
@@ -879,16 +992,26 @@ impl<'d, 's> Binder<'d, 's> {
         for step in steps {
             match step {
                 EffectStep::Set { slot, from } => {
-                    let value = match from {
-                        SetFrom::Value(value) => Some(value.clone()),
-                        SetFrom::Field(field) => self.field_value(cx, frame, view, *field),
+                    let site = self.location(frame.span);
+                    let (value, trace) = match from {
+                        // The schema's own constant, set at this node.
+                        SetFrom::Value(value) => (
+                            Some(value.clone()),
+                            Trace::derived(Derivation::Context, site, Vec::new()),
+                        ),
+                        SetFrom::Field(field) => (
+                            self.field_value(cx, frame, view, *field),
+                            self.field_trace(frame, view, *field)
+                                .unwrap_or_else(|| Trace::literal(site)),
+                        ),
                     };
                     // A set from an absent optional field leaves the slot
                     // as it was rather than inventing a removal.
                     if let Some(value) = value {
                         out.push(ContextEffect::Set {
                             slot: *slot,
-                            value: SlotValue::new(value, OriginId(cx.node().index)),
+                            value: SlotValue::new(value, OriginId(cx.node().index))
+                                .with_trace(trace),
                         });
                     }
                 }
@@ -902,6 +1025,23 @@ impl<'d, 's> Binder<'d, 's> {
             }
         }
         out
+    }
+
+    /// How one field of the node an effect runs for came to be, when
+    /// its timing knows: a bound field's resolved trace.
+    fn field_trace(&self, frame: &BindFrame, view: FieldView<'_>, field: Sym) -> Option<Trace> {
+        match view {
+            FieldView::Header => None,
+            FieldView::Bound(_) => {
+                let infos = &self.tables.decls[frame.owner.index()].fields;
+                let at = infos.iter().position(|info| info.name == field)?;
+                frame
+                    .traces
+                    .get(at)
+                    .filter(|trace| !trace.is_empty())
+                    .cloned()
+            }
+        }
     }
 
     /// One field of the node an effect runs for, as its timing knows it.
@@ -961,6 +1101,7 @@ impl<'d, 's> Binder<'d, 's> {
             handler(&call)
         };
         let origin = OriginId(cx.node().index);
+        let provider = Trace::provided(format!("handler {name}"));
         for effect in produced {
             let resolved = match effect {
                 HandlerEffect::Set { slot, value } => self
@@ -970,7 +1111,7 @@ impl<'d, 's> Binder<'d, 's> {
                     .and_then(|sym| self.def.plan.context.slot(sym))
                     .map(|slot| ContextEffect::Set {
                         slot,
-                        value: SlotValue::new(value, origin),
+                        value: SlotValue::new(value, origin).with_trace(provider.clone()),
                     })
                     .ok_or_else(|| {
                         format!("sets a context slot the definition does not declare: {slot}")
@@ -1032,12 +1173,24 @@ impl<'d, 's> Binder<'d, 's> {
             else {
                 continue;
             };
+            let accumulated = info.accumulate.is_some() && cx.context().get(*slot).is_some();
             let Some(combined) = self.combine(cx, *slot, &info, decoded, span) else {
                 continue;
             };
+            let trace = match cx.context().get(*slot) {
+                Some(held) if accumulated => {
+                    let site = self.location(span);
+                    Trace::derived(
+                        Derivation::Merge,
+                        site,
+                        vec![held.trace.clone(), value.trace.clone()],
+                    )
+                }
+                _ => value.trace.clone(),
+            };
             kept.push(ContextEffect::Set {
                 slot: *slot,
-                value: SlotValue::new(combined, value.origin),
+                value: SlotValue::new(combined, value.origin).with_trace(trace),
             });
         }
         kept
@@ -1208,30 +1361,37 @@ impl<'d, 's> Binder<'d, 's> {
             .fields
             .iter()
             .zip(values)
-            .filter_map(|(field, value)| {
+            .zip(frame.traces.iter())
+            .filter_map(|((field, value), trace)| {
                 let value = value?;
-                let value = match field.sensitivity {
+                let (value, redacted) = match field.sensitivity {
                     Some(sensitivity) => {
-                        let policy = self
-                            .output_policy
-                            .unwrap_or_else(|| OutputPolicy::default_for(sensitivity));
-                        policy.apply(value)?
+                        let policy = self.policy_for(sensitivity);
+                        (policy.apply(value)?, policy == OutputPolicy::Redact)
                     }
-                    None => value,
+                    None => (value, false),
                 };
-                Some(Field::new(self.name(field.name), value, origin))
+                Some(
+                    Field::new(self.name(field.name), value, origin)
+                        .with_provenance(trace.clone(), redacted),
+                )
             })
             .collect();
+        let node_site = self.location(frame.span);
         let item = match role {
-            Role::Record => BoundItem::Record(BoundRecord::new(
-                node, type_name, fields, origin, validation, frame.span,
-            )),
+            Role::Record => BoundItem::Record(
+                BoundRecord::new(node, type_name, fields, origin, validation, frame.span)
+                    .with_site(node_site),
+            ),
             Role::Declaration => {
                 let name = QualifiedName(identity.into_iter().collect());
                 let identity = Identity::new(type_name.clone(), name);
-                BoundItem::Declaration(BoundDeclaration::new(
-                    node, identity, type_name, fields, origin, validation, frame.span,
-                ))
+                BoundItem::Declaration(
+                    BoundDeclaration::new(
+                        node, identity, type_name, fields, origin, validation, frame.span,
+                    )
+                    .with_site(node_site),
+                )
             }
             Role::Contribution => {
                 let site = self.location(frame.span);
@@ -1241,12 +1401,13 @@ impl<'d, 's> Binder<'d, 's> {
                 });
                 let value = Value::Map(
                     fields
-                        .into_iter()
-                        .map(|f| Entry::new(f.name, f.value))
+                        .iter()
+                        .map(|f| Entry::new(f.name.clone(), f.value.clone()))
                         .collect(),
                 );
                 let mut contribution =
-                    BoundContribution::new(node, target, value, origin, validation, frame.span);
+                    BoundContribution::new(node, target, value, origin, validation, frame.span)
+                        .with_provenance(node_site, fields);
                 // The preserved record carries its layer and application
                 // scope as metadata for the registered resolver.
                 contribution.layer = layer;
@@ -1933,6 +2094,15 @@ impl<'d, 's> BindingSession<'d, 's> {
             ended: false,
             stopped: false,
         }
+    }
+
+    /// The session applying one explicit output policy to every
+    /// sensitive field; `None` keeps each sensitivity's fail-closed
+    /// default. Set before the first item is taken.
+    #[must_use]
+    pub fn under_policy(mut self, output_policy: Option<OutputPolicy>) -> Self {
+        self.session.processor_mut().output_policy = output_policy;
+        self
     }
 
     /// The context as the latest item left it: at an import request, the

@@ -5,11 +5,11 @@
 use std::path::{Path, PathBuf};
 
 use kdlith_diagnostic::ExitStatus;
-use kdlith_engine::{CheckScope, Delivery, Emit, Extensions, export as run_export};
+use kdlith_engine::{CheckScope, Delivery, Emit, Extensions, OutputPolicy, export_under};
 use kdlith_superproc::{load_schema, seed};
 
 use crate::report::report_all;
-use crate::{DeliveryArg, ExportArgs};
+use crate::{DeliveryArg, ExportArgs, SensitiveArg};
 
 /// Run a parsed `export` argument set.
 pub(crate) fn run(args: ExportArgs) -> ExitStatus {
@@ -22,11 +22,16 @@ pub(crate) fn run(args: ExportArgs) -> ExitStatus {
         DeliveryArg::Atomic => Delivery::Atomic,
         DeliveryArg::Provisional => Delivery::Provisional,
     };
+    let policy = args.sensitive.map(|sensitive| match sensitive {
+        SensitiveArg::Emit => OutputPolicy::Emit,
+        SensitiveArg::Omit => OutputPolicy::Omit,
+        SensitiveArg::Redact => OutputPolicy::Redact,
+    });
     export(
         &args.schema,
         &paths(&args.files),
         &emit,
-        delivery,
+        (delivery, policy),
         args.output.as_deref(),
     )
 }
@@ -36,14 +41,16 @@ fn paths(files: &[PathBuf]) -> Vec<&Path> {
 }
 
 /// Export the data documents under the schema: load the bundled dialect
-/// and the schema with complete checking, run the engine's export, and
-/// report. A failed run's diagnostics decide the exit; a successful run
-/// writes its summary to stderr so the data stream stays pure.
+/// and the schema with complete checking, run the engine's export under
+/// the delivery and the explicit output policy (`None` keeps the
+/// fail-closed sensitivity defaults), and report. A failed run's
+/// diagnostics decide the exit; a successful run writes its summary to
+/// stderr so the data stream stays pure.
 pub fn export(
     schema: &Path,
     entries: &[&Path],
     emit: &Emit,
-    delivery: Delivery,
+    (delivery, policy): (Delivery, Option<OutputPolicy>),
     output: Option<&Path>,
 ) -> ExitStatus {
     let extensions = Extensions::standard();
@@ -55,12 +62,11 @@ pub fn export(
         Ok(definition) => definition,
         Err(records) => return report_all(&records),
     };
-    let outcome = run_export(&definition, entries, emit, delivery, output);
-    if let Some(rejection) = &outcome.rejected {
-        eprintln!("kdlith: export: {rejection}");
+    let outcome = export_under(&definition, entries, emit, delivery, output, policy);
+    let status = report_all(&outcome.records);
+    if outcome.rejected.is_some() {
         return ExitStatus::Failure;
     }
-    let status = report_all(&outcome.records);
     if let Some(broken) = &outcome.broken {
         eprintln!("kdlith: {broken}");
         return ExitStatus::Failure;

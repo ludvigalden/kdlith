@@ -117,7 +117,7 @@ pub const AREAS: &[AreaDefinition] = &[
     AreaDefinition {
         name: "EXP",
         owner: "cli",
-        scope: "export delivery: output destinations, atomic and provisional delivery",
+        scope: "export: item selection, output destinations, atomic and provisional delivery",
     },
 ];
 
@@ -664,6 +664,16 @@ pub const CODES: &[CodeDefinition] = &[
         trigger: "provisional delivery emitted items before processing failed",
         message_template: "<count> items were emitted provisionally; the stream is incomplete",
         correction: "Discard the partial stream, or use --delivery atomic",
+        retired: false,
+    },
+    CodeDefinition {
+        code: "KDLITH-EXP003",
+        label: "emit-type-unselectable",
+        severity: Severity::Error,
+        exit_class: 1,
+        trigger: "an export selects a type the schema does not declare, or one that is not a record type",
+        message_template: "cannot emit <type>: <reason>",
+        correction: "Name a record type the schema declares, or select roots",
         retired: false,
     },
 ];

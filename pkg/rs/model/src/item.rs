@@ -30,6 +30,10 @@ pub struct BoundRecord {
     /// serialized form.
     #[serde(skip)]
     pub span: ByteSpan,
+    /// Where the node was written, with line and column; not part of
+    /// the item's serialized form.
+    #[serde(skip)]
+    pub site: Option<Location>,
 }
 
 /// A node of the declaration role: registers an identity and exposes
@@ -47,6 +51,10 @@ pub struct BoundDeclaration {
     /// serialized form.
     #[serde(skip)]
     pub span: ByteSpan,
+    /// Where the node was written, with line and column; not part of
+    /// the item's serialized form.
+    #[serde(skip)]
+    pub site: Option<Location>,
 }
 
 /// An assignment or overlay preserved unresolved, so a resolver can apply
@@ -65,6 +73,14 @@ pub struct BoundContribution {
     /// item's serialized form.
     #[serde(skip)]
     pub span: ByteSpan,
+    /// Where the node was written, with line and column; not part of
+    /// the item's serialized form.
+    #[serde(skip)]
+    pub site: Option<Location>,
+    /// The members of the contributed value as fields, carrying each
+    /// member's provenance; not part of the item's serialized form.
+    #[serde(skip)]
+    pub members: Vec<Field>,
 }
 
 /// A request to invoke another source: the original expression, any
@@ -142,6 +158,11 @@ pub struct ExpansionRequest {
 pub struct SourceDocument {
     pub source: SourceId,
     pub path: String,
+    /// The content digest of the revision the items were bound from,
+    /// stamped with its algorithm; not part of the item's serialized
+    /// form.
+    #[serde(skip)]
+    pub digest: Option<String>,
 }
 
 impl SourceDocument {
@@ -149,7 +170,15 @@ impl SourceDocument {
         Self {
             source,
             path: path.into(),
+            digest: None,
         }
+    }
+
+    /// The document with the digest of the revision it was read at.
+    #[must_use]
+    pub fn with_digest(mut self, digest: impl Into<String>) -> Self {
+        self.digest = Some(digest.into());
+        self
     }
 }
 
@@ -178,7 +207,15 @@ impl BoundRecord {
             origin,
             validation,
             span,
+            site: None,
         }
+    }
+
+    /// The record with the location its node was written at.
+    #[must_use]
+    pub fn with_site(mut self, site: Location) -> Self {
+        self.site = Some(site);
+        self
     }
 }
 
@@ -200,7 +237,15 @@ impl BoundDeclaration {
             origin,
             validation,
             span,
+            site: None,
         }
+    }
+
+    /// The declaration with the location its node was written at.
+    #[must_use]
+    pub fn with_site(mut self, site: Location) -> Self {
+        self.site = Some(site);
+        self
     }
 }
 
@@ -223,7 +268,18 @@ impl BoundContribution {
             origin,
             validation,
             span,
+            site: None,
+            members: Vec::new(),
         }
+    }
+
+    /// The contribution with the location its node was written at and
+    /// its value's members as fields carrying their provenance.
+    #[must_use]
+    pub fn with_provenance(mut self, site: Location, members: Vec<Field>) -> Self {
+        self.site = Some(site);
+        self.members = members;
+        self
     }
 }
 

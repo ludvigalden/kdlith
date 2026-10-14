@@ -1,9 +1,9 @@
-//! Diagnostics on stderr: one `error[CODE]: message` line per record
-//! with its location, and the exit stratum the records decide.
+//! Diagnostics on stderr: one `<severity>[CODE]: message` line per
+//! record with its location, and the exit stratum the records decide.
 
 use std::fmt::Write as _;
 
-use kdlith_diagnostic::{DiagnosticRecord, ExitStatus};
+use kdlith_diagnostic::{DiagnosticRecord, ExitStatus, Severity};
 
 /// Print `record` and map it to its exit stratum.
 pub(crate) fn report(record: &DiagnosticRecord) -> ExitStatus {
@@ -19,7 +19,12 @@ pub(crate) fn report_all(records: &[DiagnosticRecord]) -> ExitStatus {
 }
 
 fn render(record: &DiagnosticRecord) -> String {
-    let mut line = format!("error[{}]", record.code);
+    let severity = match record.severity {
+        Severity::Warning => "warning",
+        Severity::Note => "note",
+        _ => "error",
+    };
+    let mut line = format!("{severity}[{}]", record.code);
     if let Some(message) = &record.message {
         let _ = write!(line, ": {message}");
     }

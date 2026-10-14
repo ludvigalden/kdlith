@@ -3,7 +3,7 @@
 
 use std::fmt;
 
-use kdlith_model::{OriginId, Value};
+use kdlith_model::{OriginId, Trace, Value};
 
 /// A context slot, numbered by the [`ContextLayout`] that declared it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -77,17 +77,32 @@ impl ContextLayout {
     }
 }
 
-/// A value held in a slot, with the origin of the binding that set it.
+/// A value held in a slot, with the origin of the binding that set it
+/// and the trace of how the value came to be.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct SlotValue {
     pub value: Value,
     pub origin: OriginId,
+    /// How the value came to be; empty when untraced. Fingerprints
+    /// ignore it: provenance is not semantics.
+    pub trace: Trace,
 }
 
 impl SlotValue {
     pub fn new(value: Value, origin: OriginId) -> Self {
-        Self { value, origin }
+        Self {
+            value,
+            origin,
+            trace: Trace::default(),
+        }
+    }
+
+    /// The value with the trace of how it came to be.
+    #[must_use]
+    pub fn with_trace(mut self, trace: Trace) -> Self {
+        self.trace = trace;
+        self
     }
 }
 

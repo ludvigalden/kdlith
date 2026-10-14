@@ -370,6 +370,17 @@ enum DeliveryArg {
     Provisional,
 }
 
+/// The explicit output policy every sensitive field passes.
+#[derive(Clone, Copy, ValueEnum)]
+enum SensitiveArg {
+    /// Write sensitive values as they are
+    Emit,
+    /// Leave sensitive fields out of the output
+    Omit,
+    /// Replace sensitive values with a redaction marker
+    Redact,
+}
+
 /// `kdlith export --schema <FILE> <files...>`.
 #[derive(Args)]
 struct ExportArgs {
@@ -394,6 +405,10 @@ struct ExportArgs {
     /// When results become visible
     #[arg(long, value_enum, default_value_t = DeliveryArg::Atomic)]
     delivery: DeliveryArg,
+    /// The output policy every sensitive field passes; when absent a
+    /// secret is redacted and a reference emitted
+    #[arg(long, value_enum, value_name = "POLICY")]
+    sensitive: Option<SensitiveArg>,
     /// Data documents: the entrypoints
     #[arg(required = true)]
     files: Vec<PathBuf>,

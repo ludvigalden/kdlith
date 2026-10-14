@@ -2,7 +2,7 @@
 //! frame stack until the node closes.
 
 use kdlith_diagnostic::ByteSpan;
-use kdlith_model::Value;
+use kdlith_model::{Trace, Value};
 
 use crate::bindings::{NodeDeclId, ScopeId};
 use crate::names::Sym;
@@ -22,16 +22,22 @@ pub(crate) enum Kind {
     Scalar,
 }
 
-/// A value supplied to a field, with the span it came from.
+/// A value supplied to a field, with the span it came from and the
+/// spans of every later supply a collection gathered into it.
 #[derive(Clone, Debug)]
 pub(crate) struct Supplied {
     pub(crate) value: Value,
     pub(crate) span: ByteSpan,
+    pub(crate) more: Vec<ByteSpan>,
 }
 
 impl Supplied {
     pub(crate) fn new(value: Value, span: ByteSpan) -> Self {
-        Self { value, span }
+        Self {
+            value,
+            span,
+            more: Vec::new(),
+        }
     }
 }
 
@@ -73,6 +79,9 @@ pub struct BindFrame {
     pub(crate) mark: u64,
     /// Errors of descendants that are processing items of their own.
     pub(crate) excluded: u64,
+    /// How each resolved field value came to be, by field position,
+    /// once the node's fields are finished.
+    pub(crate) traces: Vec<Trace>,
 }
 
 /// What a new frame is made of.
@@ -109,6 +118,7 @@ impl BindFrame {
             payload: Vec::new(),
             mark: opened.mark,
             excluded: 0,
+            traces: Vec::new(),
         }
     }
 

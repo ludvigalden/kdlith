@@ -255,6 +255,7 @@ version = "0.1.0"
 dependencies = [
  "kdlith-diagnostic",
  "kdlith-model",
+ "serde",
  "serde_json",
 ]
 

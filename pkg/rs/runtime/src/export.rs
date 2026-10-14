@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 
 use kdlith_diagnostic::DiagnosticRecord;
 use kdlith_diagnostic::registry::{lookup, render};
-use kdlith_model::Item;
+use serde::Serialize;
 
 const UNWRITABLE: &str = "KDLITH-EXP001";
 
@@ -30,7 +30,7 @@ pub enum Delivery {
 /// One NDJSON line per item under the pinned writer profile: the item's
 /// serialized form in field order, closed by a newline. Identical items
 /// produce identical bytes.
-pub fn write_ndjson(out: &mut impl Write, item: &Item) -> io::Result<()> {
+pub fn write_ndjson(out: &mut impl Write, item: &impl Serialize) -> io::Result<()> {
     serde_json::to_writer(&mut *out, item)?;
     out.write_all(b"\n")
 }
@@ -121,7 +121,7 @@ impl ExportWriter {
     /// Write one item as an NDJSON line; under provisional delivery the
     /// line is visible at the destination once this returns. A failed
     /// write is `KDLITH-EXP001` naming the destination.
-    pub fn write_item(&mut self, item: &Item) -> Result<(), Box<DiagnosticRecord>> {
+    pub fn write_item(&mut self, item: &impl Serialize) -> Result<(), Box<DiagnosticRecord>> {
         let written = match &mut self.dest {
             Dest::StagedMemory(buffer) => write_ndjson(buffer, item),
             Dest::StagedFile { file, .. } => write_ndjson(&mut *file, item),

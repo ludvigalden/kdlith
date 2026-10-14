@@ -6,6 +6,7 @@ mod frame;
 mod handlers;
 mod imports;
 mod processor;
+mod provenance;
 mod session;
 mod source;
 
@@ -20,5 +21,6 @@ pub use imports::{
     MAX_IMPORT_DEPTH, MAX_INVOCATIONS, Repeated,
 };
 pub use processor::{Completion, Cx, Disposition, Processor};
+pub use provenance::{FieldProvenance, Provenance, SourceRevision, SourceRevisions, export_line};
 pub use session::{Session, SessionError, SessionLimits};
 pub use source::{EventSource, FnSource, Pulled, SourceEvent, Step, from_fn};

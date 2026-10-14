@@ -12,6 +12,6 @@ pub use item::{
     BoundContribution, BoundDeclaration, BoundItem, BoundRecord, ExpansionRequest, ImportRequest,
     Item, PendingBinding, Repeated, ScopeCompletion, SourceDocument, ValidationState,
 };
-pub use origin::{Derivation, Origin, OriginId};
+pub use origin::{Derivation, Origin, OriginId, Trace};
 pub use source::{DocumentRole, Location, Position, SourceDescriptor, SourceId, Span};
 pub use value::{Entry, Field, Value};

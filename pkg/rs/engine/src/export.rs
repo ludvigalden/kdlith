@@ -9,13 +9,14 @@ use kdlith_diagnostic::registry::{lookup, render};
 use kdlith_diagnostic::{ByteSpan, DiagnosticRecord};
 use kdlith_model::{Item, SourceId};
 use kdlith_parse::{Event, Parser};
-use kdlith_runtime::{Delivery, ExportWriter};
+use kdlith_runtime::{Delivery, ExportWriter, SourceRevisions, export_line};
 
 use crate::documents::read_text;
-use crate::{DataReader, Definition, ReadOptions, TypeKind};
+use crate::{DataReader, Definition, OutputPolicy, ReadOptions, TypeKind};
 
 const ORIGIN: &str = "export";
 const INCOMPLETE: &str = "KDLITH-EXP002";
+const UNSELECTABLE: &str = "KDLITH-EXP003";
 
 /// What an export run selects from the processed stream.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -43,22 +44,16 @@ pub struct ExportOutcome {
     /// How many selected items were written to the destination.
     pub emitted: usize,
     /// The run never read a document: the type selection named no
-    /// record type of the definition.
+    /// record type of the definition. The reason; its `KDLITH-EXP003`
+    /// record is among `records`.
     pub rejected: Option<String>,
     /// The reading broke its own contract; an engine error, not a
     /// document diagnostic.
     pub broken: Option<String>,
 }
 
-/// Run one export: read `entries` — and the documents they import —
-/// under `def`, select per `emit`, and deliver NDJSON lines to `output`
-/// (or stdout when `None`) under `delivery`. Error diagnostics in the
-/// documents, a broken reading, or an unwritable destination fail the
-/// run. Under atomic delivery a failing run publishes nothing; under
-/// provisional delivery a failing run that already emitted lines keeps
-/// them and carries the `KDLITH-EXP002` warning naming the count, while
-/// the failing exit itself comes from the processing failure's error
-/// diagnostics.
+/// Run one export under the fail-closed sensitivity defaults: a secret
+/// field is redacted, a reference field emitted. See [`export_under`].
 pub fn export(
     def: &Definition,
     entries: &[&Path],
@@ -66,10 +61,36 @@ pub fn export(
     delivery: Delivery,
     output: Option<&Path>,
 ) -> ExportOutcome {
+    export_under(def, entries, emit, delivery, output, None)
+}
+
+/// Run one export: read `entries` — and the documents they import —
+/// under `def`, select per `emit`, and deliver NDJSON lines to `output`
+/// (or stdout when `None`) under `delivery`. Each line is the item with
+/// its provenance envelope beside its data: the node's location, the
+/// source revisions every location names, one shared origin table, and
+/// each emitted field's origin in it. `policy` is the explicit output
+/// policy every sensitive field passes; `None` keeps each sensitivity's
+/// fail-closed default, so a secret is emitted only under an explicit
+/// `emit`. Error diagnostics in the documents, a broken reading, or an
+/// unwritable destination fail the run. Under atomic delivery a failing
+/// run publishes nothing; under provisional delivery a failing run that
+/// already emitted lines keeps them and carries the `KDLITH-EXP002`
+/// warning naming the count, while the failing exit itself comes from
+/// the processing failure's error diagnostics.
+pub fn export_under(
+    def: &Definition,
+    entries: &[&Path],
+    emit: &Emit,
+    delivery: Delivery,
+    output: Option<&Path>,
+    policy: Option<OutputPolicy>,
+) -> ExportOutcome {
     if let Emit::Type(name) = emit
         && let Some(rejection) = reject_type(def, name)
     {
         return ExportOutcome {
+            records: vec![unselectable(name, &rejection)],
             rejected: Some(rejection),
             ..ExportOutcome::default()
         };
@@ -95,8 +116,14 @@ pub fn export(
     };
     let mut records: Vec<DiagnosticRecord> = Vec::new();
     let mut write_failed = false;
+    let mut revisions = SourceRevisions::new();
+    let options = match policy {
+        Some(policy) => ReadOptions::new().with_output_policy(policy),
+        None => ReadOptions::new(),
+    };
     let read = {
         let mut sink = |item: Item| {
+            revisions.observe(&item);
             match &item {
                 // Each entry's subtree closes with its own document-wide
                 // completion: a marker outside any entry opens the entry it
@@ -123,7 +150,8 @@ pub fn export(
                 _ => {}
             }
             if !write_failed && selection.selected(&item) {
-                match writer.write_item(&item) {
+                let line = export_line(&item, revisions.provenance(&item).as_ref());
+                match writer.write_item(&line) {
                     Ok(()) => {}
                     Err(record) => {
                         records.push(*record);
@@ -133,7 +161,7 @@ pub fn export(
             }
         };
         let reader = DataReader::new(def);
-        reader.read(entries, &ReadOptions::new(), &mut sink)
+        reader.read(entries, &options, &mut sink)
     };
     let mut outcome = ExportOutcome {
         records,
@@ -264,6 +292,20 @@ fn top_level_starts(text: &str) -> HashSet<u32> {
         }
     }
     roots
+}
+
+/// The `KDLITH-EXP003` record for a type selection that names no record
+/// type of the definition.
+fn unselectable(name: &str, reason: &str) -> DiagnosticRecord {
+    let record = DiagnosticRecord::from_code(UNSELECTABLE)
+        .expect("KDLITH-EXP003 is registered and never retired");
+    match lookup(UNSELECTABLE) {
+        Some(definition) => {
+            record.with_message(render(definition.message_template, &[name, reason]))
+        }
+        None => record,
+    }
+    .with_origin(ORIGIN)
 }
 
 /// The `KDLITH-EXP002` warning naming a provisional stream's emitted

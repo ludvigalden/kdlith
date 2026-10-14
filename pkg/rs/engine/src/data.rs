@@ -20,6 +20,7 @@ use crate::discovery::{self, ExpansionError};
 use crate::documents::{import_failure, read_text};
 use crate::names::Sym;
 use crate::typed::ReadError;
+use crate::types::OutputPolicy;
 
 const ORIGIN: &str = "data-document";
 
@@ -33,6 +34,7 @@ const ORIGIN: &str = "data-document";
 pub struct ReadOptions {
     profile: Option<String>,
     anchors: Vec<(String, PathBuf)>,
+    output_policy: Option<OutputPolicy>,
 }
 
 impl ReadOptions {
@@ -45,6 +47,15 @@ impl ReadOptions {
     #[must_use]
     pub fn with_profile(mut self, profile: impl Into<String>) -> Self {
         self.profile = Some(profile.into());
+        self
+    }
+
+    /// Apply one explicit output policy to every sensitive field the
+    /// reading binds; without one, each sensitivity keeps its
+    /// fail-closed default (a secret is redacted).
+    #[must_use]
+    pub fn with_output_policy(mut self, policy: OutputPolicy) -> Self {
+        self.output_policy = Some(policy);
         self
     }
 
@@ -139,6 +150,7 @@ impl<'d> DataReader<'d> {
             syntax: HashMap::new(),
             bound: HashMap::new(),
             handlers: self.handlers.clone(),
+            output_policy: options.output_policy,
             sink,
             failed: false,
             broken: None,
@@ -187,6 +199,8 @@ struct Reading<'r, 'd> {
     /// The context handlers the reading installed, passed into every
     /// invocation's binding session.
     handlers: Handlers,
+    /// The explicit output policy every binding session applies.
+    output_policy: Option<OutputPolicy>,
     sink: &'r mut dyn FnMut(Item),
     failed: bool,
     broken: Option<ReadError>,
@@ -224,10 +238,11 @@ impl Reading<'_, '_> {
                         .or_insert_with(|| Rc::from(text.as_str()))
                         .clone();
                     let identity = self.invocations.get(id).and_then(|i| i.identity());
+                    let digest = revision_digest(revision);
                     if let Some(cached) = identity.as_ref().and_then(|k| self.bound.get(k)) {
-                        self.replay(id, &shown, cached.clone());
+                        self.replay(id, &shown, &digest, cached.clone());
                     } else {
-                        self.bind(id, &shown, &text, context.ok(), identity);
+                        self.bind(id, (&shown, &digest), &text, context.ok(), identity);
                     }
                 }
                 Err(record) => self.diagnose(*record),
@@ -237,12 +252,11 @@ impl Reading<'_, '_> {
     }
 
     /// Yield a cached invocation's items under its new source identity.
-    fn replay(&mut self, id: InvocationId, shown: &str, cached: Rc<Vec<Item>>) {
+    fn replay(&mut self, id: InvocationId, shown: &str, digest: &str, cached: Rc<Vec<Item>>) {
         let source = SourceId(u32::try_from(id.index()).unwrap_or(u32::MAX));
-        (self.sink)(Item::Document(SourceDocument::new(
-            source,
-            shown.to_owned(),
-        )));
+        (self.sink)(Item::Document(
+            SourceDocument::new(source, shown.to_owned()).with_digest(digest),
+        ));
         for item in cached.iter() {
             (self.sink)(remap(item, source));
         }
@@ -251,7 +265,7 @@ impl Reading<'_, '_> {
     fn bind(
         &mut self,
         id: InvocationId,
-        shown: &str,
+        (shown, digest): (&str, &str),
         text: &str,
         context: Option<Context>,
         identity: Option<InvocationIdentity>,
@@ -260,10 +274,9 @@ impl Reading<'_, '_> {
         let source = SourceId(u32::try_from(id.index()).unwrap_or(u32::MAX));
         let profile = self.profile_name.as_deref();
         let context = context.unwrap_or_else(|| Context::new(def.plan.context.layout.clone()));
-        (self.sink)(Item::Document(SourceDocument::new(
-            source,
-            shown.to_owned(),
-        )));
+        (self.sink)(Item::Document(
+            SourceDocument::new(source, shown.to_owned()).with_digest(digest),
+        ));
         let mut session = BindingSession::with_handlers(
             def,
             source,
@@ -272,7 +285,8 @@ impl Reading<'_, '_> {
             context,
             profile,
             self.handlers.clone(),
-        );
+        )
+        .under_policy(self.output_policy);
         let mut own: Vec<Item> = Vec::new();
         let mut cacheable = true;
         while self.broken.is_none() {
@@ -463,27 +477,63 @@ fn expansion_record(expression: &str, error: &ExpansionError, origin: &str) -> D
     }
 }
 
+/// The revision digest a document item carries: the content hash the
+/// invocation identity is keyed on, stamped with its algorithm.
+fn revision_digest(revision: u64) -> String {
+    format!("fnv1a64:{revision:016x}")
+}
+
+/// Every provenance location of a bound item's fields and site moved
+/// from the source it was bound as to the one replaying it.
+fn relocate(
+    fields: &mut [kdlith_model::Field],
+    site: &mut Option<kdlith_model::Location>,
+    from: SourceId,
+    to: SourceId,
+) {
+    for field in fields {
+        field.trace.relocate(from, to);
+    }
+    if let Some(site) = site {
+        site.relocate(from, to);
+    }
+}
+
 /// An item under a new source identity: the one identity a replay
-/// changes, so a replayed document's items attribute to the invocation
-/// that replayed them.
+/// changes, so a replayed document's items — and the provenance
+/// locations within that document — attribute to the invocation that
+/// replayed them.
 fn remap(item: &Item, source: SourceId) -> Item {
     match item {
         Item::Document(document) => {
-            Item::Document(SourceDocument::new(source, document.path.clone()))
+            let mut document = document.clone();
+            document.source = source;
+            Item::Document(document)
         }
         Item::Record(record) => {
             let mut record = record.clone();
+            let from = record.node.source;
             record.node.source = source;
+            relocate(&mut record.fields, &mut record.site, from, source);
             Item::Record(record)
         }
         Item::Declaration(declaration) => {
             let mut declaration = declaration.clone();
+            let from = declaration.node.source;
             declaration.node.source = source;
+            relocate(&mut declaration.fields, &mut declaration.site, from, source);
             Item::Declaration(declaration)
         }
         Item::Contribution(contribution) => {
             let mut contribution = contribution.clone();
+            let from = contribution.node.source;
             contribution.node.source = source;
+            relocate(
+                &mut contribution.members,
+                &mut contribution.site,
+                from,
+                source,
+            );
             Item::Contribution(contribution)
         }
         Item::Import(request) => {

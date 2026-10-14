@@ -90,4 +90,11 @@ impl Location {
     pub fn new(source: SourceId, span: Span) -> Self {
         Self { source, span }
     }
+
+    /// The location moved to `to` when it lies in `from`.
+    pub fn relocate(&mut self, from: SourceId, to: SourceId) {
+        if self.source == from {
+            self.source = to;
+        }
+    }
 }

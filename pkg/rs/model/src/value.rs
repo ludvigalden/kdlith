@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::identity::Reference;
-use crate::origin::OriginId;
+use crate::origin::{OriginId, Trace};
 
 /// A bound value. Numbers keep their exact source spelling, never a
 /// binary float; maps keep declaration order.
@@ -42,6 +42,14 @@ pub struct Field {
     pub name: String,
     pub value: Value,
     pub origin: OriginId,
+    /// How the value came to be; empty when untraced. Not part of the
+    /// field's serialized form.
+    #[serde(skip)]
+    pub trace: Trace,
+    /// The value is a redaction marker the output policy put in place
+    /// of a sensitive value. Not part of the field's serialized form.
+    #[serde(skip)]
+    pub redacted: bool,
 }
 
 impl Field {
@@ -50,6 +58,17 @@ impl Field {
             name: name.into(),
             value,
             origin,
+            trace: Trace::default(),
+            redacted: false,
         }
+    }
+
+    /// The field with the trace of how its value came to be, and
+    /// whether its value is a redaction marker.
+    #[must_use]
+    pub fn with_provenance(mut self, trace: Trace, redacted: bool) -> Self {
+        self.trace = trace;
+        self.redacted = redacted;
+        self
     }
 }
