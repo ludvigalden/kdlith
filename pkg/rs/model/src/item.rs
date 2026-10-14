@@ -129,6 +129,26 @@ pub struct ExpansionRequest {
     pub origin: OriginId,
 }
 
+/// A document whose items follow: the source identity its records,
+/// declarations, and completions carry, and the path as the reading
+/// shows it. Emitted ahead of a document's first item so a stream
+/// consumer can attribute every later item to its document.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[non_exhaustive]
+pub struct SourceDocument {
+    pub source: SourceId,
+    pub path: String,
+}
+
+impl SourceDocument {
+    pub fn new(source: SourceId, path: impl Into<String>) -> Self {
+        Self {
+            source,
+            path: path.into(),
+        }
+    }
+}
+
 /// The end of a scope: a container node, or the whole source when
 /// `scope` is absent. Completion checks for the scope may now run.
 #[derive(Clone, Debug, Serialize)]
@@ -240,6 +260,8 @@ impl ScopeCompletion {
 #[serde(tag = "item", content = "data", rename_all = "kebab-case")]
 #[non_exhaustive]
 pub enum Item {
+    /// The items of this document follow, starting with the next item.
+    Document(SourceDocument),
     Record(BoundRecord),
     Declaration(BoundDeclaration),
     Contribution(BoundContribution),
@@ -277,8 +299,8 @@ impl From<BoundItem> for Item {
     }
 }
 
-/// An item outside the bound vocabulary (pending bindings, expansions)
-/// is handed back unchanged.
+/// An item outside the bound vocabulary (documents, pending bindings,
+/// expansions) is handed back unchanged.
 impl TryFrom<Item> for BoundItem {
     type Error = Item;
 

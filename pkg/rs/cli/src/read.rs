@@ -7,8 +7,8 @@ use std::path::Path;
 
 use kdlith_diagnostic::registry::{lookup, render};
 use kdlith_diagnostic::{DiagnosticRecord, ExitStatus};
-use kdlith_engine::{BindingSession, CheckScope, Extensions};
-use kdlith_model::{BoundItem, SourceId, Value};
+use kdlith_engine::{CheckScope, DataReader};
+use kdlith_model::{Item, Value};
 use kdlith_parse::Parser;
 use kdlith_superproc::{load_schema, seed};
 
@@ -75,10 +75,17 @@ pub(crate) fn source_error(code: &str, values: &[&str]) -> DiagnosticRecord {
 /// given) through the schema under the bundled dialect, print the one
 /// record item whose identity was asked for as a single JSON line, and
 /// report a missing identity as a failure with a clear diagnostic. The
-/// binding always runs to the end, so a diagnostic anywhere in the
-/// documents fails the read even after the record is found.
+/// documents' imports execute as invocations, so a record reached
+/// through an import is found like any other. The binding always runs
+/// to the end, so a diagnostic anywhere in the documents fails the read
+/// even after the record is found.
 pub(crate) fn read_data(args: &crate::ReadDataArgs) -> ExitStatus {
-    let extensions = Extensions::standard();
+    let options = crate::vet::DataOptions::new(
+        args.anchors.clone(),
+        args.profile.clone(),
+        args.handlers.clone(),
+    );
+    let extensions = options.extensions();
     let governing = match seed(&extensions) {
         Ok(governing) => governing,
         Err(records) => return report_all(&records),
@@ -98,36 +105,21 @@ pub(crate) fn read_data(args: &crate::ReadDataArgs) -> ExitStatus {
     }
     documents.push(args.file.as_path());
     let mut records: Vec<DiagnosticRecord> = Vec::new();
-    let mut found: Option<BoundItem> = None;
-    for (at, entry) in documents.iter().enumerate() {
-        let shown = entry.display().to_string();
-        let text = match crate::vet::read_text(entry, &shown) {
-            Ok(text) => text,
-            Err(record) => {
-                records.push(*record);
-                continue;
-            }
-        };
-        let source = SourceId(u32::try_from(at).unwrap_or(u32::MAX));
-        let mut session = BindingSession::new(&definition, source, &shown, &text);
-        loop {
-            match session.next_item() {
-                Ok(Some(item)) => {
-                    if let BoundItem::Diagnostic(record) = &item {
-                        records.push((**record).clone());
-                    }
-                    if found.is_none() && identity_of(&item) == Some(args.id.as_str()) {
-                        found = Some(item);
-                    }
-                }
-                Ok(None) => break,
-                Err(error) => {
-                    report_all(&records);
-                    eprintln!("kdlith: {shown}: {error}");
-                    return ExitStatus::Failure;
-                }
-            }
+    let mut found: Option<Item> = None;
+    let mut sink = |item: Item| {
+        if let Item::Diagnostic(record) = &item {
+            records.push((**record).clone());
         }
+        if found.is_none() && identity_of(&item) == Some(args.id.as_str()) {
+            found = Some(item);
+        }
+    };
+    let reader = DataReader::with_handlers(&definition, options.registry());
+    let read = reader.read(&documents, &options.read_options(), &mut sink);
+    if let Err(error) = read {
+        report_all(&records);
+        eprintln!("kdlith: {error}");
+        return ExitStatus::Failure;
     }
     match found {
         Some(item) => {
@@ -155,8 +147,8 @@ pub(crate) fn read_data(args: &crate::ReadDataArgs) -> ExitStatus {
 /// A record item's lookup identity: the string value of its bound
 /// `id` field. Records carry no registered identity of their own, and
 /// the schemas read here bind their record identity from that field.
-fn identity_of(item: &BoundItem) -> Option<&str> {
-    let BoundItem::Record(record) = item else {
+fn identity_of(item: &Item) -> Option<&str> {
+    let Item::Record(record) = item else {
         return None;
     };
     record
@@ -169,7 +161,7 @@ fn identity_of(item: &BoundItem) -> Option<&str> {
         })
 }
 
-fn write_item(out: &mut impl std::io::Write, item: &BoundItem) -> std::io::Result<()> {
+fn write_item(out: &mut impl std::io::Write, item: &Item) -> std::io::Result<()> {
     serde_json::to_writer(&mut *out, item)?;
     out.write_all(b"\n")
 }

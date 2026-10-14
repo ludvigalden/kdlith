@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A schema naming a handler the invocation does not install fails closed on the vet data path: without --handler, the load admits no handler names and the schema's effect site reports the uninstalled one",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/handler-effect/schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

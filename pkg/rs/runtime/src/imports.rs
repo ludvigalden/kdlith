@@ -14,14 +14,31 @@ pub const MAX_IMPORT_DEPTH: usize = 64;
 /// One session invokes at most this many sources.
 pub const MAX_INVOCATIONS: usize = 1024;
 
-/// An invocation in its session.
+/// One invocation of a source.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[non_exhaustive]
 pub struct InvocationId(u32);
 
 impl InvocationId {
     pub fn index(self) -> usize {
         self.0 as usize
     }
+}
+
+/// The semantics one invocation binds under: which revision of its
+/// source, which schema, which inherited context, under which repeat
+/// policy. Two invocations with one identity produce one bound result.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub struct InvocationIdentity {
+    /// The source revision: a digest of the document's text.
+    pub revision: u64,
+    /// The schema fingerprint the invocation binds under.
+    pub schema: u64,
+    /// A fingerprint of the inherited (projected) context.
+    pub context: u64,
+    /// The repeat policy the request carried.
+    pub policy: Repeated,
 }
 
 /// One invocation of a source.
@@ -36,6 +53,28 @@ pub struct Invocation {
     pub context: Context,
     /// The invocation that imported it; `None` for an entry document.
     pub caller: Option<InvocationId>,
+    /// The repeat policy the request carried; entry documents reject
+    /// repeats by construction.
+    pub policy: Repeated,
+    /// The schema fingerprint the session binds under.
+    pub schema: u64,
+    /// A fingerprint of the context as the invocation was entered with.
+    pub context_fingerprint: u64,
+    /// The source revision, once the host has read the document's text;
+    /// `None` until then.
+    pub revision: Option<u64>,
+}
+
+impl Invocation {
+    /// The invocation's identity: complete once its revision is known.
+    pub fn identity(&self) -> Option<InvocationIdentity> {
+        Some(InvocationIdentity {
+            revision: self.revision?,
+            schema: self.schema,
+            context: self.context_fingerprint,
+            policy: self.policy,
+        })
+    }
 }
 
 /// What a request resolved to.
@@ -72,11 +111,24 @@ pub enum ImportFailure {
 pub struct Invocations {
     invocations: Vec<Invocation>,
     active: Vec<InvocationId>,
+    /// The schema fingerprint every invocation of the session binds
+    /// under; recorded on each invocation as it is admitted.
+    schema: u64,
 }
 
 impl Invocations {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Record the schema fingerprint every invocation of the session
+    /// binds under; part of every invocation's identity.
+    pub fn with_schema_fingerprint(mut self, schema: u64) -> Self {
+        for invocation in &mut self.invocations {
+            invocation.schema = schema;
+        }
+        self.schema = schema;
+        self
     }
 
     /// Invoke an entry document. Entries are never imported, so a
@@ -94,7 +146,7 @@ impl Invocations {
                 first,
             });
         }
-        self.push(canonical, shown, context, None)
+        self.push(canonical, shown, context, None, Repeated::Reject)
     }
 
     /// Resolve a request made by the innermost active invocation. The
@@ -133,6 +185,36 @@ impl Invocations {
         let shown_base = Path::new(&caller.shown).parent().unwrap_or(Path::new(""));
         let shown = shown_base.join(target).display().to_string();
         let resolved = canonical(&base.join(target), &shown)?;
+        self.admit(resolved, shown, repeated, context)
+    }
+
+    /// Admit a target the caller already resolved, such as a discovery
+    /// match: the same cycle, limit, and repeat checks a written request
+    /// passes, against a path the caller expanded itself.
+    pub fn invoke_resolved(
+        &mut self,
+        resolved: &Path,
+        shown: &str,
+        repeated: Repeated,
+        context: Context,
+    ) -> Result<Admission, ImportFailure> {
+        if self.active.is_empty() {
+            return Err(no_importer(shown));
+        }
+        self.admit(resolved.to_owned(), shown.to_owned(), repeated, context)
+    }
+
+    /// The checks every admitted target passes, and the push.
+    fn admit(
+        &mut self,
+        resolved: PathBuf,
+        shown: String,
+        repeated: Repeated,
+        context: Context,
+    ) -> Result<Admission, ImportFailure> {
+        let Some(&importer) = self.active.last() else {
+            return Err(no_importer(&shown));
+        };
         if let Some(at) = self
             .active
             .iter()
@@ -157,8 +239,8 @@ impl Invocations {
                     return Ok(Admission::Reuse(first));
                 }
                 Repeated::Coalesce | Repeated::Instantiate => {}
-                // Reject, and any policy this stack does not know, fails
-                // closed.
+                // Reject, and any policy this stack does not know,
+                // fails closed.
                 _ => {
                     return Err(ImportFailure::Repeated {
                         target: shown,
@@ -167,7 +249,7 @@ impl Invocations {
                 }
             }
         }
-        self.push(resolved, shown, context, Some(importer))
+        self.push(resolved, shown, context, Some(importer), repeated)
             .map(Admission::Invoke)
     }
 
@@ -176,8 +258,23 @@ impl Invocations {
         self.active.pop();
     }
 
+    /// The innermost active invocation: the importer of any request this
+    /// stack is currently executing.
+    pub fn innermost(&self) -> Option<InvocationId> {
+        self.active.last().copied()
+    }
+
     pub fn get(&self, id: InvocationId) -> Option<&Invocation> {
         self.invocations.get(id.index())
+    }
+
+    /// Record the source revision of an invocation, once its document's
+    /// text has been read. `false` when the invocation is unknown.
+    pub fn supply_revision(&mut self, id: InvocationId, revision: u64) -> bool {
+        self.invocations
+            .get_mut(id.index())
+            .map(|invocation| invocation.revision = Some(revision))
+            .is_some()
     }
 
     /// The context an invocation's own effects apply to.
@@ -208,6 +305,7 @@ impl Invocations {
         shown: String,
         context: Context,
         caller: Option<InvocationId>,
+        policy: Repeated,
     ) -> Result<InvocationId, ImportFailure> {
         if self.invocations.len() >= MAX_INVOCATIONS {
             return Err(ImportFailure::Limit {
@@ -215,12 +313,18 @@ impl Invocations {
                 max: MAX_INVOCATIONS,
             });
         }
+        let context_fingerprint = context.fingerprint();
+        let schema = self.schema;
         let id = index(self.invocations.len());
         self.invocations.push(Invocation {
             path,
             shown,
             context,
             caller,
+            policy,
+            schema,
+            context_fingerprint,
+            revision: None,
         });
         self.active.push(id);
         Ok(id)

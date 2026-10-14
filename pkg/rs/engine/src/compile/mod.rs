@@ -229,6 +229,10 @@ fn finish<'d>(
         return Err(cx.diags.into_records());
     }
     let plan = plan::build(&cx.slots, &cx.types, &bindings, &symbols);
+    let root_grammar = cx
+        .root_grammar
+        .as_deref()
+        .and_then(|name| cx.names.get(name));
     let definition = Definition {
         kind: cx.kind,
         name: cx.name.clone().unwrap_or_default(),
@@ -243,6 +247,7 @@ fn finish<'d>(
         imports: cx.imports,
         profiles: cx.profiles,
         discoveries: cx.discoveries,
+        root_grammar,
         references: cx.references,
         resolution: cx.resolution,
         providers: cx.providers,

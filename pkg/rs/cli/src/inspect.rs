@@ -39,6 +39,7 @@ pub(crate) fn run(command: InspectCommand) -> ExitStatus {
                 args.dialect.as_deref(),
                 args.schema.as_deref(),
                 &paths(&args.files),
+                &crate::vet::DataOptions::new(args.anchors, args.profile, args.handlers),
             )
         }
     }

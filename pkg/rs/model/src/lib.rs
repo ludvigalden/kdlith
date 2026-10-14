@@ -10,7 +10,7 @@ mod value;
 pub use identity::{Identity, NodeId, QualifiedName, Reference};
 pub use item::{
     BoundContribution, BoundDeclaration, BoundItem, BoundRecord, ExpansionRequest, ImportRequest,
-    Item, PendingBinding, Repeated, ScopeCompletion, ValidationState,
+    Item, PendingBinding, Repeated, ScopeCompletion, SourceDocument, ValidationState,
 };
 pub use origin::{Derivation, Origin, OriginId};
 pub use source::{DocumentRole, Location, Position, SourceDescriptor, SourceId, Span};

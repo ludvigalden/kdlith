@@ -1,0 +1,22 @@
+{
+  "binary": "kdlith",
+  "description": "A host-supplied anchor resolves a grammar-admitted expression on the data path: --anchor root=parts expands $root/part-*.kdl to the matching files in portable-path-byte order, each invoked in that order as its own source (1 then 2) with its document item and records, before the importing document's scope completion",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "--anchor",
+    "root=parts",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"import\",\"data\":{\"node\":{\"source\":0,\"index\":1},\"expression\":\"$root/part-*.kdl\"",
+      "{\"item\":\"document\",\"data\":{\"source\":1,\"path\":\"parts/part-a.kdl\"}}\n{\"item\":\"record\",\"data\":{\"node\":{\"source\":1,\"index\":0},\"type_name\":\"Part\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"a\"},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n{\"item\":\"scope-complete\",\"data\":{\"source\":1,\"scope\":null}}\n",
+      "{\"item\":\"document\",\"data\":{\"source\":2,\"path\":\"parts/part-b.kdl\"}}\n{\"item\":\"record\",\"data\":{\"node\":{\"source\":2,\"index\":0},\"type_name\":\"Part\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"b\"},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n{\"item\":\"scope-complete\",\"data\":{\"source\":2,\"scope\":null}}\n",
+      "{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":null}}\n"
+    ]
+  }
+}

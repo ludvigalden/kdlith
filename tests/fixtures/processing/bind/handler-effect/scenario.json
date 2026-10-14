@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "A schema naming the built-in copy-fields handler executes it when the invocation installs it: --handler copy-fields admits the name at load and runs the handler at its declared following-effects point, so the context control's field lands in the locale slot and the later stamp record reads sv-se through the context",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "--handler",
+    "copy-fields",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":1},\"type_name\":\"Stamp\",\"fields\":[{\"name\":\"at\",\"value\":{\"kind\":\"string\",\"value\":\"sv-se\"},\"origin\":1}],\"origin\":1,\"validation\":\"valid\"}}\n"
+    ]
+  }
+}

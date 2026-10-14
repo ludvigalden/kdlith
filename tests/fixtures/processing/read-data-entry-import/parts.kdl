@@ -1,0 +1,9 @@
+locale sv-se
+section "Parts" {
+    public
+    item one kind=book group=shelf {
+        tags x
+        title "Dune"
+        image "cover.png"
+    }
+}

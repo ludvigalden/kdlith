@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "A data document's import carrying as=base preserves the alias in the executed request: the import item names base, and the imported document still binds under its own source identity",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/imports.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"import\",\"data\":{\"node\":{\"source\":0,\"index\":1},\"expression\":\"part.kdl\",\"alias\":\"base\",\"project\":[],\"repeated\":\"reject\"",
+      "{\"item\":\"document\",\"data\":{\"source\":1,\"path\":\"part.kdl\"}}\n",
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":1,\"index\":0},\"type_name\":\"Part\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"alpha\"},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n"
+    ]
+  }
+}

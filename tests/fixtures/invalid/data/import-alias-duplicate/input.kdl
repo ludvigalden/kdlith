@@ -1,0 +1,4 @@
+locale en-gb
+use "part.kdl" as=shared
+use "./part.kdl" as=shared
+stamp

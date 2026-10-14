@@ -4,6 +4,7 @@
 mod bind;
 mod bindings;
 mod compile;
+mod data;
 mod decode;
 mod definition;
 mod diag;
@@ -40,6 +41,7 @@ pub use compile::input::{
     SourceFieldInput, SourceInput, StepInput, TypeInput, ValidatorInput, VariantInput,
 };
 pub use compile::{DIALECT_VERSION, compile_dialect, compile_dialect_input, compile_schema_input};
+pub use data::{DataReader, ReadOptions};
 pub use definition::{
     AccumulateOp, AnchorDecl, CheckScope, Definition, DefinitionKind, DiscoveryDecl, DocumentRule,
     DuplicateTreatment, ImportDecl, MissingRequirement, Patterns, ProfileDecl, ProviderDecl,
@@ -52,6 +54,7 @@ pub use documents::MAX_DOCUMENT_BYTES;
 pub use extensions::{
     Extensions, PATH_STEM_SOURCE, TYPE_EXPRESSION_VALIDATOR, TYPE_EXPRESSION_VERSION,
 };
+pub use kdlith_runtime::{HandlerCall, HandlerEffect, HandlerFn, Handlers};
 pub use names::{Names, Sym};
 pub use plan::{ContextPlan, ContextRead, DeferredBinding, EffectStep, NodePlan, ProcessingPlan};
 pub use resolution::{

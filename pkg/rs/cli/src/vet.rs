@@ -5,10 +5,11 @@
 use std::path::{Path, PathBuf};
 
 use kdlith_diagnostic::{DiagnosticRecord, ExitStatus};
-use kdlith_engine::{BindingSession, CheckScope, Definition, Extensions};
-use kdlith_model::{BoundItem, SourceId};
+use kdlith_engine::{CheckScope, DataReader, Definition, Extensions, Handlers, ReadOptions};
+use kdlith_model::Item;
 use kdlith_superproc::{load_dialect, load_schema, seed};
 
+use crate::handlers;
 use crate::report::report_all;
 use crate::{ScopeArg, VetCommand};
 
@@ -31,6 +32,7 @@ pub(crate) fn run(command: VetCommand) -> ExitStatus {
             args.dialect.as_deref(),
             args.schema.as_deref(),
             &paths(&args.files),
+            &DataOptions::new(args.anchors, args.profile, args.handlers),
         ),
     }
 }
@@ -122,12 +124,70 @@ fn summary_line(definition: &Definition) -> String {
     )
 }
 
+/// What one data reading supplies beyond its documents: the discovery
+/// anchors the host passes on the command line, the profile the
+/// invocation names, and the built-in context handlers to install. The
+/// three data verbs (`vet data`, `inspect data`, `read data`) share one
+/// of these, so every path observes the same execution semantics.
+#[derive(Default)]
+pub struct DataOptions {
+    anchors: Vec<(String, PathBuf)>,
+    profile: Option<String>,
+    handlers: Vec<String>,
+}
+
+impl DataOptions {
+    pub fn new(
+        anchors: Vec<(String, PathBuf)>,
+        profile: Option<String>,
+        handlers: Vec<String>,
+    ) -> Self {
+        Self {
+            anchors,
+            profile,
+            handlers,
+        }
+    }
+
+    /// The handler registry the reading installs. Names were validated
+    /// against the built-in catalog at argument parse time.
+    pub(crate) fn registry(&self) -> Handlers {
+        handlers::registry(&self.handlers)
+    }
+
+    /// The extensions a definition loads under so the compile-time
+    /// installed-name check and the runtime registry admit one surface.
+    pub(crate) fn extensions(&self) -> Extensions {
+        Extensions::standard().with_installed_handlers(&self.registry())
+    }
+
+    /// The reader options: the named profile and the supplied anchors.
+    pub(crate) fn read_options(&self) -> ReadOptions {
+        let mut options = ReadOptions::new();
+        if let Some(profile) = &self.profile {
+            options = options.with_profile(profile.clone());
+        }
+        for (name, path) in &self.anchors {
+            options = options.with_anchor(name.clone(), path.clone());
+        }
+        options
+    }
+}
+
 /// Bind each data document against `schema` under the governing
 /// dialect — the bundled one, or the single document `dialect` names —
-/// or against the dialect itself when `schema` is absent. Bound items
-/// go to stdout as JSON lines; diagnostics go to stderr.
-pub fn vet_data(dialect: Option<&Path>, schema: Option<&Path>, entries: &[&Path]) -> ExitStatus {
-    let extensions = Extensions::standard();
+/// or against the dialect itself when `schema` is absent. The documents'
+/// imports execute as invocations: each document's items follow a
+/// document item, and imported records reach the stream with their own
+/// source identity. Bound items go to stdout as JSON lines; diagnostics
+/// go to stderr.
+pub fn vet_data(
+    dialect: Option<&Path>,
+    schema: Option<&Path>,
+    entries: &[&Path],
+    options: &DataOptions,
+) -> ExitStatus {
+    let extensions = options.extensions();
     let loaded = governing_dialect(dialect, &extensions).and_then(|governing| match schema {
         None => Ok(governing),
         Some(file) => load_schema(&governing, &[file], &extensions, CheckScope::Complete),
@@ -136,57 +196,30 @@ pub fn vet_data(dialect: Option<&Path>, schema: Option<&Path>, entries: &[&Path]
         Ok(definition) => definition,
         Err(records) => return report_all(&records),
     };
+    let reader = DataReader::with_handlers(&definition, options.registry());
     let mut records: Vec<DiagnosticRecord> = Vec::new();
     let mut out = std::io::stdout().lock();
-    for (at, entry) in entries.iter().enumerate() {
-        let shown = entry.display().to_string();
-        let text = match read_text(entry, &shown) {
-            Ok(text) => text,
-            Err(record) => {
-                records.push(*record);
-                continue;
-            }
-        };
-        let source = SourceId(u32::try_from(at).unwrap_or(u32::MAX));
-        let mut session = BindingSession::new(&definition, source, &shown, &text);
-        loop {
-            match session.next_item() {
-                Ok(Some(item)) => {
-                    if let BoundItem::Diagnostic(record) = &item {
-                        records.push((**record).clone());
-                    }
-                    if write_item(&mut out, &item).is_err() {
-                        return ExitStatus::Failure;
-                    }
-                }
-                Ok(None) => break,
-                Err(error) => {
-                    eprintln!("kdlith: {shown}: {error}");
-                    return ExitStatus::Failure;
-                }
-            }
+    let mut written = true;
+    let mut sink = |item: Item| {
+        if let Item::Diagnostic(record) = &item {
+            records.push((**record).clone());
+        }
+        written &= write_item(&mut out, &item).is_ok();
+    };
+    let read = reader.read(entries, &options.read_options(), &mut sink);
+    drop(out);
+    match read {
+        Ok(_) if written => report_all(&records),
+        Ok(_) => ExitStatus::Failure,
+        Err(error) => {
+            report_all(&records);
+            eprintln!("kdlith: {error}");
+            ExitStatus::Failure
         }
     }
-    drop(out);
-    report_all(&records)
 }
 
-fn write_item(out: &mut impl std::io::Write, item: &BoundItem) -> std::io::Result<()> {
+fn write_item(out: &mut impl std::io::Write, item: &Item) -> std::io::Result<()> {
     serde_json::to_writer(&mut *out, item)?;
     out.write_all(b"\n")
-}
-
-/// A data document's text, or the registered source diagnostic.
-pub(crate) fn read_text(path: &Path, shown: &str) -> Result<String, Box<DiagnosticRecord>> {
-    let bytes = std::fs::read(path).map_err(|error| {
-        let reason = error.to_string();
-        Box::new(crate::read::source_error(
-            "KDLITH-SRC001",
-            &[shown, &reason],
-        ))
-    })?;
-    String::from_utf8(bytes).map_err(|error| {
-        let at = error.utf8_error().valid_up_to().to_string();
-        Box::new(crate::read::source_error("KDLITH-SRC002", &[shown, &at]))
-    })
 }

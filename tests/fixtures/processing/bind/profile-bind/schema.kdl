@@ -1,0 +1,23 @@
+// A schema declaring one profile: the invocation must name it through
+// --profile, and the named profile selects the root types that bind.
+schema imports version="1" {
+    types {
+        object Part {
+            field id String
+        }
+    }
+    node part role=record type=Part {
+        field id arg=0
+    }
+    node use role=source-import {
+        field path String arg=0
+    }
+    profile main {
+        roots {
+            allow Part
+        }
+    }
+    document {
+        following part use
+    }
+}

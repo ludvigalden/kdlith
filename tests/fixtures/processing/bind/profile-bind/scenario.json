@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "Naming the profile at invocation selects it: --profile main binds the data document under the profile the schema declares (whose root types admit the part record), where the same document without a named profile fails closed with KDLITH-SCH011",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "--profile",
+    "main",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":0},\"type_name\":\"Part\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"alpha\"},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n"
+    ]
+  }
+}

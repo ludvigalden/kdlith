@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "An import that re-enters a document active on the data path's invocation stack is diagnosed as a cycle, with the chain spelled from the active invocation stack",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/imports.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

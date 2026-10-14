@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "read data with --entry binds the entry document first, establishing its declarations, then the read document as source 1: the printed record carries source 1, proving both documents composed into one session",
+  "description": "read data with --entry composes the entry and read documents as invocations of one session: the entry binds first as source 0, establishing its declarations, then the read document as source 1 — the printed record carries source 1, proving both documents composed into one execution-backed session",
   "args": [
     "read",
     "data",

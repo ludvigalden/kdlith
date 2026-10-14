@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "read data composes the entry and read documents into one invocation session: a read document importing its own entry names a source the session already invoked, so the request rejects as a repeat instead of silently rebinding",
+  "args": [
+    "read",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "--entry",
+    "entry.kdl",
+    "input.kdl",
+    "one"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

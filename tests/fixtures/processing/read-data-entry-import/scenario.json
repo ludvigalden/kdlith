@@ -1,0 +1,22 @@
+{
+  "binary": "kdlith",
+  "description": "read data --entry composition is execution-backed: the entry document's own import executes in the same invocation session, so the record asked for is found inside the document the entry imported (source 1), not in the read document (source 2), and its context-fed locale reads the imported document's own value",
+  "args": [
+    "read",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "--entry",
+    "entry.kdl",
+    "data.kdl",
+    "one"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":1,\"index\":3},\"type_name\":\"Item\"",
+      "{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"one\"}",
+      "{\"name\":\"locale\",\"value\":{\"kind\":\"string\",\"value\":\"sv-se\"}"
+    ]
+  }
+}

@@ -153,7 +153,7 @@ pub struct Scope {
 }
 
 /// One slot value saved for restoration when its scope is left.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 struct Saved {
     slot: SlotId,
     value: Option<SlotValue>,
@@ -164,7 +164,11 @@ struct Saved {
 /// The current values of a layout's slots, with an undo trail for open
 /// scopes. A slot is saved at most once per open scope, so the trail is
 /// bounded by slots times open scopes, never by document length.
-#[derive(Debug)]
+///
+/// A context clones as its values: an invocation that receives a
+/// projection of its caller's context gets a copy, so its effects can
+/// never reach the caller.
+#[derive(Clone, Debug)]
 pub struct Context {
     layout: ContextLayout,
     slots: Vec<Option<SlotValue>>,
@@ -217,6 +221,25 @@ impl Context {
     /// snapshot captures. Unset slots are `None`.
     pub fn snapshot_values(&self) -> Vec<Option<SlotValue>> {
         self.slots.clone()
+    }
+
+    /// A stable fingerprint of the context's slot values, in slot order:
+    /// two contexts with equal layouts and equal values hold one
+    /// fingerprint, and any value difference changes it. Unset slots
+    /// hash as absent, never as any value.
+    pub fn fingerprint(&self) -> u64 {
+        let mut hash = stable_hash(b"kdlith-context");
+        for slot in self.layout.slots() {
+            hash = stable_hash_step(hash, &slot.index().to_le_bytes());
+            match self.slots.get(slot.index()).and_then(Option::as_ref) {
+                Some(held) => {
+                    hash = stable_hash_step(hash, b"=");
+                    hash = hash_value(hash, &held.value);
+                }
+                None => hash = stable_hash_step(hash, b"-"),
+            }
+        }
+        hash
     }
 
     /// A context over `layout` holding exactly `values`, in slot order:
@@ -355,4 +378,71 @@ impl<'a> FollowingEffects<'a> {
 /// `u32::MAX`; saturate rather than wrap if that ever fails.
 fn index_u32(index: usize) -> u32 {
     u32::try_from(index).unwrap_or(u32::MAX)
+}
+
+/// The FNV-1a 64 offset basis and prime, the same parameters the engine's
+/// definition digest uses: a stable, dependency-free content hash.
+const FNV_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
+const FNV_PRIME: u64 = 0x0100_0000_01b3;
+
+/// A stable digest of `bytes`: identical input, identical output, no
+/// allocator state, no randomization. For fingerprints only, never for
+/// security.
+pub fn stable_hash(bytes: &[u8]) -> u64 {
+    stable_hash_step(FNV_OFFSET, bytes)
+}
+
+/// Fold `bytes` into a running FNV-1a hash.
+pub fn stable_hash_step(mut hash: u64, bytes: &[u8]) -> u64 {
+    for byte in bytes {
+        hash ^= u64::from(*byte);
+        hash = hash.wrapping_mul(FNV_PRIME);
+    }
+    hash
+}
+
+/// Fold one value into a running hash: semantic content only, in a fixed
+/// order — a reference's source site is positional, not semantic, so it
+/// does not take part.
+fn hash_value(mut hash: u64, value: &Value) -> u64 {
+    match value {
+        Value::Null => stable_hash_step(hash, b"null"),
+        Value::Bool(held) => stable_hash_step(hash, &[u8::from(*held)]),
+        Value::Number(held) => stable_hash_step(hash, held.as_bytes()),
+        Value::String(held) => stable_hash_step(hash, held.as_bytes()),
+        Value::List(items) => {
+            hash = stable_hash_step(hash, b"[");
+            for item in items {
+                hash = hash_value(hash, item);
+            }
+            stable_hash_step(hash, b"]")
+        }
+        Value::Map(entries) => {
+            hash = stable_hash_step(hash, b"{");
+            for entry in entries {
+                hash = stable_hash_step(hash, entry.key.as_bytes());
+                hash = stable_hash_step(hash, b"=");
+                hash = hash_value(hash, &entry.value);
+            }
+            stable_hash_step(hash, b"}")
+        }
+        Value::Reference(reference) => {
+            hash = stable_hash_step(hash, b"ref:");
+            hash = stable_hash_step(hash, reference.domain.as_bytes());
+            for segment in &reference.name.0 {
+                hash = stable_hash_step(hash, segment.as_bytes());
+                hash = stable_hash_step(hash, b".");
+            }
+            for (key, value) in &reference.qualifiers {
+                hash = stable_hash_step(hash, key.as_bytes());
+                hash = stable_hash_step(hash, b"=");
+                hash = stable_hash_step(hash, value.as_bytes());
+            }
+            stable_hash_step(hash, reference.written.as_bytes())
+        }
+        // A value variant this version does not know still hashes
+        // deterministically within the running build, so a fingerprint
+        // never silently ignores part of a context.
+        other => stable_hash_step(hash, format!("{other:?}").as_bytes()),
+    }
 }

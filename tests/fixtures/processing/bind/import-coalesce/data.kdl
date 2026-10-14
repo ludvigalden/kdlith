@@ -1,0 +1,4 @@
+locale en-gb
+use "part.kdl" repeated=coalesce
+use "./part.kdl" repeated=coalesce
+stamp

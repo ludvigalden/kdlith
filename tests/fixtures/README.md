@@ -102,7 +102,9 @@ data` with the canonical dialect as the schema, binding each committed
 file as a data document of the dialect. `processing/bind/` holds small
 schemas and scenarios that bind data documents against them, each asserting
 the ordered JSON-line item stream on stdout; most scenarios share one
-`schema.kdl`, while `processing/bind/nullable/` and
+`schema.kdl`, the import-mechanics scenarios share `imports.kdl` (whose
+`use` node carries the repeated policy, the alias, and the projected
+slots), while `processing/bind/nullable/` and
 `processing/bind/value-expr/` carry their own schemas for the `nullable<T>`
 type constructor and the `ValueExpr` scalar, and the focused directories
 `generic-types/`, `codecs/`, `union-dispatch/`, `sensitivity/`,
@@ -150,7 +152,14 @@ schema to data over the committed catalog schema: `vet data` and
 
 `processing/read-data-entry/` pins the `read data --entry` form: the entry
 document's declarations compose with the read document, observed through
-the bound record's source index.
+the bound record's source index. `processing/read-data-entry-import/` pins
+the execution-backed composition: the entry's own import executes in the
+same session, so a record reached through it is found under its own source
+identity. The data verbs take host inputs the fixtures exercise:
+`--anchor NAME=PATH` supplies a discovery anchor
+(`processing/bind/import-anchor`), `--handler NAME` installs a built-in
+context handler (`processing/bind/handler-effect`), and `--profile NAME`
+names the invocation's profile (`processing/bind/profile-bind`).
 
 `schemas/vet/import-repeat-coalesce/` and
 `schemas/vet/import-repeat-instantiate/` pin the two non-default

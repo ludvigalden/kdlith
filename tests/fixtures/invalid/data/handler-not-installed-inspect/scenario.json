@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "The same uninstalled-handler schema fails closed on the inspect data path too: inspect data loads the schema through the same compiler door, so the uninstalled handler name rejects before any item streams",
+  "args": [
+    "inspect",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/handler-effect/schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

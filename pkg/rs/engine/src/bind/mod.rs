@@ -7,6 +7,7 @@ mod source;
 mod tables;
 
 use std::borrow::Cow;
+use std::collections::BTreeMap;
 
 use kdlith_diagnostic::registry::{lookup, render};
 use kdlith_diagnostic::{ByteSpan, DiagnosticRecord};
@@ -17,16 +18,17 @@ use kdlith_model::{
 };
 use kdlith_parse::{Locator, Parser};
 use kdlith_runtime::{
-    Completion, Context, ContextEffect, Cx, Disposition, FollowingEffects, HeaderEffects,
-    Processor, Session, SessionError, SlotId, SlotValue,
+    Completion, Context, ContextEffect, ContextTarget, Cx, Disposition, FollowingEffects,
+    HandlerCall, HandlerEffect, Handlers, HeaderEffects, Processor, Session, SessionError, SlotId,
+    SlotValue,
 };
 
 use crate::bindings::{BindingCodec, ChildPlan, ContextPolicy, NodeDeclId, Role, SetFrom};
 use crate::decode::{self, Decoder, Mismatch};
 use crate::definition::{AccumulateOp, Definition, DefinitionKind};
 use crate::diag::{
-    CONFLICTING_BINDING, DUPLICATE_KEY, MALFORMED, MISSING_FIELD, TYPE_EXPRESSION, UNBOUND_ENTRY,
-    UNKNOWN_MEMBER, UNKNOWN_NODE, VALUE_TYPE,
+    CONFLICTING_BINDING, DUPLICATE_KEY, MALFORMED, MISSING_FIELD, NOT_INSTALLED, TYPE_EXPRESSION,
+    UNBOUND_ENTRY, UNKNOWN_MEMBER, UNKNOWN_NODE, VALUE_TYPE,
 };
 use crate::names::Sym;
 use crate::overlap;
@@ -67,6 +69,15 @@ enum CaseSelection {
 
 /// The dialect construct a schema definition's root node is written as.
 const SCHEMA_ROOT: &str = "schema";
+
+/// The fields of the node an effect step runs for, as its timing knows
+/// them: the header alone for children effects, the node's fully bound
+/// values for following effects.
+#[derive(Clone, Copy)]
+enum FieldView<'a> {
+    Header,
+    Bound(&'a [Option<Value>]),
+}
 
 /// The node-start payload the binder consumes: the name, borrowed from
 /// the source where the parser could, and whether it is type-annotated.
@@ -129,12 +140,23 @@ pub struct Binder<'d, 's> {
     /// (`KDLITH-SCH011`).
     profile: Option<Sym>,
     profile_roots: Option<Vec<Sym>>,
+    /// The profile name as the invocation spelled it, selected or not,
+    /// so a rejected name reports itself rather than a missing one.
+    profile_named: Option<String>,
     profile_reported: bool,
     /// A root node broke the document's order rule, so the missing first
     /// node is not reported again at the end.
     order_broken: bool,
     /// The name of the document's first root node, once it opened.
     root_name: Option<String>,
+    /// The `as=` aliases this document's imports bound, with the span of
+    /// the first import that bound each; an alias is unique in its
+    /// document.
+    aliases: Vec<(String, ByteSpan)>,
+    /// The context handlers the reading processor installed: a handler
+    /// effect executes through this registry at its declared timing,
+    /// and one it lacks fails at its site.
+    handlers: Handlers,
     errors: u64,
 }
 
@@ -191,6 +213,7 @@ impl<'d, 's> Binder<'d, 's> {
             .map_or_else(|| ScopeRules::default().start(), |s| s.rules.start());
         let named = profile.and_then(|name| def.names.get(name));
         let unknown = profile.is_some_and(|name| def.names.get(name).is_none());
+        let profile_named = profile.map(str::to_owned);
         let selected = match named {
             Some(name) => def.profiles.iter().find(|p| p.name == name),
             None => None,
@@ -210,9 +233,12 @@ impl<'d, 's> Binder<'d, 's> {
             output_policy,
             profile,
             profile_roots,
+            profile_named,
             profile_reported: profile.is_some() || (!unknown && def.profiles.is_empty()),
             order_broken: false,
             root_name: None,
+            aliases: Vec::new(),
+            handlers: Handlers::new(),
             errors: 0,
         }
     }
@@ -837,12 +863,17 @@ impl<'d, 's> Binder<'d, 's> {
         }
     }
 
-    /// Resolve effect steps into runtime effects, reading fields by name.
+    /// Resolve effect steps into runtime effects, in declared order:
+    /// declarative steps read the fields they name, and a handler step
+    /// runs its installed implementation with its results spliced in at
+    /// the handler's position.
     fn effects(
-        &self,
+        &mut self,
+        cx: &mut Cx<'_>,
+        frame: &BindFrame,
         steps: &[EffectStep],
-        origin: OriginId,
-        value_of: impl Fn(Sym) -> Option<Value>,
+        target: ContextTarget,
+        view: FieldView<'_>,
     ) -> Vec<ContextEffect> {
         let mut out = Vec::new();
         for step in steps {
@@ -850,14 +881,14 @@ impl<'d, 's> Binder<'d, 's> {
                 EffectStep::Set { slot, from } => {
                     let value = match from {
                         SetFrom::Value(value) => Some(value.clone()),
-                        SetFrom::Field(field) => value_of(*field),
+                        SetFrom::Field(field) => self.field_value(cx, frame, view, *field),
                     };
                     // A set from an absent optional field leaves the slot
                     // as it was rather than inventing a removal.
                     if let Some(value) = value {
                         out.push(ContextEffect::Set {
                             slot: *slot,
-                            value: SlotValue::new(value, origin),
+                            value: SlotValue::new(value, OriginId(cx.node().index)),
                         });
                     }
                 }
@@ -865,12 +896,115 @@ impl<'d, 's> Binder<'d, 's> {
                 EffectStep::Clear { namespace } => out.push(ContextEffect::Clear {
                     namespace: *namespace,
                 }),
-                // Compilation rejects a handler the processor does not
-                // install, and the binder installs none.
-                _ => {}
+                EffectStep::Handler { name } => {
+                    self.run_handler(cx, frame, name, target, view, &mut out)
+                }
             }
         }
         out
+    }
+
+    /// One field of the node an effect runs for, as its timing knows it.
+    fn field_value(
+        &self,
+        cx: &Cx<'_>,
+        frame: &BindFrame,
+        view: FieldView<'_>,
+        field: Sym,
+    ) -> Option<Value> {
+        match view {
+            FieldView::Header => self.header_value(cx, frame, field),
+            FieldView::Bound(values) => {
+                let infos = &self.tables.decls[frame.owner.index()].fields;
+                let at = infos.iter().position(|info| info.name == field)?;
+                values.get(at).cloned().flatten()
+            }
+        }
+    }
+
+    /// Execute one handler step through its installed implementation,
+    /// splicing its effects into the running list. A missing handler
+    /// or an undeclared slot fails at the site, never silently.
+    fn run_handler(
+        &mut self,
+        cx: &mut Cx<'_>,
+        frame: &BindFrame,
+        name: &str,
+        target: ContextTarget,
+        view: FieldView<'_>,
+        out: &mut Vec<ContextEffect>,
+    ) {
+        let Some(handler) = self.handlers.get(name) else {
+            self.diagnose(cx, NOT_INSTALLED, frame.span, &["handler", name]);
+            return;
+        };
+        let produced = {
+            let mut fields = BTreeMap::new();
+            for info in &self.tables.decls[frame.owner.index()].fields {
+                if let Some(value) = self.field_value(cx, frame, view, info.name) {
+                    fields.insert(self.name(info.name).to_owned(), value);
+                }
+            }
+            let mut context = BTreeMap::new();
+            for (slot, info) in cx.context().layout().slots().zip(self.tables.slots.iter()) {
+                if let Some(held) = cx.context().get(slot) {
+                    context.insert(self.name(info.name).to_owned(), held.value.clone());
+                }
+            }
+            let call = HandlerCall {
+                handler: name,
+                node: self.name(frame.name),
+                target,
+                fields: &fields,
+                context: &context,
+            };
+            handler(&call)
+        };
+        let origin = OriginId(cx.node().index);
+        for effect in produced {
+            let resolved = match effect {
+                HandlerEffect::Set { slot, value } => self
+                    .def
+                    .names
+                    .get(&slot)
+                    .and_then(|sym| self.def.plan.context.slot(sym))
+                    .map(|slot| ContextEffect::Set {
+                        slot,
+                        value: SlotValue::new(value, origin),
+                    })
+                    .ok_or_else(|| {
+                        format!("sets a context slot the definition does not declare: {slot}")
+                    }),
+                HandlerEffect::Remove { slot } => self
+                    .def
+                    .names
+                    .get(&slot)
+                    .and_then(|sym| self.def.plan.context.slot(sym))
+                    .map(|slot| ContextEffect::Remove { slot })
+                    .ok_or_else(|| {
+                        format!("removes a context slot the definition does not declare: {slot}")
+                    }),
+                HandlerEffect::Clear { namespace } => self
+                    .def
+                    .names
+                    .get(&namespace)
+                    .and_then(|sym| self.def.plan.context.namespace(sym))
+                    .map(|namespace| ContextEffect::Clear { namespace })
+                    .ok_or_else(|| {
+                        format!(
+                            "clears a context namespace the definition does not declare: {namespace}"
+                        )
+                    }),
+            };
+            match resolved {
+                Ok(effect) => out.push(effect),
+                Err(reason) => {
+                    let construct = format!("handler {name}");
+                    let values = [construct.as_str(), &reason];
+                    self.diagnose(cx, MALFORMED, frame.span, &values);
+                }
+            }
+        }
     }
 
     /// Keep the effects whose set value decodes as its slot's type,
@@ -1053,6 +1187,7 @@ impl<'d, 's> Binder<'d, 's> {
         let identity = text_of(info.identity);
         let path = text_of(info.path);
         let repeated = text_of(info.repeated);
+        let alias = text_of(info.alias);
         let layer = text_of(info.layer);
         let scope = text_of(info.scope);
         let project: Vec<String> = match info.project.and_then(|at| values.get(at)?.as_ref()) {
@@ -1134,7 +1269,20 @@ impl<'d, 's> Binder<'d, 's> {
                         return;
                     }
                 };
-                let request = ImportRequest::new(node, expression, site, origin);
+                if let Some(alias) = &alias
+                    && self.aliases.iter().any(|(held, _)| held == alias)
+                {
+                    // The request preserves `as=`; an alias is unique in
+                    // its document, on every reading path.
+                    let values = [alias.as_str(), "the alias of import"];
+                    self.diagnose(cx, DUPLICATE_KEY, frame.span, &values);
+                    return;
+                }
+                if let Some(alias) = &alias {
+                    self.aliases.push((alias.clone(), frame.span));
+                }
+                let mut request = ImportRequest::new(node, expression, site, origin);
+                request.alias = alias;
                 BoundItem::Import(request.with_policy(project, policy))
             }
             Role::Container => {
@@ -1219,13 +1367,13 @@ impl<'d, 's> Binder<'d, 's> {
         if let Some(role) = role {
             self.dependent_payload(cx, frame, &values);
             if let Some(plan) = def.plan.node(owner) {
-                let infos = &self.tables.decls[owner.index()].fields;
-                let value_of = |field: Sym| {
-                    let at = infos.iter().position(|info| info.name == field)?;
-                    values.get(at).cloned().flatten()
-                };
-                let origin = OriginId(cx.node().index);
-                let effects = self.effects(&plan.following_effects, origin, value_of);
+                let effects = self.effects(
+                    cx,
+                    frame,
+                    &plan.following_effects,
+                    ContextTarget::FollowingSiblings,
+                    FieldView::Bound(&values),
+                );
                 for effect in self.typed(cx, effects, frame.span) {
                     following.push(effect);
                 }
@@ -1341,10 +1489,12 @@ impl<'s> Processor for Binder<'_, 's> {
         if parent.is_none() && !self.profile_reported {
             // A schema that declares profiles must have exactly one named
             // by the invocation; the engine never infers one from
-            // document content.
+            // document content. A name that selected nothing reports
+            // itself; no name at all reports the missing one.
             self.profile_reported = true;
-            let profile = "profile (none)";
-            let values = [profile, &def.name];
+            let named = self.profile_named.as_deref().unwrap_or("(none)");
+            let shown = format!("profile {named}");
+            let values = [shown.as_str(), &def.name];
             self.diagnose(cx, PROFILE_NOT_SELECTED, span, &values);
             return Disposition::Skip;
         }
@@ -1513,9 +1663,13 @@ impl<'s> Processor for Binder<'_, 's> {
         let Some(plan) = def.plan.node(decl).filter(|_| has_children) else {
             return;
         };
-        let origin = OriginId(cx.node().index);
-        let value_of = |field| self.header_value(cx, frame, field);
-        let effects = self.effects(&plan.children_effects, origin, value_of);
+        let effects = self.effects(
+            cx,
+            frame,
+            &plan.children_effects,
+            ContextTarget::Children,
+            FieldView::Header,
+        );
         for effect in self.typed(cx, effects, frame.span) {
             children.push(effect);
         }
@@ -1603,6 +1757,25 @@ impl<'s> Processor for Binder<'_, 's> {
     }
 }
 
+/// The knobs a binding session applies beyond its definition: the
+/// profile the invocation named, one explicit output policy, and the
+/// installed context handlers.
+struct Knobs<'a> {
+    profile: Option<&'a str>,
+    output_policy: Option<OutputPolicy>,
+    handlers: Handlers,
+}
+
+impl Knobs<'_> {
+    fn plain() -> Self {
+        Self {
+            profile: None,
+            output_policy: None,
+            handlers: Handlers::new(),
+        }
+    }
+}
+
 /// A binding session over one data document: parse events, structural
 /// match, typed binding, and a `BoundItem` stream. A parse failure or a
 /// session limit ends the stream with its diagnostic as the last item.
@@ -1644,7 +1817,17 @@ impl<'d, 's> BindingSession<'d, 's> {
         context: Context,
         output_policy: Option<OutputPolicy>,
     ) -> Self {
-        Self::with_all(def, source, path, text, context, None, output_policy)
+        Self::with_all(
+            def,
+            source,
+            path,
+            text,
+            context,
+            Knobs {
+                output_policy,
+                ..Knobs::plain()
+            },
+        )
     }
 
     /// Bind starting from `context` and applying the profile the
@@ -1658,7 +1841,17 @@ impl<'d, 's> BindingSession<'d, 's> {
         context: Context,
         profile: Option<&str>,
     ) -> Self {
-        Self::with_all(def, source, path, text, context, profile, None)
+        Self::with_all(
+            def,
+            source,
+            path,
+            text,
+            context,
+            Knobs {
+                profile,
+                ..Knobs::plain()
+            },
+        )
     }
 
     /// Bind applying one explicit output policy to every sensitive
@@ -1680,6 +1873,33 @@ impl<'d, 's> BindingSession<'d, 's> {
         )
     }
 
+    /// Bind starting from `context` under the named profile, with the
+    /// context handlers the reading processor installed: a handler
+    /// effect executes at its declared timing through `handlers`, and
+    /// one the registry lacks fails at its site.
+    pub fn with_handlers(
+        def: &'d Definition,
+        source: SourceId,
+        path: &str,
+        text: &'s str,
+        context: Context,
+        profile: Option<&str>,
+        handlers: Handlers,
+    ) -> Self {
+        Self::with_all(
+            def,
+            source,
+            path,
+            text,
+            context,
+            Knobs {
+                profile,
+                handlers,
+                ..Knobs::plain()
+            },
+        )
+    }
+
     /// Every binding-session knob at once.
     fn with_all(
         def: &'d Definition,
@@ -1687,12 +1907,18 @@ impl<'d, 's> BindingSession<'d, 's> {
         path: &str,
         text: &'s str,
         mut context: Context,
-        profile: Option<&str>,
-        output_policy: Option<OutputPolicy>,
+        knobs: Knobs<'_>,
     ) -> Self {
         let events = ParseEvents::new(Parser::new(text), text, path);
-        let binder =
-            Binder::with_profile_and_policy(def, source, path, text, profile, output_policy);
+        let mut binder = Binder::with_profile_and_policy(
+            def,
+            source,
+            path,
+            text,
+            knobs.profile,
+            knobs.output_policy,
+        );
+        binder.handlers = knobs.handlers;
         // Source-context values apply before the document's first
         // semantic node — before the stream begins — under their declared
         // mode, with failures surfacing as the stream's first items.

@@ -1,6 +1,7 @@
 //! Commands, arguments, output conventions, and orchestration: a
 //! verb-first clap command tree (gen, vet, export, inspect, list,
 //! read, cache, changelog, plus help) behind three global options.
+mod handlers;
 mod inspect;
 mod read;
 mod report;
@@ -13,7 +14,7 @@ use kdlith_diagnostic::ExitStatus;
 
 pub use inspect::inspect;
 pub use read::read;
-pub use vet::{VetTarget, vet, vet_data};
+pub use vet::{DataOptions, VetTarget, vet, vet_data};
 
 /// The whole command line: global options plus one verb.
 #[derive(Parser)]
@@ -140,6 +141,20 @@ struct VetDataArgs {
     /// the dialect itself
     #[arg(long = "schema", value_name = "FILE")]
     schema: Option<PathBuf>,
+    /// A discovery anchor the data path expands import expressions
+    /// against, as NAME=PATH (repeatable)
+    #[arg(
+        long = "anchor",
+        value_name = "NAME=PATH",
+        value_parser = handlers::parse_anchor
+    )]
+    anchors: Vec<(String, PathBuf)>,
+    /// The profile the invocation binds
+    #[arg(long, value_name = "NAME")]
+    profile: Option<String>,
+    /// A built-in context handler to install, by name (repeatable)
+    #[arg(long = "handler", value_name = "NAME", value_parser = handlers::parse_handler)]
+    handlers: Vec<String>,
     /// Data documents
     #[arg(required = true)]
     files: Vec<PathBuf>,
@@ -198,6 +213,20 @@ struct InspectDataArgs {
     /// the dialect itself
     #[arg(long = "schema", value_name = "FILE")]
     schema: Option<PathBuf>,
+    /// A discovery anchor the data path expands import expressions
+    /// against, as NAME=PATH (repeatable)
+    #[arg(
+        long = "anchor",
+        value_name = "NAME=PATH",
+        value_parser = handlers::parse_anchor
+    )]
+    anchors: Vec<(String, PathBuf)>,
+    /// The profile the invocation binds
+    #[arg(long, value_name = "NAME")]
+    profile: Option<String>,
+    /// A built-in context handler to install, by name (repeatable)
+    #[arg(long = "handler", value_name = "NAME", value_parser = handlers::parse_handler)]
+    handlers: Vec<String>,
     /// The item view to print; only the source view exists for now
     #[arg(long, value_enum, default_value_t = ViewArg::Source)]
     view: ViewArg,
@@ -268,6 +297,20 @@ struct ReadDataArgs {
     /// its declarations and context
     #[arg(long)]
     entry: Option<PathBuf>,
+    /// A discovery anchor the data path expands import expressions
+    /// against, as NAME=PATH (repeatable)
+    #[arg(
+        long = "anchor",
+        value_name = "NAME=PATH",
+        value_parser = handlers::parse_anchor
+    )]
+    anchors: Vec<(String, PathBuf)>,
+    /// The profile the invocation binds
+    #[arg(long, value_name = "NAME")]
+    profile: Option<String>,
+    /// A built-in context handler to install, by name (repeatable)
+    #[arg(long = "handler", value_name = "NAME", value_parser = handlers::parse_handler)]
+    handlers: Vec<String>,
     /// The data document holding the record
     file: PathBuf,
     /// The identity of the record to read

@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A profile name the schema does not declare fails closed and names itself: --profile nope reports the unknown-name arm of profile selection, not a missing one",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/profile-bind/schema.kdl",
+    "--profile",
+    "nope",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

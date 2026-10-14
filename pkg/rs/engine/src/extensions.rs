@@ -3,6 +3,8 @@
 
 use std::collections::BTreeSet;
 
+use kdlith_runtime::Handlers;
+
 /// The validator every type expression is checked by.
 pub const TYPE_EXPRESSION_VALIDATOR: &str = "type-expression";
 
@@ -56,6 +58,17 @@ impl Extensions {
 
     pub fn with_handler(mut self, name: impl Into<String>) -> Self {
         self.handlers.insert(name.into());
+        self
+    }
+
+    /// The handlers a processor installed, by name: compilation admits
+    /// exactly the names the reading can execute, so a definition and
+    /// its handler registry admit one surface, never two that drift.
+    #[must_use]
+    pub fn with_installed_handlers(mut self, handlers: &Handlers) -> Self {
+        for name in handlers.names() {
+            self.handlers.insert(name.to_owned());
+        }
         self
     }
 

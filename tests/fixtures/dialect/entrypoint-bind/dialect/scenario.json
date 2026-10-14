@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "The dialect-generation entrypoint binds as a data document of the canonical dialect: its four import nodes yield four import requests in written order, then the dialect root's scope completion",
+  "description": "The dialect-generation entrypoint binds as a data document of the canonical dialect and its four import nodes execute as invocations in written order: each import request is followed by a document item and the imported document's bound declarations under their own source identity (1 through 4), then the dialect root's scope completion",
   "args": [
     "vet",
     "data",
@@ -9,11 +9,15 @@
   "expect": {
     "exit": 0,
     "stdout-contains": [
-      "\"expression\":\"../../pkg/kdl/schemas/dialect/types.kdl\"",
-      "\"origin\":1}}\n{\"item\":\"import\",\"data\":{\"node\":{\"source\":0,\"index\":2},\"expression\":\"../../pkg/kdl/schemas/dialect/bindings.kdl\"",
-      "\"origin\":2}}\n{\"item\":\"import\",\"data\":{\"node\":{\"source\":0,\"index\":3},\"expression\":\"../../pkg/kdl/schemas/dialect/context.kdl\"",
-      "\"origin\":3}}\n{\"item\":\"import\",\"data\":{\"node\":{\"source\":0,\"index\":4},\"expression\":\"../../pkg/kdl/schemas/dialect/documents.kdl\"",
-      "\"origin\":4}}\n{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":{\"source\":0,\"index\":0}}}\n{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":null}}\n"
+      "{\"item\":\"import\",\"data\":{\"node\":{\"source\":0,\"index\":1},\"expression\":\"../../pkg/kdl/schemas/dialect/types.kdl\"",
+      "\"origin\":1}}\n{\"item\":\"document\",\"data\":{\"source\":1,\"path\":\"",
+      "\"origin\":2}}\n{\"item\":\"document\",\"data\":{\"source\":2,\"path\":\"",
+      "\"identity\":{\"domain\":\"EnumType\",\"name\":[\"Role\"]}",
+      "\"origin\":3}}\n{\"item\":\"document\",\"data\":{\"source\":3,\"path\":\"",
+      "\"origin\":4}}\n{\"item\":\"document\",\"data\":{\"source\":4,\"path\":\"",
+      "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":4,\"index\":183},\"identity\":{\"domain\":\"NodeDef\",\"name\":[\"import\"]}",
+      "{\"name\":\"role\",\"value\":{\"kind\":\"string\",\"value\":\"source-import\"}",
+      "{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":{\"source\":0,\"index\":0}}}\n{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":null}}\n"
     ]
   }
 }

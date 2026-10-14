@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A second import of the same source on the data path is rejected when the request leaves repeated at its fallback, reject: the second request reports the already-imported target from the session",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/imports.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

@@ -77,6 +77,10 @@ pub struct Definition {
     pub imports: Vec<ImportDecl>,
     pub profiles: Vec<ProfileDecl>,
     pub discoveries: Vec<DiscoveryDecl>,
+    /// The discovery grammar the definition's root binds by property,
+    /// interned; import expressions evaluate under it when no profiles
+    /// are declared.
+    pub root_grammar: Option<Sym>,
     pub references: Vec<ReferenceDecl>,
     /// The declared contribution-resolution policy, when the schema
     /// declares one. The engine compiles and holds it; the registered
@@ -91,6 +95,22 @@ pub struct Definition {
     pub document_rule: Option<DocumentRule>,
     /// The checks this definition passed.
     pub scope: CheckScope,
+}
+
+impl Definition {
+    /// The discovery grammar import expressions evaluate under for an
+    /// invocation naming `profile`: the profile's bound grammar, or the
+    /// root's when no profiles are declared. `None` evaluates literal
+    /// paths only; a profile-binding definition with no profile named
+    /// binds none, exactly as dispatch fails closed without one.
+    pub fn grammar_for(&self, profile: Option<Sym>) -> Option<&DiscoveryDecl> {
+        let bound = match profile {
+            Some(named) => self.profiles.iter().find(|p| p.name == named)?.grammar?,
+            None if self.profiles.is_empty() => self.root_grammar?,
+            None => return None,
+        };
+        self.discoveries.iter().find(|decl| decl.name == bound)
+    }
 }
 
 /// A typed context slot.
