@@ -31,11 +31,16 @@ pub struct Located<T> {
 #[derive(Clone, Debug)]
 pub enum Construct {
     Type(TypeInput),
-    Node(NodeInput),
+    Node(Box<NodeInput>),
     Slot(SlotInput),
     Rule(DocumentRuleInput),
     Import(ImportInput),
-    Deferral(DeferralInput),
+    Profile(ProfileInput),
+    Discovery(DiscoveryInput),
+    Reference(ReferenceInput),
+    Resolution(ResolutionInput),
+    Provider(ProviderInput),
+    SourceContext(SourceContextInput),
 }
 
 /// A logical type declaration: what `string`, `enum`, `object`,
@@ -133,8 +138,41 @@ pub struct FieldInput {
     pub ty: String,
     pub description: Option<String>,
     pub documented_default: Option<Value>,
-    pub fallback: Option<Value>,
+    /// The field's declared default: literal or computed, as the bound
+    /// fallback value spells it.
+    pub default: Option<DefaultInput>,
     pub sensitivity: Option<String>,
+}
+
+/// A declared default, as a reader holds it: a literal value, or a
+/// computed descriptor with its dependencies.
+#[derive(Clone, Debug)]
+pub struct DefaultInput {
+    pub computed: bool,
+    pub value: Option<Value>,
+    pub dependencies: Vec<String>,
+}
+
+impl DefaultInput {
+    /// The default a bound fallback value spells: a scalar is a literal,
+    /// a single-key map names the union member a case dispatch selected.
+    /// `None` spells no recognizable default; the caller rejects it
+    /// rather than dropping it silently.
+    pub fn from_value(value: &Value) -> Option<Self> {
+        let spec = crate::types::DefaultSpec::from_bound(value)?;
+        Some(match spec {
+            crate::types::DefaultSpec::Literal(value) => Self {
+                computed: false,
+                value: Some(value),
+                dependencies: Vec::new(),
+            },
+            crate::types::DefaultSpec::Computed { dependencies } => Self {
+                computed: true,
+                value: None,
+                dependencies,
+            },
+        })
+    }
 }
 
 /// A `union` variant: its discriminator, type, and value prefix.
@@ -152,9 +190,10 @@ pub enum ConstraintInput {
     Requires { field: String, required: String },
 }
 
-/// A node declaration: role, type, placement, field bindings, child
-/// rules, effect groups, exactly-one groups, and the dependent-value and
-/// case-dispatch blocks it declares.
+/// A node declaration: role, type, placement, profile, field bindings,
+/// child rules, effect groups, exactly-one groups, descendant rules, the
+/// ordered sequence, and the identity, dependent-value, and case-dispatch
+/// blocks it declares.
 #[derive(Clone, Debug, Default)]
 pub struct NodeInput {
     pub name: String,
@@ -162,13 +201,18 @@ pub struct NodeInput {
     pub ty: Option<String>,
     pub parent: Option<String>,
     pub parents: Option<Vec<String>>,
+    /// The profile the declaration belongs to (`profile=NAME`).
+    pub profile: Option<String>,
     pub fields: Vec<FieldBindingInput>,
     pub children: Vec<ChildRuleInput>,
     pub effects: Vec<EffectGroupInput>,
     pub groups: Vec<Vec<String>>,
+    pub descendants: Vec<DescendantRuleInput>,
+    pub sequence: Option<SequenceInput>,
     pub value: Option<DependentInput>,
     pub cases: Vec<CaseInput>,
     pub otherwise: Option<String>,
+    pub identity: Option<IdentityInput>,
 }
 
 /// One field binding and the sources that populate it.
@@ -254,6 +298,9 @@ pub struct SlotInput {
     pub ty: String,
     pub namespace: Option<String>,
     pub description: Option<String>,
+    /// The accumulation operation the slot declares, when it declares
+    /// one: `append` or `merge`.
+    pub accumulate: Option<String>,
 }
 
 /// The document rule: first-node choices and following nodes.
@@ -269,11 +316,121 @@ pub struct ImportInput {
     pub path: String,
     pub project: Vec<String>,
     pub repeated: String,
+    /// The alias an `as=NAME` import carries.
+    pub alias: Option<String>,
 }
 
-/// A mechanism the dialect defers.
+/// A document profile, as declared.
+#[derive(Clone, Debug, Default)]
+pub struct ProfileInput {
+    pub name: String,
+    /// The root types the profile admits, when it declares roots.
+    pub roots: Option<Vec<String>>,
+    pub grammar: Option<String>,
+}
+
+/// A discovery grammar, as declared.
 #[derive(Clone, Debug)]
-pub struct DeferralInput {
-    pub mechanism: String,
-    pub note: String,
+pub struct DiscoveryInput {
+    pub name: String,
+    pub anchors: Vec<AnchorInput>,
+    pub star: bool,
+    pub doublestar: bool,
+    pub braces: bool,
+    pub allow_empty: bool,
+}
+
+/// One anchor a discovery grammar declares.
+#[derive(Clone, Debug)]
+pub struct AnchorInput {
+    pub name: String,
+    pub provider: String,
+}
+
+/// A named reference type, as declared.
+#[derive(Clone, Debug)]
+pub struct ReferenceInput {
+    pub name: String,
+    pub target: String,
+    pub codec: Option<String>,
+    pub lookup: Option<String>,
+    pub qualification: String,
+    pub qualifiers: Vec<QualifierInput>,
+}
+
+/// One qualifier a reference declares.
+#[derive(Clone, Debug)]
+pub struct QualifierInput {
+    pub name: String,
+    pub ty: String,
+    pub required: bool,
+}
+
+/// One descendant rule of a node declaration, as declared.
+#[derive(Clone, Debug)]
+pub struct DescendantRuleInput {
+    pub name: String,
+    pub min: Option<u64>,
+    pub max: Option<u64>,
+}
+
+/// An ordered sequence a node declaration's children must match, as
+/// declared.
+#[derive(Clone, Debug)]
+pub struct SequenceInput {
+    pub steps: Vec<StepInput>,
+}
+
+/// One step of an ordered sequence: a node name or an alternatives
+/// group, with occurrence bounds. Absent bounds mean exactly once.
+#[derive(Clone, Debug)]
+pub struct StepInput {
+    pub name: Option<String>,
+    pub alternatives: Vec<String>,
+    pub min: Option<u64>,
+    pub max: Option<u64>,
+}
+
+/// The identity block of a node declaration, as declared.
+#[derive(Clone, Debug)]
+pub struct IdentityInput {
+    pub domain: String,
+    /// The composition form; `qualified-name` is the only defined one.
+    pub form: String,
+    pub fields: Vec<String>,
+}
+
+/// The declared contribution-resolution policy, as declared.
+#[derive(Clone, Debug, Default)]
+pub struct ResolutionInput {
+    pub resolver: String,
+    /// Layer names in precedence order, highest first.
+    pub layers: Vec<String>,
+    pub selection: String,
+    pub duplicates: String,
+    pub missing: String,
+}
+
+/// A secret-provider descriptor, as declared: never executed.
+#[derive(Clone, Debug, Default)]
+pub struct ProviderInput {
+    pub id: String,
+    pub ttl: Option<u64>,
+    pub command: Vec<String>,
+}
+
+/// The declared source-context block, as declared.
+#[derive(Clone, Debug, Default)]
+pub struct SourceContextInput {
+    pub mode: String,
+    pub fields: Vec<SourceFieldInput>,
+}
+
+/// One source-context field, as declared.
+#[derive(Clone, Debug, Default)]
+pub struct SourceFieldInput {
+    pub name: String,
+    pub ty: String,
+    /// The registered source-metadata providers it derives from.
+    pub sources: Vec<String>,
 }

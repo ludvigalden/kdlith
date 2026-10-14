@@ -1,0 +1,16 @@
+schema demo version="1" {
+    types {
+        object Thing {
+            field name String
+        }
+    }
+    node thing role=record type=Thing {
+        field name arg=0
+    }
+    provider vault ttl=300 "secret-tool" "get" "--key"
+    document {
+        first {
+            exactly-one thing
+        }
+    }
+}

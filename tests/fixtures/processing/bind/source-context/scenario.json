@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "Source context derives slot values from source metadata before the document's first semantic node: under mode=fallback the path-stem provider supplies the locale slot from each data file's name, so en-us.kdl binds locale en-us",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "en-us.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":0},\"type_name\":\"Entry\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"a\"},\"origin\":0},{\"name\":\"locale\",\"value\":{\"kind\":\"string\",\"value\":\"en-us\"},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n"
+    ]
+  }
+}

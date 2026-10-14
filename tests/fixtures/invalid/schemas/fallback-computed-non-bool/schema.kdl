@@ -1,0 +1,10 @@
+schema demo version="1" {
+    types {
+        object Conf {
+            field name String
+            field retries "optional<Integer>" {
+                fallback computed="yes"
+            }
+        }
+    }
+}

@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A schema naming a contribution resolver no processor has registered fails closed: the engine never resolves contributions itself",
+  "args": [
+    "vet",
+    "schema",
+    "schema.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

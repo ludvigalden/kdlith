@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "A declaration carrying an identity block (domain plus qualified-name composition) and a named reference type with its codec, lookup domain, qualification policy, and declared qualifier vets green",
+  "args": [
+    "vet",
+    "schema",
+    "schema.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "ok: schema demo version 1 scope=complete documents=1 types=2 nodes=1 slots=0 profiles=0 digest=f8246d35410cb78a"
+    ]
+  }
+}

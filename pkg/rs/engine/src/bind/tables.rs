@@ -78,6 +78,10 @@ pub(crate) struct DeclInfo {
     pub(crate) path: Option<usize>,
     pub(crate) project: Option<usize>,
     pub(crate) repeated: Option<usize>,
+    /// The fields of a contribution's layer and application scope, which
+    /// the preserved record carries as its metadata.
+    pub(crate) layer: Option<usize>,
+    pub(crate) scope: Option<usize>,
     /// Fields holding `ref<T>` values, which keep the item provisional.
     pub(crate) references: Vec<usize>,
     pub(crate) provisional: bool,
@@ -121,8 +125,17 @@ impl Table {
 pub(crate) struct Tables {
     pub(crate) decls: Vec<DeclInfo>,
     pub(crate) scopes: Vec<Option<Table>>,
-    /// Each slot's name and type, by slot index.
-    pub(crate) slots: Vec<(Sym, TypeExpr)>,
+    /// Each slot's name, type, and declared accumulation operation, by
+    /// slot index.
+    pub(crate) slots: Vec<SlotInfo>,
+}
+
+/// One context slot, as the binder sees it.
+#[derive(Clone, Debug)]
+pub(crate) struct SlotInfo {
+    pub(crate) name: Sym,
+    pub(crate) ty: TypeExpr,
+    pub(crate) accumulate: Option<crate::definition::AccumulateOp>,
 }
 
 /// One binding source and the owner field it supplies.
@@ -144,7 +157,18 @@ pub(crate) fn build(def: &Definition) -> Tables {
     let mut tables = Tables {
         decls: Vec::with_capacity(def.bindings.len()),
         scopes: vec![None; def.bindings.scopes().len()],
-        slots: slots.into_iter().map(|(_, name, ty)| (name, ty)).collect(),
+        slots: slots
+            .into_iter()
+            .map(|(_, name, ty)| SlotInfo {
+                name,
+                ty,
+                accumulate: def
+                    .slots
+                    .iter()
+                    .find(|slot| slot.name == name)
+                    .and_then(|slot| slot.accumulate),
+            })
+            .collect(),
     };
     for (id, decl) in def.bindings.iter() {
         let info = decl_info(def, id, decl);
@@ -257,7 +281,10 @@ fn decl_info(def: &Definition, id: NodeDeclId, decl: &NodeDecl) -> DeclInfo {
                 ty: Some(field.ty.clone()),
                 required: !optional(&field.ty),
                 collect: Collect::No,
-                fallback: field.fallback.clone(),
+                // Only a literal fallback supplies an absent value; a
+                // computed default is a descriptor the engine never
+                // computes.
+                fallback: field.fallback.as_ref().and_then(|d| d.literal().cloned()),
                 context: None,
                 sensitivity: field.sensitivity,
                 expand: Vec::new(),
@@ -309,10 +336,17 @@ fn decl_info(def: &Definition, id: NodeDeclId, decl: &NodeDecl) -> DeclInfo {
     let position = |name: Sym| fields.iter().position(|f| f.name == name);
     let import = decl.role == Some(Role::SourceImport);
     let import_field = |name: &str| def.names.get(name).and_then(position).filter(|_| import);
+    let contribution = decl.role == Some(Role::Contribution);
+    let contribution_field = |name: &str| {
+        def.names
+            .get(name)
+            .and_then(position)
+            .filter(|_| contribution)
+    };
     let identity = def
         .symbols
         .declaration(id)
-        .and_then(|d| d.identity)
+        .and_then(|d| d.identity_fields.first().copied())
         .and_then(position);
     let deferred = def.plan.node(id).map_or(&[][..], |plan| &plan.deferred);
     let references = deferred
@@ -328,6 +362,8 @@ fn decl_info(def: &Definition, id: NodeDeclId, decl: &NodeDecl) -> DeclInfo {
         path: path.filter(|_| import),
         project: import_field("project"),
         repeated: import_field("repeated"),
+        layer: contribution_field("layer"),
+        scope: contribution_field("scope"),
         references,
         provisional: !deferred.is_empty(),
         cases: decl.cases.clone(),

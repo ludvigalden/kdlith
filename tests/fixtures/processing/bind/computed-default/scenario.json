@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "A computed fallback is a descriptor the processor never computes: the optional field stays absent in the bound record (only the name field arrives) while the schema carrying the descriptor vets and binds green",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":0},\"type_name\":\"Conf\",\"fields\":[{\"name\":\"name\",\"value\":{\"kind\":\"string\",\"value\":\"a\"},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n"
+    ]
+  }
+}

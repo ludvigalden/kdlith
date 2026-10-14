@@ -5,8 +5,8 @@
 use kdlith_engine::{OrderedMap, Shaped, TypeShape, ValueExpr, enum_type, object_type, union_type};
 
 use super::{
-    ContextPolicy, EffectGroup, ExactlyOneGroup, FieldName, MemberName, NodeName, SlotName,
-    TypeExpression, TypeName,
+    ContextPolicy, DescendantRule, EffectGroup, ExactlyOneGroup, FieldName, IdentityBlock,
+    MemberName, NodeName, ProfileName, SequenceRule, SlotName, TypeExpression, TypeName,
 };
 
 enum_type! {
@@ -28,12 +28,16 @@ object_type! {
         "type" => ty: Option<TypeName>,
         "parent" => parent: Option<NodeName>,
         "parents" => parents: Option<Vec<NodeName>>,
+        "profile" => profile: Option<ProfileName>,
         "fields" => fields: OrderedMap<FieldName, FieldBinding>,
         "children" => children: OrderedMap<NodeName, ChildRule>,
         "effects" => effects: Vec<EffectGroup>,
         "groups" => groups: Vec<ExactlyOneGroup>,
+        "descendants" => descendants: Vec<DescendantRule>,
+        "sequence" => sequence: Option<SequenceRule>,
         "value" => value: Option<DependentBinding>,
         "cases" => cases: Option<CaseDispatch>,
+        "identity" => identity: Option<IdentityBlock>,
     }
 }
 

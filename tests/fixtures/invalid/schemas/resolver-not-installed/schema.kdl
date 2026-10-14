@@ -1,0 +1,3 @@
+schema demo version="1" {
+    resolution resolver=std-layered
+}

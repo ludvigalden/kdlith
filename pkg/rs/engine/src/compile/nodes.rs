@@ -8,8 +8,7 @@ use crate::bindings::{
 use crate::compile::Cx;
 use crate::compile::reader::Construct;
 use crate::compile::types::field_name;
-use crate::deferred::defers;
-use crate::diag::{DEFERRED_MECHANISM, INVALID_BINDING, NOT_INSTALLED, Site, duplicate_key};
+use crate::diag::{INVALID_BINDING, NOT_INSTALLED, Site, duplicate_key};
 use crate::names::Sym;
 use crate::syntax::{SyntaxNode, parse_u64};
 use crate::types::TypeExpr;
@@ -180,13 +179,17 @@ pub(crate) fn declaration(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) {
         } else {
             Placement::Under(under)
         },
+        profile: None,
         fields,
         children,
         effects,
         groups,
+        descendants: Vec::new(),
+        sequence: None,
         value,
         cases,
         otherwise,
+        identity: None,
         site,
     });
 }
@@ -416,17 +419,6 @@ fn source_list(
                     None => Some(None),
                     Some("fallback") => Some(Some(ContextPolicy::Fallback)),
                     Some("fixed") => Some(Some(ContextPolicy::Fixed)),
-                    Some(other @ ("accumulate" | "accumulating"))
-                        if defers(&cx.deferrals, "accumulating-context") =>
-                    {
-                        let construct = format!("{label} policy {other}");
-                        cx.diags.error(
-                            DEFERRED_MECHANISM,
-                            site,
-                            &[&construct, "accumulating-context"],
-                        );
-                        None
-                    }
                     Some(other) => {
                         cx.not_member(site, "context.policy", "ContextPolicy", other);
                         None

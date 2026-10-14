@@ -6,57 +6,68 @@ use kdlith_model::Value;
 use kdlith_runtime::Repeated;
 
 use crate::bindings::{
-    BindingCodec, CaseRule, ChildRule, Collision, ContextPolicy, DependentBinding, DuplicateKeys,
-    Effect, EffectGroup, EffectTarget, FieldBinding, NodeDecl, Placement, Role, SetFrom, Source,
+    BindingCodec, CaseRule, ChildRule, Collision, ContextPolicy, DependentBinding, DescendantRule,
+    DuplicateKeys, Effect, EffectGroup, EffectTarget, FieldBinding, IdentityDecl, NodeDecl,
+    Placement, Role, SequenceDecl, SequenceStep, SetFrom, Source,
 };
 use crate::compile::Cx;
 use crate::compile::input::{
-    ChildRuleInput, ConstraintInput, Construct, DeferralInput, DefinitionInput, DependentInput,
-    DocumentRuleInput, EffectGroupInput, EffectInput, FieldBindingInput, FieldInput, ImportInput,
-    Located, MemberInput, NodeInput, SlotInput, SourceInput, TypeInput,
+    ChildRuleInput, ConstraintInput, Construct, DefaultInput, DefinitionInput, DependentInput,
+    DiscoveryInput, DocumentRuleInput, EffectGroupInput, EffectInput, FieldBindingInput,
+    FieldInput, ImportInput, MemberInput, NodeInput, ProfileInput, ProviderInput, ReferenceInput,
+    ResolutionInput, SequenceInput, SlotInput, SourceContextInput, SourceInput, TypeInput,
 };
 use crate::compile::types::{declare, field_name, format_rule, validator_use};
 use crate::decode::found;
-use crate::definition::{Deferral, DocumentRule, ImportDecl, SlotDecl};
-use crate::diag::{INVALID_BINDING, NOT_INSTALLED, Site, duplicate, duplicate_key};
+use crate::definition::{
+    AccumulateOp, AnchorDecl, DiscoveryDecl, DocumentRule, DuplicateTreatment, ImportDecl,
+    MissingRequirement, Patterns, ProfileDecl, ProviderDecl, Qualification, QualifierDecl,
+    ReferenceDecl, ResolutionPolicyDecl, ResolutionSelection, SlotDecl, SourceContextDecl,
+    SourceContextMode, SourceFieldDecl,
+};
+use crate::diag::{
+    IMPORT_ANCHOR, IMPORT_GRAMMAR, INVALID_BINDING, NOT_INSTALLED, Site, duplicate, duplicate_key,
+};
+use crate::discovery::{self, ExpansionError};
 use crate::names::Sym;
 use crate::syntax::parse_u64;
 use crate::types::{
-    CaptureDef, CodecDecl, Constraint, EnumMember, EnumType, FieldDef, MapType, ObjectType,
-    Sensitivity, StringType, TypeKind, UnionType, Variant,
+    CaptureDef, CodecDecl, Constraint, DefaultSpec, EnumMember, EnumType, FieldDef, MapType,
+    ObjectType, Sensitivity, StringType, TypeExpr, TypeKind, UnionType, Variant,
 };
 
-/// Read every construct of every document, in stream order.
+/// Read every construct of every document: the grammar-affecting
+/// declarations first (profiles, discovery grammars, reference policies),
+/// so import expressions validate against the full grammar set, then
+/// everything else in stream order.
 pub(crate) fn all(cx: &mut Cx<'_>, input: &DefinitionInput) {
     for (doc, document) in input.documents.iter().enumerate() {
         for located in &document.constructs {
-            construct(cx, doc, located);
-        }
-    }
-}
-
-/// Collect a dialect's deferral markers before anything else is read,
-/// so every construct is checked against the full deferral set.
-pub(crate) fn deferrals(cx: &mut Cx<'_>, input: &DefinitionInput) {
-    for (doc, document) in input.documents.iter().enumerate() {
-        for located in &document.constructs {
-            if let Construct::Deferral(input) = &located.item {
-                deferral(cx, Site::new(doc, located.span), input);
+            let site = Site::new(doc, located.span);
+            match &located.item {
+                Construct::Profile(input) => profile(cx, site, input),
+                Construct::Discovery(input) => discovery_decl(cx, site, input),
+                Construct::Reference(input) => reference(cx, site, input),
+                _ => continue,
             }
         }
     }
-}
-
-fn construct(cx: &mut Cx<'_>, doc: usize, located: &Located<Construct>) {
-    let site = Site::new(doc, located.span);
-    match &located.item {
-        Construct::Type(ty) => type_decl(cx, site, ty),
-        Construct::Node(input) => node(cx, site, input),
-        Construct::Slot(input) => slot(cx, site, input),
-        Construct::Rule(input) => rule(cx, site, input),
-        Construct::Import(input) => import(cx, site, input),
-        // Collected by `deferrals` before `all` runs.
-        Construct::Deferral(_) => {}
+    for (doc, document) in input.documents.iter().enumerate() {
+        for located in &document.constructs {
+            let site = Site::new(doc, located.span);
+            match &located.item {
+                Construct::Type(ty) => type_decl(cx, site, ty),
+                Construct::Node(input) => node(cx, site, input),
+                Construct::Slot(input) => slot(cx, site, input),
+                Construct::Rule(input) => rule(cx, site, input),
+                Construct::Import(input) => import(cx, site, input),
+                Construct::Resolution(input) => resolution(cx, site, input),
+                Construct::Provider(input) => provider(cx, site, input),
+                Construct::SourceContext(input) => source_context(cx, site, input),
+                // Collected by the grammar-affecting first pass above.
+                Construct::Profile(_) | Construct::Discovery(_) | Construct::Reference(_) => {}
+            }
+        }
     }
 }
 
@@ -260,14 +271,41 @@ fn field_def(cx: &mut Cx<'_>, site: Site, field: &FieldInput) -> Option<FieldDef
                     None
                 }
             });
+    let fallback = field
+        .default
+        .as_ref()
+        .and_then(|input| default(cx, site, input));
     Some(FieldDef {
         name: cx.names.intern(&field.name),
         ty,
         description: field.description.clone(),
         documented_default: field.documented_default.clone(),
-        fallback: field.fallback.clone(),
+        fallback,
         sensitivity,
     })
+}
+
+/// A field's declared default: a literal value or a computed descriptor.
+/// A default that is neither, or both, is rejected loudly — the engine
+/// never guesses which reading was meant.
+fn default(cx: &mut Cx<'_>, site: Site, input: &DefaultInput) -> Option<DefaultSpec> {
+    let label = "fallback";
+    match (input.computed, &input.value) {
+        (true, Some(_)) => {
+            let reason = "a computed default carries no literal value";
+            cx.malformed(site, label, reason);
+            None
+        }
+        (true, None) => Some(DefaultSpec::Computed {
+            dependencies: input.dependencies.clone(),
+        }),
+        (false, Some(value)) => Some(DefaultSpec::Literal(value.clone())),
+        (false, None) => {
+            let reason = "a literal default carries no value";
+            cx.malformed(site, label, reason);
+            None
+        }
+    }
 }
 
 fn constraint(cx: &mut Cx<'_>, constraint: &ConstraintInput) -> Constraint {
@@ -288,6 +326,10 @@ fn node(cx: &mut Cx<'_>, site: Site, input: &NodeInput) {
     let role = input.role.as_deref().and_then(Role::from_name);
     let typed = input.ty.is_some();
     let ty = input.ty.as_deref().map(|ty| cx.names.intern(ty));
+    let profile = input.profile.as_deref().and_then(|profile| {
+        cx.kebab(site, &label, profile, "profile name")
+            .then(|| cx.names.intern(profile))
+    });
 
     let mut fields = Vec::new();
     for field in &input.fields {
@@ -338,6 +380,39 @@ fn node(cx: &mut Cx<'_>, site: Site, input: &NodeInput) {
         }
         groups.push(members);
     }
+    let descendants = input
+        .descendants
+        .iter()
+        .filter_map(|rule| descendant_rule(cx, site, rule, &name))
+        .collect();
+    let sequence = input
+        .sequence
+        .as_ref()
+        .and_then(|seq| sequence_decl(cx, site, seq, &name));
+    let identity = input.identity.as_ref().and_then(|identity| {
+        let fields: Vec<Sym> = identity
+            .fields
+            .iter()
+            .map(|field| cx.names.intern(field))
+            .collect();
+        if identity.form != "qualified-name" {
+            cx.not_member(site, "compose.form", "ComposeForm", &identity.form);
+            return None;
+        }
+        if fields.is_empty() {
+            cx.malformed(site, &label, "identity composes no field");
+            return None;
+        }
+        if !cx.kebab(site, &label, &identity.domain, "identity domain") {
+            return None;
+        }
+        let domain = cx.names.intern(&identity.domain);
+        Some(IdentityDecl {
+            domain,
+            fields,
+            site,
+        })
+    });
     let value = input
         .value
         .as_ref()
@@ -403,15 +478,99 @@ fn node(cx: &mut Cx<'_>, site: Site, input: &NodeInput) {
         } else {
             Placement::Under(under)
         },
+        profile,
         fields,
         children,
         effects,
         groups,
+        descendants,
+        sequence,
         value,
         cases,
         otherwise,
+        identity,
         site,
     });
+}
+
+/// One descendant rule of a node declaration.
+fn descendant_rule(
+    cx: &mut Cx<'_>,
+    site: Site,
+    input: &crate::compile::input::DescendantRuleInput,
+    owner: &str,
+) -> Option<DescendantRule> {
+    if let (Some(min), Some(max)) = (input.min, input.max)
+        && min > max
+    {
+        let reason = format!(
+            "descendants {} has min-occurs {min} above max-occurs {max}",
+            input.name
+        );
+        cx.diags.error(INVALID_BINDING, site, &[owner, &reason]);
+        return None;
+    }
+    if input.max == Some(0) {
+        let reason = format!("descendants {} permits no occurrence", input.name);
+        cx.diags.error(INVALID_BINDING, site, &[owner, &reason]);
+        return None;
+    }
+    Some(DescendantRule {
+        name: cx.names.intern(&input.name),
+        min: input.min,
+        max: input.max,
+        site,
+    })
+}
+
+/// An ordered sequence a node declaration's children must match, with
+/// absent bounds meaning exactly once.
+fn sequence_decl(
+    cx: &mut Cx<'_>,
+    site: Site,
+    input: &SequenceInput,
+    owner: &str,
+) -> Option<SequenceDecl> {
+    let mut steps = Vec::with_capacity(input.steps.len());
+    for step in &input.steps {
+        let mut alternatives: Vec<Sym> = step
+            .alternatives
+            .iter()
+            .map(|name| cx.names.intern(name))
+            .collect();
+        if let Some(name) = &step.name {
+            alternatives.push(cx.names.intern(name));
+        }
+        if alternatives.is_empty() {
+            let reason = "a sequence step names no node and no alternatives";
+            cx.diags.error(INVALID_BINDING, site, &[owner, reason]);
+            continue;
+        }
+        let min = step.min.unwrap_or(1).max(1);
+        let max = step.max.unwrap_or_else(|| min.max(1));
+        if min > max {
+            let reason = format!("a sequence step has min-occurs {min} above max-occurs {max}");
+            cx.diags.error(INVALID_BINDING, site, &[owner, &reason]);
+            continue;
+        }
+        if (1..alternatives.len()).any(|at| alternatives[..at].contains(&alternatives[at])) {
+            let reason = "a sequence step names a node twice";
+            cx.diags.error(INVALID_BINDING, site, &[owner, reason]);
+            continue;
+        }
+        steps.push(SequenceStep {
+            alternatives,
+            min,
+            max,
+            site,
+        });
+    }
+    if steps.is_empty() {
+        let reason = "sequence names no step";
+        cx.diags.error(INVALID_BINDING, site, &[owner, reason]);
+        return None;
+    }
+    Some(SequenceDecl { steps, site })
 }
 
 /// A node declaration's dependent payload binding, with its codec
@@ -730,13 +889,60 @@ fn slot(cx: &mut Cx<'_>, site: Site, input: &SlotInput) {
         .namespace
         .clone()
         .map(|namespace| cx.names.intern(&namespace));
+    let accumulate = input.accumulate.as_deref().and_then(|op| {
+        let parsed = AccumulateOp::from_name(op).or_else(|| {
+            cx.not_member(site, "slot.accumulate.op", "AccumulateOp", op);
+            None
+        })?;
+        let shape = accumulate_shape(&ty);
+        let ok = match parsed {
+            AccumulateOp::Append => shape == Some(AccumulateShape::List),
+            AccumulateOp::Merge => shape == Some(AccumulateShape::Map),
+        };
+        if !ok {
+            let reason = format!(
+                "slot {} declares accumulate {} but its type is not {}-typed",
+                &input.name,
+                parsed.name(),
+                match parsed {
+                    AccumulateOp::Append => "list",
+                    AccumulateOp::Merge => "map",
+                }
+            );
+            cx.diags
+                .error(INVALID_BINDING, site, &[&input.name, &reason]);
+            return None;
+        }
+        Some(parsed)
+    });
     cx.slots.push(SlotDecl {
         name: sym,
         ty,
         namespace,
         description: input.description.clone(),
+        accumulate,
         site,
     });
+}
+
+/// The collection shape a slot's type has, once optional and nullable
+/// wrappers are stripped: accumulation is defined for list and map
+/// slots only.
+fn accumulate_shape(mut ty: &TypeExpr) -> Option<AccumulateShape> {
+    loop {
+        match ty {
+            TypeExpr::Optional(inner) | TypeExpr::Nullable(inner) => ty = inner,
+            TypeExpr::List(_) => return Some(AccumulateShape::List),
+            TypeExpr::Map(_, _) | TypeExpr::OrderedMap(_, _) => return Some(AccumulateShape::Map),
+            _ => return None,
+        }
+    }
+}
+
+#[derive(PartialEq, Eq)]
+enum AccumulateShape {
+    List,
+    Map,
 }
 
 fn rule(cx: &mut Cx<'_>, site: Site, input: &DocumentRuleInput) {
@@ -774,33 +980,488 @@ fn import(cx: &mut Cx<'_>, site: Site, input: &ImportInput) {
         cx.not_member(site, "import.repeated", "RepeatedImport", &input.repeated);
         return;
     };
+    let alias = match &input.alias {
+        Some(alias) if cx.kebab(site, "import", alias, "alias") => Some(cx.names.intern(alias)),
+        Some(_) => return,
+        None => None,
+    };
+    if let Some(alias) = alias
+        && let Some(first) = cx
+            .imports
+            .iter()
+            .find(|import| import.alias == Some(alias))
+            .map(|import| import.site)
+    {
+        duplicate_key(
+            &mut cx.diags,
+            (site, first),
+            "the alias of import",
+            "document.imports",
+        );
+        return;
+    }
+    if discovery::is_expression(&input.path) {
+        // An expression is evaluated under the grammar the active
+        // profile binds, or the schema root when no profiles are
+        // declared. Compile-time validation covers the root-bound case;
+        // a profile-bound grammar validates at invocation.
+        let grammar = if cx.profiles.is_empty() {
+            cx.root_grammar.as_deref().and_then(|name| {
+                cx.discoveries
+                    .iter()
+                    .find(|d| cx.names.resolve(d.name) == name)
+            })
+        } else {
+            None
+        };
+        match grammar {
+            Some(grammar) => {
+                if let Err(error) = discovery::parse(&input.path, Some(grammar), &cx.names) {
+                    report_expansion(cx, site, &input.path, &error);
+                    return;
+                }
+            }
+            None => {
+                if cx.profiles.is_empty() {
+                    let construct = format!("import {:?}", input.path);
+                    cx.malformed(site, &construct, "import paths are literal");
+                    return;
+                }
+                // A profile-bound grammar validates the expression when
+                // the invocation names its profile.
+            }
+        }
+    }
     cx.imports.push(ImportDecl {
         path: input.path.clone(),
         project: input.project.iter().map(|n| cx.names.intern(n)).collect(),
         repeated,
+        alias,
         site,
     });
 }
 
-fn deferral(cx: &mut Cx<'_>, site: Site, input: &DeferralInput) {
+/// Report an import-expression failure under its registered code.
+fn report_expansion(cx: &mut Cx<'_>, site: Site, expression: &str, error: &ExpansionError) {
+    let values = error.values();
+    let [first, second] = values;
+    match error {
+        ExpansionError::NotAdmitted { .. } => {
+            cx.diags.error(IMPORT_GRAMMAR, site, &[expression, &second]);
+        }
+        ExpansionError::Anchor { name } => {
+            cx.diags.error(IMPORT_ANCHOR, site, &[name, &second]);
+        }
+        ExpansionError::Unreadable { .. } => {
+            cx.diags.error(IMPORT_ANCHOR, site, &[&first, &second]);
+        }
+    }
+}
+
+/// A document profile: a named selection of root types.
+fn profile(cx: &mut Cx<'_>, site: Site, input: &ProfileInput) {
+    let label = format!("profile {}", input.name);
+    if !cx.kebab(site, "profile", &input.name, "profile name") {
+        return;
+    }
+    let name = cx.names.intern(&input.name);
     if let Some(first) = cx
-        .deferrals
+        .profiles
         .iter()
-        .find(|d| d.mechanism == input.mechanism)
-        .map(|d| d.site)
+        .find(|profile| profile.name == name)
+        .map(|profile| profile.site)
     {
         duplicate(
             &mut cx.diags,
             cx.kind,
             (site, first),
-            "deferral",
-            &input.mechanism,
+            "profile",
+            &input.name,
         );
         return;
     }
-    cx.deferrals.push(Deferral {
-        mechanism: input.mechanism.clone(),
-        note: input.note.clone(),
+    let roots = input.roots.as_ref().map(|roots| {
+        let mut out = Vec::new();
+        for root in roots {
+            if !cx.type_name(site, &label, root) {
+                continue;
+            }
+            let sym = cx.names.intern(root);
+            if out.contains(&sym) {
+                cx.malformed(site, &label, &format!("roots allows {root} twice"));
+                continue;
+            }
+            out.push(sym);
+        }
+        out
+    });
+    if roots.as_ref().is_some_and(Vec::is_empty) {
+        cx.malformed(site, &label, "roots allows no root");
+        return;
+    }
+    let grammar = input.grammar.as_deref().and_then(|grammar| {
+        cx.kebab(site, &label, grammar, "grammar name")
+            .then(|| cx.names.intern(grammar))
+    });
+    cx.profiles.push(ProfileDecl {
+        name,
+        roots,
+        grammar,
         site,
     });
+}
+
+/// A discovery grammar declaration.
+fn discovery_decl(cx: &mut Cx<'_>, site: Site, input: &DiscoveryInput) {
+    if !cx.kebab(site, "discovery", &input.name, "grammar name") {
+        return;
+    }
+    let name = cx.names.intern(&input.name);
+    if let Some(first) = cx
+        .discoveries
+        .iter()
+        .find(|grammar| grammar.name == name)
+        .map(|grammar| grammar.site)
+    {
+        duplicate(
+            &mut cx.diags,
+            cx.kind,
+            (site, first),
+            "discovery",
+            &input.name,
+        );
+        return;
+    }
+    let mut anchors = Vec::new();
+    for anchor in &input.anchors {
+        let label = format!("anchor {}", anchor.name);
+        if !cx.kebab(site, &label, &anchor.name, "anchor name") {
+            continue;
+        }
+        if !cx.kebab(site, &label, &anchor.provider, "provider name") {
+            continue;
+        }
+        let name = cx.names.intern(&anchor.name);
+        if anchors
+            .iter()
+            .any(|declared: &AnchorDecl| declared.name == name)
+        {
+            cx.malformed(site, &label, "declares the anchor twice");
+            continue;
+        }
+        anchors.push(AnchorDecl {
+            name,
+            provider: cx.names.intern(&anchor.provider),
+            site,
+        });
+    }
+    cx.discoveries.push(DiscoveryDecl {
+        name,
+        anchors,
+        patterns: Patterns {
+            star: input.star,
+            doublestar: input.doublestar,
+            braces: input.braces,
+        },
+        allow_empty: input.allow_empty,
+        site,
+    });
+}
+
+/// A named reference type.
+fn reference(cx: &mut Cx<'_>, site: Site, input: &ReferenceInput) {
+    let label = format!("reference {}", input.name);
+    if !cx.type_name(site, "reference", &input.name) {
+        return;
+    }
+    let name = cx.names.intern(&input.name);
+    if let Some(first) = cx
+        .references
+        .iter()
+        .find(|reference| reference.name == name)
+        .map(|reference| reference.site)
+    {
+        duplicate(
+            &mut cx.diags,
+            cx.kind,
+            (site, first),
+            "reference",
+            &input.name,
+        );
+        return;
+    }
+    if !cx.type_name(site, &label, &input.target) {
+        return;
+    }
+    let target = cx.names.intern(&input.target);
+    let codec = input.codec.as_deref().and_then(|codec| {
+        cx.type_name(site, &label, codec)
+            .then(|| cx.names.intern(codec))
+    });
+    // A codec's namespace metadata is consumed here: a decoded identity
+    // belongs to that reference namespace.
+    let namespace = codec.and_then(|codec| {
+        cx.types
+            .lookup(codec)
+            .and_then(|id| cx.types.get(id))
+            .and_then(|decl| match &decl.kind {
+                TypeKind::Codec(codec) => codec.namespace,
+                _ => None,
+            })
+    });
+    let lookup = input.lookup.as_deref().and_then(|lookup| {
+        cx.kebab(site, &label, lookup, "lookup domain")
+            .then(|| cx.names.intern(lookup))
+    });
+    let qualification = match Qualification::from_name(&input.qualification) {
+        Some(qualification) => qualification,
+        None => {
+            cx.not_member(
+                site,
+                "reference.qualification",
+                "Qualification",
+                &input.qualification,
+            );
+            return;
+        }
+    };
+    let mut qualifiers = Vec::new();
+    for qualifier in &input.qualifiers {
+        if !field_name(&qualifier.name) {
+            let found = found(&Value::String(qualifier.name.clone()));
+            cx.mistyped(site, "the name of qualifier", "FieldName", &found);
+            continue;
+        }
+        let Some(ty) = cx.type_expr(site, &qualifier.ty) else {
+            continue;
+        };
+        qualifiers.push(QualifierDecl {
+            name: cx.names.intern(&qualifier.name),
+            ty,
+            required: qualifier.required,
+            site,
+        });
+    }
+    cx.references.push(ReferenceDecl {
+        name,
+        target,
+        codec,
+        namespace,
+        lookup,
+        qualification,
+        qualifiers,
+        site,
+    });
+}
+
+/// The declared contribution-resolution policy. The resolver must be
+/// installed; resolution itself belongs to the registered resolver.
+fn resolution(cx: &mut Cx<'_>, site: Site, input: &ResolutionInput) {
+    let label = format!("resolution {}", input.resolver);
+    if !cx.kebab(site, "resolution", &input.resolver, "resolver name") {
+        return;
+    }
+    if cx.resolution.is_some() {
+        cx.malformed(site, "resolution", "declared twice in one schema");
+        return;
+    }
+    if !cx.extensions.has_resolver(&input.resolver) {
+        cx.diags
+            .error(NOT_INSTALLED, site, &["resolver", &input.resolver]);
+        return;
+    }
+    let selection = match ResolutionSelection::from_name(&input.selection) {
+        Some(selection) => selection,
+        None => {
+            cx.not_member(
+                site,
+                "resolution.selection",
+                "ResolutionSelection",
+                &input.selection,
+            );
+            return;
+        }
+    };
+    let duplicates = match DuplicateTreatment::from_name(&input.duplicates) {
+        Some(duplicates) => duplicates,
+        None => {
+            cx.not_member(
+                site,
+                "resolution.duplicates",
+                "DuplicateTreatment",
+                &input.duplicates,
+            );
+            return;
+        }
+    };
+    let missing = match MissingRequirement::from_name(&input.missing) {
+        Some(missing) => missing,
+        None => {
+            cx.not_member(
+                site,
+                "resolution.missing",
+                "MissingRequirement",
+                &input.missing,
+            );
+            return;
+        }
+    };
+    let mut layers = Vec::new();
+    for layer in &input.layers {
+        if layer.is_empty() {
+            cx.malformed(site, &label, "names an empty layer");
+            return;
+        }
+        if layers.contains(layer) {
+            cx.malformed(site, &label, &format!("names layer {layer} twice"));
+            return;
+        }
+        layers.push(layer.clone());
+    }
+    cx.resolution = Some(ResolutionPolicyDecl {
+        resolver: cx.names.intern(&input.resolver),
+        layers,
+        selection,
+        duplicates,
+        missing,
+        site,
+    });
+}
+
+/// A secret-provider descriptor: identifier, optional TTL, and a command
+/// as a list of strings that preserves argument boundaries. It is
+/// descriptor data only — nothing ever executes it.
+fn provider(cx: &mut Cx<'_>, site: Site, input: &ProviderInput) {
+    let label = format!("provider {}", input.id);
+    if input.id.is_empty() {
+        cx.mistyped(
+            site,
+            "the id of provider",
+            "SecretId",
+            &found(&Value::String(String::new())),
+        );
+        return;
+    }
+    if cx.providers.iter().any(|p| p.id == input.id) {
+        duplicate(&mut cx.diags, cx.kind, (site, site), "provider", &input.id);
+        return;
+    }
+    if input.command.is_empty() {
+        cx.malformed(site, &label, "declares no command");
+        return;
+    }
+    if input.command.iter().any(String::is_empty) {
+        cx.malformed(site, &label, "declares an empty command argument");
+        return;
+    }
+    cx.providers.push(ProviderDecl {
+        id: input.id.clone(),
+        ttl: input.ttl,
+        command: input.command.clone(),
+        site,
+    });
+}
+
+/// The declared source-context block. The mode is required — there is no
+/// default, so an undeclared mode is a missing required property, never
+/// a silent fallback — and every source names a registered
+/// source-metadata provider.
+fn source_context(cx: &mut Cx<'_>, site: Site, input: &SourceContextInput) {
+    if cx.source_context.is_some() {
+        cx.malformed(site, "source-context", "declared twice in one schema");
+        return;
+    }
+    let Some(mode) = SourceContextMode::from_name(&input.mode) else {
+        // The mode is required with no default: absent is the binding's
+        // missing-required rejection; present but unknown is an unknown
+        // member.
+        if input.mode.is_empty() {
+            cx.missing(site, "source-context", "mode");
+        } else {
+            cx.not_member(
+                site,
+                "source-context.mode",
+                "SourceContextMode",
+                &input.mode,
+            );
+        }
+        return;
+    };
+    if input.fields.is_empty() {
+        cx.malformed(site, "source-context", "declares no field");
+        return;
+    }
+    let mut fields = Vec::new();
+    for field in &input.fields {
+        if !field_name(&field.name) {
+            let spelled = found(&Value::String(field.name.clone()));
+            cx.mistyped(
+                site,
+                "the key of source-context field",
+                "FieldName",
+                &spelled,
+            );
+            continue;
+        }
+        let Some(ty) = cx.type_expr(site, &field.ty) else {
+            continue;
+        };
+        if field.sources.is_empty() {
+            cx.malformed(
+                site,
+                &format!("source-context field {}", field.name),
+                "derives from no source",
+            );
+            continue;
+        }
+        let mut sources = Vec::new();
+        let mut broken = false;
+        for source in &field.sources {
+            if !cx.kebab(site, "source-context", source, "source name") {
+                broken = true;
+                continue;
+            }
+            if !cx.extensions.has_source_provider(source) {
+                cx.diags.error(NOT_INSTALLED, site, &["source", source]);
+                broken = true;
+                continue;
+            }
+            if sources.contains(source) {
+                cx.malformed(
+                    site,
+                    &format!("source-context field {}", field.name),
+                    &format!("derives from {source} twice"),
+                );
+                broken = true;
+                continue;
+            }
+            sources.push(source.clone());
+        }
+        if broken {
+            continue;
+        }
+        let name = cx.names.intern(&field.name);
+        if fields
+            .iter()
+            .any(|declared: &SourceFieldDecl| declared.name == name)
+        {
+            duplicate_key(
+                &mut cx.diags,
+                (site, site),
+                &field.name,
+                "source-context.fields",
+            );
+            continue;
+        }
+        fields.push(SourceFieldDecl {
+            name,
+            ty,
+            sources,
+            site,
+        });
+    }
+    if fields.is_empty() {
+        return;
+    }
+    cx.source_context = Some(SourceContextDecl { mode, fields, site });
 }

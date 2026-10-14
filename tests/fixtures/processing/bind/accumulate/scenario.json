@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "A slot declaring accumulate append concatenates in effect order: two following set effects each carrying a list of tags bind green (the second set without a declared operation is invalid/data/accumulate-no-op)",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":null}}\n"
+    ]
+  }
+}

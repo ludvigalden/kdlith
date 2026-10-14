@@ -1,0 +1,30 @@
+schema demo version="1" {
+    types {
+        string Locale {
+            format kebab-case
+        }
+        object Entry {
+            field id String
+            field locale "optional<Locale>"
+        }
+    }
+    context {
+        slot locale Locale
+        source-context mode=fallback {
+            field locale String {
+                from {
+                    path-stem
+                }
+            }
+        }
+    }
+    node entry role=record type=Entry {
+        field id arg=0
+        field locale context=locale
+    }
+    document {
+        first {
+            exactly-one entry
+        }
+    }
+}

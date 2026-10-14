@@ -5,14 +5,17 @@ mod bind;
 mod bindings;
 mod compile;
 mod decode;
-mod deferred;
 mod definition;
 mod diag;
+mod discovery;
 mod documents;
 mod extensions;
 mod names;
 mod overlap;
 mod plan;
+mod resolution;
+mod snapshots;
+mod source_context;
 mod structure;
 mod summary;
 mod symbols;
@@ -24,24 +27,41 @@ mod types;
 pub use bind::{BindFrame, Binder, BindingSession, EntryValue, NodeStart, ParseEvents};
 pub use bindings::{
     Arity, BindingCatalog, BindingCodec, CaseRule, ChildPlan, ChildRule, Collision, ContextPolicy,
-    DependentBinding, DuplicateKeys, Effect, EffectGroup, EffectTarget, FieldBinding, NodeDecl,
-    NodeDeclId, ParentKey, Placement, Role, Scope, ScopeId, SetFrom, Source,
+    DependentBinding, DescendantRule, DuplicateKeys, Effect, EffectGroup, EffectTarget,
+    FieldBinding, IdentityDecl, NodeDecl, NodeDeclId, ParentKey, Placement, Role, Scope, ScopeId,
+    SequenceDecl, SequenceStep, SetFrom, Source,
 };
 pub use compile::input::{
-    CaptureInput, CaseInput, ChildRuleInput, ConstraintInput, Construct, DeferralInput,
-    DefinitionInput, DependentInput, DocumentInput, DocumentRuleInput, EffectGroupInput,
-    EffectInput, FieldBindingInput, FieldInput, FormatInput, ImportInput, Located, MemberInput,
-    NodeInput, SlotInput, SourceInput, TypeInput, ValidatorInput, VariantInput,
+    AnchorInput, CaptureInput, CaseInput, ChildRuleInput, ConstraintInput, Construct, DefaultInput,
+    DefinitionInput, DependentInput, DescendantRuleInput, DiscoveryInput, DocumentInput,
+    DocumentRuleInput, EffectGroupInput, EffectInput, FieldBindingInput, FieldInput, FormatInput,
+    IdentityInput, ImportInput, Located, MemberInput, NodeInput, ProfileInput, ProviderInput,
+    QualifierInput, ReferenceInput, ResolutionInput, SequenceInput, SlotInput, SourceContextInput,
+    SourceFieldInput, SourceInput, StepInput, TypeInput, ValidatorInput, VariantInput,
 };
 pub use compile::{DIALECT_VERSION, compile_dialect, compile_dialect_input, compile_schema_input};
 pub use definition::{
-    CheckScope, Deferral, Definition, DefinitionKind, DocumentRule, ImportDecl, SlotDecl,
+    AccumulateOp, AnchorDecl, CheckScope, Definition, DefinitionKind, DiscoveryDecl, DocumentRule,
+    DuplicateTreatment, ImportDecl, MissingRequirement, Patterns, ProfileDecl, ProviderDecl,
+    Qualification, QualifierDecl, ReferenceDecl, ResolutionPolicyDecl, ResolutionSelection,
+    SlotDecl, SourceContextDecl, SourceContextMode, SourceFieldDecl,
 };
 pub use diag::Site;
+pub use discovery::{Expansion, ExpansionError, Segment, expand, is_expression, parse};
 pub use documents::MAX_DOCUMENT_BYTES;
-pub use extensions::{Extensions, TYPE_EXPRESSION_VALIDATOR, TYPE_EXPRESSION_VERSION};
+pub use extensions::{
+    Extensions, PATH_STEM_SOURCE, TYPE_EXPRESSION_VALIDATOR, TYPE_EXPRESSION_VERSION,
+};
 pub use names::{Names, Sym};
 pub use plan::{ContextPlan, ContextRead, DeferredBinding, EffectStep, NodePlan, ProcessingPlan};
+pub use resolution::{
+    ContributionRecord, ContributionResolver, ResolutionError, ResolvedContribution, resolve,
+};
+pub use snapshots::{
+    ContextSnapshot, SNAPSHOT_MISMATCH, SnapshotError, SnapshotIndex, SnapshotIndexEntry,
+    ValidationStatus as SnapshotValidation,
+};
+pub use source_context::{AppliedSourceValue, apply as apply_source_context};
 pub use structure::{Occurs, OrderRule, ScopeRules, ScopeState, Violation};
 pub use symbols::{ContributionDescriptor, DeclarationDescriptor, ReferencePolicy, SymbolCatalog};
 pub use syntax::ParsedDocument;
@@ -52,9 +72,9 @@ pub use typed::{
     variant_value,
 };
 pub use types::{
-    Builtin, CaptureDef, CodecDecl, Constraint, EnumMember, EnumType, FieldDef, FormatRule,
-    MapType, ObjectType, OutputPolicy, Sensitivity, StringFormat, StringType, TypeCatalog,
-    TypeDecl, TypeExpr, TypeId, TypeKind, UnionType, ValidatorUse, Variant,
+    Builtin, CaptureDef, CodecDecl, Constraint, DefaultSpec, EnumMember, EnumType, FieldDef,
+    FormatRule, MapType, ObjectType, OutputPolicy, Sensitivity, StringFormat, StringType,
+    TypeCatalog, TypeDecl, TypeExpr, TypeId, TypeKind, UnionType, ValidatorUse, Variant,
 };
 
 /// Paths the declaration macros expand to; not part of the API.

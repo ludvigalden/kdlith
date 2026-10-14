@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A second value reaching an occupied list-typed slot that declares no combining operation is rejected: accumulation is a declared policy, not an implicit replacement",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "data.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

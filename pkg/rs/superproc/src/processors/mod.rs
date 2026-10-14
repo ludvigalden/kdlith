@@ -11,7 +11,8 @@ use kdlith_diagnostic::DiagnosticRecord;
 use kdlith_engine::{Declarations, Definition, DefinitionKind, Handler, TypedReader, item_type};
 
 use crate::types::{
-    CodecType, Deferral, DocumentRule, EnumType, MapType, NodeDef, ObjectType, SlotDef, StringType,
+    CodecType, DiscoveryDef, DocumentRule, EnumType, MapType, NodeDef, ObjectType, ProfileDef,
+    ReferenceDef, ResolutionPolicyDef, SecretProvider, SlotDef, SourceContextDef, StringType,
     UnionType,
 };
 use crate::{bindings, contexts, types};
@@ -27,8 +28,13 @@ item_type! {
         CodecType,
         NodeDef,
         SlotDef,
+        SourceContextDef,
         DocumentRule,
-        Deferral,
+        ProfileDef,
+        DiscoveryDef,
+        ReferenceDef,
+        ResolutionPolicyDef,
+        SecretProvider,
     }
 }
 

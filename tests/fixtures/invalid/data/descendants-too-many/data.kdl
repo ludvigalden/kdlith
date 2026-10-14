@@ -1,0 +1,6 @@
+box "b" {
+    mid {
+        thing "t"
+        thing "u"
+    }
+}

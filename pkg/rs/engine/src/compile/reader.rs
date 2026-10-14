@@ -6,8 +6,7 @@ use kdlith_model::Value;
 
 use crate::compile::Cx;
 use crate::decode::found;
-use crate::deferred::{Spelling, deferred_by};
-use crate::diag::{DEFERRED_MECHANISM, DUPLICATE_PROPERTY, Site, UNBOUND_ENTRY};
+use crate::diag::{DUPLICATE_PROPERTY, Site, UNBOUND_ENTRY};
 use crate::syntax::{Scalar, SyntaxNode, parse_u64};
 
 /// A construct node being read.
@@ -119,6 +118,13 @@ impl<'n> Construct<'n> {
         }
     }
 
+    /// An optional single value of any scalar kind; absent stays absent
+    /// without a diagnostic.
+    pub(crate) fn opt_value_arg(&mut self, at: usize) -> Option<Value> {
+        let scalar = self.arg(at)?;
+        Some(scalar.value.clone())
+    }
+
     /// Every string argument from `from` on.
     pub(crate) fn rest_strings(&mut self, cx: &mut Cx<'_>, from: usize, what: &str) -> Vec<String> {
         let mut out = Vec::new();
@@ -181,7 +187,6 @@ impl<'n> Construct<'n> {
 
     /// Reject every argument and property that was not read.
     pub(crate) fn finish(self, cx: &mut Cx<'_>) {
-        let label = self.label();
         let node = self.node.name.as_str();
         for (at, scalar) in self.node.args.iter().enumerate() {
             if !self.args[at] {
@@ -199,18 +204,8 @@ impl<'n> Construct<'n> {
                 continue;
             }
             let site = Site::new(self.doc, scalar.span);
-            match deferred_by(&cx.deferrals, Spelling::Property(name)) {
-                Some(mechanism) => {
-                    let construct = format!("{label} property {name}");
-                    let mechanism = mechanism.to_owned();
-                    cx.diags
-                        .error(DEFERRED_MECHANISM, site, &[&construct, &mechanism]);
-                }
-                None => {
-                    let what = format!("property {name}");
-                    cx.diags.error(UNBOUND_ENTRY, site, &[&what, node]);
-                }
-            }
+            let what = format!("property {name}");
+            cx.diags.error(UNBOUND_ENTRY, site, &[&what, node]);
         }
     }
 

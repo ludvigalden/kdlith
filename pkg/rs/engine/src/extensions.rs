@@ -14,13 +14,19 @@ pub const TYPE_EXPRESSION_VERSION: &str = "0";
 /// closed.
 pub const ARGUMENT_TAIL_CODEC: &str = "argument-tail";
 
-/// Installed validators (by name and version), context handlers, and
-/// binding codecs.
+/// The source-metadata provider the engine itself implements: the file
+/// name's stem, without extension.
+pub const PATH_STEM_SOURCE: &str = "path-stem";
+
+/// Installed validators (by name and version), context handlers, binding
+/// codecs, contribution resolvers, and source-metadata providers.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Extensions {
     validators: BTreeSet<(String, String)>,
     handlers: BTreeSet<String>,
     binding_codecs: BTreeSet<String>,
+    resolvers: BTreeSet<String>,
+    source_providers: BTreeSet<String>,
 }
 
 impl Extensions {
@@ -30,14 +36,17 @@ impl Extensions {
         Self::default()
     }
 
-    /// The engine's own validators and binding codecs: the
-    /// `type-expression` validator version `0` and the `argument-tail`
-    /// binding codec. The `fixture-value` codec is registered by the
-    /// processor that implements it.
+    /// The engine's own validators, binding codecs, and source-metadata
+    /// providers: the `type-expression` validator version `0`, the
+    /// `argument-tail` binding codec, and the `path-stem` source. The
+    /// `fixture-value` codec is registered by the processor that
+    /// implements it; contribution resolvers are domain process business
+    /// and are never installed here.
     pub fn standard() -> Self {
         Self::new()
             .with_validator(TYPE_EXPRESSION_VALIDATOR, TYPE_EXPRESSION_VERSION)
             .with_binding_codec(ARGUMENT_TAIL_CODEC)
+            .with_source_provider(PATH_STEM_SOURCE)
     }
 
     pub fn with_validator(mut self, name: impl Into<String>, version: impl Into<String>) -> Self {
@@ -52,6 +61,20 @@ impl Extensions {
 
     pub fn with_binding_codec(mut self, name: impl Into<String>) -> Self {
         self.binding_codecs.insert(name.into());
+        self
+    }
+
+    /// Register a contribution resolver the processor installs. The
+    /// engine never resolves contributions itself; it routes the
+    /// preserved records to the resolver the schema's policy names.
+    pub fn with_resolver(mut self, name: impl Into<String>) -> Self {
+        self.resolvers.insert(name.into());
+        self
+    }
+
+    /// Register a source-metadata provider the processor installs.
+    pub fn with_source_provider(mut self, name: impl Into<String>) -> Self {
+        self.source_providers.insert(name.into());
         self
     }
 
@@ -70,5 +93,15 @@ impl Extensions {
     /// Whether a binding codec is installed.
     pub fn has_binding_codec(&self, name: &str) -> bool {
         self.binding_codecs.contains(name)
+    }
+
+    /// Whether a contribution resolver is installed.
+    pub fn has_resolver(&self, name: &str) -> bool {
+        self.resolvers.contains(name)
+    }
+
+    /// Whether a source-metadata provider is installed.
+    pub fn has_source_provider(&self, name: &str) -> bool {
+        self.source_providers.contains(name)
     }
 }

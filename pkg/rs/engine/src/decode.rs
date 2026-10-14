@@ -7,8 +7,6 @@ use std::collections::BTreeMap;
 use kdlith_model::{Entry, Location, QualifiedName, Reference, Value};
 use regex::Regex;
 
-use crate::deferred::{Spelling, deferred_by, defers, generic_spelling};
-use crate::definition::Deferral;
 use crate::extensions::TYPE_EXPRESSION_VALIDATOR;
 use crate::names::Names;
 use crate::syntax::parse_u64;
@@ -253,9 +251,6 @@ impl Decoder {
     }
 }
 
-/// The dialect's string type for type names.
-const TYPE_NAME: &str = "TypeName";
-
 /// Why a value did not decode, as precisely as one diagnostic code can
 /// say it. Every reading path classifies a failed value the same way,
 /// so one rejected construct gets one code.
@@ -266,19 +261,14 @@ pub(crate) enum Mismatch {
     Member { ty: String },
     /// A string the type-expression validator rejects.
     TypeExpression { reason: String },
-    /// A spelling of a mechanism the governing dialect defers.
-    Deferred { mechanism: String },
 }
 
-/// Classify a value that failed to decode as `ty`. `deferrals` are the
-/// governing dialect's when the value comes from a definition document,
-/// and empty otherwise.
+/// Classify a value that failed to decode as `ty`.
 pub(crate) fn mismatch(
     types: &TypeCatalog,
     names: &Names,
     ty: &TypeExpr,
     value: &Value,
-    deferrals: &[Deferral],
 ) -> Mismatch {
     let mut ty = ty;
     while let TypeExpr::Optional(inner) | TypeExpr::Nullable(inner) = ty {
@@ -290,16 +280,10 @@ pub(crate) fn mismatch(
     let Some(decl) = types.lookup(*name).and_then(|id| types.get(id)) else {
         return Mismatch::Value;
     };
-    let deferred = |mechanism: &str| Mismatch::Deferred {
-        mechanism: mechanism.to_owned(),
-    };
     match &decl.kind {
         TypeKind::Enum(_) => {
             let ty = names.resolve(*name);
-            match deferred_by(deferrals, Spelling::Member(ty, text)) {
-                Some(mechanism) => deferred(mechanism),
-                None => Mismatch::Member { ty: ty.to_owned() },
-            }
+            Mismatch::Member { ty: ty.to_owned() }
         }
         TypeKind::String(string)
             if string
@@ -308,22 +292,9 @@ pub(crate) fn mismatch(
                 .is_some_and(|v| v.name == TYPE_EXPRESSION_VALIDATOR) =>
         {
             match type_expr::parse(text, &mut Names::default()) {
-                Ok(expr)
-                    if type_expr::instantiates(&expr) && defers(deferrals, "generic-types") =>
-                {
-                    deferred("generic-types")
-                }
                 Ok(_) => Mismatch::Value,
                 Err(ExprError::Syntax(reason)) => Mismatch::TypeExpression { reason },
             }
-        }
-        // A type name spelled as a generic declaration or instantiation.
-        TypeKind::String(_)
-            if names.resolve(*name) == TYPE_NAME
-                && generic_spelling(text)
-                && defers(deferrals, "generic-types") =>
-        {
-            deferred("generic-types")
         }
         _ => Mismatch::Value,
     }

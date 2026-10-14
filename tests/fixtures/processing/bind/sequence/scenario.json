@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "An ordered sequence compiles into the per-scope state machine: box's immediate children arrive in the declared step order (mid up to twice, then thing) and the scope completes green",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":2},\"type_name\":\"Thing\",\"fields\":[{\"name\":\"name\",\"value\":{\"kind\":\"string\",\"value\":\"t\"},\"origin\":2}],\"origin\":2,\"validation\":\"valid\"}}\n",
+      "{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":{\"source\":0,\"index\":0}}}\n{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":null}}\n"
+    ]
+  }
+}

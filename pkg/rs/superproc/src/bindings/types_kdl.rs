@@ -18,6 +18,7 @@ pub(crate) const NODES: &[NodeShape] = &[
         .declaration()
         .ty("ObjectType"),
     NodeShape::new("field").under(&["object"]).ty("FieldDef"),
+    NodeShape::new("fallback").under(&["field"]),
     NodeShape::new("constraints").under(&["object"]),
     NodeShape::new("all-or-none")
         .under(&["constraints"])

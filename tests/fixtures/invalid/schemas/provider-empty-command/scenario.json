@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A secret provider declaring no command could never be resolved: the descriptor is malformed",
+  "args": [
+    "vet",
+    "schema",
+    "schema.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

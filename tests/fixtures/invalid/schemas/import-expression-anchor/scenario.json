@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "An import expression naming an anchor the grammar does not declare is rejected at compile-time grammar validation, whether or not a host would supply it",
+  "args": [
+    "vet",
+    "schema",
+    "--scope",
+    "local",
+    "schema.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

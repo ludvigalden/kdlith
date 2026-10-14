@@ -33,9 +33,13 @@ pub(crate) fn run(cx: &mut Cx<'_>, bindings: &BindingCatalog) {
         let owner = cx.names.resolve(decl.name);
         for field in &object.fields {
             let label = format!("field {owner}.{}", cx.names.resolve(field.name));
-            let literals = [&field.fallback, &field.documented_default];
-            for literal in literals.into_iter().flatten() {
+            if let Some(literal) = &field.documented_default {
                 found.push((site, label.clone(), field.ty.clone(), literal.clone()));
+            }
+            // A computed default is a descriptor the engine never
+            // computes; only its literal alternative is a value here.
+            if let Some(literal) = field.fallback.as_ref().and_then(|d| d.literal()) {
+                found.push((site, label, field.ty.clone(), literal.clone()));
             }
         }
     }

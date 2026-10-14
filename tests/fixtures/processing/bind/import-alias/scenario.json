@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "Data binds under the aliased-import schema: the part's parented record node binds an extra child of the merged root, proving the aliased contributing document took part in the compile",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "main.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":1},\"type_name\":\"Extra\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"e\"},\"origin\":1}],\"origin\":1,\"validation\":\"valid\"}}\n"
+    ]
+  }
+}

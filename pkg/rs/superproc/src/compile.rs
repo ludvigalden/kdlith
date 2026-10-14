@@ -6,10 +6,12 @@ use std::path::Path;
 
 use kdlith_diagnostic::{ByteSpan, DiagnosticRecord, Severity};
 use kdlith_engine::{
-    CaptureInput, CaseInput, CheckScope, ChildRuleInput, ConstraintInput, Construct, DeferralInput,
-    Definition, DefinitionInput, DependentInput, DocumentInput, DocumentRuleInput,
-    EffectGroupInput, EffectInput, Extensions, FieldBindingInput, FieldInput, FormatInput,
-    ImportInput, Located, MemberInput, NodeInput, ParsedDocument, SlotInput, SourceInput,
+    AnchorInput, CaptureInput, CaseInput, CheckScope, ChildRuleInput, ConstraintInput, Construct,
+    DefaultInput, Definition, DefinitionInput, DependentInput, DescendantRuleInput, DiscoveryInput,
+    DocumentInput, DocumentRuleInput, EffectGroupInput, EffectInput, Extensions, FieldBindingInput,
+    FieldInput, FormatInput, IdentityInput, ImportInput, Located, MemberInput, NodeInput,
+    ParsedDocument, ProfileInput, ProviderInput, QualifierInput, ReferenceInput, ResolutionInput,
+    SequenceInput, SlotInput, SourceContextInput, SourceFieldInput, SourceInput, StepInput,
     TypeInput, TypedItem, ValidatorInput, VariantInput, compile_dialect, compile_dialect_input,
     compile_schema_input,
 };
@@ -17,8 +19,9 @@ use kdlith_runtime::Repeated;
 
 use crate::processors::{Item, reader};
 use crate::types::{
-    CodecType, Constraint, Deferral, DocumentRule, Effect, EnumType, FieldBinding, MapType,
-    NodeDef, ObjectType, Source, StringType, UnionType,
+    CodecType, Constraint, DefaultSpec, DiscoveryDef, DocumentRule, Effect, EnumType, FieldBinding,
+    MapType, NodeDef, ObjectType, ProfileDef, ReferenceDef, ResolutionPolicyDef, SecretProvider,
+    Source, StringType, UnionType,
 };
 
 /// The canonical dialect's contributing documents, embedded so the
@@ -134,8 +137,8 @@ fn take(item: TypedItem<Item>, input: &mut DefinitionInput, records: &mut Vec<Di
         TypedItem::Declaration { value, span, .. } => {
             push(input, records, declaration(value), span);
         }
-        TypedItem::Record { value, span, .. } => {
-            if let Item::DocumentRule(rule) = value {
+        TypedItem::Record { value, span, .. } => match value {
+            Item::DocumentRule(rule) => {
                 let DocumentRule { first, following } = rule;
                 push(
                     input,
@@ -156,7 +159,35 @@ fn take(item: TypedItem<Item>, input: &mut DefinitionInput, records: &mut Vec<Di
                     span,
                 );
             }
-        }
+            // A source-context block is a record: a statement about the
+            // documents a definition reads, never referenced by name.
+            Item::SourceContextDef(block) => push(
+                input,
+                records,
+                Some(Construct::SourceContext(SourceContextInput {
+                    mode: block.mode.member().to_owned(),
+                    fields: block
+                        .fields
+                        .iter()
+                        .map(|(name, field)| SourceFieldInput {
+                            name: name.as_str().to_owned(),
+                            ty: field.ty.as_str().to_owned(),
+                            sources: field
+                                .sources
+                                .iter()
+                                .map(|_| "path-stem".to_owned())
+                                .collect(),
+                        })
+                        .collect(),
+                })),
+                span,
+            ),
+            // A record of any other type is a reader contract this loader
+            // cannot proceed past: the dialect declares no such record.
+            _ => records.push(broken_contract(
+                "a definition reading yielded an unknown record",
+            )),
+        },
         TypedItem::Import(request) => {
             let span = request.site.span.byte_span();
             push(
@@ -166,6 +197,7 @@ fn take(item: TypedItem<Item>, input: &mut DefinitionInput, records: &mut Vec<Di
                     path: request.expression,
                     project: request.project,
                     repeated: repeated_name(request.repeated).to_owned(),
+                    alias: request.alias,
                 })),
                 span,
             );
@@ -285,7 +317,10 @@ fn declaration(value: Item) -> Option<Construct> {
                     ty: field.ty.as_str().to_owned(),
                     description: field.description.clone(),
                     documented_default: field.documented_default.clone(),
-                    fallback: field.fallback.clone(),
+                    // The bound fallback spells the default: the literal
+                    // alternative supplies an absent value; the computed
+                    // one is a descriptor the processor never computes.
+                    default: field.fallback.as_ref().map(default),
                     sensitivity: field.sensitivity.map(|s| s.member().to_owned()),
                 })
                 .collect(),
@@ -351,21 +386,120 @@ fn declaration(value: Item) -> Option<Construct> {
                 .collect(),
             namespace: namespace.map(|namespace| namespace.as_str().to_owned()),
         }),
-        Item::NodeDef(node) => Construct::Node(node_input(node)),
+        Item::NodeDef(node) => Construct::Node(Box::new(node_input(node))),
         Item::SlotDef(slot) => Construct::Slot(SlotInput {
             name: slot.name.as_str().to_owned(),
             ty: slot.ty.as_str().to_owned(),
             namespace: slot.namespace.as_ref().map(|ns| ns.as_str().to_owned()),
             description: slot.description,
+            accumulate: slot.accumulate.map(|policy| policy.op.member().to_owned()),
         }),
-        Item::Deferral(Deferral { mechanism, note }) => Construct::Deferral(DeferralInput {
-            mechanism: mechanism.as_str().to_owned(),
-            note,
+        Item::ProfileDef(ProfileDef {
+            name,
+            roots,
+            grammar,
+        }) => Construct::Profile(ProfileInput {
+            name: name.as_str().to_owned(),
+            roots: roots.map(|roots| {
+                roots
+                    .allow
+                    .iter()
+                    .map(|ty| ty.as_str().to_owned())
+                    .collect()
+            }),
+            grammar: grammar.map(|grammar| grammar.as_str().to_owned()),
         }),
+        Item::DiscoveryDef(DiscoveryDef {
+            name,
+            anchors,
+            patterns,
+            order: _,
+            allow_empty,
+        }) => Construct::Discovery(DiscoveryInput {
+            name: name.as_str().to_owned(),
+            anchors: anchors
+                .iter()
+                .map(|(name, anchor)| AnchorInput {
+                    name: name.as_str().to_owned(),
+                    provider: anchor.provider.as_str().to_owned(),
+                })
+                .collect(),
+            star: patterns
+                .as_ref()
+                .is_some_and(|rules| rules.star.unwrap_or(false)),
+            doublestar: patterns
+                .as_ref()
+                .is_some_and(|rules| rules.doublestar.unwrap_or(false)),
+            braces: patterns
+                .as_ref()
+                .is_some_and(|rules| rules.braces.unwrap_or(false)),
+            allow_empty: allow_empty.unwrap_or(false),
+        }),
+        Item::ReferenceDef(ReferenceDef {
+            name,
+            target,
+            codec,
+            lookup,
+            qualification,
+            qualifiers,
+        }) => Construct::Reference(ReferenceInput {
+            name: name.as_str().to_owned(),
+            target: target.as_str().to_owned(),
+            codec: codec.as_ref().map(|codec| codec.as_str().to_owned()),
+            lookup: lookup.as_ref().map(|domain| domain.as_str().to_owned()),
+            qualification: qualification.member().to_owned(),
+            qualifiers: qualifiers
+                .iter()
+                .map(|qualifier| QualifierInput {
+                    name: qualifier.name.as_str().to_owned(),
+                    ty: qualifier.ty.as_str().to_owned(),
+                    // A declared qualifier is required unless it says
+                    // otherwise.
+                    required: qualifier.required.unwrap_or(true),
+                })
+                .collect(),
+        }),
+        Item::ResolutionPolicyDef(ResolutionPolicyDef {
+            resolver,
+            layers,
+            selection,
+            duplicates,
+            missing,
+        }) => Construct::Resolution(ResolutionInput {
+            resolver: resolver.as_str().to_owned(),
+            layers: layers.unwrap_or_default(),
+            selection: selection.member().to_owned(),
+            duplicates: duplicates.member().to_owned(),
+            missing: missing.member().to_owned(),
+        }),
+        Item::SecretProvider(SecretProvider { id, ttl, command }) => {
+            Construct::Provider(ProviderInput {
+                id: id.as_str().to_owned(),
+                ttl,
+                command,
+            })
+        }
         // Records reach `take` as `TypedItem::Record`.
-        Item::DocumentRule(_) => return None,
+        Item::DocumentRule(_) | Item::SourceContextDef(_) => return None,
     };
     Some(construct)
+}
+
+/// The default a bound fallback spells: literal or computed, never
+/// silently dropped — the binder's case dispatch selected one variant.
+fn default(spec: &DefaultSpec) -> DefaultInput {
+    match spec {
+        DefaultSpec::Literal(literal) => DefaultInput {
+            computed: false,
+            value: Some(literal.value.clone()),
+            dependencies: Vec::new(),
+        },
+        DefaultSpec::Computed(computed) => DefaultInput {
+            computed: true,
+            value: None,
+            dependencies: computed.dependencies.clone(),
+        },
+    }
 }
 
 fn constraint(constraint: &Constraint) -> ConstraintInput {
@@ -420,6 +554,10 @@ fn node_input(node: NodeDef) -> NodeInput {
             .parents
             .as_ref()
             .map(|parents| parents.iter().map(|p| p.as_str().to_owned()).collect()),
+        profile: node
+            .profile
+            .as_ref()
+            .map(|profile| profile.as_str().to_owned()),
         fields: node
             .fields
             .iter()
@@ -447,9 +585,50 @@ fn node_input(node: NodeDef) -> NodeInput {
             .iter()
             .map(|group| group.nodes.iter().map(|n| n.as_str().to_owned()).collect())
             .collect(),
+        descendants: node
+            .descendants
+            .iter()
+            .map(|rule| DescendantRuleInput {
+                name: rule.name.as_str().to_owned(),
+                min: rule.min_occurs,
+                max: rule.max_occurs,
+            })
+            .collect(),
+        sequence: node.sequence.as_ref().map(|sequence| SequenceInput {
+            steps: sequence
+                .steps
+                .iter()
+                .map(|step| StepInput {
+                    name: step.name.as_ref().map(|name| name.as_str().to_owned()),
+                    alternatives: step
+                        .alternatives
+                        .as_ref()
+                        .map(|alternatives| {
+                            alternatives
+                                .nodes
+                                .iter()
+                                .map(|name| name.as_str().to_owned())
+                                .collect()
+                        })
+                        .unwrap_or_default(),
+                    min: step.min_occurs,
+                    max: step.max_occurs,
+                })
+                .collect(),
+        }),
         value,
         cases,
         otherwise,
+        identity: node.identity.as_ref().map(|identity| IdentityInput {
+            domain: identity.domain.name.as_str().to_owned(),
+            form: identity.compose.form.member().to_owned(),
+            fields: identity
+                .compose
+                .fields
+                .iter()
+                .map(|field| field.as_str().to_owned())
+                .collect(),
+        }),
     }
 }
 

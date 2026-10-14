@@ -7,6 +7,14 @@ use crate::source::Location;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct OriginId(pub u32);
 
+impl OriginId {
+    /// The origin of a value derived from source metadata (a
+    /// source-context provider such as the file's path stem) rather than
+    /// from any node of the stream. Node indices are bounded far below
+    /// `u32::MAX`, so the sentinel never collides with a real node.
+    pub const SOURCE_METADATA: Self = Self(u32::MAX);
+}
+
 /// The operation that produced a derived value.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]

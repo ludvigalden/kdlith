@@ -1,0 +1,6 @@
+schema demo version="1" {
+    import "part.kdl" as=Bad_Name
+    node root role=container {
+        children extra
+    }
+}

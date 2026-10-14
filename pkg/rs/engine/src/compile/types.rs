@@ -8,9 +8,9 @@ use crate::diag::{NOT_INSTALLED, Site, duplicate, duplicate_key};
 use crate::names::Sym;
 use crate::syntax::SyntaxNode;
 use crate::types::{
-    CaptureDef, CodecDecl, Constraint, EnumMember, EnumType, FieldDef, FormatRule, MapType,
-    ObjectType, Sensitivity, StringType, TypeDecl, TypeExpr, TypeKind, UnionType, ValidatorUse,
-    Variant,
+    CaptureDef, CodecDecl, Constraint, DefaultSpec, EnumMember, EnumType, FieldDef, FormatRule,
+    MapType, ObjectType, Sensitivity, StringType, TypeDecl, TypeExpr, TypeKind, UnionType,
+    ValidatorUse, Variant,
 };
 use kdlith_model::Value;
 use regex::Regex;
@@ -403,14 +403,38 @@ fn field_def(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) -> Option<FieldDef>
         if !cx.only_once(&mut seen[slot], child_site, &label, &child.name) {
             continue;
         }
-        let mut value = Construct::new(cx, doc, child);
-        let literal = value.value_arg(cx, 0, "value");
-        value.finish_leaf(cx);
         if slot == 0 {
+            let mut value = Construct::new(cx, doc, child);
+            let literal = value.value_arg(cx, 0, "value");
+            value.finish_leaf(cx);
             documented_default = literal;
-        } else {
-            fallback = literal;
+            continue;
         }
+        // A fallback is a literal value or a computed descriptor,
+        // discriminated by its `computed` property.
+        let mut part = Construct::new(cx, doc, child);
+        let value = part.opt_value_arg(0);
+        let computed = part.value_prop("computed");
+        part.finish(cx);
+        let mut dependencies = Vec::new();
+        for inner in &child.children {
+            let inner_site = Site::new(doc, inner.span);
+            if inner.name != "dependency" {
+                cx.unknown(doc, inner, "fallback");
+                continue;
+            }
+            let mut dep = Construct::new(cx, doc, inner);
+            let spelled = dep.string_arg(cx, 0, "dependency");
+            dep.finish_leaf(cx);
+            if let Some(spelled) = spelled {
+                if dependencies.contains(&spelled) {
+                    cx.malformed(inner_site, "fallback", &format!("names {spelled} twice"));
+                    continue;
+                }
+                dependencies.push(spelled);
+            }
+        }
+        fallback = default_spec(cx, child_site, &computed, value, dependencies);
     }
     let name = name?;
     if !field_name(&name) {
@@ -427,6 +451,47 @@ fn field_def(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) -> Option<FieldDef>
         fallback,
         sensitivity,
     })
+}
+
+/// A field's declared default from its spelling: a literal value or a
+/// computed descriptor. A default that is neither, or both, is rejected
+/// loudly — the engine never guesses which reading was meant.
+fn default_spec(
+    cx: &mut Cx<'_>,
+    site: Site,
+    computed: &Option<Value>,
+    value: Option<Value>,
+    dependencies: Vec<String>,
+) -> Option<DefaultSpec> {
+    let computed = match computed {
+        None => false,
+        Some(Value::Bool(flag)) => *flag,
+        Some(other) => {
+            cx.mistyped(
+                site,
+                "the computed property of fallback",
+                "Bool",
+                &found(other),
+            );
+            return None;
+        }
+    };
+    match (computed, value) {
+        (true, Some(_)) => {
+            cx.malformed(
+                site,
+                "fallback",
+                "a computed default carries no literal value",
+            );
+            None
+        }
+        (true, None) => Some(DefaultSpec::Computed { dependencies }),
+        (false, Some(value)) => Some(DefaultSpec::Literal(value)),
+        (false, None) => {
+            cx.malformed(site, "fallback", "a literal default carries no value");
+            None
+        }
+    }
 }
 
 fn constraint_list(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode, out: &mut Vec<Constraint>) {

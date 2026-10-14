@@ -1,8 +1,0 @@
-{
-  "binary": "kdlith",
-  "description": "Pinned v0 behavior: an explicit repeated policy on a dialect document's import is not admitted by the dialect's self-description, so both the importing and the imported document are rejected (any spelling, including reject); the policies are exercised positively on schema documents instead",
-  "args": ["vet", "dialect", "input.kdl"],
-  "expect-invalid": {
-    "input": "expect-invalid.txt"
-  }
-}

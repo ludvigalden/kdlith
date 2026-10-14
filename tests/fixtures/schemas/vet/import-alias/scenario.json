@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "An import carrying as=NAME vets green and the aliased contributing document merges into one schema with the importer (the alias namespace itself is not surfaced; see the declared elisions)",
+  "args": [
+    "vet",
+    "schema",
+    "main.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "ok: schema demo version 1 scope=complete documents=2 types=1 nodes=2 slots=0 profiles=0 digest=1df8119f22df84cc"
+    ]
+  }
+}

@@ -1,0 +1,20 @@
+schema demo version="1" grammar=main {
+    types {
+        object Thing {
+            field name String
+        }
+    }
+    node thing role=record type=Thing {
+        field name arg=0
+    }
+    discovery main {
+        anchor root provider=path
+        patterns star=#true
+    }
+    import "$root/${HOME}/*.kdl"
+    document {
+        first {
+            exactly-one thing
+        }
+    }
+}

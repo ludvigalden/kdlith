@@ -5,6 +5,8 @@ use kdlith_engine::{
     OrderedMap, Shaped, TypeShape, ValueExpr, enum_type, object_type, string_type, union_type,
 };
 
+use super::DefaultSpec;
+
 string_type! {
     pub struct TypeName;
 }
@@ -126,7 +128,7 @@ object_type! {
         "type" => ty: TypeExpression,
         "description" => description: Option<String>,
         "documented-default" => documented_default: Option<ValueExpr>,
-        "fallback" => fallback: Option<ValueExpr>,
+        "fallback" => fallback: Option<DefaultSpec>,
         "sensitivity" => sensitivity: Option<Sensitivity>,
     }
 }

@@ -109,7 +109,7 @@ fn summary_line(definition: &Definition) -> String {
         .filter(|(_, decl)| decl.site.is_some())
         .count();
     format!(
-        "ok: {} {} version {} scope={} documents={} types={declared} nodes={} slots={} deferrals={} digest={}",
+        "ok: {} {} version {} scope={} documents={} types={declared} nodes={} slots={} profiles={} digest={}",
         definition.kind.root_name(),
         definition.name,
         definition.version.as_deref().unwrap_or("-"),
@@ -117,7 +117,7 @@ fn summary_line(definition: &Definition) -> String {
         definition.documents.len(),
         definition.bindings.len(),
         definition.slots.len(),
-        definition.deferrals.len(),
+        definition.profiles.len(),
         definition.digest(),
     )
 }

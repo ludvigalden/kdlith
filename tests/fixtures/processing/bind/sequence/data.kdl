@@ -1,0 +1,5 @@
+box "b" {
+    mid {
+    }
+    thing "t"
+}

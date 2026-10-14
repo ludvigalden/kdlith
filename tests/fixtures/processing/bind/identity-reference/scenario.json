@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "A data declaration binds under the identity-bearing schema with its composed identity: the declaration item carries the domain and the qualified name composed from the bound namespace field",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":0},\"identity\":{\"domain\":\"Thing\",\"name\":[\"tools\"]},\"type_name\":\"Thing\",\"fields\":[{\"name\":\"ns\",\"value\":{\"kind\":\"string\",\"value\":\"tools\"},\"origin\":0},{\"name\":\"name\",\"value\":{\"kind\":\"string\",\"value\":\"hammer\"},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n"
+    ]
+  }
+}

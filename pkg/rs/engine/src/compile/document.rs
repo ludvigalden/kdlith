@@ -1,59 +1,14 @@
-//! Reading the deferral markers, `context` slots, the `document` rule,
-//! and `import` requests.
+//! Reading `context` slots, the `document` rule, and `import` requests.
 
 use crate::compile::Cx;
 use crate::compile::reader::Construct;
-use crate::deferred::{defers, is_discovery_path};
+use crate::discovery::is_expression;
 use kdlith_runtime::Repeated;
 
-use crate::definition::{Deferral, DocumentRule, ImportDecl, SlotDecl};
-use crate::diag::{DEFERRED_MECHANISM, Site, duplicate};
+use crate::definition::{DocumentRule, ImportDecl, SlotDecl};
+use crate::diag::{Site, duplicate};
 use crate::names::Sym;
 use crate::syntax::SyntaxNode;
-
-/// Collect a dialect root's `deferred` markers before anything else is
-/// read, so every construct is checked against the full deferral set.
-pub(crate) fn deferrals(cx: &mut Cx<'_>, doc: usize, root: &SyntaxNode) {
-    for child in root
-        .children
-        .iter()
-        .filter(|child| child.name == "deferred")
-    {
-        let site = Site::new(doc, child.span);
-        let mut part = Construct::new(cx, doc, child);
-        let mechanism = part.string_arg(cx, 0, "mechanism");
-        let note = part.string_prop(cx, "note");
-        part.finish_leaf(cx);
-        let Some(mechanism) = mechanism else { continue };
-        if !cx.kebab(site, "deferred", &mechanism, "mechanism") {
-            continue;
-        }
-        let Some(note) = note else {
-            cx.missing(site, "deferred", "note");
-            continue;
-        };
-        if let Some(first) = cx
-            .deferrals
-            .iter()
-            .find(|d| d.mechanism == mechanism)
-            .map(|d| d.site)
-        {
-            duplicate(
-                &mut cx.diags,
-                cx.kind,
-                (site, first),
-                "deferral",
-                &mechanism,
-            );
-            continue;
-        }
-        cx.deferrals.push(Deferral {
-            mechanism,
-            note,
-            site,
-        });
-    }
-}
 
 pub(crate) fn context(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) {
     Construct::new(cx, doc, node).finish(cx);
@@ -95,11 +50,14 @@ pub(crate) fn context(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) {
             continue;
         }
         let namespace = namespace.map(|namespace| cx.names.intern(&namespace));
+        // The canonical dialect's own slots declare no accumulation; the
+        // reader path lands accumulate with the expanded-surface issue.
         cx.slots.push(SlotDecl {
             name: sym,
             ty,
             namespace,
             description,
+            accumulate: None,
             site,
         });
     }
@@ -182,6 +140,7 @@ pub(crate) fn import(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) {
     let mut part = Construct::new(cx, doc, node);
     let path = part.string_arg(cx, 0, "path");
     let repeated = part.string_prop(cx, "repeated");
+    let alias = part.string_prop(cx, "as");
     part.finish(cx);
     let mut project = Vec::new();
     let mut seen = None;
@@ -206,21 +165,40 @@ pub(crate) fn import(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) {
             return;
         }
     };
+    let alias = match alias {
+        Some(alias) if cx.kebab(site, "import", &alias, "alias") => Some(cx.names.intern(&alias)),
+        Some(_) => return,
+        None => None,
+    };
     let Some(path) = path else { return };
     if path.is_empty() {
         cx.malformed(site, "import", "empty path");
         return;
     }
-    if is_discovery_path(&path) {
+    if is_expression(&path) {
+        // The seed bootstrap compiles only the canonical dialect, which
+        // binds no discovery grammar; a schema's grammar-admitted
+        // expressions arrive through the reader path, which validates
+        // them against the compiled grammar.
         let construct = format!("import {path:?}");
-        if defers(&cx.deferrals, "discovery-grammars") {
-            cx.diags.error(
-                DEFERRED_MECHANISM,
-                site,
-                &[&construct, "discovery-grammars"],
+        cx.malformed(site, &construct, "import paths are literal");
+        return;
+    }
+    if let Some(alias) = alias
+        && cx.imports.iter().any(|import| import.alias == Some(alias))
+    {
+        let first = cx
+            .imports
+            .iter()
+            .find(|import| import.alias == Some(alias))
+            .map(|import| import.site);
+        if let Some(first) = first {
+            crate::diag::duplicate_key(
+                &mut cx.diags,
+                (site, first),
+                "the alias of import",
+                "document.imports",
             );
-        } else {
-            cx.malformed(site, &construct, "import paths are literal");
         }
         return;
     }
@@ -228,6 +206,7 @@ pub(crate) fn import(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) {
         path,
         project,
         repeated,
+        alias,
         site,
     });
 }

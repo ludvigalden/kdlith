@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "A schema relying on a mechanism the dialect declares deferred is rejected, never silently ignored",
+  "description": "The deferral marker is retired with the twelve mechanisms it tracked: a schema spelling it is a node no binding accepts, rejected as unbound on every reading path \u2014 the same loud failure the marker existed to guarantee",
   "args": [
     "vet",
     "schema",

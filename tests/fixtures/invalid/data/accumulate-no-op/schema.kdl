@@ -1,0 +1,29 @@
+schema demo version="1" {
+    types {
+        string Tag {
+            format kebab-case
+        }
+        object TagSet {
+            field tags "list<Tag>"
+        }
+    }
+    context {
+        slot tags "list<Tag>"
+    }
+    node tag role=context-control type=TagSet {
+        field tags {
+            from {
+                args
+            }
+        }
+        effects target=following {
+            set tags field=tags
+        }
+    }
+    document {
+        first {
+            exactly-one tag
+        }
+        following tag
+    }
+}

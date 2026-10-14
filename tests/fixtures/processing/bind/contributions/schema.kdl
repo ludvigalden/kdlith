@@ -1,0 +1,21 @@
+schema demo version="1" {
+    types {
+        object Setting {
+            field target String
+            field value String
+            field layer "optional<String>"
+            field scope "optional<String>"
+        }
+    }
+    node setting role=contribution type=Setting {
+        field target arg=0
+        field value arg=1
+        field layer property=layer
+        field scope property=scope
+    }
+    document {
+        first {
+            exactly-one setting
+        }
+    }
+}

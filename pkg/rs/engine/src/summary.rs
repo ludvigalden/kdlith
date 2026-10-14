@@ -31,15 +31,109 @@ impl Definition {
         }
         for slot in &self.slots {
             let namespace = slot.namespace.map_or("-", |ns| n.resolve(ns));
+            let accumulate = slot
+                .accumulate
+                .map_or_else(|| "-".to_owned(), |op| op.name().to_owned());
             let _ = writeln!(
                 out,
-                "slot {} {} namespace={namespace}",
+                "slot {} {} namespace={namespace} accumulate={accumulate}",
                 n.resolve(slot.name),
                 expr(n, &slot.ty)
             );
         }
-        for deferral in &self.deferrals {
-            let _ = writeln!(out, "deferred {} {:?}", deferral.mechanism, deferral.note);
+        for profile in &self.profiles {
+            let roots = profile
+                .roots
+                .as_ref()
+                .map_or_else(|| "-".to_owned(), |roots| list(n, roots));
+            let grammar = profile.grammar.map_or("-", |g| n.resolve(g));
+            let _ = writeln!(
+                out,
+                "profile {} roots={roots} grammar={grammar}",
+                n.resolve(profile.name)
+            );
+        }
+        for grammar in &self.discoveries {
+            let anchors: Vec<String> = grammar
+                .anchors
+                .iter()
+                .map(|anchor| format!("{}={}", n.resolve(anchor.name), n.resolve(anchor.provider)))
+                .collect();
+            let patterns = crate::discovery::pattern_names(&grammar.patterns).join(",");
+            let _ = writeln!(
+                out,
+                "discovery {} anchors [{}] patterns [{}] allow-empty={}",
+                n.resolve(grammar.name),
+                anchors.join(","),
+                patterns,
+                grammar.allow_empty
+            );
+        }
+        for reference in &self.references {
+            let codec = reference.codec.map_or("-", |c| n.resolve(c));
+            let lookup = reference.lookup.map_or("-", |l| n.resolve(l));
+            let qualifiers: Vec<String> = reference
+                .qualifiers
+                .iter()
+                .map(|qualifier| {
+                    format!(
+                        "{}:{} required={}",
+                        n.resolve(qualifier.name),
+                        expr(n, &qualifier.ty),
+                        qualifier.required
+                    )
+                })
+                .collect();
+            let _ = writeln!(
+                out,
+                "reference {} target={} codec={codec} lookup={lookup} qualification={} qualifiers [{}]",
+                n.resolve(reference.name),
+                n.resolve(reference.target),
+                reference.qualification.name(),
+                qualifiers.join(",")
+            );
+        }
+        if let Some(policy) = &self.resolution {
+            let _ = writeln!(
+                out,
+                "resolution {} layers [{}] selection={} duplicates={} missing={}",
+                n.resolve(policy.resolver),
+                policy.layers.join(","),
+                policy.selection.name(),
+                policy.duplicates.name(),
+                policy.missing.name()
+            );
+        }
+        for provider in &self.providers {
+            let ttl = provider
+                .ttl
+                .map_or_else(|| "-".to_owned(), |t| t.to_string());
+            let _ = writeln!(
+                out,
+                "provider {} ttl={ttl} command [{}]",
+                provider.id,
+                provider.command.join(",")
+            );
+        }
+        if let Some(source) = &self.source_context {
+            let fields: Vec<String> = source
+                .fields
+                .iter()
+                .map(|field| {
+                    format!(
+                        "{}:{} [{}]",
+                        n.resolve(field.name),
+                        expr(n, &field.ty),
+                        field.sources.join(",")
+                    )
+                })
+                .collect();
+            let _ = writeln!(
+                out,
+                "source-context mode={} fields [{}]",
+                source.mode.name(),
+                fields.join("; ")
+            );
         }
         if let Some(rule) = &self.document_rule {
             let first = rule
@@ -225,13 +319,46 @@ fn node_line(n: &Names, node: &NodeDecl) -> String {
         .otherwise
         .as_ref()
         .map_or_else(|| "-".to_owned(), |ty| expr(n, ty));
+    let profile = node.profile.map_or("-", |p| n.resolve(p));
+    let descendants: Vec<String> = node
+        .descendants
+        .iter()
+        .map(|rule| format!("{}:{:?}..{:?}", n.resolve(rule.name), rule.min, rule.max))
+        .collect();
+    let sequence = node.sequence.as_ref().map_or_else(
+        || "-".to_owned(),
+        |sequence| {
+            let steps: Vec<String> = sequence
+                .steps
+                .iter()
+                .map(|step| {
+                    let alternatives: Vec<&str> =
+                        step.alternatives.iter().map(|a| n.resolve(*a)).collect();
+                    format!("{}..{} {}", step.min, step.max, alternatives.join("|"))
+                })
+                .collect();
+            steps.join(";")
+        },
+    );
+    let identity = node.identity.as_ref().map_or_else(
+        || "-".to_owned(),
+        |identity| {
+            let fields: Vec<&str> = identity.fields.iter().map(|f| n.resolve(*f)).collect();
+            format!(
+                "{} qualified-name [{}]",
+                n.resolve(identity.domain),
+                fields.join(",")
+            )
+        },
+    );
     format!(
-        "node {} role={role} type={ty} under={placement} fields [{}] children [{}] effects [{}] groups [{}] value {value} cases [{}] otherwise {otherwise}",
+        "node {} role={role} type={ty} under={placement} profile={profile} fields [{}] children [{}] effects [{}] groups [{}] descendants [{}] sequence {sequence} value {value} cases [{}] otherwise {otherwise} identity {identity}",
         n.resolve(node.name),
         fields.join("; "),
         children.join(","),
         effects.join(","),
         groups.join(","),
+        descendants.join(","),
         cases.join(";")
     )
 }

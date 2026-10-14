@@ -90,10 +90,19 @@ pub struct NodeDecl {
     /// The logical object type whose fields the bindings populate.
     pub ty: Option<Sym>,
     pub placement: Placement,
+    /// The profile this declaration belongs to, when it carries
+    /// `profile=NAME`: the declaration is admitted only under that
+    /// profile.
+    pub profile: Option<Sym>,
     pub fields: Vec<FieldBinding>,
     pub children: Vec<ChildRule>,
     pub effects: Vec<EffectGroup>,
     pub groups: Vec<Vec<Sym>>,
+    /// Occurrence bounds over this node's whole subtree, checked when
+    /// this scope completes; never across an import boundary.
+    pub descendants: Vec<DescendantRule>,
+    /// The ordered sequence the node's immediate children must match.
+    pub sequence: Option<SequenceDecl>,
     /// The node's dependent payload binding, if it declares one.
     pub value: Option<DependentBinding>,
     /// The case dispatch that selects the type a node binds as, top-down,
@@ -101,6 +110,51 @@ pub struct NodeDecl {
     pub cases: Vec<CaseRule>,
     /// The fallback type when no case matches.
     pub otherwise: Option<TypeExpr>,
+    /// The identity block the declaration composes its qualified symbol
+    /// from, when it declares one.
+    pub identity: Option<IdentityDecl>,
+    pub site: Site,
+}
+
+/// An occurrence bound over the declaring node's subtree.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct DescendantRule {
+    pub name: Sym,
+    pub min: Option<u64>,
+    pub max: Option<u64>,
+    pub site: Site,
+}
+
+/// An ordered sequence of steps a node's immediate children must match.
+/// Repetition stays with each step's bounds; there are no
+/// unbounded-repetition groups.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct SequenceDecl {
+    pub steps: Vec<SequenceStep>,
+    pub site: Site,
+}
+
+/// One step of an ordered sequence: one node name or a group of
+/// alternatives. Absent bounds mean exactly once.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct SequenceStep {
+    /// The node names the step admits.
+    pub alternatives: Vec<Sym>,
+    pub min: u64,
+    pub max: u64,
+    pub site: Site,
+}
+
+/// The identity a declaration registers: its domain and the fields its
+/// qualified symbol composes from, in order.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct IdentityDecl {
+    pub domain: Sym,
+    pub fields: Vec<Sym>,
     pub site: Site,
 }
 

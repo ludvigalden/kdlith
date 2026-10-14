@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A child arriving where the compiled ordered sequence does not admit it is rejected as an occurrence violation of the declaring scope",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "data.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

@@ -1,0 +1,26 @@
+schema demo version="1" {
+    types {
+        object Thing {
+            field name String
+        }
+        object Box {
+            field title String
+        }
+    }
+    node thing role=record type=Thing parent=mid {
+        field name arg=0
+    }
+    node mid role=container parent=box {
+        children thing
+    }
+    node box role=container type=Box {
+        field title arg=0
+        children mid
+        descendants thing max-occurs=1
+    }
+    document {
+        first {
+            exactly-one box
+        }
+    }
+}

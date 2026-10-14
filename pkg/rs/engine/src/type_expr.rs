@@ -29,23 +29,6 @@ pub(crate) fn parse(text: &str, names: &mut Names) -> Result<TypeExpr, ExprError
     Ok(expr)
 }
 
-/// Whether a parsed expression instantiates a generic, so a dialect that
-/// still defers `generic-types` can reject the spelling.
-pub(crate) fn instantiates(expr: &TypeExpr) -> bool {
-    match expr {
-        TypeExpr::Instantiation(_, _) => true,
-        TypeExpr::Named(_) => false,
-        TypeExpr::Optional(inner)
-        | TypeExpr::Nullable(inner)
-        | TypeExpr::List(inner)
-        | TypeExpr::Ref(inner) => instantiates(inner),
-        TypeExpr::Map(key, value) | TypeExpr::OrderedMap(key, value) => {
-            instantiates(key) || instantiates(value)
-        }
-        TypeExpr::Union(members) => members.iter().any(instantiates),
-    }
-}
-
 struct ExprParser<'t> {
     text: &'t str,
     at: usize,

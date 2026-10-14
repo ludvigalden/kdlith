@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A reference declaration naming a qualification that is not one of the three defined policies is a value naming no member of its enum",
+  "args": [
+    "vet",
+    "schema",
+    "schema.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

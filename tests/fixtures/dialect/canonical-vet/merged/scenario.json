@@ -1,9 +1,20 @@
 {
   "binary": "kdlith",
   "description": "The four canonical dialect definition files compile as one dialect with complete checking: every type, node, parent, field, and slot they reference is declared, and the dialect's own bindings describe every construct the files use. The digest is the canonical summary the entrypoint must reproduce (dialect/entrypoint-vet/dialect)",
-  "args": ["vet", "dialect", "{fx-suite}/../../pkg/kdl/schemas/dialect/types.kdl", "{fx-suite}/../../pkg/kdl/schemas/dialect/bindings.kdl", "{fx-suite}/../../pkg/kdl/schemas/dialect/context.kdl", "{fx-suite}/../../pkg/kdl/schemas/dialect/documents.kdl"],
+  "args": [
+    "vet",
+    "dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/types.kdl",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/bindings.kdl",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/context.kdl",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/documents.kdl"
+  ],
   "expect": {
     "exit": 0,
-    "stdout-contains": ["ok: dialect kdlith version 0 scope=complete documents=4 ", " deferrals=12 ", " digest=fbbbd4f0f6625a48"]
+    "stdout-contains": [
+      "ok: dialect kdlith version 0 scope=complete documents=4 ",
+      " types=108 nodes=65 ",
+      " digest=d1f2c23d303b8b9d"
+    ]
   }
 }

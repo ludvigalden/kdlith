@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A schema that declares profiles must have one named by the invocation: no CLI flag names a profile yet, so binding any data document under it fails closed with SCH011 \u2014 the none-named arm of profile selection",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "data.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

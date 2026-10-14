@@ -1,0 +1,4 @@
+dialect kdlith version="0" {
+    import "part.kdl" repeated=coalesce
+    import "part.kdl" repeated=coalesce
+}

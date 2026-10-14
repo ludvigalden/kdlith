@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "A contribution binds as a preserved record carrying its layer and scope metadata for the registered resolver: the item keeps target, value, layer, and origin unresolved, exactly as the record states",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"contribution\",\"data\":{\"node\":{\"source\":0,\"index\":0},\"target\":{\"domain\":\"Setting\",\"name\":[],\"qualifiers\":[],\"written\":\"setting\",\"site\":{\"source\":0,\"span\":{\"start\":{\"offset\":0,\"line\":1,\"column\":1},\"end\":{\"offset\":7,\"line\":1,\"column\":8}}}},\"value\":{\"kind\":\"map\",\"value\":[{\"key\":\"target\",\"value\":{\"kind\":\"string\",\"value\":\"mode\"}},{\"key\":\"value\",\"value\":{\"kind\":\"string\",\"value\":\"dark\"}},{\"key\":\"layer\",\"value\":{\"kind\":\"string\",\"value\":\"user\"}}]},\"layer\":\"user\",\"scope\":null,\"origin\":0,\"validation\":\"provisional\"}}\n"
+    ]
+  }
+}

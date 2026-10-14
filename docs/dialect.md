@@ -2,9 +2,11 @@
 
 This is the design record for version 0 of kdlith's schema-definition
 dialect: the language schema definitions are written in. It lists every
-mechanism the dialect defines and every mechanism it deliberately defers,
-maps the committed files that carry them, and states what the engine and
-the reference processor must honor when they implement it.
+mechanism the dialect defines, maps the committed files that carry them,
+and states what the engine and the reference processor must honor when
+they implement it. No mechanism is deferred at this version; the
+[deferral disposition](#deferral-disposition) states how the twelve
+deferrals version 0 carried were retired.
 
 The record describes the committed dialect definition documents. It does
 not define anything on its own: where this record and the canonical files
@@ -53,12 +55,12 @@ the draft round and section so the reasoning can be found again:
 Each file is a `dialect kdlith version="0"` document. Together they are
 the only authority for the dialect.
 
-| File                                    | Contributes                                                                                                                                                                         |
-| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pkg/kdl/schemas/dialect/types.kdl`     | Logical types, the type-expression grammar, built-in scalars and formats, field definitions, object constraints, generic type parameters, pattern codecs, field sensitivity         |
-| `pkg/kdl/schemas/dialect/bindings.kdl`  | Roles, node declarations, field bindings and their sources, collision and duplicate-key policies, child cardinality, member-group expansion, dependent value binding, case dispatch |
-| `pkg/kdl/schemas/dialect/context.kdl`   | Typed context slots, effect groups and targets, effects, context policies, execution timing                                                                                         |
-| `pkg/kdl/schemas/dialect/documents.kdl` | Dialect and schema roots, containers, structural document rules, source imports, the deferral marker                                                                                |
+| File                                    | Contributes                                                                                                                                                                                                                                                            |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pkg/kdl/schemas/dialect/types.kdl`     | Logical types, the type-expression grammar, built-in scalars and formats, field definitions, object constraints, generic type parameters, pattern codecs, field sensitivity                                                                                            |
+| `pkg/kdl/schemas/dialect/bindings.kdl`  | Roles, node declarations, field bindings and their sources, collision and duplicate-key policies, child cardinality, member-group expansion, dependent value binding, case dispatch                                                                                    |
+| `pkg/kdl/schemas/dialect/context.kdl`   | Typed context slots, effect groups and targets, effects, context policies, execution timing, source-context declarations, accumulating context, context snapshots                                                                                                      |
+| `pkg/kdl/schemas/dialect/documents.kdl` | Dialect and schema roots, containers, structural document rules, source imports with their discovery grammars and aliases, document profiles, descendant rules, ordered sequences, symbol catalogs and reference policies, contribution policies, provider descriptors |
 
 ### Dialect-generation entrypoint
 
@@ -96,7 +98,11 @@ data document of the dialect it is written in, through the same session
 and binder every processor uses. Negative controls under
 `tests/fixtures/invalid/dialect/`, `tests/fixtures/invalid/schemas/`, and
 `tests/fixtures/invalid/data/` each name the diagnostic code of one
-rejected construct.
+rejected construct. The mechanisms this expansion defines carry the same
+coverage discipline: at least one positive bind scenario per mechanism
+and one negative control per new code (`KDLITH-SCH011`, `KDLITH-IMP004`,
+`KDLITH-IMP005`, `KDLITH-CTX003`, `KDLITH-CTX004`), landing with the
+canonical declarations that define them.
 
 ## In-scope mechanisms
 
@@ -143,30 +149,41 @@ rejected construct.
 
 ### Context (`context.kdl`)
 
-| Mechanism                              | What the dialect declares                                                                                                                                                                                                                                                                                                                                                                                                        | Draft         |
-| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
-| Engine-managed, schema-defined context | The engine manages context but never hardcodes what a context-producing node means; names like `package` or `defaults` gain meaning only through a schema definition                                                                                                                                                                                                                                                             | R1 §4         |
-| Typed slots                            | `context { slot NAME TYPE }` with an optional namespace and description; values set into a slot are validated against its type                                                                                                                                                                                                                                                                                                   | R2 §11        |
-| Effect targets                         | `effects target=following` and `effects target=children`; a node affecting both declares two groups                                                                                                                                                                                                                                                                                                                              | R1 §4, R2 §11 |
-| Generic effects                        | `set` (from a bound field or a literal value, exactly one), `remove` (the slot becomes unset, not null), `clear` (every slot in a namespace)                                                                                                                                                                                                                                                                                     | R1 §4         |
-| Registered handlers                    | `handler NAME` names domain computation implemented by the processor that installs it; a schema naming a handler that is not installed fails clearly                                                                                                                                                                                                                                                                             | R1 §4         |
-| Context-bound fields and policies      | A field may read a slot (`context=` shorthand or a `context` source) under policy `fallback` (supplies the field only when no explicit value is present) or `fixed` (an explicit value must agree)                                                                                                                                                                                                                               | R1 §4, R2 §10 |
-| Execution timing                       | A node is bound against its incoming context, then its effects are computed. Children effects apply on entering the children and must be computable from the node's header; one that depends on a child field is rejected as incompatible with streaming. Following effects apply only after the node completes successfully. Leaving a boundary restores the caller's context. A late effect never changes nodes already bound. | R1 §4, R2 §11 |
+| Mechanism                              | What the dialect declares                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Draft         |
+| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| Engine-managed, schema-defined context | The engine manages context but never hardcodes what a context-producing node means; names like `package` or `defaults` gain meaning only through a schema definition                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | R1 §4         |
+| Typed slots                            | `context { slot NAME TYPE }` with an optional namespace and description; values set into a slot are validated against its type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | R2 §11        |
+| Effect targets                         | `effects target=following` and `effects target=children`; a node affecting both declares two groups                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | R1 §4, R2 §11 |
+| Generic effects                        | `set` (from a bound field or a literal value, exactly one), `remove` (the slot becomes unset, not null), `clear` (every slot in a namespace)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | R1 §4         |
+| Registered handlers                    | `handler NAME` names domain computation implemented by the processor that installs it; a schema naming a handler that is not installed fails clearly                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | R1 §4         |
+| Context-bound fields and policies      | A field may read a slot (`context=` shorthand or a `context` source) under policy `fallback` (supplies the field only when no explicit value is present) or `fixed` (an explicit value must agree)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | R1 §4, R2 §10 |
+| Execution timing                       | A node is bound against its incoming context, then its effects are computed. Children effects apply on entering the children and must be computable from the node's header; one that depends on a child field is rejected as incompatible with streaming. Following effects apply only after the node completes successfully. Leaving a boundary restores the caller's context. A late effect never changes nodes already bound.                                                                                                                                                                                                                                                              | R1 §4, R2 §11 |
+| Source context                         | A `source-context` block in a schema definition declares fields derived from source metadata — `source-context { field NAME TYPE { from { ... } } }` — where sources such as `path-stem` name registered source-metadata providers the processor installs (an unregistered source fails closed). The block declares its mode — `initial`, `fallback`, or `fixed` — explicitly; there is no default, so an undeclared mode is a missing required property (`KDLITH-BND004`), never a silent fallback. Values apply before the document's first semantic node, and every derived value records its origin in provenance, so filename inference never becomes an invisible source of precedence. | R1 §5, R2 §11 |
+| Accumulating context                   | A slot may declare an accumulation policy naming its combining operation: `append` for list-typed slots (the incoming list concatenates in effect order) and `merge` for map-typed slots (key-wise, where a key contributed twice is a duplicate-key rejection, never a silent overwrite). An accumulating effect on a slot that declares no operation is rejected (`KDLITH-CTX003`). `remove` still unsets and `clear` still clears; accumulation is a third policy, not a replacement for either.                                                                                                                                                                                           | R1 §4         |
+| Context snapshots                      | The engine persists context as shared immutable snapshots or checkpoint-plus-delta chains and records, per indexed record, its identity and type, source digest and span, schema fingerprint, context snapshot ID, invocation ID, and validation status. On-demand resolution restores the snapshot and binds the recorded span instead of replaying every preceding control. A restore whose schema fingerprint or invocation lineage does not match the requesting context is rejected (`KDLITH-CTX004`), and a file without a prior scan or a trustworthy checkpoint cannot be entered at an arbitrary node: forward context makes that impossible by construction, not by policy.         | R1 §7         |
 
 ### Documents, structure, and imports (`documents.kdl`)
 
-| Mechanism                        | What the dialect declares                                                                                                                                                                                                                                                                                                                                               | Draft                                 |
-| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
-| Dialect and schema roots         | `dialect NAME version=V` and `schema NAME version=V` containers holding `types`, `node`, `context`, `document`, and `import` (plus `deferred` under `dialect`)                                                                                                                                                                                                          | F §1                                  |
-| Contributing documents           | Several documents contribute to one dialect or schema by repeating its root name and version; a repeated declaration is rejected                                                                                                                                                                                                                                        | F §1                                  |
-| First-node rule                  | `document { first { exactly-one A B } }`: the first active semantic node (after comments and slashdash-suppressed syntax) must be exactly one of the listed nodes; an import may neither precede nor supply it                                                                                                                                                          | R1 §3                                 |
-| Following rule                   | `document { following ... }` names the nodes permitted after the first                                                                                                                                                                                                                                                                                                  | R1 §3                                 |
-| Exactly-one groups               | `exactly-one A B` inside a node declaration: exactly one of the named children must appear, checked at scope completion                                                                                                                                                                                                                                                 | R1 §3                                 |
-| Source imports                   | `import PATH` with role `source-import`. The path is literal and resolved relative to the importing document, never computed. The imported document receives only the `project` list of the caller's slots, and its context mutations never return to the caller. Cycles are diagnosed from the active invocation stack; import order is the order of the import nodes. | R1 §5, R2 §11                         |
-| Repeated imports                 | `repeated=reject` (the fallback), `coalesce` (equal context reuses the first invocation), or `instantiate` (each import is a separate invocation)                                                                                                                                                                                                                       | R1 §5                                 |
-| Deferral marker                  | `deferred NAME note="..."` names a mechanism the dialect does not define at this version, so its absence is explicit; a schema definition relying on a deferred mechanism is rejected, never silently ignored                                                                                                                                                           | R1 "Recommended first implementation" |
-| This dialect's own document rule | A dialect definition has exactly one `dialect` root; a schema definition has exactly one `schema` root                                                                                                                                                                                                                                                                  | F §1                                  |
-| Document rules are records       | `document` has role `record`: a document rule is a validated statement about the documents a definition reads, with no identity of its own, so it yields a record item rather than a declaration. It occurs at most once per root; its rules are listed in the rows above.                                                                                              | R3 §2                                 |
+| Mechanism                        | What the dialect declares                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | Draft                 |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------- |
+| Dialect and schema roots         | `dialect NAME version=V` and `schema NAME version=V` containers holding `types`, `node`, `context`, `document`, and `import`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | F §1                  |
+| Contributing documents           | Several documents contribute to one dialect or schema by repeating its root name and version; a repeated declaration is rejected                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | F §1                  |
+| First-node rule                  | `document { first { exactly-one A B } }`: the first active semantic node (after comments and slashdash-suppressed syntax) must be exactly one of the listed nodes; an import may neither precede nor supply it                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | R1 §3                 |
+| Following rule                   | `document { following ... }` names the nodes permitted after the first                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | R1 §3                 |
+| Exactly-one groups               | `exactly-one A B` inside a node declaration: exactly one of the named children must appear, checked at scope completion                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | R1 §3                 |
+| Source imports                   | `import PATH` with role `source-import`, optionally `as=NAME` (aliases below). The path is a literal or a grammar-admitted expression under the bound discovery grammar (discovery below), resolved relative to the importing document and never computed beyond that restricted expansion. The imported document receives only the `project` list of the caller's slots, and its context mutations never return to the caller. Cycles are diagnosed from the active invocation stack; import order is the order of the import nodes.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | R1 §5, R2 §11, R3 §10 |
+| Repeated imports                 | `repeated=reject` (the fallback), `coalesce` (equal context reuses the first invocation), or `instantiate` (each import is a separate invocation)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | R1 §5                 |
+| Document profiles                | `profile NAME { roots { allow TYPE ... } }` declarations name selections of roots and nodes, and a node declaration may carry `profile=NAME` so one node name binds differently per profile (the draft's `program` as a definition under `program-definition` and as an overlay under `device-config`). Dispatch is by profile, parent binding, node name, and explicit discriminators — never by trying profiles until one accepts. A profile is selected explicitly by the processing invocation: a schema that declares profiles must have exactly one named, and none or an unknown name is rejected (`KDLITH-SCH011`); a schema that declares none admits every declared root as before. A node the active profile does not admit is rejected as unbound (`KDLITH-BND001`).                                                                                                                                                                                                                                                                                                                                                                                                                                                           | R3 §3                 |
+| Descendant rules                 | Structural rules may range over descendants rather than immediate children: a node declaration bounds occurrences of a named node anywhere in its subtree, checked when the declaring scope completes. Descendant rules stop at the subtree of their declaring node and never cross an import boundary — an imported document is a separate invocation with its own scopes. A violation reports `KDLITH-BND002` like any occurrence rule.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | R1 §3                 |
+| Ordered sequences                | A node declaration may require its immediate children to match an ordered sequence with alternatives (`sequence` steps naming nodes, or alternatives of nodes), compiled into the same per-scope state machine as the other structural rules; a child arriving where the compiled sequence does not admit it is rejected (`KDLITH-BND002`). Repetition stays with `min-occurs` and `max-occurs` on a step; there are no unbounded-repetition groups at this version.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | R1 §3                 |
+| Discovery grammars               | `discovery NAME { anchor NAME provider=... }` declarations with a `patterns` child (`star`, `doublestar`, `braces`) and an `order` policy define the grammar import expressions are evaluated under; the active profile (or the schema root, when no profiles are declared) binds the grammar, and a schema binding none evaluates literal paths only. Expansion is restricted path expansion: anchors are host-supplied typed paths named by the grammar, and environment-variable interpolation is admitted by no grammar (`KDLITH-IMP004`). An anchor the grammar does not declare, or declares but the host does not supply, is rejected (`KDLITH-IMP005`). Matched order follows the declared ordering policy (`portable-path-bytes` is the only defined policy at this version, and the default); each result retains the original expression, resolved anchor values, ordered matched sources, import-site provenance, and source revisions; an expression matching zero sources does not resolve (`KDLITH-IMP001`) unless the grammar declares an explicit empty-match allowance; and the resulting inventory is itself a dependency — adding a matching file changes the result even when previously matched files are unchanged. | R3 §10                |
+| Import aliases                   | An import may carry `as=NAME`: the import request preserves both the source and its alias. Under an aliased import the imported declarations are reachable through the alias namespace and not by their unqualified names — visibility is exclusive, not additive. An alias must be unique in its document (a repeat is a duplicate-key rejection, `KDLITH-BND006`), and a reference through an alias that linking cannot resolve is an unresolved reference (`KDLITH-REF001`).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | R3 §5                 |
+| Symbol catalogs                  | Declarations carry identity: an `identity { domain NAME compose qualified-name FIELD FIELD }` block on a declaration composes its qualified symbol from bound fields (a `namespace` slot plus a local name, for example), and `reference NAME target=TYPE` declarations state a reference's registered syntax codec, lookup domain, and qualification policy (`explicit`, `explicit-or-context`, `imported-or-context`) with declared required qualifiers. Identity construction, reference binding, lookup policy, and linking are separate stages, and the compiled symbol catalog holds them all: identity domains, declaration descriptors, and reference policies. A codec's `namespace` metadata is consumed here — a decoded identity belongs to that reference namespace. Two declarations composing the same qualified identity in one domain are a duplicate declaration (`KDLITH-REF002`), and a reference its qualification and lookup policy cannot resolve to exactly one candidate is unresolved (`KDLITH-REF001`).                                                                                                                                                                                                         | R3 §5, R3 §11         |
+| Contribution resolution          | Contributions stay preserved records — target, value, layer, application scope, source origin — and resolution across layers is performed by a configuration resolver the processor registers, never by lexical context replacement and never by the engine itself. The schema declares the policy the resolver applies (layer precedence, per-target selection, union versus replacement, duplicate treatment, missing-value requirements, computed defaults, secret-reference handling) as descriptors; a schema naming a resolver that is not installed fails closed (`KDLITH-DLC006`). Lexical context, contribution resolution, declaration expansion, and provider execution remain four distinct mechanisms with distinct ordering, caching, and provenance requirements.                                                                                                                                                                                                                                                                                                                                                                                                                                                           | R3 §9                 |
+| Computed defaults                | A default may be computed: bound through a union of literal and computed alternatives discriminated by property (`case property=computed equals=#true type=ComputedDefault; otherwise type=LiteralDefault`), a computed default is a descriptor carrying its dependencies as typed references. The processor never computes it — computation belongs to the owning domain process.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | R3 §8                 |
+| Secret providers                 | A secret provider is descriptor data: an identifier, an optional TTL, and a command as a list of strings that preserves argument boundaries. It is never executed, never reinterpreted as a shell command string, and the CLI never executes provider commands to validate or export declarations. Provider references and resolved secret values stay separate fields (`sensitivity=reference` versus `sensitivity=secret`), and every serialization and diagnostic surface applies the explicit output policy: a secret is emitted only when the policy explicitly says emit.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | R3 §8                 |
+| This dialect's own document rule | A dialect definition has exactly one `dialect` root; a schema definition has exactly one `schema` root                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | F §1                  |
+| Document rules are records       | `document` has role `record`: a document rule is a validated statement about the documents a definition reads, with no identity of its own, so it yields a record item rather than a declaration. It occurs at most once per root; its rules are listed in the rows above.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | R3 §2                 |
 
 ### Conventions the canonical files follow
 
@@ -177,41 +194,51 @@ rejected construct.
 - **Self-description.** Every construct the canonical files use is itself
   declared by them.
 
-## Deferred mechanisms
+## Deferral disposition
 
-Each deferral appears in the canonical files as a `deferred` node, so
-the boundary is explicit rather than implied. All 12 are listed here.
+No mechanism is deferred at this version. The twelve deferrals this
+record previously carried — `source-context`, `accumulating-context`,
+`context-snapshots`, `profiles`, `descendant-rules`, `ordered-sequences`,
+`discovery-grammars`, `import-aliases`, `symbol-catalogs`,
+`contribution-resolution`, `computed-defaults`, `secret-providers` — are
+all defined in the in-scope tables above, so the `deferred` node and the
+diagnostic code that rejected its spellings (`KDLITH-DLC003`) are retired
+from the surface: `documents.kdl` no longer declares the marker, and a
+spelling no binding accepts is rejected as unbound (`KDLITH-BND001`) on
+every reading path, which is the same loud failure the marker existed to
+guarantee. This is a retirement, not a reservation: the marker earns its
+place only while something is deferred, and a future version that defers
+a mechanism again re-introduces it as an explicit, versioned change to
+this record and the canonical files together.
 
-| Mechanism                 | Declared in     | Note in the file                                                                                 | Draft         |
-| ------------------------- | --------------- | ------------------------------------------------------------------------------------------------ | ------------- |
-| `source-context`          | `context.kdl`   | Context values inferred from source metadata such as the file path                               | R1 §5, R2 §11 |
-| `accumulating-context`    | `context.kdl`   | Accumulating context values combined by a declared operation                                     | R1 §4         |
-| `context-snapshots`       | `context.kdl`   | Persisted context snapshots for on-demand resolution of indexed records                          | R1 §7         |
-| `profiles`                | `documents.kdl` | Document profiles: named root and node selections chosen per document                            | R3 §3         |
-| `descendant-rules`        | `documents.kdl` | Structural rules over descendants rather than immediate children                                 | R1 §3         |
-| `ordered-sequences`       | `documents.kdl` | Ordered child sequences and alternatives                                                         | R1 §3         |
-| `discovery-grammars`      | `documents.kdl` | Glob patterns, brace alternatives, and path anchors in imports                                   | R3 §10        |
-| `import-aliases`          | `documents.kdl` | Import aliases that affect symbol visibility                                                     | R3 §5         |
-| `symbol-catalogs`         | `documents.kdl` | Identity domains, qualified identities, and reference lookup policies beyond declaration by name | R3 §5, R3 §11 |
-| `contribution-resolution` | `documents.kdl` | Resolution of contributions across layers                                                        | R3 §9         |
-| `computed-defaults`       | `documents.kdl` | Defaults computed by a provider at run time; descriptors only                                    | R3 §8         |
-| `secret-providers`        | `documents.kdl` | Secret-provider descriptors and their sensitivity policy; never executed                         | R3 §8         |
+The restricted-semantics boundaries that motivated several deferrals are
+now defined boundaries of the mechanisms themselves: providers are never
+executed (secret-provider commands and computed defaults are descriptor
+data), discovery is restricted path expansion (host-supplied typed-path
+anchors, never environment-variable interpolation), and sensitivity is
+policy-gated (an explicit output policy on every serialization and
+diagnostic surface).
 
-Several in-scope mechanisms stop short of their deferred extensions.
-`ref<T>` is a symbolic reference to a declared entity found by name;
-identity domains, qualification, and lookup policies are
-`symbol-catalogs`, and a codec's `namespace` metadata is recorded now
-and consumed only when that mechanism lands. The `contribution` role
-preserves an assignment for later resolution; dependent binding defines
-how such an assignment's payload binds against its target's declared
-type, while resolving contributions across layers remains
-`contribution-resolution`. Expansion includes a member group by naming
-its declaring type; which declaration a name denotes across imports and
-layers is still `symbol-catalogs`. Dependent binding's `against` looks
-up a target bound in the same node; looking a key up in a provider-held
-schema table (the `context=` form) stops short until providers are
-defined. Generic types monomorphize at compile time; parameter
-constraints, defaults, and variadic parameters are not defined.
+Several in-scope mechanisms stop short of extensions this version does
+not define. Profiles are named by the invocation; the engine never infers
+a profile from document content, since that would be trying profiles
+until one accepts. Discovery defines one ordering policy
+(`portable-path-bytes`, the default) and admits no interpolation.
+Descendant rules stop at the subtree of their declaring node. Ordered
+sequences carry no unbounded-repetition groups; repetition stays with
+occurrence bounds. Symbol catalogs define the three named qualification
+policies and `qualified-name` composition; other composition forms and
+lookup policies are not defined. Contribution resolution happens only
+through registered resolvers — the engine never resolves contributions
+and never substitutes lexical context for them. Computed defaults and
+secret providers are descriptors the processor never executes; a provider
+command's argument boundaries are preserved, and dependent binding's
+`against context=` form — looking a key up in a provider-held schema
+table — stays stopped short, because the providers this version defines
+hold no tables: a schema-provider table is a processor-installed
+extension the dialect only names. Generic types monomorphize at compile
+time; parameter constraints, defaults, and variadic parameters are not
+defined.
 
 ## Import resolution
 
@@ -226,6 +253,25 @@ only the projected slots, so its mutations never reach the caller. Local
 checking (`--scope local`) reads the named documents alone and follows
 no imports.
 
+An import expression is evaluated under the discovery grammar the
+active profile (or the schema root, when no profiles are declared)
+binds; a schema binding no grammar evaluates literal paths only. An
+expression whose syntax the active grammar does not admit — including
+any environment-variable interpolation, which no grammar admits — fails
+with `KDLITH-IMP004`, and an anchor the grammar does not declare, or
+declares but the host does not supply, with `KDLITH-IMP005`. An
+expression matching zero sources does not resolve (`KDLITH-IMP001`)
+unless the grammar declares an explicit empty-match allowance, and each
+match retains the original expression, resolved anchor values, ordered
+matched sources, import-site provenance, and source revisions.
+
+An import carrying `as=NAME` preserves both the source and its alias in
+the import request. The aliased document's declarations are reachable
+through the alias namespace and not by their unqualified names; an alias
+must be unique in its document (a repeat is `KDLITH-BND006`), and a
+reference through an alias that linking cannot resolve is
+`KDLITH-REF001`.
+
 ## Contract for the engine and the reference processor
 
 ### Engine and runtime
@@ -238,29 +284,43 @@ dialect for every processor, hand-written or generated:
 2. **Merge contributions.** Combine documents that repeat one root name
    and version into one dialect or schema, and reject a declaration made
    twice.
-3. **Resolve imports** as `documents.kdl` states: literal paths relative
-   to the importing document, written order, projection only, mutations
-   never escaping, cycles diagnosed from the invocation stack, and
-   `repeated` defaulting to `reject`. Once this lands, processing
-   `contracts/super-schemas/dialect.kdl` must yield the same dialect as
-   reading the four canonical files directly, and that equivalence gets
-   its own fixture scenario.
+3. **Resolve imports** as `documents.kdl` states: literal or
+   grammar-admitted paths relative to the importing document, written
+   order, projection only, mutations never escaping, cycles diagnosed
+   from the invocation stack, and `repeated` defaulting to `reject`.
+   Discovery is restricted path expansion under the declared grammar —
+   anchors are host-supplied typed paths, ordering follows the declared
+   policy, the inventory is a dependency, and no grammar admits
+   environment-variable interpolation. Aliases preserve both source and
+   alias and gate visibility through the alias namespace. Once this
+   lands, processing `contracts/super-schemas/dialect.kdl` must yield
+   the same dialect as reading the four canonical files directly, and
+   that equivalence gets its own fixture scenario.
 4. **Link.** Check that every type, node, slot, and parent a definition
    references is declared, including the canonical files' own
-   self-description.
+   self-description. The compiled symbol catalog holds identity domains,
+   declaration descriptors, and reference policies: a declaration's
+   qualified identity is composed as its `identity` block declares, two
+   declarations composing one identity in a domain are a duplicate
+   (`KDLITH-REF002`), and a reference its qualification and lookup
+   policy cannot resolve to exactly one candidate is unresolved
+   (`KDLITH-REF001`).
 5. **Enforce bindings.** Reject colliding sources, duplicate keys,
    overlapping bindings, unconsumed arguments, contradictory child
    ownership, and unpermitted children; check cardinality, exactly-one
    groups, and the first-node rule at the points stated above.
-6. **Dispatch deterministically** by parent, node name, and explicit
-   discriminators; the discriminators are node names, variant value
-   prefixes, and property cases, each consulted as a compiled table with
-   a single probe and no backtracking.
+6. **Dispatch deterministically** by profile, parent, node name, and
+   explicit discriminators; the discriminators are node names, variant
+   value prefixes, and property cases, each consulted as a compiled
+   table with a single probe and no backtracking. The active profile is
+   part of the position a node is admitted at, never something the
+   engine guesses from content.
 7. **Apply context** with the execution timing in `context.kdl`, and
    reject children effects that are not computable from the node header.
-8. **Fail closed.** Reject a definition that relies on a deferred
-   mechanism or names a handler or validator that is not installed. The
-   `type-expression` validator at version `0` is required.
+8. **Fail closed.** Reject a definition that names a handler, validator,
+   resolver, source-metadata provider, or other registered extension
+   that is not installed. The `type-expression` validator at version `0`
+   is required.
 9. **Decode codecs at bind time.** Apply a field's codec while the value
    arrives, keep the original spelling in provenance, and reject a
    string that fails its match or a capture that fails its declared type
@@ -280,6 +340,28 @@ dialect for every processor, hand-written or generated:
     omit, redact) to sensitive fields in every serialization and
     diagnostic surface; a `secret` field is emitted only when the policy
     explicitly says emit.
+13. **Select profiles explicitly.** A schema that declares profiles has
+    exactly one named by the invocation (`KDLITH-SCH011` otherwise);
+    dispatch consults the profile as part of position and never tries
+    profiles in turn.
+14. **Apply source context and accumulation.** Source-context values
+    apply under their declared mode before the document's first semantic
+    node, with their origin recorded; an accumulating slot combines only
+    through its declared operation (`KDLITH-CTX003` otherwise), with
+    `append` concatenating lists in effect order and `merge` rejecting a
+    twice-contributed key.
+15. **Preserve contributions and provider descriptors.** Yield
+    contributions as preserved records — target, value, layer,
+    application scope, source origin — and route them to the registered
+    resolver only. Never execute a provider command, never compute a
+    computed default, and never reinterpret a provider's argument list
+    as a shell command string.
+16. **Persist and restore context snapshots.** Store context as shared
+    immutable snapshots or checkpoint-plus-delta chains; index each
+    record with its identity, type, source digest and span, schema
+    fingerprint, snapshot ID, invocation ID, and validation status; and
+    restore a snapshot only when the schema fingerprint and invocation
+    lineage match (`KDLITH-CTX004` otherwise).
 
 ### Self-hosted compilation
 
@@ -309,9 +391,10 @@ The engine's binder (`pkg/rs/engine/src/bind/`) is the runtime processor
 that turns a data document into processing items. It is built from a
 compiled definition once and never reads the definition's KDL:
 
-- **Dispatch.** Each node is matched by its parent's compiled scope and
-  its name, never by trying declarations in turn. The scope's structural
-  rules admit it as it arrives; minimum counts, exactly-one groups, and
+- **Dispatch.** Each node is matched by its parent's compiled scope,
+  the active profile, and its name, never by trying declarations in
+  turn. The scope's structural rules admit it as it arrives; minimum
+  counts, exactly-one groups, ordered sequences, descendant rules, and
   the document's first-node rule are checked when the scope completes.
 - **Fields.** Arguments, properties, and children land in the fields
   their bindings name and are decoded against the field's type as they
@@ -324,8 +407,11 @@ compiled definition once and never reads the definition's KDL:
 - **Context.** A context-bound field takes the slot's value only when no
   explicit value is present (`fallback`), and an explicit value must
   agree with the slot (`fixed`). A field read only from context fails
-  where no control provides the slot. Effects follow the execution
-  timing above, and a node that fails applies no following effects.
+  where no control provides the slot. Source-context values apply under
+  their declared mode before the first semantic node; an accumulating
+  slot combines only through its declared operation. Effects follow the
+  execution timing above, and a node that fails applies no following
+  effects.
 - **Items.** A bound node yields the item its role names: a record, a
   declaration with its identity, a contribution preserved unresolved, an
   import request, a pending typed binding awaiting its declaration, or a
@@ -355,11 +441,11 @@ when a processor such as superproc binds it (`inspect`).
 | A repeated key of a keyed collection, such as two fields of one object or two bindings of a field | `KDLITH-BND006` |
 | A value that names no member of its enum, such as an unknown `role=` or string `format`           | `KDLITH-BND008` |
 | A type expression that breaks the type-expression grammar                                         | `KDLITH-DLC007` |
-| A spelling of a deferred mechanism (a node, a property, or a policy value)                        | `KDLITH-DLC003` |
 | Two fields bound to the same argument, property, or rest arguments                                | `KDLITH-SCH003` |
 | An import that projects a slot the dialect does not declare                                       | `KDLITH-SCH006` |
 | An expansion or generic-instantiation cycle in a definition                                       | `KDLITH-SCH009` |
 | Variant prefixes of one union where one is a prefix of another                                    | `KDLITH-SCH010` |
+| A schema that declares profiles while its invocation names no profile or an unknown one           | `KDLITH-SCH011` |
 
 A bad type expression (`KDLITH-DLC007`) and an unknown enum value
 (`KDLITH-BND008`) are distinct from a plain value-type mismatch
@@ -371,9 +457,19 @@ unbound (`KDLITH-BND001`). Every definition root — dialect or schema —
 states its `version` property; a root without one is a missing required field,
 rejected with `KDLITH-BND004` on both reading paths.
 
+The expanded surface adds `KDLITH-SCH011` to this table and retires
+`KDLITH-DLC003` together with the deferral marker
+([Deferral disposition](#deferral-disposition)). Its other new codes
+live with their mechanisms: the discovery failures `KDLITH-IMP004` and
+`KDLITH-IMP005` extend the import codes in
+[Import resolution](#import-resolution), and the context failures
+`KDLITH-CTX003` and `KDLITH-CTX004` are stated in the context rows
+above.
+
 The remaining definition codes (`KDLITH-SCH001`, `KDLITH-SCH002`,
 `KDLITH-SCH004`, `KDLITH-SCH005`, `KDLITH-SCH007`, `KDLITH-SCH008`,
-`KDLITH-DLC005`, and `KDLITH-DLC006`) come from linking, plan building,
+`KDLITH-DLC005`, `KDLITH-DLC006`, and the symbol-catalog linking codes
+`KDLITH-REF001` and `KDLITH-REF002`) come from linking, plan building,
 and extension checks that only the compiler runs. That split is a
 deliberate product decision, not an accident: `inspect` runs the reader
 path and performs only the checks the dialect's declarations own, so it
@@ -407,8 +503,10 @@ this dialect:
 
 ## Changing the dialect
 
-Change the canonical files first, then this record. Moving a mechanism
-from deferred to in scope means removing its `deferred` node, declaring
-the mechanism in the same file, adding fixture coverage, and moving its
-row from [Deferred mechanisms](#deferred-mechanisms) to the matching
-in-scope table.
+Change the canonical files first, then this record. A mechanism moves
+between files, or between defined and deferred, only as a deliberate
+change to both: the declarations move, fixture coverage follows, and
+this record's tables move with them. Retiring the `deferred` marker
+followed the same rule in reverse — the marker's removal from
+`documents.kdl` and this record's deferral disposition landed together,
+and a future deferral re-introduces the marker the same way.

@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "A discovery grammar with a host anchor and admitted star pattern binds the schema root's imports: the grammar-admitted expression $root/*.kdl passes the compile-time grammar validation under local checking (expansion is host-supplied and not wired; see the declared elisions)",
+  "args": [
+    "vet",
+    "schema",
+    "--scope",
+    "local",
+    "schema.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "ok: schema demo version 1 scope=local documents=1 types=1 nodes=1 slots=0 profiles=0 digest=daac5227820be252"
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+schema demo version="1" {
+    context {
+        slot locale String
+        source-context {
+            field locale String {
+                from {
+                    path-stem
+                }
+            }
+        }
+    }
+}

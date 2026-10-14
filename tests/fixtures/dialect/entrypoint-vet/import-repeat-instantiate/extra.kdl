@@ -1,0 +1,4 @@
+dialect kdlith version="0" {
+    import "part.kdl" repeated=instantiate
+    import "part.kdl" repeated=instantiate
+}

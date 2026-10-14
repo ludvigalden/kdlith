@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "The same source-context schema derives a different locale from a differently named file: sv-se.kdl binds locale sv-se, proving the value comes from the source metadata rather than the schema",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "sv-se.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":0},\"type_name\":\"Entry\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"b\"},\"origin\":0},{\"name\":\"locale\",\"value\":{\"kind\":\"string\",\"value\":\"sv-se\"},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n"
+    ]
+  }
+}

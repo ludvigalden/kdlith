@@ -259,6 +259,30 @@ impl Walk<'_> {
                 let what = format!("the first node of {owner}");
                 Finding::new(span, CARDINALITY, &[&what, "0", "exactly 1"])
             }
+            Violation::SequenceRejected { child, step } => {
+                let what = format!("{} under {owner}", names.resolve(*child));
+                Finding::new(
+                    span,
+                    CARDINALITY,
+                    &[
+                        &what,
+                        &format!("step {}", step + 1),
+                        "a position the ordered sequence admits",
+                    ],
+                )
+            }
+            Violation::SequenceIncomplete { step } => {
+                let what = format!("the ordered sequence under {owner}");
+                Finding::new(
+                    span,
+                    CARDINALITY,
+                    &[
+                        &what,
+                        &format!("stopped at step {}", step + 1),
+                        "every step within its bounds",
+                    ],
+                )
+            }
         }
     }
 }

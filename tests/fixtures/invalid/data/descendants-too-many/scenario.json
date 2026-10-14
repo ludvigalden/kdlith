@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A descendant rule's max-occurs is checked when the declaring scope completes: two nested things against max-occurs=1 is an occurrence violation reported at the box scope",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "data.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

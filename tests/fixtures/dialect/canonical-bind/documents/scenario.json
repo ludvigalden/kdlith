@@ -9,7 +9,7 @@
   "expect": {
     "exit": 0,
     "stdout-contains": [
-      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":89},\"type_name\":\"DocumentRule\",\"fields\":[{\"name\":\"first\",\"value\":{\"kind\":\"map\",\"value\":[{\"key\":\"exactly-one\",\"value\":{\"kind\":\"list\",\"value\":[{\"kind\":\"string\",\"value\":\"dialect\"},{\"kind\":\"string\",\"value\":\"schema\"}]}}]},\"origin\":89},{\"name\":\"following\",\"value\":{\"kind\":\"list\",\"value\":[]},\"origin\":89}],\"origin\":89,\"validation\":\"valid\"}}\n",
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":281},\"type_name\":\"DocumentRule\",\"fields\":[{\"name\":\"first\",\"value\":{\"kind\":\"map\",\"value\":[{\"key\":\"exactly-one\",\"value\":{\"kind\":\"list\",\"value\":[{\"kind\":\"string\",\"value\":\"dialect\"},{\"kind\":\"string\",\"value\":\"schema\"}]}}]},\"origin\":281},{\"name\":\"following\",\"value\":{\"kind\":\"list\",\"value\":[]},\"origin\":281}],\"origin\":281,\"validation\":\"valid\"}}\n",
       "{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":{\"source\":0,\"index\":0}}}\n{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":null}}\n"
     ]
   }

@@ -18,13 +18,13 @@ mod types;
 use kdlith_diagnostic::DiagnosticRecord;
 
 use crate::bindings::NodeDecl;
-use crate::deferred::{Spelling, deferred_by, defers, generic_spelling};
+use crate::compile::reader::Construct;
 use crate::definition::{
-    CheckScope, Deferral, Definition, DefinitionKind, DocumentRule, ImportDecl, SlotDecl,
+    CheckScope, Definition, DefinitionKind, DocumentRule, ImportDecl, SlotDecl,
 };
 use crate::diag::{
-    CARDINALITY, DEFERRED_MECHANISM, Diagnostics, MALFORMED, MISSING_FIELD, NOT_INSTALLED,
-    ROOT_MISMATCH, Site, TYPE_EXPRESSION, UNKNOWN_MEMBER, UNKNOWN_NODE, VALUE_TYPE,
+    CARDINALITY, Diagnostics, MALFORMED, MISSING_FIELD, NOT_INSTALLED, ROOT_MISMATCH, Site,
+    TYPE_EXPRESSION, UNKNOWN_MEMBER, UNKNOWN_NODE, VALUE_TYPE,
 };
 use crate::extensions::{Extensions, TYPE_EXPRESSION_VALIDATOR, TYPE_EXPRESSION_VERSION};
 use crate::names::Names;
@@ -35,7 +35,6 @@ use crate::type_expr::{self, ExprError};
 use crate::types::{TypeCatalog, TypeExpr};
 
 use input::DefinitionInput;
-use reader::Construct;
 
 /// The dialect version this engine compiles definitions against.
 pub const DIALECT_VERSION: &str = "0";
@@ -53,8 +52,7 @@ pub fn compile_dialect_input(
 }
 
 /// Compile a schema definition from a reader's input, under its
-/// governing dialect, whose deferrals decide which constructs fail
-/// closed, with the given checking scope.
+/// governing dialect, with the given checking scope.
 pub fn compile_schema_input(
     dialect: &Definition,
     input: &DefinitionInput,
@@ -90,9 +88,6 @@ pub fn compile_dialect(
         return Err(cx.diags.into_records());
     };
     for &(doc, node) in &root.nodes {
-        document::deferrals(&mut cx, doc, node);
-    }
-    for &(doc, node) in &root.nodes {
         root_children(&mut cx, doc, node);
     }
     finish(cx, documents, None)
@@ -114,9 +109,6 @@ fn compile_input(
     }
     let documents = &parsed[..];
     let mut cx = start(kind, scope, documents, extensions, governing)?;
-    if kind == DefinitionKind::Dialect {
-        collect::deferrals(&mut cx, input);
-    }
     if roots(&mut cx, documents).is_none() {
         return Err(cx.diags.into_records());
     }
@@ -131,12 +123,21 @@ pub(crate) struct Cx<'d> {
     pub(crate) diags: Diagnostics<'d>,
     pub(crate) names: Names,
     pub(crate) extensions: &'d Extensions,
-    pub(crate) deferrals: Vec<Deferral>,
     pub(crate) types: TypeCatalog,
     pub(crate) nodes: Vec<NodeDecl>,
     pub(crate) slots: Vec<SlotDecl>,
     pub(crate) imports: Vec<ImportDecl>,
+    pub(crate) profiles: Vec<crate::definition::ProfileDecl>,
+    pub(crate) discoveries: Vec<crate::definition::DiscoveryDecl>,
+    pub(crate) references: Vec<crate::definition::ReferenceDecl>,
+    pub(crate) resolution: Option<crate::definition::ResolutionPolicyDecl>,
+    pub(crate) providers: Vec<crate::definition::ProviderDecl>,
+    pub(crate) source_context: Option<crate::definition::SourceContextDecl>,
     pub(crate) document_rule: Option<DocumentRule>,
+    /// The discovery grammar the definition's root binds by property,
+    /// read by `roots`; invocation-bound when the definition declares
+    /// profiles.
+    pub(crate) root_grammar: Option<String>,
     /// The `include` markers read in type declarations, spliced by the
     /// complete-checking expansion pass.
     pub(crate) expansions: Vec<expansions::Pending>,
@@ -167,12 +168,18 @@ fn start<'d>(
         diags: Diagnostics::new(documents, kind.origin()),
         names,
         extensions,
-        deferrals: Vec::new(),
         types,
         nodes: Vec::new(),
         slots: Vec::new(),
         imports: Vec::new(),
+        profiles: Vec::new(),
+        discoveries: Vec::new(),
+        references: Vec::new(),
+        resolution: None,
+        providers: Vec::new(),
+        source_context: None,
         document_rule: None,
+        root_grammar: None,
         expansions: Vec::new(),
         name: None,
         version: None,
@@ -191,7 +198,6 @@ fn start<'d>(
             cx.diags.unsited(ROOT_MISMATCH, &[&dialect.name, &reason]);
             return Err(cx.diags.into_records());
         }
-        cx.deferrals.clone_from(&dialect.deferrals);
     }
     Ok(cx)
 }
@@ -211,7 +217,8 @@ fn finish<'d>(
         }
     }
     let bindings = scopes::build(&mut cx);
-    let symbols = SymbolCatalog::build(&bindings);
+    let symbols = SymbolCatalog::build(&bindings, &cx.references);
+    source_context_check(&mut cx);
     if cx.scope == CheckScope::Complete && !cx.diags.has_errors() {
         link::run(&mut cx, &bindings, &symbols);
         if !cx.diags.has_errors() {
@@ -234,7 +241,12 @@ fn finish<'d>(
         plan,
         slots: cx.slots,
         imports: cx.imports,
-        deferrals: cx.deferrals,
+        profiles: cx.profiles,
+        discoveries: cx.discoveries,
+        references: cx.references,
+        resolution: cx.resolution,
+        providers: cx.providers,
+        source_context: cx.source_context,
         document_rule: cx.document_rule,
         scope: cx.scope,
     };
@@ -305,6 +317,11 @@ fn roots<'d>(cx: &mut Cx<'d>, documents: &'d [ParsedDocument]) -> Option<Root<'d
         let mut construct = Construct::new(cx, doc, node);
         let name = construct.string_arg(cx, 0, "name");
         let version = construct.string_prop(cx, "version");
+        // A schema root may bind its discovery grammar by property; a
+        // dialect root stays literal-only, so the property stays unbound.
+        let grammar = (node.name == "schema")
+            .then(|| construct.string_prop(cx, "grammar"))
+            .flatten();
         construct.finish(cx);
         let Some(name) = name else {
             ok = false;
@@ -324,6 +341,7 @@ fn roots<'d>(cx: &mut Cx<'d>, documents: &'d [ParsedDocument]) -> Option<Root<'d
             None => {
                 cx.name = Some(name.clone());
                 cx.version = version.clone();
+                cx.root_grammar = grammar;
                 root = Some(Root {
                     name,
                     version,
@@ -345,11 +363,41 @@ fn roots<'d>(cx: &mut Cx<'d>, documents: &'d [ParsedDocument]) -> Option<Root<'d
                     );
                     ok = false;
                 }
+                if grammar.is_some() && cx.root_grammar.is_some() && grammar != cx.root_grammar {
+                    let reason = "contributing schema roots bind different discovery grammars";
+                    cx.diags.error(
+                        ROOT_MISMATCH,
+                        Site::new(doc, node.span),
+                        &[document.path(), reason],
+                    );
+                    ok = false;
+                } else if grammar.is_some() {
+                    cx.root_grammar = grammar;
+                }
                 first.nodes.push((doc, node));
             }
         }
     }
     if ok { root } else { None }
+}
+
+/// Every source-context field names a declared slot: the derived value
+/// lands in that slot, validated against both the field's and the slot's
+/// declared types. A field naming no declared slot is rejected loudly,
+/// never silently dropped.
+fn source_context_check(cx: &mut Cx<'_>) {
+    let Some(decl) = &cx.source_context else {
+        return;
+    };
+    let site = decl.site;
+    for field in &decl.fields {
+        if !cx.slots.iter().any(|slot| slot.name == field.name) {
+            let spelled = cx.names.resolve(field.name).to_owned();
+            let reason = format!("source-context field {spelled} names no declared slot");
+            cx.diags
+                .error(MALFORMED, site, &["source-context", &reason]);
+        }
+    }
 }
 
 fn root_children(cx: &mut Cx<'_>, doc: usize, root: &SyntaxNode) {
@@ -371,7 +419,6 @@ fn root_children(cx: &mut Cx<'_>, doc: usize, root: &SyntaxNode) {
                 }
             }
             "import" => document::import(cx, doc, child),
-            "deferred" if cx.kind == DefinitionKind::Dialect => {}
             _ => cx.unknown(doc, child, &root.name),
         }
     }
@@ -407,17 +454,10 @@ impl Cx<'_> {
             .error(CARDINALITY, site, &[what, count, expected]);
     }
 
-    /// A child node no construct reading admits: a deferred mechanism's
-    /// spelling when the dialect defers it, an unknown construct otherwise.
+    /// A child node no construct reading admits.
     pub(crate) fn unknown(&mut self, doc: usize, node: &SyntaxNode, parent: &str) {
         let site = Site::new(doc, node.span);
-        let construct = format!("{} under {parent}", node.name);
-        match deferred_by(&self.deferrals, Spelling::Node(&node.name)) {
-            Some(mechanism) => self
-                .diags
-                .error(DEFERRED_MECHANISM, site, &[&construct, mechanism]),
-            None => self.diags.error(UNKNOWN_NODE, site, &[&node.name, parent]),
-        }
+        self.diags.error(UNKNOWN_NODE, site, &[&node.name, parent]);
     }
 
     /// Track a child that may appear once; the second is malformed.
@@ -438,19 +478,8 @@ impl Cx<'_> {
     }
 
     /// Compile a type expression with the `type-expression` validator.
-    /// A generic instantiation is in the grammar; a dialect that still
-    /// defers `generic-types` rejects the spelling.
     pub(crate) fn type_expr(&mut self, site: Site, text: &str) -> Option<TypeExpr> {
         match type_expr::parse(text, &mut self.names) {
-            Ok(expr)
-                if type_expr::instantiates(&expr)
-                    && crate::deferred::defers(&self.deferrals, "generic-types") =>
-            {
-                let construct = format!("type expression {text:?}");
-                self.diags
-                    .error(DEFERRED_MECHANISM, site, &[&construct, "generic-types"]);
-                None
-            }
             Ok(expr) => Some(expr),
             Err(ExprError::Syntax(reason)) => {
                 self.diags.error(TYPE_EXPRESSION, site, &[text, &reason]);
@@ -475,17 +504,10 @@ impl Cx<'_> {
     }
 
     /// Check a type name: an uppercase ASCII letter, then letters and
-    /// digits. A generic spelling `Name<...>` relies on `generic-types`
-    /// when the dialect defers it.
+    /// digits.
     pub(crate) fn type_name(&mut self, site: Site, construct: &str, name: &str) -> bool {
         if type_expr::is_type_name(name) {
             return true;
-        }
-        if generic_spelling(name) && defers(&self.deferrals, "generic-types") {
-            let construct = format!("{construct} type {name}");
-            self.diags
-                .error(DEFERRED_MECHANISM, site, &[&construct, "generic-types"]);
-            return false;
         }
         let what = format!("type name of {construct}");
         self.mistyped(site, &what, "TypeName", &format!("string {name:?}"));

@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "The literal-or-computed fallback union discriminates on the Bool property computed: a non-Bool value does not decode as the case property's type",
+  "args": [
+    "vet",
+    "schema",
+    "schema.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

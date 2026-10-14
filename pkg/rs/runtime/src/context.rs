@@ -119,6 +119,8 @@ pub enum ContextError {
     UnknownSlot(SlotId),
     /// A namespace outside this context's layout.
     UnknownNamespace(NamespaceId),
+    /// A value vector whose length does not match the layout's slot count.
+    LayoutMismatch,
     /// A scope left out of order, or left twice.
     ScopeOrder,
 }
@@ -129,6 +131,9 @@ impl fmt::Display for ContextError {
             ContextError::UnknownSlot(slot) => write!(f, "unknown context slot {}", slot.0),
             ContextError::UnknownNamespace(namespace) => {
                 write!(f, "unknown context namespace {}", namespace.0)
+            }
+            ContextError::LayoutMismatch => {
+                write!(f, "restored values do not match the context layout")
             }
             ContextError::ScopeOrder => f.write_str("context scope left out of order"),
         }
@@ -206,6 +211,34 @@ impl Context {
             projected.slots[slot.index()].clone_from(value);
         }
         Ok(projected)
+    }
+
+    /// Every slot's current value, in slot order: the materialized state a
+    /// snapshot captures. Unset slots are `None`.
+    pub fn snapshot_values(&self) -> Vec<Option<SlotValue>> {
+        self.slots.clone()
+    }
+
+    /// A context over `layout` holding exactly `values`, in slot order:
+    /// restoring a snapshot. The values length must match the layout's
+    /// slot count; a mismatch is a layout error, never a silent truncate.
+    /// Restoration is direct: no accumulation policy combines restored
+    /// values with anything, and no undo trail is kept.
+    pub fn from_values(
+        layout: ContextLayout,
+        values: Vec<Option<SlotValue>>,
+    ) -> Result<Context, ContextError> {
+        if values.len() != layout.slot_count() {
+            return Err(ContextError::LayoutMismatch);
+        }
+        Ok(Context {
+            saved_in: vec![0; values.len()],
+            slots: values,
+            layout,
+            trail: Vec::new(),
+            epoch: 0,
+            next_epoch: 1,
+        })
     }
 
     /// Open a scope; effects applied inside it are undone by [`Context::leave`].

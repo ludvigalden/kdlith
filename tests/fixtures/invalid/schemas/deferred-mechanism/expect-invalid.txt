@@ -1,1 +1,1 @@
-# expect-invalid: KDLITH-DLC003
+# expect-invalid: KDLITH-BND001

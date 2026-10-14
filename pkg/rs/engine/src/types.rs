@@ -3,7 +3,7 @@
 
 use std::collections::BTreeMap;
 
-use kdlith_model::Value;
+use kdlith_model::{Entry, Value};
 
 use crate::diag::Site;
 use crate::names::{Names, Sym};
@@ -242,7 +242,7 @@ pub struct ObjectType {
 }
 
 /// A logical field. `documented_default` is metadata and never fills an
-/// absent value; `fallback` does.
+/// absent value; `fallback` does, when it is a literal.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct FieldDef {
@@ -250,10 +250,105 @@ pub struct FieldDef {
     pub ty: TypeExpr,
     pub description: Option<String>,
     pub documented_default: Option<Value>,
-    pub fallback: Option<Value>,
+    /// The field's fallback: a literal value the engine applies to an
+    /// absent field, or a computed default it never computes — a
+    /// descriptor carrying its dependencies for the owning domain
+    /// process.
+    pub fallback: Option<DefaultSpec>,
     /// Whether the field holds a resolved sensitive value or a locator
     /// for one; metadata that an output policy enforces.
     pub sensitivity: Option<Sensitivity>,
+}
+
+/// A declared default: a literal value, or a computed descriptor. A
+/// computed default is never computed by the processor — computation
+/// belongs to the owning domain process — so only the literal variant
+/// ever supplies an absent field.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum DefaultSpec {
+    /// A literal value, decoded against the field's type at compile time.
+    Literal(Value),
+    /// A computed default: its dependencies as typed references, preserved
+    /// as descriptor data for the owning domain process.
+    Computed { dependencies: Vec<String> },
+}
+
+impl DefaultSpec {
+    /// The literal a default supplies, when it is one. A computed default
+    /// supplies nothing; the field stays absent for the domain process to
+    /// fill.
+    pub fn literal(&self) -> Option<&Value> {
+        match self {
+            DefaultSpec::Literal(value) => Some(value),
+            DefaultSpec::Computed { .. } => None,
+        }
+    }
+
+    /// The default as the bound value a reader holds: the part's fields
+    /// wrapped under the union member its case dispatch selected.
+    pub fn to_bound(&self) -> Value {
+        match self {
+            DefaultSpec::Literal(value) => Value::Map(vec![Entry::new(
+                "literal".to_owned(),
+                Value::Map(vec![Entry::new("value".to_owned(), value.clone())]),
+            )]),
+            DefaultSpec::Computed { dependencies } => Value::Map(vec![Entry::new(
+                "computed".to_owned(),
+                Value::Map(vec![Entry::new(
+                    "dependencies".to_owned(),
+                    Value::List(
+                        dependencies
+                            .iter()
+                            .map(|dep| Value::String(dep.clone()))
+                            .collect(),
+                    ),
+                )]),
+            )]),
+        }
+    }
+
+    /// The default a bound value spells: a scalar is a literal (the
+    /// spelling every pre-computed default used), a single-key map names
+    /// the union member a case dispatch selected. `None` spells no
+    /// recognizable default and the caller rejects it.
+    pub fn from_bound(value: &Value) -> Option<Self> {
+        match value {
+            Value::Map(entries) => match entries.as_slice() {
+                [entry] if entry.key == "literal" => {
+                    let Value::Map(inner) = &entry.value else {
+                        return None;
+                    };
+                    let value = inner.iter().find(|field| field.key == "value")?;
+                    Some(DefaultSpec::Literal(value.value.clone()))
+                }
+                [entry] if entry.key == "computed" => {
+                    let Value::Map(inner) = &entry.value else {
+                        return None;
+                    };
+                    let dependencies = inner.iter().find(|field| field.key == "dependencies")?;
+                    let Value::List(items) = &dependencies.value else {
+                        return None;
+                    };
+                    let mut spelled = Vec::new();
+                    for item in items {
+                        let Value::String(dep) = item else {
+                            return None;
+                        };
+                        spelled.push(dep.clone());
+                    }
+                    Some(DefaultSpec::Computed {
+                        dependencies: spelled,
+                    })
+                }
+                _ => None,
+            },
+            Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => {
+                Some(DefaultSpec::Literal(value.clone()))
+            }
+            _ => None,
+        }
+    }
 }
 
 /// What a sensitive field holds. A type modeling a secret and its

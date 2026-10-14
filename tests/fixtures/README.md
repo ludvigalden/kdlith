@@ -104,11 +104,14 @@ schemas and scenarios that bind data documents against them, each asserting
 the ordered JSON-line item stream on stdout; most scenarios share one
 `schema.kdl`, while `processing/bind/nullable/` and
 `processing/bind/value-expr/` carry their own schemas for the `nullable<T>`
-type constructor and the `ValueExpr` scalar, and the seven
-`processing/bind/generic-types/`, `codecs/`, `union-dispatch/`,
-`sensitivity/`, `expansion/`, `dependent-binding/`, and `case-dispatch/`
-directories each carry a focused schema proving one of the seven
-types/bindings mechanisms end to end. `invalid/data/` holds data
+type constructor and the `ValueExpr` scalar, and the focused directories
+`generic-types/`, `codecs/`, `union-dispatch/`, `sensitivity/`,
+`expansion/`, `dependent-binding/`, and `case-dispatch/` (the seven
+types/bindings mechanisms) plus `descendants/`, `sequence/`,
+`contributions/`, `computed-default/`, `source-context/`,
+`source-context-per-file/`, `accumulate/`, `import-alias/`, and
+`identity-reference/` (the documents and context mechanisms) each carry a
+schema proving one mechanism end to end. `invalid/data/` holds data
 documents bound against the shared schema, each rejected with its declared
 code; the mechanism-negative scenarios there carry the matching focused
 schema from their positive counterpart.
@@ -152,8 +155,16 @@ the bound record's source index.
 `schemas/vet/import-repeat-coalesce/` and
 `schemas/vet/import-repeat-instantiate/` pin the two non-default
 repeated-import policies on the schema path;
-`invalid/dialect/import-repeated-property/` pins the v0 limitation that the
-dialect self-description rejects any `repeated=` property.
+`dialect/entrypoint-vet/import-repeat-coalesce/` and
+`dialect/entrypoint-vet/import-repeat-instantiate/` pin them on the
+dialect path, where the conform walk now admits the `repeated=` property.
+`invalid/schemas/deferred-mechanism/` and
+`invalid/schemas/inspect-deferred-mechanism/` pin the retirement of the
+deferral marker: its spelling rejects as an unbound node on both reading
+paths. `schemas/vet/profile-declaration/`, `schemas/vet/discovery-local/`,
+`schemas/vet/import-alias/`, `schemas/vet/identity-reference/`, and
+`schemas/vet/secret-provider/` pin the declaration surface of the expanded
+documents mechanisms.
 
 `harness/scratch-fail-closed` proves the harness's own scratch
 protections fail closed: after the run, the harness plants a symlink and

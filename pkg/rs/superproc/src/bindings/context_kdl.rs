@@ -11,6 +11,19 @@ pub(crate) const NODES: &[NodeShape] = &[
         .under(&["context"])
         .declaration()
         .ty("SlotDef"),
+    NodeShape::new("accumulate")
+        .under(&["slot"])
+        .ty("AccumulationPolicy"),
+    NodeShape::new("source-context")
+        .under(&["context"])
+        .record()
+        .ty("SourceContextDef"),
+    NodeShape::new("field")
+        .under(&["source-context"])
+        .ty("SourceFieldDef"),
+    NodeShape::new("path-stem")
+        .under(&["from"])
+        .ty("PathStemSource"),
     NodeShape::new("effects").under(&["node"]).ty("EffectGroup"),
     NodeShape::new("set").under(&["effects"]).ty("SetEffect"),
     NodeShape::new("remove")

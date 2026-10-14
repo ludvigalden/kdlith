@@ -5,8 +5,8 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::bindings::{
-    Arity, BindingCatalog, ChildPlan, ChildRule, NodeDecl, NodeDeclId, ParentKey, Placement, Scope,
-    ScopeId, Source,
+    Arity, BindingCatalog, ChildPlan, ChildRule, DescendantRule, NodeDecl, NodeDeclId, ParentKey,
+    Placement, Scope, ScopeId, SequenceDecl, SequenceStep, Source,
 };
 use crate::compile::Cx;
 use crate::definition::CheckScope;
@@ -40,6 +40,8 @@ struct ScopeInput<'s> {
     uses: Vec<Use<'s>>,
     rules: Vec<ChildRule>,
     groups: Vec<Vec<Sym>>,
+    descendants: Vec<DescendantRule>,
+    sequence: Option<SequenceDecl>,
     keys: Vec<u64>,
 }
 
@@ -73,6 +75,8 @@ pub(crate) fn build(cx: &mut Cx<'_>) -> BindingCatalog {
             uses,
             rules: decl.children.clone(),
             groups: decl.groups.clone(),
+            descendants: decl.descendants.clone(),
+            sequence: decl.sequence.clone(),
             keys: keys.get(&at).cloned().unwrap_or_default(),
         };
         decl_scopes.push(builder.scope(cx, input));
@@ -145,6 +149,12 @@ struct Builder<'n> {
 }
 
 impl Builder<'_> {
+    /// Whether any declaration names `name`, so a descendant rule can
+    /// range over it.
+    fn known(&self, name: Sym) -> bool {
+        self.nodes.iter().any(|decl| decl.name == name)
+    }
+
     fn lookup(&self, owner: Option<Sym>, name: Sym) -> Option<NodeDeclId> {
         let parent = owner.map_or(ParentKey::Root, ParentKey::Under);
         self.dispatch.get(&(parent, name)).copied()
@@ -201,7 +211,29 @@ impl Builder<'_> {
             plans: BTreeMap::new(),
         });
         let (arity, properties) = arguments_and_properties(cx, &input);
-        let (plans, rules) = self.children(cx, &input);
+        let (plans, mut rules) = self.children(cx, &input);
+        let sequenced = input
+            .sequence
+            .as_ref()
+            .and_then(|sequence| compile_sequence(cx, &input, &rules, sequence));
+        if let Some(steps) = sequenced {
+            rules.set_sequence(steps);
+        }
+        for rule in &input.descendants {
+            if !self.known(rule.name) {
+                let spelled = cx.names.resolve(rule.name).to_owned();
+                let reason =
+                    format!("descendants names {spelled}, which no node declaration names");
+                cx.diags
+                    .error(INVALID_BINDING, input.site, &[&input.label, &reason]);
+                continue;
+            }
+            rules.descendant(Occurs {
+                name: rule.name,
+                min: rule.min.unwrap_or(0),
+                max: rule.max,
+            });
+        }
         let scope = &mut self.scopes[id.index()];
         scope.arity = arity;
         scope.properties = properties;
@@ -388,6 +420,8 @@ impl Builder<'_> {
                 .collect(),
             rules: Vec::new(),
             groups: Vec::new(),
+            descendants: Vec::new(),
+            sequence: None,
             keys: Vec::new(),
         };
         if let Some(decl) = declared {
@@ -466,4 +500,48 @@ fn arguments_and_properties(cx: &mut Cx<'_>, input: &ScopeInput<'_>) -> (Arity, 
         }
     }
     (Arity { indexed, rest }, properties.into_iter().collect())
+}
+
+/// Compile a node declaration's ordered sequence into its scope's state
+/// machine. Every step alternative must name a child the scope permits;
+/// bounds were normalized when the declaration was collected (absent
+/// bounds mean exactly once).
+fn compile_sequence(
+    cx: &mut Cx<'_>,
+    input: &ScopeInput<'_>,
+    rules: &ScopeRules,
+    sequence: &SequenceDecl,
+) -> Option<Vec<SequenceStep>> {
+    for step in &sequence.steps {
+        if step.alternatives.is_empty() {
+            let reason = "a sequence step names no node and no alternatives".to_owned();
+            cx.diags
+                .error(INVALID_BINDING, sequence.site, &[&input.label, &reason]);
+            continue;
+        }
+        if step.min > step.max {
+            let reason = format!(
+                "a sequence step has min-occurs {} above max-occurs {}",
+                step.min, step.max
+            );
+            cx.diags
+                .error(INVALID_BINDING, sequence.site, &[&input.label, &reason]);
+            continue;
+        }
+        for name in &step.alternatives {
+            if !rules.permits(*name) {
+                let spelled = cx.names.resolve(*name).to_owned();
+                let reason = format!("sequence names {spelled}, which is not a permitted child");
+                cx.diags
+                    .error(INVALID_BINDING, sequence.site, &[&input.label, &reason]);
+            }
+        }
+    }
+    if sequence.steps.is_empty() {
+        let reason = "sequence names no step".to_owned();
+        cx.diags
+            .error(INVALID_BINDING, sequence.site, &[&input.label, &reason]);
+        return None;
+    }
+    Some(sequence.steps.clone())
 }

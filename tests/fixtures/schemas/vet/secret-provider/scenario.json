@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "A secret provider declares its identifier, TTL, and command as a list of strings preserving argument boundaries: the descriptor vets green and the command is never executed to validate it",
+  "args": [
+    "vet",
+    "schema",
+    "schema.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "ok: schema demo version 1 scope=complete documents=1 types=1 nodes=1 slots=0 profiles=0 digest=8255e8dda51d6c8b"
+    ]
+  }
+}

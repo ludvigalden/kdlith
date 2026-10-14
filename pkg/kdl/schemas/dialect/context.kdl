@@ -40,6 +40,22 @@ dialect kdlith version="0" {
             field type TypeExpression
             field namespace "optional<NamespaceName>"
             field description "optional<String>"
+            // The slot's accumulation policy: how an accumulating effect
+            // combines with the value already held.
+            field accumulate "optional<AccumulationPolicy>"
+        }
+
+        // How an accumulating effect combines with the slot's incoming
+        // value: append concatenates lists in effect order; merge combines
+        // maps key-wise, where a key contributed twice is a duplicate-key
+        // rejection, never a silent overwrite.
+        object AccumulationPolicy {
+            field op AccumulateOp
+        }
+
+        enum AccumulateOp {
+            member append description="Concatenate the incoming list in effect order; for list-typed slots"
+            member merge description="Combine key-wise; a key contributed twice is a duplicate-key rejection"
         }
 
         // Where a group of effects takes effect. A node affecting both its
@@ -93,6 +109,57 @@ dialect kdlith version="0" {
             member fallback description="The context value supplies the field only when no explicit value is present"
             member fixed description="An explicit value must agree with the context value"
         }
+
+        // Source context: fields derived from source metadata before the
+        // document's first semantic node. The block declares its mode
+        // explicitly; there is no default, so an undeclared mode is a
+        // missing required field, never a silent fallback.
+        object SourceContextDef {
+            field mode SourceContextMode
+            field fields "ordered-map<FieldName, SourceFieldDef>"
+        }
+
+        enum SourceContextMode {
+            member initial description="The derived values apply before any control"
+            member fallback description="The derived values supply fields only where no explicit value is present"
+            member fixed description="An explicit value must agree with the derived value"
+        }
+
+        // One source-context field: its type and the registered
+        // source-metadata providers it derives from. A provider the
+        // processor does not install fails closed. The path-stem
+        // provider is the one this version defines.
+        object SourceFieldDef {
+            field type TypeExpression
+            field sources "list<PathStemSource>"
+        }
+
+        // The path-stem source-metadata provider: the importing file
+        // name's stem, without extension.
+        object PathStemSource {
+        }
+
+        // One entry of the index the engine writes while scanning, so a
+        // record can be resolved later by restoring its context snapshot
+        // and binding its recorded span. A restore whose schema
+        // fingerprint or invocation lineage does not match the requesting
+        // context is rejected.
+        object SnapshotIndexEntry {
+            field identity String
+            field type TypeName
+            field digest String
+            field span String
+            field schema-fingerprint String
+            field snapshot String
+            field invocation String
+            field validation ValidationStatus
+        }
+
+        enum ValidationStatus {
+            member validated description="The record was bound and validated"
+            member pending description="The record holds a pending binding awaiting its declaration"
+            member failed description="The record failed validation"
+        }
     }
 
     // Context declarations in a schema definition.
@@ -100,6 +167,7 @@ dialect kdlith version="0" {
     node context role=container {
         parents schema dialect
         children slot
+        children source-context max-occurs=1
     }
 
     // A context-control node declares its effects in effect groups; its
@@ -117,6 +185,45 @@ dialect kdlith version="0" {
         field type arg=1
         field namespace property=namespace
         field description property=description
+        field accumulate child=accumulate
+        children accumulate max-occurs=1
+    }
+
+    // The slot's accumulation policy.
+
+    node accumulate type=AccumulationPolicy parent=slot {
+        field op arg=0
+    }
+
+    // Source context: fields derived from source metadata, applied under
+    // the declared mode before the document's first semantic node, with
+    // the derived value's origin recorded in provenance. A record: a
+    // validated statement about the documents a definition reads, never
+    // referenced by name.
+
+    node source-context role=record type=SourceContextDef parent=context {
+        field mode property=mode
+        field fields {
+            from {
+                entries field key="arg(0)" value=SourceFieldDef
+            }
+            duplicate-keys reject
+        }
+    }
+
+    node field type=SourceFieldDef parent=source-context {
+        field type arg=1
+        field sources {
+            from {
+                child from {
+                    children path-stem
+                }
+            }
+        }
+        children from max-occurs=1
+    }
+
+    node path-stem type=PathStemSource parent=from {
     }
 
     // The effects of a context-control node, declared inside its node
@@ -150,9 +257,4 @@ dialect kdlith version="0" {
     node handler type=HandlerEffect parent=effects {
         field name arg=0
     }
-
-    // Deferred: declared here so the boundary is explicit, not defined.
-    deferred source-context note="Context values inferred from source metadata such as the file path"
-    deferred accumulating-context note="Accumulating context values combined by a declared operation"
-    deferred context-snapshots note="Persisted context snapshots for on-demand resolution of indexed records"
 }

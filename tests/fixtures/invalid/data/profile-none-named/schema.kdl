@@ -1,0 +1,15 @@
+schema demo version="1" {
+    types {
+        object Thing {
+            field name String
+        }
+    }
+    node thing role=record type=Thing {
+        field name arg=0
+    }
+    profile main {
+        roots {
+            allow Thing
+        }
+    }
+}

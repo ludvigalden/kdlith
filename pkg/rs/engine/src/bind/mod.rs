@@ -18,16 +18,15 @@ use kdlith_model::{
 use kdlith_parse::{Locator, Parser};
 use kdlith_runtime::{
     Completion, Context, ContextEffect, Cx, Disposition, FollowingEffects, HeaderEffects,
-    Processor, Session, SessionError, SlotValue,
+    Processor, Session, SessionError, SlotId, SlotValue,
 };
 
 use crate::bindings::{BindingCodec, ChildPlan, ContextPolicy, NodeDeclId, Role, SetFrom};
 use crate::decode::{self, Decoder, Mismatch};
-use crate::deferred::{Spelling, deferred_by, defers, is_discovery_path};
-use crate::definition::{Definition, DefinitionKind};
+use crate::definition::{AccumulateOp, Definition, DefinitionKind};
 use crate::diag::{
-    CONFLICTING_BINDING, DEFERRED_MECHANISM, DUPLICATE_KEY, MALFORMED, MISSING_FIELD,
-    TYPE_EXPRESSION, UNBOUND_ENTRY, UNKNOWN_MEMBER, UNKNOWN_NODE, VALUE_TYPE,
+    CONFLICTING_BINDING, DUPLICATE_KEY, MALFORMED, MISSING_FIELD, TYPE_EXPRESSION, UNBOUND_ENTRY,
+    UNKNOWN_MEMBER, UNKNOWN_NODE, VALUE_TYPE,
 };
 use crate::names::Sym;
 use crate::overlap;
@@ -40,12 +39,14 @@ pub use frame::BindFrame;
 pub use source::ParseEvents;
 
 use frame::{Kind, Opened, Supplied};
-use tables::{Bind, Collect, Mode, Tables};
+use tables::{Bind, Collect, Mode, SlotInfo, Tables};
 
 const COLLISION: &str = "KDLITH-BND007";
 const DUPLICATE_PROPERTY: &str = "KDLITH-SYN003";
 const CONTEXT_UNAVAILABLE: &str = "KDLITH-CTX001";
 const CONTEXT_DISAGREES: &str = "KDLITH-CTX002";
+const CONTEXT_ACCUMULATE: &str = "KDLITH-CTX003";
+const PROFILE_NOT_SELECTED: &str = "KDLITH-SCH011";
 
 const DOCUMENT_ROOT: &str = "the document root";
 
@@ -54,8 +55,12 @@ enum CaseSelection {
     /// The node declares no cases.
     None,
     /// A case (or `otherwise`) selected; the type name, when the
-    /// selected type names one.
-    Selected(Option<Sym>),
+    /// selected type names one, and the property of the case rule that
+    /// matched (`None` for `otherwise`).
+    Selected {
+        typed: Option<Sym>,
+        property: Option<Sym>,
+    },
     /// No case matched and there is no `otherwise`.
     Unmatched,
 }
@@ -119,6 +124,12 @@ pub struct Binder<'d, 's> {
     /// The explicit output policy for sensitive fields; `None` applies
     /// each sensitivity's fail-closed default.
     output_policy: Option<OutputPolicy>,
+    /// The profile the invocation named, and the root types it admits;
+    /// `None` with a definition that declares profiles fails closed
+    /// (`KDLITH-SCH011`).
+    profile: Option<Sym>,
+    profile_roots: Option<Vec<Sym>>,
+    profile_reported: bool,
     /// A root node broke the document's order rule, so the missing first
     /// node is not reported again at the end.
     order_broken: bool,
@@ -148,10 +159,46 @@ impl<'d, 's> Binder<'d, 's> {
         text: &'s str,
         output_policy: Option<OutputPolicy>,
     ) -> Self {
+        Self::with_profile_and_policy(def, source, path, text, None, output_policy)
+    }
+
+    /// A binder applying the profile `profile` the invocation named.
+    /// `None` against a definition that declares profiles fails closed.
+    pub fn with_profile(
+        def: &'d Definition,
+        source: SourceId,
+        path: impl Into<String>,
+        text: &'s str,
+        profile: Option<&str>,
+    ) -> Self {
+        Self::with_profile_and_policy(def, source, path, text, profile, None)
+    }
+
+    /// A binder applying the named profile and one explicit output
+    /// policy. An unknown profile name fails closed exactly as a missing
+    /// one does.
+    pub fn with_profile_and_policy(
+        def: &'d Definition,
+        source: SourceId,
+        path: impl Into<String>,
+        text: &'s str,
+        profile: Option<&str>,
+        output_policy: Option<OutputPolicy>,
+    ) -> Self {
         let root = def
             .bindings
             .scope(def.bindings.root_scope())
             .map_or_else(|| ScopeRules::default().start(), |s| s.rules.start());
+        let named = profile.and_then(|name| def.names.get(name));
+        let unknown = profile.is_some_and(|name| def.names.get(name).is_none());
+        let selected = match named {
+            Some(name) => def.profiles.iter().find(|p| p.name == name),
+            None => None,
+        };
+        let (profile, profile_roots) = match selected {
+            Some(selected) => (Some(selected.name), selected.roots.clone()),
+            None => (None, None),
+        };
         Self {
             def,
             tables: tables::build(def),
@@ -161,6 +208,9 @@ impl<'d, 's> Binder<'d, 's> {
             source,
             root,
             output_policy,
+            profile,
+            profile_roots,
+            profile_reported: profile.is_some() || (!unknown && def.profiles.is_empty()),
             order_broken: false,
             root_name: None,
             errors: 0,
@@ -177,27 +227,9 @@ impl<'d, 's> Binder<'d, 's> {
         self.root_name.as_deref()
     }
 
-    /// The deferrals that decide how a definition document spells a
-    /// deferred mechanism: the dialect's own when the document being
-    /// bound is a definition of it, none for any other data document.
-    fn deferrals(&self) -> Option<&'d [crate::definition::Deferral]> {
-        let def = self.def;
-        (def.kind == DefinitionKind::Dialect).then_some(def.deferrals.as_slice())
-    }
-
-    /// A node no binding accepts here, or the spelling of a mechanism the
-    /// dialect defers when the document is one of its definitions.
+    /// A node no binding accepts here.
     fn unknown(&mut self, cx: &mut Cx<'_>, span: ByteSpan, node: &str, owner: &str) {
-        let deferred = self
-            .deferrals()
-            .and_then(|deferrals| deferred_by(deferrals, Spelling::Node(node)));
-        match deferred {
-            Some(mechanism) => {
-                let construct = format!("{node} under {owner}");
-                self.diagnose(cx, DEFERRED_MECHANISM, span, &[&construct, mechanism]);
-            }
-            None => self.diagnose(cx, UNKNOWN_NODE, span, &[node, owner]),
-        }
+        self.diagnose(cx, UNKNOWN_NODE, span, &[node, owner]);
     }
 
     /// Report a value that did not decode as `ty`, under the code that
@@ -212,8 +244,7 @@ impl<'d, 's> Binder<'d, 's> {
     ) {
         let def = self.def;
         let found = decode::found(value);
-        let deferrals = self.deferrals().unwrap_or_default();
-        match decode::mismatch(&def.types, &def.names, ty, value, deferrals) {
+        match decode::mismatch(&def.types, &def.names, ty, value) {
             Mismatch::Value => {
                 let expected = summary::expr(&def.names, ty);
                 self.diagnose(cx, VALUE_TYPE, span, &[what, &expected, &found]);
@@ -227,10 +258,6 @@ impl<'d, 's> Binder<'d, 's> {
                     _ => "",
                 };
                 self.diagnose(cx, TYPE_EXPRESSION, span, &[text, &reason]);
-            }
-            Mismatch::Deferred { mechanism } => {
-                let construct = format!("{what} {found}");
-                self.diagnose(cx, DEFERRED_MECHANISM, span, &[&construct, &mechanism]);
             }
         }
     }
@@ -303,6 +330,16 @@ impl<'d, 's> Binder<'d, 's> {
                 format!("the first node of {owner}"),
                 "0".to_owned(),
                 "exactly 1".to_owned(),
+            ),
+            Violation::SequenceRejected { child, step } => (
+                format!("{} under {owner}", self.name(*child)),
+                format!("step {}", step + 1),
+                "a position the ordered sequence admits".to_owned(),
+            ),
+            Violation::SequenceIncomplete { step } => (
+                format!("the ordered sequence under {owner}"),
+                format!("stopped at step {}", step + 1),
+                "every step within its bounds".to_owned(),
             ),
         };
         self.diagnose(cx, code, span, &[&what, &count, &expected]);
@@ -608,7 +645,7 @@ impl<'d, 's> Binder<'d, 's> {
                                 .push(Entry::new("documented-default".to_owned(), default.clone()));
                         }
                         if let Some(fallback) = &field.fallback {
-                            entries.push(Entry::new("fallback".to_owned(), fallback.clone()));
+                            entries.push(Entry::new("fallback".to_owned(), fallback.to_bound()));
                         }
                         if let Some(sensitivity) = field.sensitivity {
                             entries.push(Entry::new(
@@ -693,14 +730,26 @@ impl<'d, 's> Binder<'d, 's> {
                 .is_some_and(|value| value.as_ref() == Some(&case.equals));
             if held {
                 return match &case.ty {
-                    TypeExpr::Named(name) => CaseSelection::Selected(Some(*name)),
-                    _ => CaseSelection::Selected(None),
+                    TypeExpr::Named(name) => CaseSelection::Selected {
+                        typed: Some(*name),
+                        property: Some(case.property),
+                    },
+                    _ => CaseSelection::Selected {
+                        typed: None,
+                        property: Some(case.property),
+                    },
                 };
             }
         }
         match &info.otherwise {
-            Some(TypeExpr::Named(name)) => CaseSelection::Selected(Some(*name)),
-            Some(_) => CaseSelection::Selected(None),
+            Some(TypeExpr::Named(name)) => CaseSelection::Selected {
+                typed: Some(*name),
+                property: None,
+            },
+            Some(_) => CaseSelection::Selected {
+                typed: None,
+                property: None,
+            },
             None => {
                 let node = self.name(frame.name);
                 let place = "no case of its cases block matches and it has no otherwise";
@@ -835,21 +884,86 @@ impl<'d, 's> Binder<'d, 's> {
     ) -> Vec<ContextEffect> {
         let mut kept = Vec::with_capacity(effects.len());
         for effect in effects {
-            if let ContextEffect::Set { slot, value } = &effect
-                && let Some((name, ty)) = self.tables.slots.get(slot.index())
-            {
-                let what = format!("context {}", self.name(*name));
-                let ty = Some(ty.clone());
-                if self
-                    .check(cx, ty, &what, value.value.clone(), span)
-                    .is_none()
-                {
-                    continue;
-                }
-            }
-            kept.push(effect);
+            let ContextEffect::Set { slot, value } = &effect else {
+                kept.push(effect);
+                continue;
+            };
+            let Some(info) = self.tables.slots.get(slot.index()).cloned() else {
+                kept.push(effect);
+                continue;
+            };
+            let what = format!("context {}", self.name(info.name));
+            let Some(decoded) =
+                self.check(cx, Some(info.ty.clone()), &what, value.value.clone(), span)
+            else {
+                continue;
+            };
+            let Some(combined) = self.combine(cx, *slot, &info, decoded, span) else {
+                continue;
+            };
+            kept.push(ContextEffect::Set {
+                slot: *slot,
+                value: SlotValue::new(combined, value.origin),
+            });
         }
         kept
+    }
+
+    /// Combine an incoming set with the value its slot already holds,
+    /// under the slot's declared accumulation operation.
+    fn combine(
+        &mut self,
+        cx: &mut Cx<'_>,
+        slot: SlotId,
+        info: &SlotInfo,
+        incoming: Value,
+        span: ByteSpan,
+    ) -> Option<Value> {
+        let held = cx.context().get(slot).map(|held| held.value.clone());
+        match info.accumulate {
+            Some(AccumulateOp::Append) => match (held, incoming) {
+                (None, incoming) => Some(incoming),
+                (Some(Value::List(mut held)), Value::List(mut items)) => {
+                    held.append(&mut items);
+                    Some(Value::List(held))
+                }
+                (Some(held), _) => {
+                    let what = format!("context {}", self.name(info.name));
+                    self.mismatched(cx, &info.ty, &what, &held, span);
+                    None
+                }
+            },
+            Some(AccumulateOp::Merge) => match (held, incoming) {
+                (None, incoming) => Some(incoming),
+                (Some(Value::Map(mut held)), Value::Map(entries)) => {
+                    let slot = self.name(info.name);
+                    let label = format!("context {slot}");
+                    for entry in entries {
+                        if held.iter().any(|held| held.key == entry.key) {
+                            self.diagnose(cx, DUPLICATE_KEY, span, &[&entry.key, &label]);
+                            return None;
+                        }
+                        held.push(entry);
+                    }
+                    Some(Value::Map(held))
+                }
+                (Some(held), _) => {
+                    let what = format!("context {}", self.name(info.name));
+                    self.mismatched(cx, &info.ty, &what, &held, span);
+                    None
+                }
+            },
+            None => {
+                // Accumulation is defined for list- and map-typed slots
+                // only; a scalar slot re-set is an ordinary replacement.
+                if held.is_some() && collects(&info.ty) {
+                    let slot = self.name(info.name);
+                    self.diagnose(cx, CONTEXT_ACCUMULATE, span, &[slot]);
+                    return None;
+                }
+                Some(incoming)
+            }
+        }
     }
 
     /// Whether a node declaration of a definition bound as data of the
@@ -939,6 +1053,8 @@ impl<'d, 's> Binder<'d, 's> {
         let identity = text_of(info.identity);
         let path = text_of(info.path);
         let repeated = text_of(info.repeated);
+        let layer = text_of(info.layer);
+        let scope = text_of(info.scope);
         let project: Vec<String> = match info.project.and_then(|at| values.get(at)?.as_ref()) {
             Some(Value::List(names)) => names
                 .iter()
@@ -994,9 +1110,13 @@ impl<'d, 's> Binder<'d, 's> {
                         .map(|f| Entry::new(f.name, f.value))
                         .collect(),
                 );
-                BoundItem::Contribution(Box::new(BoundContribution::new(
-                    node, target, value, origin, validation,
-                )))
+                let mut contribution =
+                    BoundContribution::new(node, target, value, origin, validation);
+                // The preserved record carries its layer and application
+                // scope as metadata for the registered resolver.
+                contribution.layer = layer;
+                contribution.scope = scope;
+                BoundItem::Contribution(Box::new(contribution))
             }
             Role::SourceImport => {
                 let site = self.location(frame.span);
@@ -1026,32 +1146,27 @@ impl<'d, 's> Binder<'d, 's> {
         cx.emit(item);
     }
 
-    /// Whether a definition document's import path is literal, reported
+    /// Whether a dialect document's import path is literal, reported
     /// as the compiler reports it when empty or in discovery syntax.
-    /// Other documents' import paths are left to resolution.
+    /// A schema document's paths are left to its own compile.
     fn literal_import(&mut self, cx: &mut Cx<'_>, span: ByteSpan, path: &str) -> bool {
-        let Some(deferrals) = self.deferrals() else {
+        if self.root_name.as_deref() != Some("dialect") {
             return true;
-        };
+        }
         if path.is_empty() {
             self.diagnose(cx, MALFORMED, span, &["import", "empty path"]);
             return false;
         }
-        if !is_discovery_path(path) {
+        if !crate::discovery::is_expression(path) {
             return true;
         }
         let construct = format!("import {path:?}");
-        if defers(deferrals, "discovery-grammars") {
-            let values = [construct.as_str(), "discovery-grammars"];
-            self.diagnose(cx, DEFERRED_MECHANISM, span, &values);
-        } else {
-            self.diagnose(
-                cx,
-                MALFORMED,
-                span,
-                &[&construct, "import paths are literal"],
-            );
-        }
+        self.diagnose(
+            cx,
+            MALFORMED,
+            span,
+            &[&construct, "import paths are literal"],
+        );
         false
     }
 
@@ -1088,17 +1203,21 @@ impl<'d, 's> Binder<'d, 's> {
         if self.root_without_version(cx, frame, &values, parent.is_none()) {
             return;
         }
+        // A case dispatch selects the type a node binds as on every
+        // reading path: an item's type, or the union member a part
+        // spells. No match and no otherwise rejects the node outright.
+        let selection = self.select_case(cx, frame, &values);
+        if matches!(selection, CaseSelection::Unmatched) {
+            return;
+        }
+        let (typed_as, selected_on) = match selection {
+            CaseSelection::Selected { typed, property } => (typed, property),
+            CaseSelection::None => (None, None),
+            CaseSelection::Unmatched => unreachable!("an unmatched case returned above"),
+        };
         let role = def.bindings.get(owner).and_then(|decl| decl.role);
         if let Some(role) = role {
-            let selection = self.select_case(cx, frame, &values);
-            if matches!(selection, CaseSelection::Unmatched) {
-                return;
-            }
             self.dependent_payload(cx, frame, &values);
-            let typed_as = match selection {
-                CaseSelection::Selected(typed) => typed,
-                _ => None,
-            };
             if let Some(plan) = def.plan.node(owner) {
                 let infos = &self.tables.decls[owner.index()].fields;
                 let value_of = |field: Sym| {
@@ -1121,16 +1240,32 @@ impl<'d, 's> Binder<'d, 's> {
             return;
         };
         let infos = &self.tables.decls[owner.index()].fields;
+        // A part's case selector is dispatch input, not payload: the
+        // variant it lands under says it. An item keeps the property
+        // among its fields, per its selected type's contract.
         let entries = infos
             .iter()
             .zip(values)
+            .filter(|(info, _)| Some(info.name) != selected_on)
             .filter_map(|(info, value)| Some(Entry::new(self.name(info.name), value?)))
             .collect();
         let mut value = Value::Map(entries);
         if let Some(variants) = self.union_of(parent.owner, bind) {
-            // A union value is spelled by the node naming its variant, so
-            // the variant is kept as the value's single key.
-            if !variants.iter().any(|v| v.discriminator == frame.name) {
+            // A union value is spelled by the node naming its variant, or
+            // by the case dispatch that selected a variant's type.
+            let spelled = variants.iter().find_map(|variant| {
+                if variant.discriminator == frame.name {
+                    return Some(variant.discriminator);
+                }
+                match typed_as {
+                    Some(selected) => {
+                        matches!(variant.ty, TypeExpr::Named(name) if name == selected)
+                            .then_some(variant.discriminator)
+                    }
+                    None => None,
+                }
+            });
+            let Some(spelled) = spelled else {
                 let what = self.field_label(parent.owner, bind.field);
                 let ty = self.item_type(parent.owner, bind).cloned();
                 let expected =
@@ -1139,8 +1274,8 @@ impl<'d, 's> Binder<'d, 's> {
                 self.diagnose(cx, VALUE_TYPE, frame.span, &[&what, &expected, &found]);
                 parent.rejected.push(bind.field);
                 return;
-            }
-            value = Value::Map(vec![Entry::new(self.name(frame.name), value)]);
+            };
+            value = Value::Map(vec![Entry::new(self.name(spelled), value)]);
         }
         if bind.mode == Mode::Keyed {
             let Some((key, span)) = frame.key.take() else {
@@ -1203,6 +1338,16 @@ impl<'s> Processor for Binder<'_, 's> {
         if parent.is_none() && self.root_name.is_none() {
             self.root_name = Some(node.name.to_string());
         }
+        if parent.is_none() && !self.profile_reported {
+            // A schema that declares profiles must have exactly one named
+            // by the invocation; the engine never infers one from
+            // document content.
+            self.profile_reported = true;
+            let profile = "profile (none)";
+            let values = [profile, &def.name];
+            self.diagnose(cx, PROFILE_NOT_SELECTED, span, &values);
+            return Disposition::Skip;
+        }
         let (Some(sym), Some(scope_id)) = (def.names.get(&node.name), scope) else {
             self.unknown(cx, span, &node.name, owner_label);
             return Disposition::Skip;
@@ -1241,6 +1386,23 @@ impl<'s> Processor for Binder<'_, 's> {
                 return Disposition::Skip;
             }
         };
+        // Dispatch consults the active profile as part of position: a
+        // declaration another profile owns, or a root the profile's
+        // roots do not allow, is rejected as unbound.
+        if let Kind::Declared { decl, .. } = kind {
+            let declared = def.bindings.get(decl);
+            if declared.is_some_and(|d| d.profile.is_some_and(|p| Some(p) != self.profile))
+                || (parent.is_none()
+                    && self.profile_roots.as_ref().is_some_and(|roots| {
+                        declared
+                            .and_then(|d| d.ty)
+                            .is_none_or(|ty| !roots.contains(&ty))
+                    }))
+            {
+                self.unknown(cx, span, &node.name, owner_label);
+                return Disposition::Skip;
+            }
+        }
         if node.annotated {
             self.diagnose(
                 cx,
@@ -1331,19 +1493,8 @@ impl<'s> Processor for Binder<'_, 's> {
                 self.take(cx, frame, bind, entry.value, span);
             }
             _ => {
-                let deferred = self
-                    .deferrals()
-                    .and_then(|deferrals| deferred_by(deferrals, Spelling::Property(&name)));
-                match deferred {
-                    Some(mechanism) => {
-                        let construct = format!("{node} property {name}");
-                        self.diagnose(cx, DEFERRED_MECHANISM, span, &[&construct, mechanism]);
-                    }
-                    None => {
-                        let what = format!("property {name}");
-                        self.diagnose(cx, UNBOUND_ENTRY, span, &[&what, node]);
-                    }
-                }
+                let what = format!("property {name}");
+                self.diagnose(cx, UNBOUND_ENTRY, span, &[&what, node]);
             }
         }
     }
@@ -1378,13 +1529,33 @@ impl<'s> Processor for Binder<'_, 's> {
         following: &mut FollowingEffects<'_>,
     ) -> Completion {
         let def = self.def;
-        if let (Some(scope), Some(state)) = (frame.scope, frame.state.as_ref())
-            && let Some(compiled) = def.bindings.scope(scope)
-        {
-            let owner = self.name(frame.name);
-            for violation in compiled.rules.complete(state) {
-                self.violation(cx, frame.span, owner, &violation);
+        let subtree = frame
+            .state
+            .take()
+            .map(|state| {
+                let compiled = frame
+                    .scope
+                    .and_then(|scope| def.bindings.scope(scope))
+                    .map(|scope| scope.rules.complete(&state));
+                if let Some(violations) = compiled {
+                    let owner = self.name(frame.name);
+                    for violation in violations {
+                        self.violation(cx, frame.span, owner, &violation);
+                    }
+                }
+                ScopeRules::subtree(&state).clone()
+            })
+            .unwrap_or_default();
+        // Occurrences anywhere below count toward every enclosing scope's
+        // descendant rules; an import is a separate invocation with its
+        // own scopes, so the counts never cross that boundary.
+        match parent.as_deref_mut() {
+            Some(parent) => {
+                if let Some(state) = parent.state.as_mut() {
+                    ScopeRules::bubble(state, &subtree);
+                }
             }
+            None => ScopeRules::bubble(&mut self.root, &subtree),
         }
         let item = match frame.kind {
             Kind::Declared { decl, key } => {
@@ -1437,6 +1608,9 @@ impl<'s> Processor for Binder<'_, 's> {
 /// session limit ends the stream with its diagnostic as the last item.
 pub struct BindingSession<'d, 's> {
     session: Session<ParseEvents<'s>, Binder<'d, 's>>,
+    /// Diagnostics the source-context application produced before the
+    /// stream began, yielded ahead of every bound item.
+    pending: Vec<BoundItem>,
     ended: bool,
     stopped: bool,
 }
@@ -1470,13 +1644,21 @@ impl<'d, 's> BindingSession<'d, 's> {
         context: Context,
         output_policy: Option<OutputPolicy>,
     ) -> Self {
-        let events = ParseEvents::new(Parser::new(text), text, path);
-        let binder = Binder::with_output_policy(def, source, path, text, output_policy);
-        Self {
-            session: Session::with_context(source, events, binder, context),
-            ended: false,
-            stopped: false,
-        }
+        Self::with_all(def, source, path, text, context, None, output_policy)
+    }
+
+    /// Bind starting from `context` and applying the profile the
+    /// invocation named. `None` against a definition that declares
+    /// profiles fails closed (`KDLITH-SCH011`).
+    pub fn with_context_and_profile(
+        def: &'d Definition,
+        source: SourceId,
+        path: &str,
+        text: &'s str,
+        context: Context,
+        profile: Option<&str>,
+    ) -> Self {
+        Self::with_all(def, source, path, text, context, profile, None)
     }
 
     /// Bind applying one explicit output policy to every sensitive
@@ -1498,6 +1680,35 @@ impl<'d, 's> BindingSession<'d, 's> {
         )
     }
 
+    /// Every binding-session knob at once.
+    fn with_all(
+        def: &'d Definition,
+        source: SourceId,
+        path: &str,
+        text: &'s str,
+        mut context: Context,
+        profile: Option<&str>,
+        output_policy: Option<OutputPolicy>,
+    ) -> Self {
+        let events = ParseEvents::new(Parser::new(text), text, path);
+        let binder =
+            Binder::with_profile_and_policy(def, source, path, text, profile, output_policy);
+        // Source-context values apply before the document's first
+        // semantic node — before the stream begins — under their declared
+        // mode, with failures surfacing as the stream's first items.
+        let (_, records) = crate::source_context::apply(def, &mut context, path);
+        let pending = records
+            .into_iter()
+            .map(|record| BoundItem::Diagnostic(Box::new(record)))
+            .collect();
+        Self {
+            session: Session::with_context(source, events, binder, context),
+            pending,
+            ended: false,
+            stopped: false,
+        }
+    }
+
     /// The context as the latest item left it: at an import request, the
     /// context of the import site.
     pub fn context(&self) -> &Context {
@@ -1509,6 +1720,10 @@ impl<'d, 's> BindingSession<'d, 's> {
     pub fn next_item(&mut self) -> Result<Option<BoundItem>, SessionError> {
         if self.ended {
             return Ok(None);
+        }
+        if let Some(item) = self.pending.first().cloned() {
+            self.pending.remove(0);
+            return Ok(Some(item));
         }
         loop {
             match self.session.next_item() {
@@ -1542,6 +1757,19 @@ impl<'d, 's> BindingSession<'d, 's> {
     /// Whether the document failed: an error diagnostic was emitted, or
     /// the stream stopped early.
     pub fn failed(&self) -> bool {
-        self.stopped || self.session.processor().errors() > 0
+        self.stopped || !self.pending.is_empty() || self.session.processor().errors() > 0
+    }
+}
+
+/// Whether a slot's type is list- or map-shaped, once optional and
+/// nullable wrappers are stripped: the shapes accumulation is defined
+/// for.
+fn collects(mut ty: &TypeExpr) -> bool {
+    loop {
+        match ty {
+            TypeExpr::Optional(inner) | TypeExpr::Nullable(inner) => ty = inner,
+            TypeExpr::List(_) | TypeExpr::Map(_, _) | TypeExpr::OrderedMap(_, _) => return true,
+            _ => return false,
+        }
     }
 }

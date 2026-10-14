@@ -1,0 +1,20 @@
+{
+  "binary": "kdlith",
+  "description": "Repeated-import policy coalesce on the dialect path: the conform walk admits the repeated= property (previously the dialect self-description rejected any spelling), so the second import of the same source under repeated=coalesce vets green alongside the four canonical files and the digest stays the canonical one",
+  "args": [
+    "vet",
+    "dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/types.kdl",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/bindings.kdl",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/context.kdl",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/documents.kdl",
+    "extra.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "ok: dialect kdlith version 0 scope=complete documents=6 ",
+      " digest=d1f2c23d303b8b9d"
+    ]
+  }
+}

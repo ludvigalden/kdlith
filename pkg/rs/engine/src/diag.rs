@@ -9,7 +9,6 @@ use crate::definition::DefinitionKind;
 use crate::syntax::ParsedDocument;
 
 pub(crate) const DUPLICATE_CONSTRUCT: &str = "KDLITH-DLC002";
-pub(crate) const DEFERRED_MECHANISM: &str = "KDLITH-DLC003";
 pub(crate) const ROOT_MISMATCH: &str = "KDLITH-DLC004";
 pub(crate) const MALFORMED: &str = "KDLITH-DLC005";
 pub(crate) const NOT_INSTALLED: &str = "KDLITH-DLC006";
@@ -31,6 +30,8 @@ pub(crate) const DISPATCH_PREFIX: &str = "KDLITH-SCH010";
 pub(crate) const IMPORT_UNRESOLVED: &str = "KDLITH-IMP001";
 pub(crate) const IMPORT_CYCLE: &str = "KDLITH-IMP002";
 pub(crate) const IMPORT_REPEATED: &str = "KDLITH-IMP003";
+pub(crate) const IMPORT_GRAMMAR: &str = "KDLITH-IMP004";
+pub(crate) const IMPORT_ANCHOR: &str = "KDLITH-IMP005";
 pub(crate) const SOURCE_UNREADABLE: &str = "KDLITH-SRC001";
 pub(crate) const SOURCE_NOT_UTF8: &str = "KDLITH-SRC002";
 pub(crate) const SOURCE_LIMIT: &str = "KDLITH-SRC003";

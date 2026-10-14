@@ -138,15 +138,17 @@ dialect kdlith version="0" {
         }
 
         // A logical field. documented-default is metadata only and never
-        // materializes an absent value; fallback supplies an absent value.
-        // Reading a value from the active context is a binding concern
-        // (bindings.kdl), not part of the logical field.
+        // materializes an absent value; fallback supplies an absent value
+        // when it is a literal — a computed fallback is a descriptor the
+        // processor never computes. Reading a value from the active
+        // context is a binding concern (bindings.kdl), not part of the
+        // logical field.
         // The field's name is the key of the enclosing ordered map.
         object FieldDef {
             field type TypeExpression
             field description "optional<String>"
             field documented-default "optional<ValueExpr>"
-            field fallback "optional<ValueExpr>"
+            field fallback "optional<DefaultSpec>"
             field sensitivity "optional<Sensitivity>"
         }
 
@@ -327,6 +329,28 @@ dialect kdlith version="0" {
         field sensitivity property=sensitivity
         children documented-default max-occurs=1
         children fallback max-occurs=1
+    }
+
+    // A field's fallback: a literal value, or a computed descriptor
+    // discriminated by its `computed` property. A computed default is
+    // never computed by the processor — computation belongs to the
+    // owning domain process — so only the literal alternative supplies
+    // an absent value.
+    node fallback parent=field {
+        field computed "optional<Bool>" property=computed
+        field value "optional<ValueExpr>" arg=0
+        field dependencies "optional<list<String>>" {
+            from {
+                children dependency {
+                    argument 0
+                }
+            }
+        }
+        cases {
+            case property=computed equals=#true type=ComputedDefault
+            otherwise type=LiteralDefault
+        }
+        children dependency
     }
 
     node constraints parent=object {

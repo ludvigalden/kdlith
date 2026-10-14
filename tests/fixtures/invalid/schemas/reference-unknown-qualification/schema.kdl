@@ -1,0 +1,29 @@
+schema demo version="1" {
+    types {
+        object Thing {
+            field ns String
+            field name String
+        }
+        codec ThingRef output=Thing {
+            match "^([a-z]+):([a-z-]+)$"
+            capture ns String
+            capture name String
+        }
+    }
+    node thing role=declaration type=Thing {
+        field ns property=ns
+        field name arg=0
+        identity {
+            domain things
+            compose qualified-name ns name
+        }
+    }
+    reference ThingRef target=Thing codec=ThingRef lookup=things qualification=sometimes {
+        qualifier ns String
+    }
+    document {
+        first {
+            exactly-one thing
+        }
+    }
+}

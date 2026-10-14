@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "No discovery grammar admits environment-variable interpolation: the expression's syntax is rejected at compile-time grammar validation before any expansion runs",
+  "args": [
+    "vet",
+    "schema",
+    "--scope",
+    "local",
+    "schema.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

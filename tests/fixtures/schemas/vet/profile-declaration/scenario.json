@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "A schema declaring a document profile with its root selection vets green and the summary counts the profile: the declaration surface of profile dispatch (the invocation names the profile; the binder side is pinned by invalid/data/profile-none-named)",
+  "args": [
+    "vet",
+    "schema",
+    "schema.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "ok: schema demo version 1 scope=complete documents=1 types=1 nodes=1 slots=0 profiles=1 digest=fdcaf25c60da6448"
+    ]
+  }
+}

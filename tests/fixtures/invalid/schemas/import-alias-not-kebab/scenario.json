@@ -1,0 +1,8 @@
+{
+  "binary": "kdlith",
+  "description": "An import alias must spell a kebab-case name: a non-kebab as= value does not decode as AliasName (the duplicate-alias BND006 arm is not CLI-reachable; see the declared elisions)",
+  "args": ["vet", "schema", "schema.kdl"],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

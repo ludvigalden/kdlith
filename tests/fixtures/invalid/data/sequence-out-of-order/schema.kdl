@@ -1,0 +1,29 @@
+schema demo version="1" {
+    types {
+        object Thing {
+            field name String
+        }
+        object Box {
+            field title String
+        }
+    }
+    node thing role=record type=Thing parent=box {
+        field name arg=0
+    }
+    node mid role=container parent=box {
+    }
+    node box role=container type=Box {
+        field title arg=0
+        children mid
+        children thing
+        sequence {
+            step mid max-occurs=2
+            step thing
+        }
+    }
+    document {
+        first {
+            exactly-one box
+        }
+    }
+}

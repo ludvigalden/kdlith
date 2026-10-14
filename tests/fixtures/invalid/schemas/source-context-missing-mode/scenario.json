@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A source-context block declares its mode explicitly \u2014 initial, fallback, or fixed \u2014 with no default: an absent mode is a missing required property, never a silent fallback",
+  "args": [
+    "vet",
+    "schema",
+    "schema.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

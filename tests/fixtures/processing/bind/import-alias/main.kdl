@@ -1,0 +1,11 @@
+schema demo version="1" {
+    import "part.kdl" as=left
+    node root role=container {
+        children extra
+    }
+    document {
+        first {
+            exactly-one root
+        }
+    }
+}

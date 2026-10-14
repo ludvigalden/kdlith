@@ -39,12 +39,16 @@ dialect kdlith version="0" {
             field type "optional<TypeName>"
             field parent "optional<NodeName>"
             field parents "optional<list<NodeName>>"
+            field profile "optional<ProfileName>"
             field fields "ordered-map<FieldName, FieldBinding>"
             field children "ordered-map<NodeName, ChildRule>"
             field effects "list<EffectGroup>"
             field groups "list<ExactlyOneGroup>"
+            field descendants "list<DescendantRule>"
+            field sequence "optional<SequenceRule>"
             field value "optional<DependentBinding>"
             field cases "optional<CaseDispatch>"
+            field identity "optional<IdentityBlock>"
         }
 
         // A dependent payload binding: how a node's remaining payload
@@ -241,10 +245,20 @@ dialect kdlith version="0" {
         }
         field value child=value
         field cases child=cases
+        field identity child=identity
+        field sequence child=sequence
+        field descendants {
+            from {
+                children descendants
+            }
+        }
         children parents max-occurs=1
         children effects max-occurs=2
         children value max-occurs=1
         children cases max-occurs=1
+        children identity max-occurs=1
+        children sequence max-occurs=1
+        children descendants
     }
 
     // A field binding. Shorthands abbreviate the common single-source
