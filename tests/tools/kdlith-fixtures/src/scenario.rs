@@ -1,5 +1,6 @@
-//! Scenario format v0: the `scenario.json` manifest, parsed strictly,
-//! and the raw-text `# expect-invalid:` header of a negative control.
+//! Scenario format: the `scenario.json` manifest, parsed strictly, the
+//! raw-text `# expect-invalid:` header of a negative control, and the
+//! multi-step codegen-oracle kind.
 
 use std::path::{Component, Path, PathBuf};
 
@@ -11,18 +12,124 @@ pub(crate) const MANIFEST: &str = "scenario.json";
 /// The header prefix a negative-control input's first line carries.
 const INVALID_HEADER: &str = "# expect-invalid:";
 
-/// The one argument placeholder: it expands to the canonical suite root,
-/// so a scenario can name a committed file outside its own directory.
+/// The suite placeholder: it expands to the canonical suite root, so a
+/// scenario can name a committed file outside its own directory.
 pub(crate) const SUITE_PLACEHOLDER: &str = "{fx-suite}";
+
+/// The repository placeholder: it expands to the repository root above
+/// the suite, so a codegen-oracle scenario can name read-only repository
+/// content such as the reference processor.
+pub(crate) const REPO_PLACEHOLDER: &str = "{fx-repo}";
 
 /// A loaded scenario, ready to materialize and run.
 #[derive(Debug)]
-pub(crate) struct Scenario {
+pub(crate) enum Scenario {
+    /// The single-invocation shape: one processor run judged by stream
+    /// assertions and an optional scratch check.
+    Invoke(Invocation),
+    /// The codegen-oracle shape: ordered steps over processor
+    /// generation, every judgement a plain harness-side comparison.
+    Oracle(CodegenOracle),
+}
+
+/// The single-invocation shape.
+#[derive(Debug)]
+pub(crate) struct Invocation {
     pub(crate) args: Vec<String>,
     pub(crate) expectation: Expectation,
     /// A declared scratch check: violations the harness itself must
     /// plant and then classify in the materialized copy.
     pub(crate) scratch_check: Option<ScratchCheck>,
+}
+
+/// The codegen-oracle scenario: the entrypoint, the crate name, and the
+/// ordered steps the harness runs and judges.
+#[derive(Debug)]
+pub(crate) struct CodegenOracle {
+    /// Which `gen` form drives generation.
+    pub(crate) form: GenForm,
+    /// The definition entrypoint, placeholders allowed.
+    pub(crate) entrypoint: String,
+    /// The crate name generation publishes.
+    pub(crate) crate_name: String,
+    /// The ordered steps; never empty.
+    pub(crate) steps: Vec<OracleStep>,
+}
+
+/// The `gen` form a codegen-oracle scenario drives.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum GenForm {
+    Dialect,
+    Schema,
+}
+
+impl GenForm {
+    /// The subcommand spelling.
+    pub(crate) fn as_str(self) -> &'static str {
+        match self {
+            GenForm::Dialect => "dialect",
+            GenForm::Schema => "schema",
+        }
+    }
+}
+
+/// One ordered step of a codegen-oracle run.
+#[derive(Debug)]
+pub(crate) enum OracleStep {
+    /// Run the processor's `gen` form into `out` (relative to the
+    /// materialized copy); a nonzero exit fails the scenario.
+    Generate { out: String },
+    /// Require every named tree (relative to the materialized copy) to
+    /// hold exactly the same files with exactly the same bytes.
+    Determinism { trees: Vec<String> },
+    /// Require the generated tree's `**/*.rs` files to match the
+    /// reference tree byte for byte, excluding exactly the generated
+    /// marker header line.
+    Compare {
+        generated: String,
+        reference: String,
+    },
+    /// Materialize the scratch workspace (the scenario's committed
+    /// template, plus the declared repository crates copied in), then
+    /// run the declared command; a nonzero exit fails the scenario.
+    Compile {
+        workspace: String,
+        copy: RepoCopy,
+        command: Vec<String>,
+    },
+    /// Run the declared command against the compiled crate and judge
+    /// its exit and stream substrings, as a positive control does.
+    Exercise {
+        command: Vec<String>,
+        stdout_contains: Vec<String>,
+        stderr_contains: Vec<String>,
+    },
+}
+
+/// What a compile step copies from the repository into the scratch
+/// workspace, at the pinned layout positions the generated crate's own
+/// manifest and seed includes demand.
+#[derive(Debug)]
+pub(crate) struct RepoCopy {
+    /// Crate directory names under `pkg/rs`, copied to `<ws>/rs/<name>`
+    /// so the generated crate's `../<name>` path dependencies resolve.
+    pub(crate) crates: Vec<String>,
+    /// Copy `pkg/kdl` to `<ws>/kdl`, where the generated crate's seed
+    /// includes point.
+    pub(crate) kdl: bool,
+}
+
+impl OracleStep {
+    /// The step's kind name, for failure reports.
+    pub(crate) fn kind(&self) -> &'static str {
+        match self {
+            OracleStep::Generate { .. } => "generate",
+            OracleStep::Determinism { .. } => "determinism",
+            OracleStep::Compare { .. } => "compare",
+            OracleStep::Compile { .. } => "compile",
+            OracleStep::Exercise { .. } => "exercise",
+        }
+    }
 }
 
 /// A planted violation and the scratch classification it must produce.
@@ -77,7 +184,9 @@ pub(crate) enum Expectation {
 /// Load and validate a scenario from its source directory with
 /// `serde_json`. Required: `binary` (`"kdlith"` only), `args`, and
 /// exactly one of `expect` / `expect-invalid`; unknown keys are load
-/// errors; `description` is optional.
+/// errors; `description` is optional. A `"kind": "codegen-oracle"`
+/// manifest instead selects the multi-step oracle shape with its own
+/// strict key set.
 pub(crate) fn load(dir: &Path) -> Result<Scenario, String> {
     let path = dir.join(MANIFEST);
     let text = std::fs::read_to_string(&path)
@@ -87,26 +196,24 @@ pub(crate) fn load(dir: &Path) -> Result<Scenario, String> {
     let root = value
         .as_object()
         .ok_or_else(|| format!("{MANIFEST} must be a JSON object"))?;
+    match root.get("kind") {
+        None => invoke(dir, root),
+        Some(Value::String(s)) if s == "codegen-oracle" => oracle(root),
+        Some(other) => Err(format!(
+            "{MANIFEST}: \"kind\" must be \"codegen-oracle\" when present, got {other}"
+        )),
+    }
+}
+
+/// Load the single-invocation shape, whose key set is unchanged.
+fn invoke(dir: &Path, root: &Map<String, Value>) -> Result<Scenario, String> {
     check_keys(
         root,
         &["binary", "description", "args", "expect", "expect-invalid"],
         MANIFEST,
     )?;
+    require_kdlith_binary(root)?;
 
-    match root.get("binary") {
-        None => return Err(format!("{MANIFEST}: missing required key \"binary\"")),
-        Some(Value::String(s)) if s == "kdlith" => {}
-        Some(other) => {
-            return Err(format!(
-                "{MANIFEST}: \"binary\" must be \"kdlith\" (the only supported value), got {other}"
-            ));
-        }
-    }
-    if let Some(d) = root.get("description")
-        && !d.is_string()
-    {
-        return Err(format!("{MANIFEST}: \"description\" must be a string"));
-    }
     let args = match root.get("args") {
         None => return Err(format!("{MANIFEST}: missing required key \"args\"")),
         Some(v) => string_array(v, "args")?,
@@ -127,17 +234,275 @@ pub(crate) fn load(dir: &Path) -> Result<Scenario, String> {
         (Some(v), None) => positive(dir, v)?,
         (None, Some(v)) => (invalid(dir, v)?, None),
     };
-    Ok(Scenario {
+    Ok(Scenario::Invoke(Invocation {
         args,
         expectation,
         scratch_check,
+    }))
+}
+
+/// Load the codegen-oracle shape.
+fn oracle(root: &Map<String, Value>) -> Result<Scenario, String> {
+    check_keys(
+        root,
+        &[
+            "binary",
+            "description",
+            "kind",
+            "form",
+            "entrypoint",
+            "crate",
+            "steps",
+        ],
+        MANIFEST,
+    )?;
+    require_kdlith_binary(root)?;
+    if let Some(d) = root.get("description")
+        && !d.is_string()
+    {
+        return Err(format!("{MANIFEST}: \"description\" must be a string"));
+    }
+    let form = match root.get("form") {
+        None => GenForm::Dialect,
+        Some(Value::String(s)) if s == "dialect" => GenForm::Dialect,
+        Some(Value::String(s)) if s == "schema" => GenForm::Schema,
+        Some(other) => {
+            return Err(format!(
+                "{MANIFEST}: \"form\" must be \"dialect\" or \"schema\", got {other}"
+            ));
+        }
+    };
+    let entrypoint = required_string(root, "entrypoint")?;
+    check_placeholder_string(&entrypoint, "\"entrypoint\"")?;
+    let crate_name = required_string(root, "crate")?;
+    if crate_name.is_empty() {
+        return Err(format!("{MANIFEST}: \"crate\" must not be empty"));
+    }
+    let steps_value = match root.get("steps") {
+        Some(v) => v
+            .as_array()
+            .ok_or_else(|| format!("{MANIFEST}: \"steps\" must be an array"))?,
+        None => return Err(format!("{MANIFEST}: missing required key \"steps\"")),
+    };
+    if steps_value.is_empty() {
+        return Err(format!(
+            "{MANIFEST}: \"steps\" must not be empty; a zero-step run never passes"
+        ));
+    }
+    let steps = steps_value
+        .iter()
+        .enumerate()
+        .map(|(i, v)| oracle_step(i, v))
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(Scenario::Oracle(CodegenOracle {
+        form,
+        entrypoint,
+        crate_name,
+        steps,
+    }))
+}
+
+/// The step kinds a codegen-oracle manifest may declare.
+const STEP_KINDS: &[&str] = &["generate", "determinism", "compare", "compile", "exercise"];
+
+/// Parse one entry of the `steps` array: an object carrying exactly
+/// one step kind and that kind's declared shape.
+fn oracle_step(index: usize, value: &Value) -> Result<OracleStep, String> {
+    let what = format!("steps[{index}]");
+    let obj = value
+        .as_object()
+        .ok_or_else(|| format!("{MANIFEST}: {what} must be an object"))?;
+    check_keys(obj, STEP_KINDS, &what)?;
+    let declared = obj
+        .keys()
+        .filter(|k| STEP_KINDS.contains(&k.as_str()))
+        .count();
+    if declared != 1 {
+        return Err(format!(
+            "{MANIFEST}: {what} must carry exactly one of {}",
+            STEP_KINDS.join(", ")
+        ));
+    }
+    let mismatch = |kind: &str, want: &str| format!("{MANIFEST}: {what} {kind} must be {want}");
+    if let Some(v) = obj.get("generate") {
+        let out = v
+            .as_str()
+            .ok_or_else(|| mismatch("generate", "a string output directory"))?;
+        return Ok(OracleStep::Generate {
+            out: contained(out, &format!("{what} generate output"))?,
+        });
+    }
+    if let Some(v) = obj.get("determinism") {
+        let list = v
+            .as_array()
+            .ok_or_else(|| mismatch("determinism", "an array of tree paths"))?;
+        if list.len() < 2 {
+            return Err(format!(
+                "{MANIFEST}: {what} determinism needs at least two trees to compare"
+            ));
+        }
+        let mut trees = Vec::with_capacity(list.len());
+        for item in list {
+            let tree = item
+                .as_str()
+                .ok_or_else(|| mismatch("determinism", "an array of tree paths"))?;
+            trees.push(contained(tree, &format!("{what} determinism tree"))?);
+        }
+        return Ok(OracleStep::Determinism { trees });
+    }
+    if let Some(v) = obj.get("compare") {
+        let obj = v
+            .as_object()
+            .ok_or_else(|| mismatch("compare", "an object"))?;
+        check_keys(obj, &["generated", "reference"], &format!("{what} compare"))?;
+        let generated = required_string(obj, "generated")?;
+        let generated = contained(&generated, &format!("{what} compare generated tree"))?;
+        let reference = required_string(obj, "reference")?;
+        if reference.is_empty() {
+            return Err(format!(
+                "{MANIFEST}: {what} compare reference must not be empty"
+            ));
+        }
+        check_placeholder_string(&reference, &format!("{what} compare reference"))?;
+        return Ok(OracleStep::Compare {
+            generated,
+            reference,
+        });
+    }
+    if let Some(v) = obj.get("compile") {
+        let obj = v
+            .as_object()
+            .ok_or_else(|| mismatch("compile", "an object"))?;
+        check_keys(
+            obj,
+            &["workspace", "copy", "command"],
+            &format!("{what} compile"),
+        )?;
+        let workspace = required_string(obj, "workspace")?;
+        let workspace = contained(&workspace, &format!("{what} compile workspace"))?;
+        let copy = match obj.get("copy") {
+            Some(v) => v
+                .as_object()
+                .ok_or_else(|| mismatch("compile copy", "an object"))?,
+            None => return Err(format!("{MANIFEST}: {what} compile is missing \"copy\"")),
+        };
+        check_keys(copy, &["crates", "kdl"], &format!("{what} compile copy"))?;
+        let crates_value = match copy.get("crates") {
+            Some(v) => v
+                .as_array()
+                .ok_or_else(|| mismatch("compile copy crates", "an array of crate names"))?,
+            None => {
+                return Err(format!(
+                    "{MANIFEST}: {what} compile copy is missing \"crates\""
+                ));
+            }
+        };
+        if crates_value.is_empty() {
+            return Err(format!(
+                "{MANIFEST}: {what} compile copy crates must not be empty"
+            ));
+        }
+        let mut crates = Vec::with_capacity(crates_value.len());
+        for item in crates_value {
+            let name = item
+                .as_str()
+                .ok_or_else(|| mismatch("compile copy crates", "an array of crate names"))?;
+            let plain = !name.is_empty()
+                && Path::new(name).components().next().is_some_and(|c| {
+                    matches!(c, Component::Normal(_)) && name.chars().all(|ch| ch != '/')
+                })
+                && !name.contains('\\');
+            if !plain {
+                return Err(format!(
+                    "{MANIFEST}: {what} compile copy crate {name:?} must be one plain directory name under pkg/rs"
+                ));
+            }
+            crates.push(name.to_owned());
+        }
+        let kdl = match copy.get("kdl") {
+            None => false,
+            Some(Value::Bool(b)) => *b,
+            Some(_) => {
+                return Err(format!(
+                    "{MANIFEST}: {what} compile copy kdl must be a boolean"
+                ));
+            }
+        };
+        let command = required_command(obj, &format!("{what} compile"))?;
+        return Ok(OracleStep::Compile {
+            workspace,
+            copy: RepoCopy { crates, kdl },
+            command,
+        });
+    }
+    let v = obj
+        .get("exercise")
+        .ok_or_else(|| format!("{MANIFEST}: {what} carries no step kind"))?;
+    let obj = v
+        .as_object()
+        .ok_or_else(|| mismatch("exercise", "an object"))?;
+    check_keys(
+        obj,
+        &["command", "stdout-contains", "stderr-contains"],
+        &format!("{what} exercise"),
+    )?;
+    let command = required_command(obj, &format!("{what} exercise"))?;
+    let stdout_contains = match obj.get("stdout-contains") {
+        None => Vec::new(),
+        Some(v) => string_array(v, &format!("{what} exercise stdout-contains"))?,
+    };
+    let stderr_contains = match obj.get("stderr-contains") {
+        None => Vec::new(),
+        Some(v) => string_array(v, &format!("{what} exercise stderr-contains"))?,
+    };
+    Ok(OracleStep::Exercise {
+        command,
+        stdout_contains,
+        stderr_contains,
     })
 }
 
-/// Parse the positive control `expect`: optional integer `exit`
-/// (default 0), optional `stdout-contains` and `stderr-contains`
-/// string arrays, and an optional `scratch-check` block declaring
-/// violations the harness must plant and classify itself.
+/// The shared `binary` contract: required, and `"kdlith"` only.
+fn require_kdlith_binary(root: &Map<String, Value>) -> Result<(), String> {
+    match root.get("binary") {
+        None => return Err(format!("{MANIFEST}: missing required key \"binary\"")),
+        Some(Value::String(s)) if s == "kdlith" => {}
+        Some(other) => {
+            return Err(format!(
+                "{MANIFEST}: \"binary\" must be \"kdlith\" (the only supported value), got {other}"
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// A required string value under `key`.
+fn required_string(obj: &Map<String, Value>, key: &str) -> Result<String, String> {
+    match obj.get(key) {
+        Some(Value::String(s)) => Ok(s.clone()),
+        Some(other) => Err(format!("{MANIFEST}: {key:?} must be a string, got {other}")),
+        None => Err(format!("{MANIFEST}: missing required key {key:?}")),
+    }
+}
+
+/// A required non-empty string-array command whose entries carry only
+/// the known placeholders.
+fn required_command(obj: &Map<String, Value>, what: &str) -> Result<Vec<String>, String> {
+    let command = match obj.get("command") {
+        Some(v) => string_array(v, &format!("{what} command"))?,
+        None => return Err(format!("{MANIFEST}: {what} is missing \"command\"")),
+    };
+    if command.is_empty() {
+        return Err(format!("{MANIFEST}: {what} command must not be empty"));
+    }
+    check_placeholders(&command)?;
+    Ok(command)
+}
+
+/// Parse the positive control `expect`: `exit` (default 0), the
+/// `stdout-contains` and `stderr-contains` arrays, and a
+/// `scratch-check` block declaring violations the harness plants and
+/// classifies itself.
 fn positive(dir: &Path, value: &Value) -> Result<(Expectation, Option<ScratchCheck>), String> {
     let obj = value
         .as_object()
@@ -222,7 +587,7 @@ fn scratch_check(dir: &Path, value: &Value) -> Result<ScratchCheck, String> {
                 ));
             }
         };
-        contained_relative(&path)?;
+        contained(&path, "plant path")?;
         if dir.join(&path).symlink_metadata().is_ok() {
             return Err(format!(
                 "{MANIFEST}: planted entry {path:?} already exists in the scenario; a planted violation must be foreign to it"
@@ -281,7 +646,10 @@ fn invalid(dir: &Path, value: &Value) -> Result<Expectation, String> {
                 "{MANIFEST}: \"expect-invalid\" is missing required key \"input\""
             ));
         }
-        Some(Value::String(s)) => contained_relative(s)?,
+        Some(Value::String(s)) => {
+            let path = contained(s, "\"expect-invalid.input\"")?;
+            PathBuf::from(path)
+        }
         Some(_) => {
             return Err(format!(
                 "{MANIFEST}: \"expect-invalid.input\" must be a string"
@@ -322,31 +690,38 @@ fn read_invalid_header(path: &Path) -> Result<Vec<String>, String> {
 }
 
 /// A relative path that stays inside the scenario directory.
-fn contained_relative(raw: &str) -> Result<PathBuf, String> {
+fn contained(raw: &str, what: &str) -> Result<String, String> {
     let path = PathBuf::from(raw);
-    let contained = !raw.is_empty()
+    let inside = !raw.is_empty()
         && path
             .components()
             .all(|c| matches!(c, Component::Normal(_) | Component::CurDir));
-    if contained {
-        Ok(path)
+    if inside {
+        Ok(raw.to_owned())
     } else {
         Err(format!(
-            "{MANIFEST}: \"expect-invalid.input\" must be a relative path inside the scenario, got {raw:?}"
+            "{MANIFEST}: {what} must be a relative path inside the scenario, got {raw:?}"
         ))
     }
 }
 
-/// Reject any `{fx-` token other than the suite placeholder, so a
-/// misspelled placeholder fails the load instead of reaching the binary.
+/// Reject any `{fx-` token other than the known placeholders, so a
+/// misspelled placeholder fails the load instead of reaching a command.
 fn check_placeholders(args: &[String]) -> Result<(), String> {
     for arg in args {
-        let rest = arg.replace(SUITE_PLACEHOLDER, "");
-        if rest.contains("{fx-") {
-            return Err(format!(
-                "{MANIFEST}: \"args\" entry {arg:?} has an unknown placeholder; only {SUITE_PLACEHOLDER} is supported"
-            ));
-        }
+        check_placeholder_string(arg, "\"args\" entry")?;
+    }
+    Ok(())
+}
+
+fn check_placeholder_string(raw: &str, what: &str) -> Result<(), String> {
+    let rest = raw
+        .replace(SUITE_PLACEHOLDER, "")
+        .replace(REPO_PLACEHOLDER, "");
+    if rest.contains("{fx-") {
+        return Err(format!(
+            "{MANIFEST}: {what} {raw:?} has an unknown placeholder; only {SUITE_PLACEHOLDER} and {REPO_PLACEHOLDER} are supported"
+        ));
     }
     Ok(())
 }

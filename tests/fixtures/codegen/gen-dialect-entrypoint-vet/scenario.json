@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "Declared elision: codegen is not implemented, so no processor is generated and the oracle comparison is never reported passed. This scenario pins the second real precondition step any future generator must satisfy: the dialect-generation entrypoint contracts/super-schemas/dialect.kdl vets to the canonical digest. It duplicates dialect/entrypoint-vet from the codegen side so the codegen category is self-contained",
+  "description": "The second precondition of dialect generation: the dialect-generation entrypoint contracts/super-schemas/dialect.kdl vets to the canonical digest. It duplicates dialect/entrypoint-vet from the codegen side so the codegen category is self-contained; the reference-generation oracle generates from this same entrypoint",
   "args": [
     "vet",
     "dialect",

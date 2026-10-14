@@ -203,11 +203,15 @@ destination holding an injected difference and classifies missing,
 changed, and stale generator-owned files as `KDLITH-GEN002`; and a
 writing run into a destination holding an unowned file at a
 generator-owned path is refused `KDLITH-GEN001` before anything is
-written. The oracle comparison — comparing the generated `src/**/*.rs`
-against `pkg/rs/superproc`, compiling the generated crate, and
-exercising it — remains a declared elision in
-[COVERAGE.md](COVERAGE.md) until the harness can express multi-step
-runs and file comparison.
+written. The reference-generation oracle is
+`codegen/gen-dialect-oracle`: a multi-step codegen-oracle scenario that
+generates the entrypoint's processor twice into scratch trees the
+harness requires byte-identical, compares the generated
+`src/**/*.rs` against `pkg/rs/superproc` excluding only the
+generated-marker header line, compiles the generated crate in a scratch
+workspace materialized from the scenario's committed template, and
+exercises the compiled processor's schema reading — every step judged
+by the harness and fail-closed on any difference.
 
 ## Scenario format v0
 
@@ -218,11 +222,17 @@ is a load error, and a load error fails the scenario rather than skipping it.
 | ---------------- | -------- | ---------------- | -------------------------------------------------- |
 | `binary`         | yes      | string           | Must be `"kdlith"`, the only supported value at v0 |
 | `description`    | no       | string           | Free-form description                              |
-| `args`           | yes      | array of strings | The arguments passed to the binary (see below)     |
-| `expect`         | one of   | object           | Positive control                                   |
-| `expect-invalid` | one of   | object           | Negative control                                   |
+| `kind`           | no       | string           | `"codegen-oracle"` selects the multi-step kind below; absent means the single-invocation shape |
+| `args`           | yes*     | array of strings | The arguments passed to the binary (see below)     |
+| `expect`         | one of*  | object           | Positive control                                   |
+| `expect-invalid` | one of*  | object           | Negative control                                   |
 
-Exactly one of `expect` and `expect-invalid` must be present.
+\* required for the single-invocation shape. A `codegen-oracle` manifest
+instead requires `entrypoint`, `crate`, and `steps` (below) and carries
+neither `args` nor `expect`/`expect-invalid`.
+
+Exactly one of `expect` and `expect-invalid` must be present in the
+single-invocation shape.
 
 ### Argument placeholder: `{fx-suite}`
 
@@ -237,10 +247,58 @@ itself. For example, with the suite at `tests/fixtures`:
 "args": ["read", "{fx-suite}/../../pkg/kdl/schemas/dialect/types.kdl"]
 ```
 
-`{fx-suite}` is the only placeholder. Any other `{fx-` token in `args` is a
-load error, so a misspelled placeholder fails the scenario instead of
-reaching the binary as a literal path. The expansion is plain text
-substitution: the harness interprets nothing else in `args`.
+`{fx-suite}` is the only placeholder an `args` entry may carry (a
+codegen-oracle manifest may also use `{fx-repo}`, below). Any other
+`{fx-` token in `args` is a load error, so a misspelled placeholder
+fails the scenario instead of reaching the binary as a literal path. The
+expansion is plain text substitution: the harness interprets nothing
+else in `args`.
+
+### Multi-step kind: `codegen-oracle`
+
+A `"kind": "codegen-oracle"` manifest declares an ordered multi-step run
+over processor generation. Every judgement stays harness-side: the
+processor under test generates, and the harness compares, compiles, and
+exercises. The keys beyond `binary` and `description`:
+
+| Key          | Required | Type             | Meaning                                            |
+| ------------ | -------- | ---------------- | -------------------------------------------------- |
+| `form`       | no       | string           | `"dialect"` (default) or `"schema"`: the `gen` form the generate step drives |
+| `entrypoint` | yes      | string           | The definition entrypoint; both placeholders allowed |
+| `crate`      | yes      | string           | The crate name generation publishes                |
+| `steps`      | yes      | array            | The ordered steps; never empty — a zero-step run is a load error |
+
+Each entry of `steps` is an object carrying exactly one step kind:
+
+- `{ "generate": "out" }` — run `kdlith gen <form> <entrypoint> --crate
+  <crate> --out <out>`; a nonzero exit fails the scenario.
+- `{ "determinism": ["tree-a", "tree-b", ...] }` — require every named
+  tree to hold exactly the same files with the same bytes; a difference
+  names its path.
+- `{ "compare": { "generated": "...", "reference": "..." } }` — require
+  the generated tree's `**/*.rs` files to match the reference tree's
+  byte for byte, excluding exactly the generated marker header line
+  (the marker, its newline, and the blank separator); a missing, extra,
+  or differing file fails the scenario naming the file.
+- `{ "compile": { "workspace": "ws", "copy": {...}, "command": [...] } }`
+  — copy the declared repository crates (`copy.crates`, names under
+  `pkg/rs`) into `<ws>/rs/` and, when `copy.kdl` is true, `pkg/kdl`
+  into `<ws>/kdl/`, then run the declared command; a nonzero exit fails
+  the scenario with the command's streams in the report.
+- `{ "exercise": { "command": [...], "stdout-contains": [...],
+  "stderr-contains": [...] } }` — run the declared command and judge its
+  exit and stream substrings, as a positive control does.
+
+The `{fx-repo}` placeholder expands to the repository root above the
+suite (also exported as `KDLITH_FX_REPO` to the run's subprocesses), so
+a compare step can name the read-only reference tree. The workspace a
+compile step builds exists to satisfy the generated crate's own pinned
+layout — its `../<name>` path dependencies and its
+`include_str!("../../../kdl/...")` seed includes — so the crate
+directories land at `<ws>/rs/` and the schema tree at `<ws>/kdl/`, the
+positions the generated manifest already assumes. The scenario's
+committed template (its `ws/` directory) carries the workspace manifest
+and any consumer crate the exercise step runs.
 
 ### Positive control: `expect`
 
@@ -332,6 +390,9 @@ symlinks and special files. The binary then runs:
 - with the run's `bin/` helper directory first on `PATH`,
 - and with `KDLITH_FX_SUITE`, `KDLITH_FX_KDLITH`, `KDLITH_FX_SCRATCH`, and
   `KDLITH_FX_SCENARIO` exported.
+
+A codegen-oracle run also exports `KDLITH_FX_REPO`, the repository root
+above the suite, to every subprocess its steps start.
 
 The `fx-env` helper in `bin/` prints those resolved paths. It fails when run
 outside a harness run.

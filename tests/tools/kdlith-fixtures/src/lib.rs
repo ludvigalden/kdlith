@@ -6,6 +6,7 @@ mod cleanrun;
 mod fxbin;
 mod fxcfg;
 mod harness;
+mod oracle;
 mod outcome;
 mod scenario;
 mod scratch;

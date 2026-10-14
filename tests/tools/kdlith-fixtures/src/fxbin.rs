@@ -12,6 +12,9 @@ pub(crate) const ENV_SUITE: &str = "KDLITH_FX_SUITE";
 pub(crate) const ENV_KDLITH: &str = "KDLITH_FX_KDLITH";
 pub(crate) const ENV_SCRATCH: &str = "KDLITH_FX_SCRATCH";
 pub(crate) const ENV_SCENARIO: &str = "KDLITH_FX_SCENARIO";
+/// The repository root, exported to the subprocesses of a codegen-oracle
+/// run so a scenario's declared commands can resolve repository content.
+pub(crate) const ENV_REPO: &str = "KDLITH_FX_REPO";
 
 /// Every helper name, for population.
 const HELPERS: &[&str] = &["fx-env"];

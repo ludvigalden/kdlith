@@ -30,8 +30,8 @@ target/debug/kdlith-fixtures --fx-suite tests/fixtures --fx-kdlith target/debug/
 then diffing the listed names (all except `parse/kdl-spec/*`) against the
 scenario names occurring in this file, in both directions.
 
-Suite state at the time of writing: 550 scenarios — 243 `parse/kdl-spec`,
-307 others — all green.
+Suite state at the time of writing: 554 scenarios — 243 `parse/kdl-spec`,
+311 others — all green.
 
 ## Construct census
 
@@ -286,6 +286,7 @@ under test.
 | `gen --dry-run` plan, write nothing | codegen/gen-dialect-dry-run | covered — the plan lists the generator-owned paths, and the scratch check proves nothing but the planted file appears in the materialized copy |
 | `gen --check` drift report | codegen/gen-dialect-check-drift | covered — missing, changed, and stale generator-owned files each reported KDLITH-GEN002 with exit 1; the destination's unowned extension file is present and not flagged |
 | `gen` refuses an unowned overwrite | codegen/gen-refuses-unowned-overwrite | covered — KDLITH-GEN001, exit 1, and the scratch check proves nothing was written |
+| `gen` reference-generation oracle (generate twice, byte-compare, compare against the reference, compile, exercise) | codegen/gen-dialect-oracle | covered — the multi-step codegen-oracle scenario kind: generation runs twice into two scratch trees the harness requires byte-identical (the in-suite determinism pin), the workspace copy's `src/**/*.rs` must match `pkg/rs/superproc/src/**/*.rs` byte for byte apart from the single generated-marker header line (every other difference fails the scenario), the generated crate compiles in a scratch workspace materialized from the scenario's committed template with the repository's engine crates copied in at the pinned layout positions, and the exercise compiles the embedded canonical seed, loads the committed schema through the generated processor with the same digest the reference CLI reports, and reads the schema's items through the generated typed reader; the reference crate is never written |
 
 ## Declared elisions
 
@@ -295,7 +296,6 @@ behavior as passed.
 
 | Gap | Why it is not exercised | Reopen condition |
 | --- | --- | --- |
-| Generation oracle comparison (generate from `contracts/super-schemas/dialect.kdl` into scratch, compare against `pkg/rs/superproc` excluding the generated marker, compile, exercise) | The scenario format expresses exactly one invocation with stream assertions; the oracle comparison needs a multi-step run (generate, compare, compile, exercise) and file comparison, which the harness does not offer yet — the gen scenarios here pin CLI-level outcomes only | The harness grows a multi-step scenario kind and file comparison — add the oracle scenarios under `codegen/` |
 | Stub verbs beyond fail-closed (`export`, `list`, `cache`, `changelog`) | The verbs are stubs; only their exit-1 "not implemented yet" contract exists | Each verb is implemented — replace its processing/cli stub pin with the real contract scenarios |
 | Unimplemented `inspect --view` views beyond the six fail-closed pins | The views do not exist; the pins prove the fail-closed rejection, not view content | A view is implemented — flip its inspect-view pin to the real output |
 | Compiler-only codes accepted on the inspect path | Deliberate product decision: `inspect` runs only the checks the dialect's declarations own, so it accepts inputs whose only faults are compiler-only checks (pinned by the six inspect-accepts scenarios) | The product decision changes — the inspect-accepts pins and the design record change together |
@@ -318,5 +318,5 @@ The acceptance criteria this suite answers to, with their gate commands:
 - [ ] `/usr/bin/rg --no-ignore --hidden -n 'cfg\(test\)|#\[test\]' pkg tools tests --glob '*.rs'` returns zero matches
 - [ ] `target/debug/kdlith-fixtures --fx-suite tests/fixtures --fx-kdlith target/debug/kdlith` exits 0 unpiped, with all counts recorded
 - [ ] Each commit subject is conventional, lowercase, at most 72 characters, with no body (`git log --format=%s%n%b`)
-- [ ] The harness output names the codegen elision explicitly; no scenario reports the oracle comparison as passed
+- [ ] The codegen-oracle scenario kind runs the full generate → compare → compile → exercise chain over `contracts/super-schemas/dialect.kdl` (`codegen/gen-dialect-oracle`); no declared elision names the codegen surface
 - [ ] Every `tests/fixtures/invalid/` scenario carries an `expect-invalid` code line

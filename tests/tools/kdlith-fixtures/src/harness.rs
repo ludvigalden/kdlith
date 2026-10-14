@@ -236,7 +236,12 @@ impl TrialCtx {
             bin_dir: &self.run_dir.bin_dir(),
             root_fd: &self.root_fd,
         };
-        let result = outcome::execute(&scenario, &cwd, &env, &self.entry.dir);
+        let result = match &scenario {
+            crate::scenario::Scenario::Invoke(invocation) => {
+                outcome::execute(invocation, &cwd, &env, &self.entry.dir)
+            }
+            crate::scenario::Scenario::Oracle(oracle) => crate::oracle::run(oracle, &cwd, &env),
+        };
         match result {
             Ok(()) => {
                 scratch::remove_scenario(&cwd);

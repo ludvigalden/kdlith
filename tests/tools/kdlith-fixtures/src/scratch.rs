@@ -116,7 +116,7 @@ pub(crate) fn remove_scenario(dir: &Path) {
 
 /// Recursive copy of regular files and directories. Symlinks and special
 /// files are refused so a scenario cannot reach outside its own tree.
-fn copy_tree(from: &Path, to: &Path) -> Result<(), String> {
+pub(crate) fn copy_tree(from: &Path, to: &Path) -> Result<(), String> {
     let read =
         std::fs::read_dir(from).map_err(|e| format!("cannot read {}: {e}", from.display()))?;
     let mut items: Vec<_> = read

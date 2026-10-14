@@ -11,7 +11,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use rustix::fd::OwnedFd;
 
 use crate::fxbin::{ENV_KDLITH, ENV_SCENARIO, ENV_SCRATCH, ENV_SUITE};
-use crate::scenario::{Expectation, PlantKind, Scenario, ScratchCheck, expand_args};
+use crate::scenario::{Expectation, Invocation, PlantKind, ScratchCheck, expand_args};
 use crate::walk::{self, Expected, RelPath};
 
 /// The content of every planted foreign file.
@@ -28,12 +28,12 @@ pub(crate) struct RunEnv<'a> {
     pub(crate) root_fd: &'a OwnedFd,
 }
 
-/// Run the processor in `cwd` with the scenario's argv and judge it.
+/// Run the processor in `cwd` with the invocation's argv and judge it.
 /// `source` is the scenario's committed source directory, the baseline
 /// the materialized copy is classified against. `Err` carries the full
 /// failure report.
 pub(crate) fn execute(
-    scenario: &Scenario,
+    invocation: &Invocation,
     cwd: &Path,
     env: &RunEnv<'_>,
     source: &Path,
@@ -44,7 +44,7 @@ pub(crate) fn execute(
         path.push(inherited);
     }
     let output = Command::new(env.kdlith)
-        .args(expand_args(&scenario.args, env.suite))
+        .args(expand_args(&invocation.args, env.suite))
         .current_dir(cwd)
         .env("PATH", path)
         .env(ENV_SUITE, env.suite)
@@ -54,8 +54,8 @@ pub(crate) fn execute(
         .stdin(Stdio::null())
         .output()
         .map_err(|e| format!("cannot run {}: {e}", env.kdlith.display()))?;
-    let mut failures = judge(&scenario.expectation, &output);
-    if let Some(check) = &scenario.scratch_check {
+    let mut failures = judge(&invocation.expectation, &output);
+    if let Some(check) = &invocation.scratch_check {
         failures.extend(scratch_check(check, cwd, env, source));
     }
     if failures.is_empty() {

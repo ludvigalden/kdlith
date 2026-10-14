@@ -1,0 +1,12 @@
+schema exercise version="1" {
+    types {
+        object Entry {
+            field name String
+            field note "optional<String>"
+        }
+    }
+    node entry role=record type=Entry {
+        field name arg=0
+        field note property=note
+    }
+}
