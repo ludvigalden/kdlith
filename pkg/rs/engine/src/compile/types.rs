@@ -1,17 +1,19 @@
 //! Reading `types` containers into the TypeCatalog.
 
 use crate::compile::Cx;
+use crate::compile::expansions::Pending;
 use crate::compile::reader::Construct;
 use crate::decode::found;
-use crate::deferred::defers;
-use crate::diag::{DEFERRED_MECHANISM, NOT_INSTALLED, Site, duplicate, duplicate_key};
+use crate::diag::{NOT_INSTALLED, Site, duplicate, duplicate_key};
 use crate::names::Sym;
 use crate::syntax::SyntaxNode;
 use crate::types::{
-    Constraint, EnumMember, EnumType, FieldDef, FormatRule, MapType, ObjectType, StringFormat,
-    StringType, TypeDecl, TypeExpr, TypeKind, UnionType, ValidatorUse, Variant,
+    CaptureDef, CodecDecl, Constraint, EnumMember, EnumType, FieldDef, FormatRule, MapType,
+    ObjectType, Sensitivity, StringType, TypeDecl, TypeExpr, TypeKind, UnionType, ValidatorUse,
+    Variant,
 };
 use kdlith_model::Value;
+use regex::Regex;
 
 pub(crate) fn container(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) {
     Construct::new(cx, doc, node).finish(cx);
@@ -22,20 +24,30 @@ pub(crate) fn container(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) {
             "object" => object(cx, doc, child),
             "union" => union(cx, doc, child),
             "map" => map(cx, doc, child),
+            "codec" => codec(cx, doc, child),
             _ => {
                 cx.unknown(doc, child, "types");
                 continue;
             }
         };
-        let Some((name, kind)) = kind else { continue };
-        declare(cx, Site::new(doc, child.span), name, kind);
+        let Some((name, parameters, kind)) = kind else {
+            continue;
+        };
+        declare(cx, Site::new(doc, child.span), name, parameters, kind);
     }
 }
 
-pub(crate) fn declare(cx: &mut Cx<'_>, site: Site, name: String, kind: TypeKind) {
+pub(crate) fn declare(
+    cx: &mut Cx<'_>,
+    site: Site,
+    name: String,
+    parameters: Vec<Sym>,
+    kind: TypeKind,
+) {
     let sym = cx.names.intern(&name);
     let decl = TypeDecl {
         name: sym,
+        parameters,
         kind,
         site: Some(site),
     };
@@ -55,27 +67,65 @@ fn header<'n>(
 ) -> (Construct<'n>, Option<String>) {
     let mut construct = Construct::new(cx, doc, node);
     let name = construct.string_arg(cx, 0, "name");
-    let name = name.filter(|name| generic(cx, construct.site(), &node.name, name));
     let name = name.filter(|name| cx.type_name(construct.site(), &construct.label(), name));
     (construct, name)
 }
 
-/// A generic declaration `Name<T>` relies on `generic-types`.
-fn generic(cx: &mut Cx<'_>, site: Site, kind: &str, name: &str) -> bool {
-    if !name.contains('<') || !defers(&cx.deferrals, "generic-types") {
-        return true;
+/// One `parameter T` child of a declaring node: an uppercase identifier
+/// whose order is significant.
+fn parameter(cx: &mut Cx<'_>, doc: usize, child: &SyntaxNode) -> Option<Sym> {
+    let site = Site::new(doc, child.span);
+    let mut part = Construct::new(cx, doc, child);
+    let name = part.string_arg(cx, 0, "parameter name");
+    part.finish_leaf(cx);
+    let name = name?;
+    if !crate::type_expr::is_type_name(&name) {
+        let spelled = found(&Value::String(name));
+        cx.mistyped(site, "the name of parameter", "TypeName", &spelled);
+        return None;
     }
-    let construct = format!("{kind} {name}");
-    cx.diags
-        .error(DEFERRED_MECHANISM, site, &[&construct, "generic-types"]);
-    false
+    Some(cx.names.intern(&name))
 }
 
-fn string(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) -> Option<(String, TypeKind)> {
+/// One `include TARGET` child among a declaring node's keyed members,
+/// recorded for the expansion pass to splice.
+fn include(cx: &mut Cx<'_>, doc: usize, child: &SyntaxNode, owner: &str, at: usize) {
+    let site = Site::new(doc, child.span);
+    let mut part = Construct::new(cx, doc, child);
+    let target = part.string_arg(cx, 0, "include target");
+    part.finish_leaf(cx);
+    let Some(target) = target else {
+        return;
+    };
+    if !cx.type_name(site, &format!("include of {owner}"), &target) {
+        return;
+    }
+    cx.expansions.push(Pending {
+        owner: cx.names.intern(owner),
+        target: cx.names.intern(&target),
+        site,
+        at,
+    });
+}
+
+/// A declaring node has no keyed member to expand into.
+fn no_member(cx: &mut Cx<'_>, doc: usize, child: &SyntaxNode, owner: &str) {
+    let site = Site::new(doc, child.span);
+    let label = format!("include of {owner}");
+    cx.malformed(
+        site,
+        &label,
+        "the declaring type has no keyed member to include",
+    );
+}
+
+fn string(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) -> Option<(String, Vec<Sym>, TypeKind)> {
     let (construct, name) = header(cx, doc, node);
     construct.finish(cx);
-    let label = format!("string {}", name.as_deref().unwrap_or("?"));
+    let name = name?;
+    let label = format!("string {name}");
     let mut ty = StringType::default();
+    let mut parameters = Vec::new();
     let mut seen = [None; 4];
     for child in &node.children {
         let site = Site::new(doc, child.span);
@@ -84,6 +134,16 @@ fn string(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) -> Option<(String, Typ
             "pattern" => 1,
             "validator" => 2,
             "min-length" => 3,
+            "parameter" => {
+                if let Some(sym) = parameter(cx, doc, child) {
+                    parameters.push(sym);
+                }
+                continue;
+            }
+            "include" => {
+                no_member(cx, doc, child, &label);
+                continue;
+            }
             _ => {
                 cx.unknown(doc, child, "string");
                 continue;
@@ -117,7 +177,19 @@ fn string(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) -> Option<(String, Typ
             }
         }
     }
-    Some((name?, TypeKind::String(ty)))
+    check_parameters(cx, Site::new(doc, node.span), &label, &parameters);
+    Some((name, parameters, TypeKind::String(ty)))
+}
+
+/// Parameters are unique; a repeated one is a repeated key of the
+/// declaration.
+fn check_parameters(cx: &mut Cx<'_>, site: Site, label: &str, parameters: &[Sym]) {
+    for (at, sym) in parameters.iter().enumerate() {
+        if parameters[..at].contains(sym) {
+            let spelled = cx.names.resolve(*sym).to_owned();
+            duplicate_key(&mut cx.diags, (site, site), &spelled, label);
+        }
+    }
 }
 
 pub(crate) fn format_rule(
@@ -127,20 +199,20 @@ pub(crate) fn format_rule(
     format: &str,
     width: Option<u64>,
 ) -> Option<FormatRule> {
-    let Some(parsed) = StringFormat::from_name(format) else {
+    let Some(parsed) = crate::types::StringFormat::from_name(format) else {
         cx.not_member(site, "string.format", "StringFormat", format);
         return None;
     };
     match (parsed, width) {
-        (StringFormat::ZeroPadded, None) => {
+        (crate::types::StringFormat::ZeroPadded, None) => {
             cx.malformed(site, label, "zero-padded needs a width");
             None
         }
-        (StringFormat::ZeroPadded, Some(0)) => {
+        (crate::types::StringFormat::ZeroPadded, Some(0)) => {
             cx.malformed(site, label, "zero-padded width must be at least 1");
             None
         }
-        (StringFormat::ZeroPadded, Some(_)) | (_, None) => Some(FormatRule {
+        (crate::types::StringFormat::ZeroPadded, Some(_)) | (_, None) => Some(FormatRule {
             format: parsed,
             width,
         }),
@@ -172,14 +244,34 @@ pub(crate) fn validator_use(
     Some(ValidatorUse { name, version })
 }
 
-fn enumeration(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) -> Option<(String, TypeKind)> {
+fn enumeration(
+    cx: &mut Cx<'_>,
+    doc: usize,
+    node: &SyntaxNode,
+) -> Option<(String, Vec<Sym>, TypeKind)> {
     let (construct, name) = header(cx, doc, node);
     construct.finish(cx);
+    let name = name?;
+    let label = format!("enum {name}");
     let mut members: Vec<(EnumMember, Site)> = Vec::new();
+    let mut parameters = Vec::new();
     for child in &node.children {
-        if child.name != "member" {
-            cx.unknown(doc, child, "enum");
-            continue;
+        match child.name.as_str() {
+            "member" => {}
+            "parameter" => {
+                if let Some(sym) = parameter(cx, doc, child) {
+                    parameters.push(sym);
+                }
+                continue;
+            }
+            "include" => {
+                include(cx, doc, child, &name, members.len());
+                continue;
+            }
+            _ => {
+                cx.unknown(doc, child, "enum");
+                continue;
+            }
         }
         let site = Site::new(doc, child.span);
         let mut part = Construct::new(cx, doc, child);
@@ -208,17 +300,20 @@ fn enumeration(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) -> Option<(String
         let site = Site::new(doc, node.span);
         cx.cardinality(site, "member under enum", "0", "at least 1");
     }
+    check_parameters(cx, Site::new(doc, node.span), &label, &parameters);
     let members = members.into_iter().map(|(member, _)| member).collect();
-    Some((name?, TypeKind::Enum(EnumType { members })))
+    Some((name, parameters, TypeKind::Enum(EnumType { members })))
 }
 
-fn object(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) -> Option<(String, TypeKind)> {
+fn object(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) -> Option<(String, Vec<Sym>, TypeKind)> {
     let (construct, name) = header(cx, doc, node);
     construct.finish(cx);
-    let label = format!("object {}", name.as_deref().unwrap_or("?"));
+    let name = name?;
+    let label = format!("object {name}");
     let mut fields: Vec<(FieldDef, Site)> = Vec::new();
     let mut constraints = Vec::new();
     let mut constraint_block = None;
+    let mut parameters = Vec::new();
     for child in &node.children {
         let site = Site::new(doc, child.span);
         match child.name.as_str() {
@@ -238,6 +333,12 @@ fn object(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) -> Option<(String, Typ
                     constraint_list(cx, doc, child, &mut constraints);
                 }
             }
+            "parameter" => {
+                if let Some(sym) = parameter(cx, doc, child) {
+                    parameters.push(sym);
+                }
+            }
+            "include" => include(cx, doc, child, &name, fields.len()),
             _ => cx.unknown(doc, child, "object"),
         }
     }
@@ -259,8 +360,10 @@ fn object(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) -> Option<(String, Typ
             }
         }
     }
+    check_parameters(cx, Site::new(doc, node.span), &label, &parameters);
     Some((
-        name?,
+        name,
+        parameters,
         TypeKind::Object(ObjectType {
             fields,
             constraints,
@@ -274,7 +377,15 @@ fn field_def(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) -> Option<FieldDef>
     let name = part.string_arg(cx, 0, "field name");
     let ty = part.string_arg(cx, 1, "field type");
     let description = part.string_prop(cx, "description");
+    let sensitivity = part.string_prop(cx, "sensitivity");
     part.finish(cx);
+    let sensitivity = sensitivity.and_then(|value| match Sensitivity::from_name(&value) {
+        Some(parsed) => Some(parsed),
+        None => {
+            cx.not_member(site, "field.sensitivity", "Sensitivity", &value);
+            None
+        }
+    });
     let label = format!("field {}", name.as_deref().unwrap_or("?"));
     let mut documented_default = None;
     let mut fallback = None;
@@ -314,6 +425,7 @@ fn field_def(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) -> Option<FieldDef>
         description,
         documented_default,
         fallback,
+        sensitivity,
     })
 }
 
@@ -353,20 +465,36 @@ fn constraint_list(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode, out: &mut Vec
     }
 }
 
-fn union(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) -> Option<(String, TypeKind)> {
+fn union(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) -> Option<(String, Vec<Sym>, TypeKind)> {
     let (construct, name) = header(cx, doc, node);
     construct.finish(cx);
-    let label = format!("union {}", name.as_deref().unwrap_or("?"));
+    let name = name?;
+    let label = format!("union {name}");
     let mut variants: Vec<(Variant, Site)> = Vec::new();
+    let mut parameters = Vec::new();
     for child in &node.children {
-        if child.name != "variant" {
-            cx.unknown(doc, child, "union");
-            continue;
+        match child.name.as_str() {
+            "variant" => {}
+            "parameter" => {
+                if let Some(sym) = parameter(cx, doc, child) {
+                    parameters.push(sym);
+                }
+                continue;
+            }
+            "include" => {
+                include(cx, doc, child, &name, variants.len());
+                continue;
+            }
+            _ => {
+                cx.unknown(doc, child, "union");
+                continue;
+            }
         }
         let site = Site::new(doc, child.span);
         let mut part = Construct::new(cx, doc, child);
         let discriminator = part.string_arg(cx, 0, "discriminator");
         let ty = part.string_arg(cx, 1, "variant type");
+        let prefix = part.string_prop(cx, "prefix");
         part.finish_leaf(cx);
         let (Some(discriminator), Some(ty)) = (discriminator, ty) else {
             continue;
@@ -391,6 +519,7 @@ fn union(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) -> Option<(String, Type
             Variant {
                 discriminator: sym,
                 ty,
+                prefix,
             },
             site,
         ));
@@ -399,21 +528,34 @@ fn union(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) -> Option<(String, Type
         let site = Site::new(doc, node.span);
         cx.cardinality(site, "variant under union", "0", "at least 1");
     }
+    check_parameters(cx, Site::new(doc, node.span), &label, &parameters);
     let variants = variants.into_iter().map(|(variant, _)| variant).collect();
-    Some((name?, TypeKind::Union(UnionType { variants })))
+    Some((name, parameters, TypeKind::Union(UnionType { variants })))
 }
 
-fn map(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) -> Option<(String, TypeKind)> {
+fn map(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) -> Option<(String, Vec<Sym>, TypeKind)> {
     let (construct, name) = header(cx, doc, node);
     construct.finish(cx);
-    let label = format!("map {}", name.as_deref().unwrap_or("?"));
+    let name = name?;
+    let label = format!("map {name}");
     let mut parts: [Option<TypeExpr>; 2] = [None, None];
     let mut seen = [None; 2];
+    let mut parameters = Vec::new();
     for child in &node.children {
         let site = Site::new(doc, child.span);
         let slot = match child.name.as_str() {
             "key-type" => 0,
             "value-type" => 1,
+            "parameter" => {
+                if let Some(sym) = parameter(cx, doc, child) {
+                    parameters.push(sym);
+                }
+                continue;
+            }
+            "include" => {
+                no_member(cx, doc, child, &label);
+                continue;
+            }
             _ => {
                 cx.unknown(doc, child, "map");
                 continue;
@@ -438,11 +580,145 @@ fn map(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) -> Option<(String, TypeKi
             cx.missing(site, "map", child);
         }
     }
+    check_parameters(cx, site, &label, &parameters);
     Some((
-        name?,
+        name,
+        parameters,
         TypeKind::Map(MapType {
             key: key?,
             value: value?,
+        }),
+    ))
+}
+
+/// A `codec NAME output=TYPE` declaration: a whole-string `match`, the
+/// `capture NAME TYPE` groups it types (covering the match's named
+/// groups exactly), an optional `namespace`, and type parameters.
+fn codec(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) -> Option<(String, Vec<Sym>, TypeKind)> {
+    let site = Site::new(doc, node.span);
+    let (mut construct, name) = header(cx, doc, node);
+    let output = construct.string_prop(cx, "output");
+    construct.finish(cx);
+    let name = name?;
+    let label = format!("codec {name}");
+    let Some(output_text) = output else {
+        cx.missing(site, &label, "output");
+        return None;
+    };
+    let output = cx.type_expr(site, &output_text)?;
+    let mut pattern = None;
+    let mut namespace = None;
+    let mut captures: Vec<(CaptureDef, Site)> = Vec::new();
+    let mut parameters = Vec::new();
+    let mut seen = [None; 2];
+    for child in &node.children {
+        let child_site = Site::new(doc, child.span);
+        match child.name.as_str() {
+            "match" => {
+                if cx.only_once(&mut seen[0], child_site, &label, "match") {
+                    let mut part = Construct::new(cx, doc, child);
+                    pattern = part.string_arg(cx, 0, "pattern");
+                    part.finish_leaf(cx);
+                }
+            }
+            "namespace" => {
+                if cx.only_once(&mut seen[1], child_site, &label, "namespace") {
+                    let mut part = Construct::new(cx, doc, child);
+                    let spelled = part.string_arg(cx, 0, "namespace");
+                    part.finish_leaf(cx);
+                    namespace = spelled.and_then(|spelled| {
+                        if spelled.is_empty() {
+                            let found = found(&Value::String(spelled));
+                            cx.mistyped(child_site, "the name of namespace", "MemberName", &found);
+                            None
+                        } else {
+                            Some(cx.names.intern(&spelled))
+                        }
+                    });
+                }
+            }
+            "capture" => {
+                let mut part = Construct::new(cx, doc, child);
+                let captured = part.string_arg(cx, 0, "capture name");
+                let ty = part.string_arg(cx, 1, "capture type");
+                part.finish_leaf(cx);
+                let (Some(captured), Some(ty)) = (captured, ty) else {
+                    continue;
+                };
+                if captured.is_empty() {
+                    let found = found(&Value::String(captured));
+                    cx.mistyped(child_site, "the key of capture", "MemberName", &found);
+                    continue;
+                }
+                let Some(ty) = cx.type_expr(child_site, &ty) else {
+                    continue;
+                };
+                if let Some((_, first)) = captures.iter().find(|(c, _)| c.name == captured) {
+                    duplicate_key(
+                        &mut cx.diags,
+                        (child_site, *first),
+                        &captured,
+                        "codec.captures",
+                    );
+                    continue;
+                }
+                captures.push((CaptureDef { name: captured, ty }, child_site));
+            }
+            "parameter" => {
+                if let Some(sym) = parameter(cx, doc, child) {
+                    parameters.push(sym);
+                }
+            }
+            "include" => include(cx, doc, child, &name, captures.len()),
+            _ => cx.unknown(doc, child, "codec"),
+        }
+    }
+    let Some(pattern) = pattern else {
+        cx.missing(site, &label, "match");
+        return None;
+    };
+    let regex = match Regex::new(&format!("^(?:{pattern})$")) {
+        Ok(regex) => regex,
+        Err(error) => {
+            let reason = format!("match does not compile: {error}");
+            cx.malformed(site, &label, &reason);
+            return None;
+        }
+    };
+    // The capture set covers the match's named groups exactly.
+    let mut groups: Vec<&str> = regex.capture_names().flatten().collect();
+    groups.sort_unstable();
+    let mut declared: Vec<&str> = captures.iter().map(|(c, _)| c.name.as_str()).collect();
+    declared.sort_unstable();
+    if groups != declared {
+        let missing: Vec<&str> = groups
+            .iter()
+            .filter(|g| !declared.contains(g))
+            .copied()
+            .collect();
+        let extra: Vec<&str> = declared
+            .iter()
+            .filter(|d| !groups.contains(d))
+            .copied()
+            .collect();
+        let reason = format!(
+            "the captures cover the match's named groups exactly; missing [{}], undeclared [{}]",
+            missing.join(", "),
+            extra.join(", ")
+        );
+        cx.malformed(site, &label, &reason);
+        return None;
+    }
+    check_parameters(cx, site, &label, &parameters);
+    let captures = captures.into_iter().map(|(capture, _)| capture).collect();
+    Some((
+        name,
+        parameters,
+        TypeKind::Codec(CodecDecl {
+            output,
+            pattern,
+            captures,
+            namespace,
         }),
     ))
 }

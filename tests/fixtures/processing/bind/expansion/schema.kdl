@@ -1,0 +1,22 @@
+schema groups version="1" {
+    types {
+        object Base {
+            field id String
+        }
+        object Tag {
+            field extra String
+        }
+    }
+    node item role=record {
+        field items "ordered-map<String, Tag>" {
+            from {
+                entries tag key="arg(0)" value=Tag
+                expand target=Base member=fields
+            }
+            duplicate-keys reject
+        }
+    }
+    node tag type=Tag parent=item {
+        field extra arg=1
+    }
+}

@@ -4,6 +4,6 @@
   "args": ["vet", "dialect", "{fx-suite}/../../contracts/super-schemas/dialect.kdl"],
   "expect": {
     "exit": 0,
-    "stdout-contains": ["digest=a01c83f83f57d364"]
+    "stdout-contains": ["digest=fbbbd4f0f6625a48"]
   }
 }

@@ -1,0 +1,10 @@
+schema bad version="1" {
+    types {
+        object Secret {
+            field key String
+        }
+    }
+    node secret role=record type=Secret {
+        field value String sensitivity=secret arg=0
+    }
+}

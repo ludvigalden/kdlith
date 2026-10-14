@@ -34,4 +34,12 @@ pub(crate) const NODES: &[NodeShape] = &[
         .under(&["types"])
         .declaration()
         .ty("MapType"),
+    NodeShape::new("codec")
+        .under(&["types"])
+        .declaration()
+        .ty("CodecType"),
+    NodeShape::new("capture").under(&["codec"]).ty("Capture"),
+    NodeShape::new("include")
+        .under(&["object", "enum", "union", "codec"])
+        .ty("IncludeRef"),
 ];

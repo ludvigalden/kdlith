@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A generic type instantiated with fewer type arguments than it declares parameters is rejected as malformed",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

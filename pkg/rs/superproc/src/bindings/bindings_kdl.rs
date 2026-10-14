@@ -29,8 +29,20 @@ pub(crate) const NODES: &[NodeShape] = &[
     NodeShape::new("entries")
         .under(&["from"])
         .ty("EntriesSource"),
+    NodeShape::new("expand").under(&["from"]).ty("ExpandSource"),
     NodeShape::new("context")
         .under(&["from"])
         .ty("ContextSource"),
     NodeShape::new("children").under(&["node"]).ty("ChildRule"),
+    NodeShape::new("value")
+        .under(&["node"])
+        .ty("DependentBinding"),
+    NodeShape::new("against")
+        .under(&["value"])
+        .ty("DependentTarget"),
+    NodeShape::new("cases").under(&["node"]).ty("CaseDispatch"),
+    NodeShape::new("case").under(&["cases"]).ty("CaseRule"),
+    NodeShape::new("otherwise")
+        .under(&["cases"])
+        .ty("Otherwise"),
 ];

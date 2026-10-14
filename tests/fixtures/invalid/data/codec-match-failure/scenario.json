@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A value that does not match the codec's whole-string pattern fails to decode",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

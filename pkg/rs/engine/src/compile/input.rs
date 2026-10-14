@@ -39,11 +39,12 @@ pub enum Construct {
 }
 
 /// A logical type declaration: what `string`, `enum`, `object`,
-/// `union`, and `map` declare.
+/// `union`, `map`, and `codec` declare.
 #[derive(Clone, Debug)]
 pub enum TypeInput {
     String {
         name: String,
+        parameters: Vec<String>,
         format: Option<FormatInput>,
         pattern: Option<String>,
         validator: Option<ValidatorInput>,
@@ -51,22 +52,57 @@ pub enum TypeInput {
     },
     Enum {
         name: String,
+        parameters: Vec<String>,
         members: Vec<MemberInput>,
     },
     Object {
         name: String,
+        parameters: Vec<String>,
         fields: Vec<FieldInput>,
         constraints: Vec<ConstraintInput>,
     },
     Union {
         name: String,
+        parameters: Vec<String>,
         variants: Vec<VariantInput>,
     },
     Map {
         name: String,
+        parameters: Vec<String>,
         key: String,
         value: String,
     },
+    Codec {
+        name: String,
+        parameters: Vec<String>,
+        output: String,
+        pattern: String,
+        captures: Vec<CaptureInput>,
+        namespace: Option<String>,
+    },
+}
+
+/// One typed capture group of a codec.
+#[derive(Clone, Debug)]
+pub struct CaptureInput {
+    pub name: String,
+    pub ty: String,
+}
+
+/// A node declaration's dependent payload binding.
+#[derive(Clone, Debug)]
+pub struct DependentInput {
+    pub target: String,
+    pub member: String,
+    pub codec: String,
+}
+
+/// One case of a case dispatch, as declared.
+#[derive(Clone, Debug)]
+pub struct CaseInput {
+    pub property: String,
+    pub equals: Value,
+    pub ty: String,
 }
 
 /// A built-in string format and its width, as declared.
@@ -98,13 +134,15 @@ pub struct FieldInput {
     pub description: Option<String>,
     pub documented_default: Option<Value>,
     pub fallback: Option<Value>,
+    pub sensitivity: Option<String>,
 }
 
-/// A `union` variant: its discriminator and type.
+/// A `union` variant: its discriminator, type, and value prefix.
 #[derive(Clone, Debug)]
 pub struct VariantInput {
     pub discriminator: String,
     pub ty: String,
+    pub prefix: Option<String>,
 }
 
 /// An object constraint, as declared.
@@ -115,7 +153,8 @@ pub enum ConstraintInput {
 }
 
 /// A node declaration: role, type, placement, field bindings, child
-/// rules, effect groups, and exactly-one groups.
+/// rules, effect groups, exactly-one groups, and the dependent-value and
+/// case-dispatch blocks it declares.
 #[derive(Clone, Debug, Default)]
 pub struct NodeInput {
     pub name: String,
@@ -127,6 +166,9 @@ pub struct NodeInput {
     pub children: Vec<ChildRuleInput>,
     pub effects: Vec<EffectGroupInput>,
     pub groups: Vec<Vec<String>>,
+    pub value: Option<DependentInput>,
+    pub cases: Vec<CaseInput>,
+    pub otherwise: Option<String>,
 }
 
 /// One field binding and the sources that populate it.
@@ -158,6 +200,12 @@ pub enum SourceInput {
         node: String,
         key: String,
         value: String,
+    },
+    /// Declaration-group expansion: the named keyed member of the named
+    /// declaration splices into the collection being bound.
+    Expand {
+        target: String,
+        member: String,
     },
     Context {
         slot: String,

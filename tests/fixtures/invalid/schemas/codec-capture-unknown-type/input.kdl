@@ -1,0 +1,8 @@
+schema bad version="1" {
+    types {
+        codec Stamp output=U64 {
+            match #"(?<seconds>[0-9]+)s"#
+            capture seconds NoSuchType
+        }
+    }
+}

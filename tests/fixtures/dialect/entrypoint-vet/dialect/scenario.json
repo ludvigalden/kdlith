@@ -4,6 +4,6 @@
   "args": ["vet", "dialect", "{fx-suite}/../../contracts/super-schemas/dialect.kdl"],
   "expect": {
     "exit": 0,
-    "stdout-contains": ["ok: dialect kdlith version 0 scope=complete documents=5 ", " deferrals=19 ", " digest=a01c83f83f57d364"]
+    "stdout-contains": ["ok: dialect kdlith version 0 scope=complete documents=5 ", " deferrals=12 ", " digest=fbbbd4f0f6625a48"]
   }
 }

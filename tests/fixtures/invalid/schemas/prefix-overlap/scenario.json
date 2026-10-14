@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "Two variants of one value-bound union whose prefixes overlap (one prefix extending the other) are rejected as an ambiguous dispatch",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

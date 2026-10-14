@@ -64,6 +64,15 @@ enum_type! {
     }
 }
 
+enum_type! {
+    /// The sensitivity a logical field may declare; metadata that every
+    /// output surface enforces through an explicit policy.
+    pub enum Sensitivity {
+        "secret" => Secret,
+        "reference" => Reference,
+    }
+}
+
 union_type! {
     /// A type declaration, discriminated by the declaring node's name.
     pub enum TypeDef {
@@ -72,12 +81,14 @@ union_type! {
         "object" => Object(ObjectType),
         "union" => Union(UnionType),
         "map" => Map(MapType),
+        "codec" => Codec(CodecType),
     }
 }
 
 object_type! {
     pub struct StringType {
         "name" => name: TypeName,
+        "parameters" => parameters: Option<Vec<TypeName>>,
         "format" => format: Option<StringFormat>,
         "width" => width: Option<u64>,
         "pattern" => pattern: Option<String>,
@@ -90,6 +101,7 @@ object_type! {
 object_type! {
     pub struct EnumType {
         "name" => name: TypeName,
+        "parameters" => parameters: Option<Vec<TypeName>>,
         "members" => members: OrderedMap<MemberName, EnumMember>,
     }
 }
@@ -103,6 +115,7 @@ object_type! {
 object_type! {
     pub struct ObjectType {
         "name" => name: TypeName,
+        "parameters" => parameters: Option<Vec<TypeName>>,
         "fields" => fields: OrderedMap<FieldName, FieldDef>,
         "constraints" => constraints: Vec<Constraint>,
     }
@@ -114,12 +127,14 @@ object_type! {
         "description" => description: Option<String>,
         "documented-default" => documented_default: Option<ValueExpr>,
         "fallback" => fallback: Option<ValueExpr>,
+        "sensitivity" => sensitivity: Option<Sensitivity>,
     }
 }
 
 object_type! {
     pub struct UnionType {
         "name" => name: TypeName,
+        "parameters" => parameters: Option<Vec<TypeName>>,
         "variants" => variants: OrderedMap<NodeName, Variant>,
     }
 }
@@ -127,14 +142,43 @@ object_type! {
 object_type! {
     pub struct Variant {
         "type" => ty: TypeExpression,
+        "prefix" => prefix: Option<String>,
     }
 }
 
 object_type! {
     pub struct MapType {
         "name" => name: TypeName,
+        "parameters" => parameters: Option<Vec<TypeName>>,
         "key-type" => key_type: TypeExpression,
         "value-type" => value_type: TypeExpression,
+    }
+}
+
+object_type! {
+    /// A pattern codec declaration: one whole-string match, the named
+    /// captures it types, and the output type a decoded value carries.
+    pub struct CodecType {
+        "name" => name: TypeName,
+        "parameters" => parameters: Option<Vec<TypeName>>,
+        "output" => output: TypeExpression,
+        "match" => r#match: String,
+        "captures" => captures: OrderedMap<MemberName, Capture>,
+        "namespace" => namespace: Option<MemberName>,
+    }
+}
+
+object_type! {
+    /// The capture's name is the key of the enclosing ordered map.
+    pub struct Capture {
+        "type" => ty: TypeExpression,
+    }
+}
+
+object_type! {
+    /// An include directive among a declaring container's like members.
+    pub struct IncludeRef {
+        "target" => target: TypeName,
     }
 }
 
@@ -169,6 +213,7 @@ pub(crate) const TYPES: &[TypeShape] = &[
     BuiltinType::SHAPE,
     TypeConstructor::SHAPE,
     StringFormat::SHAPE,
+    Sensitivity::SHAPE,
     TypeDef::SHAPE,
     StringType::SHAPE,
     EnumType::SHAPE,
@@ -178,6 +223,9 @@ pub(crate) const TYPES: &[TypeShape] = &[
     UnionType::SHAPE,
     Variant::SHAPE,
     MapType::SHAPE,
+    CodecType::SHAPE,
+    Capture::SHAPE,
+    IncludeRef::SHAPE,
     Constraint::SHAPE,
     AllOrNone::SHAPE,
     Requires::SHAPE,

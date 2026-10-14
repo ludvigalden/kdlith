@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A dependent value binding whose argument-tail payload does not match the referenced member's type is rejected at the payload",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

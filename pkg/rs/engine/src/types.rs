@@ -54,11 +54,16 @@ impl Builtin {
 }
 
 /// A compiled type expression. Names stay symbolic; linking checks that
-/// each one is declared.
+/// each one is declared. An instantiation is the pre-monomorphization
+/// form: the monomorphization pass replaces it with the substituted
+/// declaration before linking, so none survives a complete compile.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum TypeExpr {
     Named(Sym),
+    /// A generic instantiation `T<A, B>`; arguments are themselves type
+    /// expressions.
+    Instantiation(Sym, Vec<TypeExpr>),
     /// The field may be absent.
     Optional(Box<TypeExpr>),
     /// The field may explicitly hold null.
@@ -77,6 +82,9 @@ pub enum TypeExpr {
 #[non_exhaustive]
 pub struct TypeDecl {
     pub name: Sym,
+    /// The type parameters the declaration names, in order; empty for a
+    /// non-generic declaration. A codec may declare them too.
+    pub parameters: Vec<Sym>,
     pub kind: TypeKind,
     /// Where it was declared; `None` for a built-in.
     pub site: Option<Site>,
@@ -91,6 +99,32 @@ pub enum TypeKind {
     Object(ObjectType),
     Union(UnionType),
     Map(MapType),
+    /// A pattern codec: a string decoder whose output is a declared type.
+    Codec(CodecDecl),
+}
+
+/// A pattern codec: one whole-string regular expression, the captures it
+/// types, and the output type a decoded value carries.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct CodecDecl {
+    /// The logical type a decoded value carries.
+    pub output: TypeExpr,
+    /// The whole-string match; no automatic trimming.
+    pub pattern: String,
+    /// One typed named capture group, in declaration order.
+    pub captures: Vec<CaptureDef>,
+    /// The reference namespace a decoded identity belongs to; metadata
+    /// only, consumed when symbol-catalogs lands.
+    pub namespace: Option<Sym>,
+}
+
+/// One typed capture group of a codec.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct CaptureDef {
+    pub name: String,
+    pub ty: TypeExpr,
 }
 
 /// A patterned string: a whole-string pattern, a built-in format, a
@@ -217,6 +251,88 @@ pub struct FieldDef {
     pub description: Option<String>,
     pub documented_default: Option<Value>,
     pub fallback: Option<Value>,
+    /// Whether the field holds a resolved sensitive value or a locator
+    /// for one; metadata that an output policy enforces.
+    pub sensitivity: Option<Sensitivity>,
+}
+
+/// What a sensitive field holds. A type modeling a secret and its
+/// locator keeps two separate fields, each tagged.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum Sensitivity {
+    /// A resolved sensitive value; emitted only when the output policy
+    /// explicitly says emit.
+    Secret,
+    /// An identifier that locates a sensitive value.
+    Reference,
+}
+
+impl Sensitivity {
+    pub fn from_name(name: &str) -> Option<Self> {
+        Some(match name {
+            "secret" => Sensitivity::Secret,
+            "reference" => Sensitivity::Reference,
+            _ => return None,
+        })
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Sensitivity::Secret => "secret",
+            Sensitivity::Reference => "reference",
+        }
+    }
+}
+
+/// The explicit output policy every serialization and diagnostic surface
+/// applies to sensitive fields. The fail-closed default redacts a secret;
+/// a reference defaults to emit.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum OutputPolicy {
+    Emit,
+    Omit,
+    Redact,
+}
+
+impl OutputPolicy {
+    pub fn from_name(name: &str) -> Option<Self> {
+        Some(match name {
+            "emit" => OutputPolicy::Emit,
+            "omit" => OutputPolicy::Omit,
+            "redact" => OutputPolicy::Redact,
+            _ => return None,
+        })
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            OutputPolicy::Emit => "emit",
+            OutputPolicy::Omit => "omit",
+            OutputPolicy::Redact => "redact",
+        }
+    }
+
+    /// The policy a sensitivity carries when no explicit policy is set:
+    /// redact for a secret (fail closed), emit for a reference.
+    pub fn default_for(sensitivity: Sensitivity) -> Self {
+        match sensitivity {
+            Sensitivity::Secret => OutputPolicy::Redact,
+            Sensitivity::Reference => OutputPolicy::Emit,
+        }
+    }
+
+    /// The value a field's content takes under this policy: the value
+    /// itself under emit, a redaction marker under redact, and nothing
+    /// under omit.
+    pub fn apply(self, value: Value) -> Option<Value> {
+        match self {
+            OutputPolicy::Emit => Some(value),
+            OutputPolicy::Redact => Some(Value::String("[redacted]".to_owned())),
+            OutputPolicy::Omit => None,
+        }
+    }
 }
 
 /// A declarative object constraint an author states explicitly.
@@ -234,11 +350,17 @@ pub struct UnionType {
     pub variants: Vec<Variant>,
 }
 
+/// A union variant. The node name that spells a child-bound variant is
+/// its discriminator; a value-bound variant is selected by the prefix
+/// its text starts with.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct Variant {
     pub discriminator: Sym,
     pub ty: TypeExpr,
+    /// Selects the variant for a value-bound union when the value's text
+    /// starts with it.
+    pub prefix: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -266,6 +388,7 @@ impl TypeCatalog {
             // Built-in names are distinct, so registering one never collides.
             let _ = catalog.push(TypeDecl {
                 name: names.intern(builtin.name()),
+                parameters: Vec::new(),
                 kind: TypeKind::Builtin(builtin),
                 site: None,
             });
@@ -291,6 +414,28 @@ impl TypeCatalog {
 
     pub fn get(&self, id: TypeId) -> Option<&TypeDecl> {
         self.types.get(id.index())
+    }
+
+    /// Take one declaration out, leaving a placeholder that keeps the
+    /// name and site; compile passes rewrite the taken declaration while
+    /// freely reading and extending the rest of the catalog. Put it back
+    /// with [`put_decl`][Self::put_decl].
+    pub(crate) fn take_decl(&mut self, id: TypeId) -> Option<TypeDecl> {
+        let decl = self.types.get_mut(id.index())?;
+        let placeholder = TypeDecl {
+            name: decl.name,
+            parameters: Vec::new(),
+            kind: TypeKind::Builtin(Builtin::ValueExpr),
+            site: decl.site,
+        };
+        Some(std::mem::replace(decl, placeholder))
+    }
+
+    /// Return a declaration taken by [`take_decl`][Self::take_decl].
+    pub(crate) fn put_decl(&mut self, id: TypeId, decl: TypeDecl) {
+        if let Some(slot) = self.types.get_mut(id.index()) {
+            *slot = decl;
+        }
     }
 
     /// Every type in id order.

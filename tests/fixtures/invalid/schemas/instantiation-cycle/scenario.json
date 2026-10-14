@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A generic instantiation that recurses into itself (C instantiated with C inside its own body) is rejected as a non-terminating expansion",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

@@ -87,13 +87,17 @@ pub struct NodePlan {
     pub following_effects: Vec<EffectStep>,
     pub context_reads: Vec<ContextRead>,
     pub deferred: Vec<DeferredBinding>,
+    /// The dependent payload binding the node declares, if any: the
+    /// plan a processor follows to bind its remaining payload against
+    /// the referenced declaration's member type.
+    pub dependent: Option<crate::bindings::DependentBinding>,
     /// Whether the node registers an identity in the SymbolCatalog.
     pub declaration: bool,
 }
 
 /// The processing plan of one definition, indexed like its
-/// BindingCatalog. Expansion tasks belong to the deferred `expansion`
-/// mechanism, so no node plans one at this dialect version.
+/// BindingCatalog. Expansion references resolve during complete
+/// checking, before the plan is built.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct ProcessingPlan {
@@ -129,6 +133,7 @@ pub(crate) fn build(
             following_effects: effects(&context, node, EffectTarget::Following),
             context_reads: context_reads(&context, node),
             deferred: deferred(types, node),
+            dependent: node.value.clone(),
             declaration: symbols.declaration(id).is_some(),
         })
         .collect();
@@ -228,7 +233,7 @@ pub(crate) fn field_type<'t>(
 
 fn references(expr: &TypeExpr, field: Sym, out: &mut Vec<DeferredBinding>) {
     match expr {
-        TypeExpr::Named(_) => {}
+        TypeExpr::Named(_) | TypeExpr::Instantiation(_, _) => {}
         TypeExpr::Ref(inner) => {
             if let TypeExpr::Named(target) = inner.as_ref() {
                 out.push(DeferredBinding::Reference {

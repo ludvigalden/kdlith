@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A codec whose match pattern does not compile as a regular expression is rejected as malformed",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A value-bound union value matching no variant prefix is rejected (dispatch never falls back)",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

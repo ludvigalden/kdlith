@@ -1,0 +1,20 @@
+{
+  "binary": "kdlith",
+  "description": "A generic object declares two type parameters and an instantiation Pair<String, Mode> in a type expression monomorphizes at compile time: the case-selected record is emitted typed as the instantiated declaration and binds valid. Node type= spellings cannot carry the mangled instantiation name (TypeName pattern), so case-dispatch retyping is the CLI-reachable binding path for a monomorphized object type",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"type_name\":\"Pair<String, Mode>\"",
+      "\"name\":\"left\",\"value\":{\"kind\":\"string\",\"value\":\"a\"}",
+      "\"name\":\"right\",\"value\":{\"kind\":\"string\",\"value\":\"fast\"}",
+      "\"validation\":\"valid\""
+    ]
+  }
+}

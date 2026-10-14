@@ -66,6 +66,9 @@ pub struct BindFrame {
     pub(crate) key_rejected: bool,
     /// A scalar node's single value.
     pub(crate) scalar: Option<(Value, ByteSpan)>,
+    /// A declared node's dependent payload: the positional arguments no
+    /// binding consumes, kept with their spans for the value block.
+    pub(crate) payload: Vec<(Value, ByteSpan)>,
     /// The binder's error count when the node opened.
     pub(crate) mark: u64,
     /// Errors of descendants that are processing items of their own.
@@ -103,6 +106,7 @@ impl BindFrame {
             key: None,
             key_rejected: false,
             scalar: None,
+            payload: Vec::new(),
             mark: opened.mark,
             excluded: 0,
         }

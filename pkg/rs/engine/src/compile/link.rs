@@ -1,12 +1,13 @@
 //! Linking: every type, node, parent, field, slot, and namespace a
-//! definition references must be declared, and every `ref<T>` must
-//! target a declared type; children effects must read header fields.
+//! definition references must be declared, prefixes must be
+//! unambiguous, and dependent targets must resolve.
 
 use crate::bindings::{BindingCatalog, Effect, EffectTarget, NodeDecl, Placement, SetFrom, Source};
 use crate::compile::Cx;
 use crate::definition::DefinitionKind;
 use crate::diag::{
-    NOT_STREAMABLE, Site, TYPE_EXPRESSION, UNKNOWN_TYPE, UNRESOLVED_DIALECT, UNRESOLVED_SCHEMA,
+    DISPATCH_PREFIX, NOT_STREAMABLE, Site, TYPE_EXPRESSION, UNKNOWN_TYPE, UNRESOLVED_DIALECT,
+    UNRESOLVED_SCHEMA,
 };
 use crate::names::Sym;
 use crate::symbols::SymbolCatalog;
@@ -14,8 +15,10 @@ use crate::types::{TypeExpr, TypeKind};
 
 pub(crate) fn run(cx: &mut Cx<'_>, bindings: &BindingCatalog, symbols: &SymbolCatalog) {
     types(cx, symbols);
+    prefixes(cx);
+    expansions(cx, bindings);
     for slot in cx.slots.clone() {
-        expr(cx, symbols, slot.site, &slot.ty);
+        expr(cx, symbols, slot.site, &slot.ty, &[]);
     }
     for (_, node) in bindings.iter() {
         node_refs(cx, bindings, symbols, node);
@@ -24,7 +27,7 @@ pub(crate) fn run(cx: &mut Cx<'_>, bindings: &BindingCatalog, symbols: &SymbolCa
 }
 
 /// An undeclared reference, reported in the definition's own area.
-fn unresolved(cx: &mut Cx<'_>, site: Site, kind: &str, name: &str) {
+pub(crate) fn unresolved(cx: &mut Cx<'_>, site: Site, kind: &str, name: &str) {
     match cx.kind {
         DefinitionKind::Dialect => cx.diags.error(UNRESOLVED_DIALECT, site, &[kind, name]),
         DefinitionKind::Schema if kind == "type" => cx.diags.error(UNKNOWN_TYPE, site, &[name]),
@@ -33,33 +36,141 @@ fn unresolved(cx: &mut Cx<'_>, site: Site, kind: &str, name: &str) {
 }
 
 fn types(cx: &mut Cx<'_>, symbols: &SymbolCatalog) {
-    let mut found: Vec<(Site, TypeExpr)> = Vec::new();
+    let mut found: Vec<(Site, TypeExpr, Vec<Sym>)> = Vec::new();
     for (_, decl) in cx.types.iter() {
         let Some(site) = decl.site else { continue };
+        // A generic declaration's parameters are placeholders its body
+        // references; they are not types to resolve.
+        let params = decl.parameters.clone();
         match &decl.kind {
             TypeKind::Object(object) => {
-                found.extend(object.fields.iter().map(|f| (site, f.ty.clone())));
+                found.extend(
+                    object
+                        .fields
+                        .iter()
+                        .map(|f| (site, f.ty.clone(), params.clone())),
+                );
             }
             TypeKind::Union(union) => {
-                found.extend(union.variants.iter().map(|v| (site, v.ty.clone())));
+                found.extend(
+                    union
+                        .variants
+                        .iter()
+                        .map(|v| (site, v.ty.clone(), params.clone())),
+                );
             }
             TypeKind::Map(map) => {
-                found.push((site, map.key.clone()));
-                found.push((site, map.value.clone()));
+                found.push((site, map.key.clone(), params.clone()));
+                found.push((site, map.value.clone(), params.clone()));
+            }
+            TypeKind::Codec(codec) => {
+                found.push((site, codec.output.clone(), params.clone()));
+                found.extend(
+                    codec
+                        .captures
+                        .iter()
+                        .map(|c| (site, c.ty.clone(), params.clone())),
+                );
             }
             _ => {}
         }
     }
-    for (site, ty) in found {
-        expr(cx, symbols, site, &ty);
+    for (site, ty, params) in found {
+        expr(cx, symbols, site, &ty, &params);
     }
 }
 
-/// Check every name a type expression uses.
-fn expr(cx: &mut Cx<'_>, symbols: &SymbolCatalog, site: Site, ty: &TypeExpr) {
+/// The variant prefixes of one union are pairwise unambiguous: one
+/// being a prefix of another leaves value dispatch non-deterministic.
+fn prefixes(cx: &mut Cx<'_>) {
+    for (_, decl) in cx.types.iter() {
+        let TypeKind::Union(union) = &decl.kind else {
+            continue;
+        };
+        let Some(site) = decl.site else {
+            continue;
+        };
+        let prefixed: Vec<&crate::types::Variant> = union
+            .variants
+            .iter()
+            .filter(|v| v.prefix.is_some())
+            .collect();
+        for (at, variant) in prefixed.iter().enumerate() {
+            for other in &prefixed[..at] {
+                let (a, b) = (
+                    variant.prefix.as_deref().unwrap_or(""),
+                    other.prefix.as_deref().unwrap_or(""),
+                );
+                if a != b && (a.starts_with(b) || b.starts_with(a)) {
+                    let (long, short) = if a.len() > b.len() { (a, b) } else { (b, a) };
+                    let values = [
+                        short,
+                        cx.names.resolve(other.discriminator),
+                        long,
+                        cx.names.resolve(variant.discriminator),
+                    ];
+                    cx.diags.error(DISPATCH_PREFIX, site, &values);
+                }
+            }
+        }
+    }
+}
+
+/// Every `expand` source names a declared type and one of its keyed
+/// members.
+fn expansions(cx: &mut Cx<'_>, bindings: &BindingCatalog) {
+    for (_, node) in bindings.iter() {
+        for field in &node.fields {
+            for source in &field.sources {
+                let Source::Expand { target, member } = source else {
+                    continue;
+                };
+                let site = field.site;
+                let spelled = cx.names.resolve(*target).to_owned();
+                let Some(decl) = cx.types.lookup(*target).and_then(|id| cx.types.get(id)) else {
+                    unresolved(cx, site, "type", &spelled);
+                    continue;
+                };
+                let member = cx.names.resolve(*member).to_owned();
+                let keyed = match &decl.kind {
+                    TypeKind::Object(_) => "fields",
+                    TypeKind::Enum(_) => "members",
+                    TypeKind::Union(_) => "variants",
+                    TypeKind::Codec(_) => "captures",
+                    _ => "",
+                };
+                if member != keyed {
+                    let label = format!("expand {spelled}");
+                    let reason = if keyed.is_empty() {
+                        format!("type {spelled} declares no keyed member")
+                    } else {
+                        format!("type {spelled} declares no keyed member {member} (it has {keyed})")
+                    };
+                    cx.malformed(site, &label, &reason);
+                }
+            }
+        }
+    }
+}
+
+/// Check every name a type expression uses. `params` are the owning
+/// declaration's type parameters, which the expression may reference
+/// without a declaration.
+fn expr(cx: &mut Cx<'_>, symbols: &SymbolCatalog, site: Site, ty: &TypeExpr, params: &[Sym]) {
     match ty {
         TypeExpr::Named(name) => {
+            if params.contains(name) {
+                return;
+            }
             named(cx, site, *name);
+        }
+        // Complete checking monomorphizes every instantiation first, so
+        // one surviving here names its head for the same check.
+        TypeExpr::Instantiation(head, args) => {
+            named(cx, site, *head);
+            for arg in args {
+                expr(cx, symbols, site, arg, params);
+            }
         }
         TypeExpr::Ref(inner) => {
             let TypeExpr::Named(target) = inner.as_ref() else {
@@ -79,15 +190,15 @@ fn expr(cx: &mut Cx<'_>, symbols: &SymbolCatalog, site: Site, ty: &TypeExpr) {
             }
         }
         TypeExpr::Optional(inner) | TypeExpr::Nullable(inner) | TypeExpr::List(inner) => {
-            expr(cx, symbols, site, inner);
+            expr(cx, symbols, site, inner, params);
         }
         TypeExpr::Map(key, value) | TypeExpr::OrderedMap(key, value) => {
-            expr(cx, symbols, site, key);
-            expr(cx, symbols, site, value);
+            expr(cx, symbols, site, key, params);
+            expr(cx, symbols, site, value, params);
         }
         TypeExpr::Union(members) => {
             for member in members {
-                expr(cx, symbols, site, member);
+                expr(cx, symbols, site, member, params);
             }
         }
     }
@@ -128,13 +239,39 @@ fn node_refs(cx: &mut Cx<'_>, bindings: &BindingCatalog, symbols: &SymbolCatalog
             unresolved(cx, field.site, "field", &spelled);
         }
         if let Some(ty) = &field.ty {
-            expr(cx, symbols, field.site, ty);
+            expr(cx, symbols, field.site, ty, &[]);
         }
         for source in &field.sources {
             if let Source::Context { slot, .. } = source {
                 slot_ref(cx, field.site, *slot);
             }
         }
+    }
+    if let Some(value) = &node.value {
+        dependent(cx, node, &label, value);
+    }
+    for case in &node.cases {
+        let Some(binding) = node.fields.iter().find(|f| f.name == case.property) else {
+            let spelled = format!("{} of node {label}", cx.names.resolve(case.property));
+            unresolved(cx, case.site, "field", &spelled);
+            continue;
+        };
+        let from_property = binding
+            .sources
+            .iter()
+            .any(|s| matches!(s, Source::Property(_)));
+        if !from_property {
+            let spelled = cx.names.resolve(case.property).to_owned();
+            cx.malformed(
+                case.site,
+                &label,
+                &format!("case property {spelled} is not bound from a property"),
+            );
+        }
+        expr(cx, symbols, case.site, &case.ty, &[]);
+    }
+    if let Some(ty) = &node.otherwise {
+        expr(cx, symbols, node.site, ty, &[]);
     }
     for group in &node.effects {
         for effect in &group.effects {
@@ -173,6 +310,58 @@ fn slot_ref(cx: &mut Cx<'_>, site: Site, slot: Sym) {
     if !cx.slots.iter().any(|s| s.name == slot) {
         let spelled = cx.names.resolve(slot).to_owned();
         unresolved(cx, site, "context slot", &spelled);
+    }
+}
+
+/// A dependent value's `against`: the target field exists, holds a
+/// reference, and the referenced type's member names the expected type.
+fn dependent(
+    cx: &mut Cx<'_>,
+    node: &NodeDecl,
+    label: &str,
+    value: &crate::bindings::DependentBinding,
+) {
+    let Some(binding) = node.fields.iter().find(|f| f.name == value.target) else {
+        let spelled = format!("{} of node {label}", cx.names.resolve(value.target));
+        unresolved(cx, value.site, "field", &spelled);
+        return;
+    };
+    let ty = crate::plan::field_type(&cx.types, node, binding);
+    let Some(TypeExpr::Ref(inner)) = ty else {
+        let spelled = cx.names.resolve(value.target).to_owned();
+        cx.malformed(
+            value.site,
+            label,
+            &format!("against target {spelled} must hold a reference (ref<T>)"),
+        );
+        return;
+    };
+    let TypeExpr::Named(target) = inner.as_ref() else {
+        cx.malformed(
+            value.site,
+            label,
+            "against target must hold a reference (ref<T>)",
+        );
+        return;
+    };
+    let Some(decl) = cx.types.lookup(*target).and_then(|id| cx.types.get(id)) else {
+        let spelled = cx.names.resolve(*target).to_owned();
+        unresolved(cx, value.site, "type", &spelled);
+        return;
+    };
+    let TypeKind::Object(object) = &decl.kind else {
+        let spelled = cx.names.resolve(*target).to_owned();
+        cx.malformed(
+            value.site,
+            label,
+            &format!("against target type {spelled} is not an object type"),
+        );
+        return;
+    };
+    if !object.fields.iter().any(|f| f.name == value.member) {
+        let ty = cx.names.resolve(*target).to_owned();
+        let spelled = cx.names.resolve(value.member).to_owned();
+        unresolved(cx, value.site, "field", &format!("{spelled} of type {ty}"));
     }
 }
 

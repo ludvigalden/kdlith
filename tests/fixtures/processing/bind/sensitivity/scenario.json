@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "Field sensitivity holds on declared object fields: a secret field redacts under the default output policy while a reference field emits, both in the same bound record",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"name\":\"value\",\"value\":{\"kind\":\"string\",\"value\":\"[redacted]\"}",
+      "{\"name\":\"locator\",\"value\":{\"kind\":\"string\",\"value\":\"loc-1\"}",
+      "\"validation\":\"valid\""
+    ]
+  }
+}

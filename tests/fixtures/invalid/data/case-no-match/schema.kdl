@@ -1,0 +1,13 @@
+schema pick version="1" {
+    types {
+        object Small {
+            field kind String
+        }
+    }
+    node picker role=record {
+        field kind String property=kind
+        cases {
+            case property=kind equals="x" type=Small
+        }
+    }
+}

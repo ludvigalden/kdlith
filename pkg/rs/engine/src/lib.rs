@@ -23,15 +23,15 @@ mod types;
 
 pub use bind::{BindFrame, Binder, BindingSession, EntryValue, NodeStart, ParseEvents};
 pub use bindings::{
-    Arity, BindingCatalog, ChildPlan, ChildRule, Collision, ContextPolicy, DuplicateKeys, Effect,
-    EffectGroup, EffectTarget, FieldBinding, NodeDecl, NodeDeclId, ParentKey, Placement, Role,
-    Scope, ScopeId, SetFrom, Source,
+    Arity, BindingCatalog, BindingCodec, CaseRule, ChildPlan, ChildRule, Collision, ContextPolicy,
+    DependentBinding, DuplicateKeys, Effect, EffectGroup, EffectTarget, FieldBinding, NodeDecl,
+    NodeDeclId, ParentKey, Placement, Role, Scope, ScopeId, SetFrom, Source,
 };
 pub use compile::input::{
-    ChildRuleInput, ConstraintInput, Construct, DeferralInput, DefinitionInput, DocumentInput,
-    DocumentRuleInput, EffectGroupInput, EffectInput, FieldBindingInput, FieldInput, FormatInput,
-    ImportInput, Located, MemberInput, NodeInput, SlotInput, SourceInput, TypeInput,
-    ValidatorInput, VariantInput,
+    CaptureInput, CaseInput, ChildRuleInput, ConstraintInput, Construct, DeferralInput,
+    DefinitionInput, DependentInput, DocumentInput, DocumentRuleInput, EffectGroupInput,
+    EffectInput, FieldBindingInput, FieldInput, FormatInput, ImportInput, Located, MemberInput,
+    NodeInput, SlotInput, SourceInput, TypeInput, ValidatorInput, VariantInput,
 };
 pub use compile::{DIALECT_VERSION, compile_dialect, compile_dialect_input, compile_schema_input};
 pub use definition::{
@@ -52,9 +52,9 @@ pub use typed::{
     variant_value,
 };
 pub use types::{
-    Builtin, Constraint, EnumMember, EnumType, FieldDef, FormatRule, MapType, ObjectType,
-    StringFormat, StringType, TypeCatalog, TypeDecl, TypeExpr, TypeId, TypeKind, UnionType,
-    ValidatorUse, Variant,
+    Builtin, CaptureDef, CodecDecl, Constraint, EnumMember, EnumType, FieldDef, FormatRule,
+    MapType, ObjectType, OutputPolicy, Sensitivity, StringFormat, StringType, TypeCatalog,
+    TypeDecl, TypeExpr, TypeId, TypeKind, UnionType, ValidatorUse, Variant,
 };
 
 /// Paths the declaration macros expand to; not part of the API.

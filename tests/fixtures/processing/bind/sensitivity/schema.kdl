@@ -1,0 +1,14 @@
+schema creds version="1" {
+    types {
+        object Secret {
+            field key String
+            field value String sensitivity=secret
+            field locator String sensitivity=reference
+        }
+    }
+    node secret role=record type=Secret {
+        field key arg=0
+        field value arg=1
+        field locator arg=2
+    }
+}

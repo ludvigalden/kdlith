@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "A value-bound union dispatches on variant prefixes: values starting mailto: and @ each select their variant on a single probe and bind valid",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"name\":\"channel\",\"value\":{\"kind\":\"string\",\"value\":\"mailto:a@b\"}",
+      "{\"name\":\"channel\",\"value\":{\"kind\":\"string\",\"value\":\"@handle\"}",
+      "\"validation\":\"valid\""
+    ]
+  }
+}

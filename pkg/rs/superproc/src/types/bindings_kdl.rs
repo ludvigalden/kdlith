@@ -2,11 +2,11 @@
 //! declarations, field bindings and their sources, collision and
 //! duplicate-key policies, and child cardinality.
 
-use kdlith_engine::{OrderedMap, Shaped, TypeShape, enum_type, object_type, union_type};
+use kdlith_engine::{OrderedMap, Shaped, TypeShape, ValueExpr, enum_type, object_type, union_type};
 
 use super::{
-    ContextPolicy, EffectGroup, ExactlyOneGroup, FieldName, NodeName, SlotName, TypeExpression,
-    TypeName,
+    ContextPolicy, EffectGroup, ExactlyOneGroup, FieldName, MemberName, NodeName, SlotName,
+    TypeExpression, TypeName,
 };
 
 enum_type! {
@@ -32,6 +32,62 @@ object_type! {
         "children" => children: OrderedMap<NodeName, ChildRule>,
         "effects" => effects: Vec<EffectGroup>,
         "groups" => groups: Vec<ExactlyOneGroup>,
+        "value" => value: Option<DependentBinding>,
+        "cases" => cases: Option<CaseDispatch>,
+    }
+}
+
+object_type! {
+    /// A dependent payload binding: how a node's remaining payload binds
+    /// against the declaration a field of the same node references.
+    pub struct DependentBinding {
+        "against" => against: DependentTarget,
+        "codec" => codec: BindingCodec,
+    }
+}
+
+object_type! {
+    /// The field of the same node holding the reference, and the field of
+    /// the referenced declaration's type holding the expected payload type.
+    pub struct DependentTarget {
+        "target" => target: FieldName,
+        "member" => member: FieldName,
+    }
+}
+
+enum_type! {
+    /// The registered binding codecs a dependent value may name; naming
+    /// one that is not installed fails closed.
+    pub enum BindingCodec {
+        "argument-tail" => ArgumentTail,
+        "fixture-value" => FixtureValue,
+    }
+}
+
+object_type! {
+    /// A case dispatch: the logical type a node binds as, selected by
+    /// property value, top-down with first match winning.
+    pub struct CaseDispatch {
+        "cases" => cases: Vec<CaseRule>,
+        "otherwise" => otherwise: Option<Otherwise>,
+    }
+}
+
+object_type! {
+    /// One case: when the named property is present and scalar-equal to
+    /// equals, the node binds as the type.
+    pub struct CaseRule {
+        "property" => property: FieldName,
+        "equals" => equals: ValueExpr,
+        "type" => ty: TypeExpression,
+    }
+}
+
+object_type! {
+    /// The fallback of a case dispatch: the type a node binds as when no
+    /// case matches.
+    pub struct Otherwise {
+        "type" => ty: TypeExpression,
     }
 }
 
@@ -57,6 +113,7 @@ union_type! {
         "child" => Child(ChildSource),
         "children" => Children(ChildrenSource),
         "entries" => Entries(EntriesSource),
+        "expand" => Expand(ExpandSource),
         "context" => Context(ContextSource),
     }
 }
@@ -100,6 +157,15 @@ object_type! {
 }
 
 object_type! {
+    /// Declaration-group expansion: the entries of the named keyed member
+    /// of the named declaration splice into the collection being bound.
+    pub struct ExpandSource {
+        "target" => target: TypeName,
+        "member" => member: MemberName,
+    }
+}
+
+object_type! {
     pub struct ContextSource {
         "slot" => slot: SlotName,
         "policy" => policy: Option<ContextPolicy>,
@@ -129,6 +195,12 @@ object_type! {
 pub(crate) const TYPES: &[TypeShape] = &[
     Role::SHAPE,
     NodeDef::SHAPE,
+    DependentBinding::SHAPE,
+    DependentTarget::SHAPE,
+    BindingCodec::SHAPE,
+    CaseDispatch::SHAPE,
+    CaseRule::SHAPE,
+    Otherwise::SHAPE,
     FieldBinding::SHAPE,
     Source::SHAPE,
     ArgumentSource::SHAPE,
@@ -137,6 +209,7 @@ pub(crate) const TYPES: &[TypeShape] = &[
     ChildSource::SHAPE,
     ChildrenSource::SHAPE,
     EntriesSource::SHAPE,
+    ExpandSource::SHAPE,
     ContextSource::SHAPE,
     Collision::SHAPE,
     DuplicateKeys::SHAPE,

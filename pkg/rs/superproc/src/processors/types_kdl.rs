@@ -3,7 +3,7 @@
 use kdlith_engine::Handler;
 
 use super::Item;
-use crate::types::{EnumType, MapType, ObjectType, StringType, UnionType};
+use crate::types::{CodecType, EnumType, MapType, ObjectType, StringType, UnionType};
 
 pub(crate) const HANDLERS: &[Handler<Item>] = &[
     Handler::declaration::<StringType>(),
@@ -11,4 +11,5 @@ pub(crate) const HANDLERS: &[Handler<Item>] = &[
     Handler::declaration::<ObjectType>(),
     Handler::declaration::<UnionType>(),
     Handler::declaration::<MapType>(),
+    Handler::declaration::<CodecType>(),
 ];

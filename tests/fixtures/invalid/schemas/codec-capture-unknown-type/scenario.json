@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A codec capture whose declared type names no declared type is rejected",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

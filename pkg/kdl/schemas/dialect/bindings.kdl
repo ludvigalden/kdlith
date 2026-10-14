@@ -43,6 +43,58 @@ dialect kdlith version="0" {
             field children "ordered-map<NodeName, ChildRule>"
             field effects "list<EffectGroup>"
             field groups "list<ExactlyOneGroup>"
+            field value "optional<DependentBinding>"
+            field cases "optional<CaseDispatch>"
+        }
+
+        // A dependent payload binding: how a node's remaining payload
+        // binds against the declaration a field of the same node
+        // references. When the target declaration is compiled the payload
+        // binds immediately; otherwise the binder preserves the payload
+        // syntax and its source locator and emits a pending typed-binding
+        // item that linking validates on demand.
+        object DependentBinding {
+            field against DependentTarget
+            field codec BindingCodec
+        }
+
+        // The field of the same node holding the reference, and the
+        // field of the referenced declaration's type holding the
+        // expected payload type.
+        object DependentTarget {
+            field target FieldName
+            field member FieldName
+        }
+
+        // The registered binding codecs a dependent value may name. They
+        // are registered by the processor like validators and handlers;
+        // naming one that is not installed fails closed.
+        enum BindingCodec {
+            member argument-tail description="The remaining arguments, typed per expected type, no scalar-to-list promotion"
+            member fixture-value description="The type-directed recursive form"
+        }
+
+        // A case dispatch: the logical type a node binds as, selected by
+        // property value, evaluated top-down with first match winning and
+        // an optional otherwise fallback.
+        object CaseDispatch {
+            field cases "list<CaseRule>"
+            field otherwise "optional<Otherwise>"
+        }
+
+        // One case: when the named property is present and scalar-equal
+        // to equals, the node binds as type. Present but unequal falls
+        // through.
+        object CaseRule {
+            field property FieldName
+            field equals ValueExpr
+            field type TypeExpression
+        }
+
+        // The fallback of a case dispatch: the type a node binds as when
+        // no case matches.
+        object Otherwise {
+            field type TypeExpression
         }
 
         // One logical field and the sources that populate it. The
@@ -69,6 +121,7 @@ dialect kdlith version="0" {
             variant child ChildSource
             variant children ChildrenSource
             variant entries EntriesSource
+            variant expand ExpandSource
             variant context ContextSource
         }
 
@@ -109,6 +162,14 @@ dialect kdlith version="0" {
             field node NodeName
             field key String
             field value TypeName
+        }
+
+        // Declaration-group expansion: the entries of the named keyed
+        // member of the named declaration splice into the collection
+        // being bound, at the expansion point, in declaration order.
+        object ExpandSource {
+            field target TypeName
+            field member MemberName
         }
 
         // The field reads its value from the active context slot; the
@@ -178,8 +239,12 @@ dialect kdlith version="0" {
                 children exactly-one
             }
         }
+        field value child=value
+        field cases child=cases
         children parents max-occurs=1
         children effects max-occurs=2
+        children value max-occurs=1
+        children cases max-occurs=1
     }
 
     // A field binding. Shorthands abbreviate the common single-source
@@ -204,6 +269,7 @@ dialect kdlith version="0" {
                     children child
                     children children
                     children entries
+                    children expand
                     children context
                 }
             }
@@ -266,6 +332,14 @@ dialect kdlith version="0" {
         field value property=value
     }
 
+    // Declaration-group expansion, in a from block: the entries of the
+    // named keyed member of the named declaration splice into the
+    // collection being bound.
+    node expand type=ExpandSource parent=from {
+        field target property=target
+        field member property=member
+    }
+
     node context type=ContextSource parent=from {
         field slot arg=0
         field policy property=policy
@@ -276,8 +350,40 @@ dialect kdlith version="0" {
         field max-occurs property=max-occurs
     }
 
-    // Deferred: declared here so the boundary is explicit, not defined.
-    deferred expansion note="Declaration-group expansion (include of a member group)"
-    deferred dependent-binding note="Binding a payload against a declaration's type (against)"
-    deferred case-dispatch note="Binding cases selected by a property value"
+    // A dependent payload binding: how a node's remaining payload binds
+    // against the declaration its against-target field references.
+    node value type=DependentBinding parent=node {
+        field codec property=codec
+        field against child=against
+        children against min-occurs=1 max-occurs=1
+    }
+
+    node against type=DependentTarget parent=value {
+        field target property=target
+        field member property=member
+    }
+
+    // A case dispatch: cases evaluate top-down on the node's
+    // properties; the first match selects the logical type the whole
+    // node binds as, and otherwise is the fallback.
+    node cases type=CaseDispatch parent=node {
+        field cases {
+            from {
+                children case
+            }
+        }
+        field otherwise child=otherwise
+        children case
+        children otherwise max-occurs=1
+    }
+
+    node case type=CaseRule parent=cases {
+        field property property=property
+        field equals property=equals
+        field type property=type
+    }
+
+    node otherwise type=Otherwise parent=cases {
+        field type property=type
+    }
 }

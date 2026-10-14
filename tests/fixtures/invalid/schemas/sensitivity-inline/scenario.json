@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "Sensitivity lives only on declared object-type fields: an inline field binding declaring sensitivity= is rejected with the property unbound (promote to a declared type instead)",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

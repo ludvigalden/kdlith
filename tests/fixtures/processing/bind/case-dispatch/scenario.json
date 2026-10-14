@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "A cases block evaluates top-down on the node's properties: a matching property value retypes the record to its case's type, and an unmatched value falls to otherwise",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"type_name\":\"Large\",\"fields\":[{\"name\":\"kind\",\"value\":{\"kind\":\"string\",\"value\":\"large\"}",
+      "\"type_name\":\"Small\",\"fields\":[{\"name\":\"kind\",\"value\":{\"kind\":\"string\",\"value\":\"huge\"}",
+      "\"validation\":\"valid\""
+    ]
+  }
+}

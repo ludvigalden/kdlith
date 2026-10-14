@@ -6,18 +6,19 @@ use std::path::Path;
 
 use kdlith_diagnostic::{ByteSpan, DiagnosticRecord, Severity};
 use kdlith_engine::{
-    CheckScope, ChildRuleInput, ConstraintInput, Construct, DeferralInput, Definition,
-    DefinitionInput, DocumentInput, DocumentRuleInput, EffectGroupInput, EffectInput, Extensions,
-    FieldBindingInput, FieldInput, FormatInput, ImportInput, Located, MemberInput, NodeInput,
-    ParsedDocument, SlotInput, SourceInput, TypeInput, TypedItem, ValidatorInput, VariantInput,
-    compile_dialect, compile_dialect_input, compile_schema_input,
+    CaptureInput, CaseInput, CheckScope, ChildRuleInput, ConstraintInput, Construct, DeferralInput,
+    Definition, DefinitionInput, DependentInput, DocumentInput, DocumentRuleInput,
+    EffectGroupInput, EffectInput, Extensions, FieldBindingInput, FieldInput, FormatInput,
+    ImportInput, Located, MemberInput, NodeInput, ParsedDocument, SlotInput, SourceInput,
+    TypeInput, TypedItem, ValidatorInput, VariantInput, compile_dialect, compile_dialect_input,
+    compile_schema_input,
 };
 use kdlith_runtime::Repeated;
 
 use crate::processors::{Item, reader};
 use crate::types::{
-    Constraint, Deferral, DocumentRule, Effect, EnumType, FieldBinding, MapType, NodeDef,
-    ObjectType, Source, StringType, UnionType,
+    CodecType, Constraint, Deferral, DocumentRule, Effect, EnumType, FieldBinding, MapType,
+    NodeDef, ObjectType, Source, StringType, UnionType,
 };
 
 /// The canonical dialect's contributing documents, embedded so the
@@ -221,6 +222,7 @@ fn declaration(value: Item) -> Option<Construct> {
     let construct = match value {
         Item::StringType(StringType {
             name,
+            parameters,
             format,
             width,
             pattern,
@@ -229,6 +231,11 @@ fn declaration(value: Item) -> Option<Construct> {
             min_length,
         }) => Construct::Type(TypeInput::String {
             name: name.as_str().to_owned(),
+            parameters: parameters
+                .iter()
+                .flatten()
+                .map(|parameter| parameter.as_str().to_owned())
+                .collect(),
             format: format.map(|format| FormatInput {
                 format: format.member().to_owned(),
                 width,
@@ -240,8 +247,17 @@ fn declaration(value: Item) -> Option<Construct> {
             }),
             min_length,
         }),
-        Item::EnumType(EnumType { name, members }) => Construct::Type(TypeInput::Enum {
+        Item::EnumType(EnumType {
+            name,
+            parameters,
+            members,
+        }) => Construct::Type(TypeInput::Enum {
             name: name.as_str().to_owned(),
+            parameters: parameters
+                .iter()
+                .flatten()
+                .map(|parameter| parameter.as_str().to_owned())
+                .collect(),
             members: members
                 .iter()
                 .map(|(name, member)| MemberInput {
@@ -252,10 +268,16 @@ fn declaration(value: Item) -> Option<Construct> {
         }),
         Item::ObjectType(ObjectType {
             name,
+            parameters,
             fields,
             constraints,
         }) => Construct::Type(TypeInput::Object {
             name: name.as_str().to_owned(),
+            parameters: parameters
+                .iter()
+                .flatten()
+                .map(|parameter| parameter.as_str().to_owned())
+                .collect(),
             fields: fields
                 .iter()
                 .map(|(name, field)| FieldInput {
@@ -264,28 +286,70 @@ fn declaration(value: Item) -> Option<Construct> {
                     description: field.description.clone(),
                     documented_default: field.documented_default.clone(),
                     fallback: field.fallback.clone(),
+                    sensitivity: field.sensitivity.map(|s| s.member().to_owned()),
                 })
                 .collect(),
             constraints: constraints.iter().map(constraint).collect(),
         }),
-        Item::UnionType(UnionType { name, variants }) => Construct::Type(TypeInput::Union {
+        Item::UnionType(UnionType {
+            name,
+            parameters,
+            variants,
+        }) => Construct::Type(TypeInput::Union {
             name: name.as_str().to_owned(),
+            parameters: parameters
+                .iter()
+                .flatten()
+                .map(|parameter| parameter.as_str().to_owned())
+                .collect(),
             variants: variants
                 .iter()
                 .map(|(name, variant)| VariantInput {
                     discriminator: name.as_str().to_owned(),
                     ty: variant.ty.as_str().to_owned(),
+                    prefix: variant.prefix.clone(),
                 })
                 .collect(),
         }),
         Item::MapType(MapType {
             name,
+            parameters,
             key_type,
             value_type,
         }) => Construct::Type(TypeInput::Map {
             name: name.as_str().to_owned(),
+            parameters: parameters
+                .iter()
+                .flatten()
+                .map(|parameter| parameter.as_str().to_owned())
+                .collect(),
             key: key_type.as_str().to_owned(),
             value: value_type.as_str().to_owned(),
+        }),
+        Item::CodecType(CodecType {
+            name,
+            parameters,
+            output,
+            r#match: pattern,
+            captures,
+            namespace,
+        }) => Construct::Type(TypeInput::Codec {
+            name: name.as_str().to_owned(),
+            parameters: parameters
+                .iter()
+                .flatten()
+                .map(|parameter| parameter.as_str().to_owned())
+                .collect(),
+            output: output.as_str().to_owned(),
+            pattern,
+            captures: captures
+                .iter()
+                .map(|(name, capture)| CaptureInput {
+                    name: name.as_str().to_owned(),
+                    ty: capture.ty.as_str().to_owned(),
+                })
+                .collect(),
+            namespace: namespace.map(|namespace| namespace.as_str().to_owned()),
         }),
         Item::NodeDef(node) => Construct::Node(node_input(node)),
         Item::SlotDef(slot) => Construct::Slot(SlotInput {
@@ -321,6 +385,29 @@ fn constraint(constraint: &Constraint) -> ConstraintInput {
 }
 
 fn node_input(node: NodeDef) -> NodeInput {
+    let value = node.value.map(|value| DependentInput {
+        target: value.against.target.as_str().to_owned(),
+        member: value.against.member.as_str().to_owned(),
+        codec: value.codec.member().to_owned(),
+    });
+    let (cases, otherwise) = match node.cases {
+        Some(dispatch) => {
+            let otherwise = dispatch
+                .otherwise
+                .map(|fallback| fallback.ty.as_str().to_owned());
+            let cases = dispatch
+                .cases
+                .iter()
+                .map(|rule| CaseInput {
+                    property: rule.property.as_str().to_owned(),
+                    equals: rule.equals.clone(),
+                    ty: rule.ty.as_str().to_owned(),
+                })
+                .collect();
+            (cases, otherwise)
+        }
+        None => (Vec::new(), None),
+    };
     NodeInput {
         name: node.name.as_str().to_owned(),
         role: node.role.as_ref().map(|role| role.member().to_owned()),
@@ -360,6 +447,9 @@ fn node_input(node: NodeDef) -> NodeInput {
             .iter()
             .map(|group| group.nodes.iter().map(|n| n.as_str().to_owned()).collect())
             .collect(),
+        value,
+        cases,
+        otherwise,
     }
 }
 
@@ -416,6 +506,10 @@ fn source(input: &Source) -> SourceInput {
             node: entries.node.as_str().to_owned(),
             key: entries.key.clone(),
             value: entries.value.as_str().to_owned(),
+        },
+        Source::Expand(expand) => SourceInput::Expand {
+            target: expand.target.as_str().to_owned(),
+            member: expand.member.as_str().to_owned(),
         },
         Source::Context(context) => SourceInput::Context {
             slot: context.slot.as_str().to_owned(),

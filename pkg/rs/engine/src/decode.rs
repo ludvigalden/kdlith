@@ -13,36 +13,49 @@ use crate::extensions::TYPE_EXPRESSION_VALIDATOR;
 use crate::names::Names;
 use crate::syntax::parse_u64;
 use crate::type_expr::{self, ExprError};
-use crate::types::{Builtin, StringType, TypeCatalog, TypeExpr, TypeId, TypeKind};
+use crate::types::{
+    Builtin, CodecDecl, StringType, TypeCatalog, TypeExpr, TypeId, TypeKind, Variant,
+};
 
-/// The compiled patterns of one definition's string types, built once.
+/// The compiled patterns of one definition's string types and codecs,
+/// built once.
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Decoder {
     patterns: BTreeMap<TypeId, Regex>,
+    codecs: BTreeMap<TypeId, Regex>,
 }
 
-/// A string type whose pattern does not compile.
+/// A string type or codec whose pattern does not compile.
 pub(crate) struct BadPattern {
     pub(crate) ty: TypeId,
     pub(crate) reason: String,
 }
 
 impl Decoder {
-    /// Compile every string type's pattern for whole-string matching.
+    /// Compile every string type's and codec's pattern for whole-string
+    /// matching.
     pub(crate) fn new(types: &TypeCatalog) -> (Self, Vec<BadPattern>) {
         let mut decoder = Self::default();
         let mut bad = Vec::new();
         for (id, decl) in types.iter() {
-            let TypeKind::String(StringType {
-                pattern: Some(pattern),
-                ..
-            }) = &decl.kind
-            else {
+            let pattern = match &decl.kind {
+                TypeKind::String(StringType {
+                    pattern: Some(pattern),
+                    ..
+                }) => Some(pattern),
+                TypeKind::Codec(codec) => Some(&codec.pattern),
+                _ => None,
+            };
+            let Some(pattern) = pattern else {
                 continue;
             };
             match Regex::new(&format!("^(?:{pattern})$")) {
                 Ok(regex) => {
-                    decoder.patterns.insert(id, regex);
+                    if matches!(&decl.kind, TypeKind::Codec(_)) {
+                        decoder.codecs.insert(id, regex);
+                    } else {
+                        decoder.patterns.insert(id, regex);
+                    }
                 }
                 Err(error) => bad.push(BadPattern {
                     ty: id,
@@ -114,29 +127,104 @@ impl Decoder {
             TypeExpr::Union(members) => members
                 .iter()
                 .find_map(|member| self.decode(types, names, member, value, site)),
-            TypeExpr::Named(name) => types
-                .lookup(*name)
-                .is_some_and(|id| self.named(types, id, value))
-                .then(|| value.clone()),
+            // A surviving instantiation means incomplete checking: fail
+            // closed rather than guess the unsubstituted body.
+            TypeExpr::Instantiation(_, _) => None,
+            TypeExpr::Named(name) => {
+                let id = types.lookup(*name)?;
+                self.named(types, names, id, value, site)
+            }
         }
     }
 
-    fn named(&self, types: &TypeCatalog, id: TypeId, value: &Value) -> bool {
-        let Some(decl) = types.get(id) else {
-            return false;
-        };
+    fn named(
+        &self,
+        types: &TypeCatalog,
+        names: &Names,
+        id: TypeId,
+        value: &Value,
+        site: Location,
+    ) -> Option<Value> {
+        let decl = types.get(id)?;
         match (&decl.kind, value) {
-            (TypeKind::Builtin(builtin), value) => builtin_accepts(*builtin, value),
-            (TypeKind::String(string), Value::String(text)) => self.string(id, string, text),
+            (TypeKind::Builtin(builtin), value) => {
+                builtin_accepts(*builtin, value).then(|| value.clone())
+            }
+            (TypeKind::String(string), Value::String(text)) => {
+                self.string(id, string, text).then(|| value.clone())
+            }
             (TypeKind::Enum(enumeration), Value::String(text)) => enumeration
                 .members
                 .iter()
-                .any(|member| member.name == *text),
+                .any(|member| member.name == *text)
+                .then(|| value.clone()),
+            // A value-bound union selects its variant by prefix: one
+            // probe, no backtracking, and a failure inside the selected
+            // variant is an error, never a fallback.
+            (TypeKind::Union(union), Value::String(text)) => {
+                let variant: &Variant = union.variants.iter().find(|variant| {
+                    variant
+                        .prefix
+                        .as_deref()
+                        .is_some_and(|prefix| text.starts_with(prefix))
+                })?;
+                self.decode(types, names, &variant.ty, value, site)
+            }
+            // A codec decodes a matching string in the stream; the
+            // decoded value carries the output type.
+            (TypeKind::Codec(codec), Value::String(text)) => {
+                self.codec(types, names, id, codec, text, site)
+            }
             // Object, union, and map values are bound from node structure,
             // which the binding already checked field by field.
-            (TypeKind::Object(_) | TypeKind::Union(_) | TypeKind::Map(_), Value::Map(_)) => true,
-            _ => false,
+            (TypeKind::Object(_) | TypeKind::Union(_) | TypeKind::Map(_), Value::Map(_)) => {
+                Some(value.clone())
+            }
+            _ => None,
         }
+    }
+
+    /// Decode a string through a codec: the whole-string match, each
+    /// named capture decoded as its declared type, and the result
+    /// carrying the codec's output type.
+    fn codec(
+        &self,
+        types: &TypeCatalog,
+        names: &Names,
+        id: TypeId,
+        codec: &CodecDecl,
+        text: &str,
+        site: Location,
+    ) -> Option<Value> {
+        let regex = self.codecs.get(&id)?;
+        let captures = regex.captures(text)?;
+        let mut entries = Vec::with_capacity(codec.captures.len());
+        for capture in &codec.captures {
+            let raw = captures
+                .name(&capture.name)
+                .map(|found| found.as_str().to_owned())
+                .unwrap_or_default();
+            // A capture's text decodes as its declared type: a numeric
+            // capture carries its text as the number it spells.
+            let value = match numeric_builtin(types, &capture.ty) {
+                Some(_) => Value::Number(raw),
+                None => Value::String(raw),
+            };
+            let decoded = self.decode(types, names, &capture.ty, &value, site)?;
+            entries.push(Entry::new(capture.name.clone(), decoded));
+        }
+        let decoded = Value::Map(entries);
+        if let Some(value) = self.decode(types, names, &codec.output, &decoded, site) {
+            return Some(value);
+        }
+        // A single capture may decode straight into a scalar output.
+        if codec.captures.len() == 1
+            && let Value::Map(mut pair) = decoded
+            && let Some(entry) = pair.pop()
+        {
+            return self.decode(types, names, &codec.output, &entry.value, site);
+        }
+        None
     }
 
     fn string(&self, id: TypeId, string: &StringType, text: &str) -> bool {
@@ -220,14 +308,13 @@ pub(crate) fn mismatch(
                 .is_some_and(|v| v.name == TYPE_EXPRESSION_VALIDATOR) =>
         {
             match type_expr::parse(text, &mut Names::default()) {
-                Err(ExprError::Generic(_)) if defers(deferrals, "generic-types") => {
+                Ok(expr)
+                    if type_expr::instantiates(&expr) && defers(deferrals, "generic-types") =>
+                {
                     deferred("generic-types")
                 }
-                Err(ExprError::Generic(head)) => Mismatch::TypeExpression {
-                    reason: format!("{head} is instantiated with type arguments"),
-                },
-                Err(ExprError::Syntax(reason)) => Mismatch::TypeExpression { reason },
                 Ok(_) => Mismatch::Value,
+                Err(ExprError::Syntax(reason)) => Mismatch::TypeExpression { reason },
             }
         }
         // A type name spelled as a generic declaration or instantiation.
@@ -239,6 +326,21 @@ pub(crate) fn mismatch(
             deferred("generic-types")
         }
         _ => Mismatch::Value,
+    }
+}
+
+/// The numeric builtin a type expression names, if any: a codec capture
+/// declared as one carries its matched text as a number.
+fn numeric_builtin(types: &TypeCatalog, ty: &TypeExpr) -> Option<Builtin> {
+    let TypeExpr::Named(name) = ty else {
+        return None;
+    };
+    let builtin = types.lookup(*name).and_then(|id| types.get(id))?;
+    match builtin.kind {
+        TypeKind::Builtin(builtin @ (Builtin::Integer | Builtin::Decimal | Builtin::U64)) => {
+            Some(builtin)
+        }
+        _ => None,
     }
 }
 

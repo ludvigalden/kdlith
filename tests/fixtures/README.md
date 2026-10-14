@@ -104,9 +104,14 @@ schemas and scenarios that bind data documents against them, each asserting
 the ordered JSON-line item stream on stdout; most scenarios share one
 `schema.kdl`, while `processing/bind/nullable/` and
 `processing/bind/value-expr/` carry their own schemas for the `nullable<T>`
-type constructor and the `ValueExpr` scalar. `invalid/data/` holds data
+type constructor and the `ValueExpr` scalar, and the seven
+`processing/bind/generic-types/`, `codecs/`, `union-dispatch/`,
+`sensitivity/`, `expansion/`, `dependent-binding/`, and `case-dispatch/`
+directories each carry a focused schema proving one of the seven
+types/bindings mechanisms end to end. `invalid/data/` holds data
 documents bound against the shared schema, each rejected with its declared
-code.
+code; the mechanism-negative scenarios there carry the matching focused
+schema from their positive counterpart.
 
 `dialect/canonical-inspect/`, `dialect/entrypoint-inspect/`, and
 `schemas/inspect/` run `kdlith inspect`, which reads definitions through
@@ -118,6 +123,12 @@ declared code. `processing/inspect-accepts-*` pin the reader-path
 decision those negatives imply: each reads, through `inspect schema`,
 the same input a `vet schema` scenario rejects with a compiler-only
 code, and asserts the reading completes and accepts it.
+`schemas/inspect/include-short-form-dropped/` pins the recorded fail-open
+gap of the `include` short form: every CLI reading path goes through the
+typed reader, which drops `include` children, so the typed declaration
+shows only locally declared members — the pin asserts that current
+behavior, and [COVERAGE.md](COVERAGE.md) carries the declared elision
+row with its reopen condition.
 
 `processing/sch003-span-vet/` and `processing/sch003-span-inspect/` pin the
 span of one diagnostic: an overlapping binding (`KDLITH-SCH003`) is reported

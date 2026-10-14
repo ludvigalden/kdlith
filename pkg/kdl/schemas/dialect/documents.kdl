@@ -124,6 +124,7 @@ dialect kdlith version="0" {
         children object
         children union
         children map
+        children codec
     }
 
     // Structural rules. A document rule is a record: a validated

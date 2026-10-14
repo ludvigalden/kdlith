@@ -164,6 +164,7 @@ fn kind_name(kind: &TypeKind) -> &'static str {
         TypeKind::Object(_) => "an object",
         TypeKind::Union(_) => "a union",
         TypeKind::Map(_) => "a map type",
+        TypeKind::Codec(_) => "a codec",
     }
 }
 

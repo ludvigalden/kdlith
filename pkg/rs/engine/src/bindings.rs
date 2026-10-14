@@ -94,6 +94,67 @@ pub struct NodeDecl {
     pub children: Vec<ChildRule>,
     pub effects: Vec<EffectGroup>,
     pub groups: Vec<Vec<Sym>>,
+    /// The node's dependent payload binding, if it declares one.
+    pub value: Option<DependentBinding>,
+    /// The case dispatch that selects the type a node binds as, top-down,
+    /// first match winning.
+    pub cases: Vec<CaseRule>,
+    /// The fallback type when no case matches.
+    pub otherwise: Option<TypeExpr>,
+    pub site: Site,
+}
+
+/// How a node's remaining payload binds against the declaration a field
+/// of the same node references.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct DependentBinding {
+    /// The field of the same node holding the reference.
+    pub target: Sym,
+    /// The field of the referenced declaration's type holding the
+    /// expected payload type.
+    pub member: Sym,
+    /// The registered binding codec that binds the payload.
+    pub codec: BindingCodec,
+    pub site: Site,
+}
+
+/// The registered binding codecs a dependent value may name.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum BindingCodec {
+    /// The remaining arguments, typed per the expected type, with no
+    /// scalar-to-list promotion.
+    ArgumentTail,
+    /// The type-directed recursive form.
+    FixtureValue,
+}
+
+impl BindingCodec {
+    pub fn from_name(name: &str) -> Option<Self> {
+        Some(match name {
+            "argument-tail" => BindingCodec::ArgumentTail,
+            "fixture-value" => BindingCodec::FixtureValue,
+            _ => return None,
+        })
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            BindingCodec::ArgumentTail => "argument-tail",
+            BindingCodec::FixtureValue => "fixture-value",
+        }
+    }
+}
+
+/// One case of a case dispatch: when the named property is present and
+/// scalar-equal to `equals`, the node binds as `ty`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct CaseRule {
+    pub property: Sym,
+    pub equals: Value,
+    pub ty: TypeExpr,
     pub site: Site,
 }
 
@@ -148,6 +209,13 @@ pub enum Source {
         node: Sym,
         key: u64,
         value: Sym,
+    },
+    /// Declaration-group expansion: the entries of the named keyed
+    /// member of the named declaration splice into the collection at the
+    /// expansion point, in declaration order.
+    Expand {
+        target: Sym,
+        member: Sym,
     },
     Context {
         slot: Sym,

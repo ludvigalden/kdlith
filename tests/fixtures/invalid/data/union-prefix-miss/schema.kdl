@@ -1,0 +1,11 @@
+schema channels version="1" {
+    types {
+        union Channel {
+            variant email String prefix="mailto:"
+            variant handle String prefix="@"
+        }
+    }
+    node msg role=record {
+        field channel Channel arg=0
+    }
+}

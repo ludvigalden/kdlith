@@ -7,11 +7,13 @@ use std::collections::BTreeMap;
 use kdlith_model::Value;
 use kdlith_runtime::SlotId;
 
-use crate::bindings::{ContextPolicy, NodeDecl, NodeDeclId, Role, ScopeId, Source};
+use crate::bindings::{
+    CaseRule, ContextPolicy, DependentBinding, NodeDecl, NodeDeclId, Role, ScopeId, Source,
+};
 use crate::definition::Definition;
 use crate::names::Sym;
 use crate::plan::DeferredBinding;
-use crate::types::{TypeExpr, TypeKind};
+use crate::types::{Sensitivity, TypeExpr, TypeKind};
 
 /// How a supply lands in its field.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -56,6 +58,12 @@ pub(crate) struct FieldInfo {
     pub(crate) collect: Collect,
     pub(crate) fallback: Option<Value>,
     pub(crate) context: Option<ContextBind>,
+    /// The sensitivity the field's declaration tags it with, enforced
+    /// by the output policy.
+    pub(crate) sensitivity: Option<Sensitivity>,
+    /// The declaration-group expansions splicing into this field's
+    /// collection, as (target, member) pairs.
+    pub(crate) expand: Vec<(Sym, Sym)>,
 }
 
 /// Everything the binder needs about one node declaration.
@@ -73,6 +81,11 @@ pub(crate) struct DeclInfo {
     /// Fields holding `ref<T>` values, which keep the item provisional.
     pub(crate) references: Vec<usize>,
     pub(crate) provisional: bool,
+    /// The case dispatch selecting the type a node binds as.
+    pub(crate) cases: Vec<CaseRule>,
+    pub(crate) otherwise: Option<TypeExpr>,
+    /// The dependent payload binding, when the node declares one.
+    pub(crate) dependent: Option<DependentBinding>,
 }
 
 /// The syntax of one scope's owner: which owner field each argument,
@@ -212,7 +225,8 @@ fn fill(
                     mode: Mode::Keyed,
                 },
             )),
-            Source::Context { .. } => {}
+            // Expansion splices at field finalization, not per entry.
+            Source::Expand { .. } | Source::Context { .. } => {}
         }
     }
     if let Some(at) = scopes.get_mut(scope.index()) {
@@ -245,6 +259,8 @@ fn decl_info(def: &Definition, id: NodeDeclId, decl: &NodeDecl) -> DeclInfo {
                 collect: Collect::No,
                 fallback: field.fallback.clone(),
                 context: None,
+                sensitivity: field.sensitivity,
+                expand: Vec::new(),
             })
             .collect(),
         None => decl
@@ -257,6 +273,8 @@ fn decl_info(def: &Definition, id: NodeDeclId, decl: &NodeDecl) -> DeclInfo {
                 collect: Collect::No,
                 fallback: None,
                 context: None,
+                sensitivity: None,
+                expand: Vec::new(),
             })
             .collect(),
     };
@@ -279,6 +297,9 @@ fn decl_info(def: &Definition, id: NodeDeclId, decl: &NodeDecl) -> DeclInfo {
                             policy: *policy,
                         });
                     }
+                }
+                Source::Expand { target, member } => {
+                    info.expand.push((*target, *member));
                 }
                 Source::Argument(0) => path = Some(at),
                 _ => {}
@@ -309,6 +330,9 @@ fn decl_info(def: &Definition, id: NodeDeclId, decl: &NodeDecl) -> DeclInfo {
         repeated: import_field("repeated"),
         references,
         provisional: !deferred.is_empty(),
+        cases: decl.cases.clone(),
+        otherwise: decl.otherwise.clone(),
+        dependent: decl.value.clone(),
         fields,
     }
 }

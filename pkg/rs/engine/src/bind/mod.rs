@@ -21,7 +21,7 @@ use kdlith_runtime::{
     Processor, Session, SessionError, SlotValue,
 };
 
-use crate::bindings::{ChildPlan, ContextPolicy, NodeDeclId, Role, SetFrom};
+use crate::bindings::{BindingCodec, ChildPlan, ContextPolicy, NodeDeclId, Role, SetFrom};
 use crate::decode::{self, Decoder, Mismatch};
 use crate::deferred::{Spelling, deferred_by, defers, is_discovery_path};
 use crate::definition::{Definition, DefinitionKind};
@@ -34,7 +34,7 @@ use crate::overlap;
 use crate::plan::EffectStep;
 use crate::structure::{ScopeRules, ScopeState, Violation};
 use crate::summary;
-use crate::types::{TypeExpr, TypeKind, Variant};
+use crate::types::{OutputPolicy, TypeExpr, TypeKind, Variant};
 
 pub use frame::BindFrame;
 pub use source::ParseEvents;
@@ -48,6 +48,17 @@ const CONTEXT_UNAVAILABLE: &str = "KDLITH-CTX001";
 const CONTEXT_DISAGREES: &str = "KDLITH-CTX002";
 
 const DOCUMENT_ROOT: &str = "the document root";
+
+/// The outcome of a node's case dispatch.
+enum CaseSelection {
+    /// The node declares no cases.
+    None,
+    /// A case (or `otherwise`) selected; the type name, when the
+    /// selected type names one.
+    Selected(Option<Sym>),
+    /// No case matched and there is no `otherwise`.
+    Unmatched,
+}
 
 /// The dialect construct a schema definition's root node is written as.
 const SCHEMA_ROOT: &str = "schema";
@@ -89,6 +100,10 @@ impl<'s> EntryValue<'s> {
     }
 }
 
+/// Positional arguments a dependent payload may hold at most; more
+/// fails closed rather than growing without bound.
+const MAX_PAYLOAD: usize = 32;
+
 /// A processor binding one data document against a compiled schema
 /// definition. The definition's KDL is never read: every lookup goes
 /// through its catalogs and plan, and through tables built from them
@@ -101,6 +116,9 @@ pub struct Binder<'d, 's> {
     locator: Locator<'s>,
     source: SourceId,
     root: ScopeState,
+    /// The explicit output policy for sensitive fields; `None` applies
+    /// each sensitivity's fail-closed default.
+    output_policy: Option<OutputPolicy>,
     /// A root node broke the document's order rule, so the missing first
     /// node is not reported again at the end.
     order_broken: bool,
@@ -118,6 +136,18 @@ impl<'d, 's> Binder<'d, 's> {
         path: impl Into<String>,
         text: &'s str,
     ) -> Self {
+        Self::with_output_policy(def, source, path, text, None)
+    }
+
+    /// A binder applying one explicit output policy to every sensitive
+    /// field; `None` redacts a secret and emits a reference.
+    pub fn with_output_policy(
+        def: &'d Definition,
+        source: SourceId,
+        path: impl Into<String>,
+        text: &'s str,
+        output_policy: Option<OutputPolicy>,
+    ) -> Self {
         let root = def
             .bindings
             .scope(def.bindings.root_scope())
@@ -130,6 +160,7 @@ impl<'d, 's> Binder<'d, 's> {
             locator: Locator::new(text),
             source,
             root,
+            output_policy,
             order_broken: false,
             root_name: None,
             errors: 0,
@@ -491,6 +522,26 @@ impl<'d, 's> Binder<'d, 's> {
                 Collect::Map => Some(Value::Map(Vec::new())),
                 Collect::No => None,
             });
+            let value = match value {
+                Some(Value::Map(entries))
+                    if !self.tables.decls[owner.index()].fields[at]
+                        .expand
+                        .is_empty() =>
+                {
+                    let mut entries = entries;
+                    self.splice_expansions(cx, owner, at, frame.span, &mut entries);
+                    Some(Value::Map(entries))
+                }
+                None if !self.tables.decls[owner.index()].fields[at]
+                    .expand
+                    .is_empty() =>
+                {
+                    let mut entries = Vec::new();
+                    self.splice_expansions(cx, owner, at, frame.span, &mut entries);
+                    (!entries.is_empty()).then_some(Value::Map(entries))
+                }
+                other => other,
+            };
             if value.is_none() && info.required && !frame.rejected.contains(&at) {
                 let node = self.name(frame.name);
                 let field = self.name(info.name);
@@ -499,6 +550,242 @@ impl<'d, 's> Binder<'d, 's> {
             values.push(value);
         }
         values
+    }
+
+    /// Splice the entries of every expansion a field's sources declare
+    /// into its collection, rejecting a key that collides with one
+    /// already held.
+    fn splice_expansions(
+        &mut self,
+        cx: &mut Cx<'_>,
+        owner: NodeDeclId,
+        at: usize,
+        span: ByteSpan,
+        entries: &mut Vec<Entry>,
+    ) {
+        let expands = self.tables.decls[owner.index()].fields[at].expand.clone();
+        for (target, member) in expands {
+            let Some(spliced) = self.expanded_entries(target, member) else {
+                continue;
+            };
+            for (key, value) in spliced {
+                if entries.iter().any(|held| held.key == key) {
+                    let field = self.field_label(owner, at);
+                    self.diagnose(cx, DUPLICATE_KEY, span, &[&key, &field]);
+                } else {
+                    entries.push(Entry::new(key, value));
+                }
+            }
+        }
+    }
+
+    /// The rendered entries of one declaration's keyed member, as bound
+    /// children of that member's kind would carry them.
+    fn expanded_entries(&self, target: Sym, member: Sym) -> Option<Vec<(String, Value)>> {
+        let names = &self.def.names;
+        let member = names.resolve(member);
+        let decl = self
+            .def
+            .types
+            .lookup(target)
+            .and_then(|id| self.def.types.get(id))?;
+        let expr = |ty: &TypeExpr| Value::String(summary::expr(names, ty));
+        match &decl.kind {
+            TypeKind::Object(object) if member == "fields" => Some(
+                object
+                    .fields
+                    .iter()
+                    .map(|field| {
+                        let mut entries = vec![Entry::new("type".to_owned(), expr(&field.ty))];
+                        if let Some(description) = &field.description {
+                            entries.push(Entry::new(
+                                "description".to_owned(),
+                                Value::String(description.clone()),
+                            ));
+                        }
+                        if let Some(default) = &field.documented_default {
+                            entries
+                                .push(Entry::new("documented-default".to_owned(), default.clone()));
+                        }
+                        if let Some(fallback) = &field.fallback {
+                            entries.push(Entry::new("fallback".to_owned(), fallback.clone()));
+                        }
+                        if let Some(sensitivity) = field.sensitivity {
+                            entries.push(Entry::new(
+                                "sensitivity".to_owned(),
+                                Value::String(sensitivity.name().to_owned()),
+                            ));
+                        }
+                        (names.resolve(field.name).to_owned(), Value::Map(entries))
+                    })
+                    .collect(),
+            ),
+            TypeKind::Enum(enumeration) if member == "members" => Some(
+                enumeration
+                    .members
+                    .iter()
+                    .map(|member| {
+                        let entries = member.description.clone().map(|description| {
+                            vec![Entry::new(
+                                "description".to_owned(),
+                                Value::String(description),
+                            )]
+                        });
+                        (member.name.clone(), Value::Map(entries.unwrap_or_default()))
+                    })
+                    .collect(),
+            ),
+            TypeKind::Union(union) if member == "variants" => Some(
+                union
+                    .variants
+                    .iter()
+                    .map(|variant| {
+                        let mut entries = vec![Entry::new("type".to_owned(), expr(&variant.ty))];
+                        if let Some(prefix) = &variant.prefix {
+                            entries.push(Entry::new(
+                                "prefix".to_owned(),
+                                Value::String(prefix.clone()),
+                            ));
+                        }
+                        (
+                            names.resolve(variant.discriminator).to_owned(),
+                            Value::Map(entries),
+                        )
+                    })
+                    .collect(),
+            ),
+            TypeKind::Codec(codec) if member == "captures" => Some(
+                codec
+                    .captures
+                    .iter()
+                    .map(|capture| {
+                        (
+                            capture.name.clone(),
+                            Value::Map(vec![Entry::new("type".to_owned(), expr(&capture.ty))]),
+                        )
+                    })
+                    .collect(),
+            ),
+            _ => None,
+        }
+    }
+
+    /// Evaluate a node's case dispatch, top-down, first match winning:
+    /// a property present and scalar-equal selects the type the node
+    /// binds as; present but unequal falls through; no match and no
+    /// `otherwise` rejects the node as unbound.
+    fn select_case(
+        &mut self,
+        cx: &mut Cx<'_>,
+        frame: &BindFrame,
+        values: &[Option<Value>],
+    ) -> CaseSelection {
+        let info = &self.tables.decls[frame.owner.index()];
+        if info.cases.is_empty() {
+            return CaseSelection::None;
+        }
+        for case in &info.cases {
+            let held = info
+                .fields
+                .iter()
+                .position(|field| field.name == case.property)
+                .and_then(|at| values.get(at))
+                .is_some_and(|value| value.as_ref() == Some(&case.equals));
+            if held {
+                return match &case.ty {
+                    TypeExpr::Named(name) => CaseSelection::Selected(Some(*name)),
+                    _ => CaseSelection::Selected(None),
+                };
+            }
+        }
+        match &info.otherwise {
+            Some(TypeExpr::Named(name)) => CaseSelection::Selected(Some(*name)),
+            Some(_) => CaseSelection::Selected(None),
+            None => {
+                let node = self.name(frame.name);
+                let place = "no case of its cases block matches and it has no otherwise";
+                self.diagnose(cx, UNKNOWN_NODE, frame.span, &[node, place]);
+                CaseSelection::Unmatched
+            }
+        }
+    }
+
+    /// Validate a node's dependent payload against the member type its
+    /// `against` target references: the remaining arguments, typed per
+    /// the expected type, with no scalar-to-list promotion.
+    fn dependent_payload(
+        &mut self,
+        cx: &mut Cx<'_>,
+        frame: &mut BindFrame,
+        values: &[Option<Value>],
+    ) {
+        let Some(dep) = self.tables.decls[frame.owner.index()].dependent.clone() else {
+            return;
+        };
+        let infos = &self.tables.decls[frame.owner.index()];
+        let Some(at) = infos
+            .fields
+            .iter()
+            .position(|field| field.name == dep.target)
+        else {
+            return;
+        };
+        let Some(Some(Value::Reference(reference))) = values.get(at) else {
+            return;
+        };
+        let Some(domain) = self.def.names.get(&reference.domain) else {
+            return;
+        };
+        let Some(TypeKind::Object(object)) = self
+            .def
+            .types
+            .lookup(domain)
+            .and_then(|id| self.def.types.get(id))
+            .map(|decl| &decl.kind)
+        else {
+            return;
+        };
+        let Some(field) = object.fields.iter().find(|field| field.name == dep.member) else {
+            return;
+        };
+        let expected = field.ty.clone();
+        let node = self.name(frame.name);
+        let payload = std::mem::take(&mut frame.payload);
+        if dep.codec != BindingCodec::ArgumentTail {
+            // A processor-registered codec the binder does not install;
+            // compilation checked its installation against the
+            // processor that reads this definition.
+            return;
+        }
+        let what = format!("the payload of {node}");
+        match &expected {
+            TypeExpr::List(inner) => {
+                let inner = (**inner).clone();
+                for (value, span) in payload {
+                    self.check(cx, Some(inner.clone()), &what, value, span);
+                }
+            }
+            _ => match payload.len() {
+                0 => {}
+                1 => {
+                    let (value, span) = payload.into_iter().next().expect("one payload value");
+                    self.check(cx, Some(expected), &what, value, span);
+                }
+                count => {
+                    let expected = summary::expr(&self.def.names, &expected);
+                    self.diagnose(
+                        cx,
+                        crate::diag::CARDINALITY,
+                        frame.span,
+                        &[
+                            &what,
+                            &count.to_string(),
+                            &format!("at most 1 for {expected}"),
+                        ],
+                    );
+                }
+            },
+        }
     }
 
     /// Resolve effect steps into runtime effects, reading fields by name.
@@ -621,8 +908,17 @@ impl<'d, 's> Binder<'d, 's> {
         true
     }
 
-    /// Emit the processing item a declared node's role calls for.
-    fn emit(&mut self, cx: &mut Cx<'_>, frame: &BindFrame, role: Role, values: Vec<Option<Value>>) {
+    /// Emit the processing item a declared node's role calls for. The
+    /// type a case dispatch selected overrides the declaration's own,
+    /// and every sensitive field's value passes the output policy.
+    fn emit(
+        &mut self,
+        cx: &mut Cx<'_>,
+        frame: &BindFrame,
+        role: Role,
+        values: Vec<Option<Value>>,
+        typed_as: Option<Sym>,
+    ) {
         let owner = frame.owner;
         let node = cx.node();
         let origin = OriginId(node.index);
@@ -632,7 +928,10 @@ impl<'d, 's> Binder<'d, 's> {
         } else {
             ValidationState::Valid
         };
-        let type_name = info.type_name.clone();
+        let type_name = match typed_as {
+            Some(typed) => self.name(typed).to_owned(),
+            None => info.type_name.clone(),
+        };
         let text_of = |at: Option<usize>| match at.and_then(|at| values.get(at)?.as_ref()) {
             Some(Value::String(text)) => Some(text.clone()),
             _ => None,
@@ -658,7 +957,19 @@ impl<'d, 's> Binder<'d, 's> {
             .fields
             .iter()
             .zip(values)
-            .filter_map(|(field, value)| Some(Field::new(self.name(field.name), value?, origin)))
+            .filter_map(|(field, value)| {
+                let value = value?;
+                let value = match field.sensitivity {
+                    Some(sensitivity) => {
+                        let policy = self
+                            .output_policy
+                            .unwrap_or_else(|| OutputPolicy::default_for(sensitivity));
+                        policy.apply(value)?
+                    }
+                    None => value,
+                };
+                Some(Field::new(self.name(field.name), value, origin))
+            })
             .collect();
         let item = match role {
             Role::Record => BoundItem::Record(BoundRecord::new(
@@ -779,6 +1090,15 @@ impl<'d, 's> Binder<'d, 's> {
         }
         let role = def.bindings.get(owner).and_then(|decl| decl.role);
         if let Some(role) = role {
+            let selection = self.select_case(cx, frame, &values);
+            if matches!(selection, CaseSelection::Unmatched) {
+                return;
+            }
+            self.dependent_payload(cx, frame, &values);
+            let typed_as = match selection {
+                CaseSelection::Selected(typed) => typed,
+                _ => None,
+            };
             if let Some(plan) = def.plan.node(owner) {
                 let infos = &self.tables.decls[owner.index()].fields;
                 let value_of = |field: Sym| {
@@ -791,7 +1111,7 @@ impl<'d, 's> Binder<'d, 's> {
                     following.push(effect);
                 }
             }
-            self.emit(cx, frame, role, values);
+            self.emit(cx, frame, role, values, typed_as);
             return;
         }
         let Some(parent) = parent else {
@@ -982,6 +1302,15 @@ impl<'s> Processor for Binder<'_, 's> {
             match frame.table(&self.tables).and_then(|table| table.arg(at)) {
                 Some(bind) => self.take(cx, frame, bind, entry.value, span),
                 None => {
+                    // A node with a dependent value binding keeps its
+                    // remaining arguments as its payload.
+                    if frame.declared()
+                        && frame.payload.len() < MAX_PAYLOAD
+                        && self.tables.decls[frame.owner.index()].dependent.is_some()
+                    {
+                        frame.payload.push((entry.value, span));
+                        return;
+                    }
                     let what = format!("argument {at}");
                     self.diagnose(cx, UNBOUND_ENTRY, span, &[&what, node]);
                 }
@@ -1128,13 +1457,45 @@ impl<'d, 's> BindingSession<'d, 's> {
         text: &'s str,
         context: Context,
     ) -> Self {
+        Self::with_context_and_policy(def, source, path, text, context, None)
+    }
+
+    /// Bind starting from `context` and applying one explicit output
+    /// policy to every sensitive field.
+    pub fn with_context_and_policy(
+        def: &'d Definition,
+        source: SourceId,
+        path: &str,
+        text: &'s str,
+        context: Context,
+        output_policy: Option<OutputPolicy>,
+    ) -> Self {
         let events = ParseEvents::new(Parser::new(text), text, path);
-        let binder = Binder::new(def, source, path, text);
+        let binder = Binder::with_output_policy(def, source, path, text, output_policy);
         Self {
             session: Session::with_context(source, events, binder, context),
             ended: false,
             stopped: false,
         }
+    }
+
+    /// Bind applying one explicit output policy to every sensitive
+    /// field; `None` redacts a secret and emits a reference.
+    pub fn with_policy(
+        def: &'d Definition,
+        source: SourceId,
+        path: &str,
+        text: &'s str,
+        output_policy: OutputPolicy,
+    ) -> Self {
+        Self::with_context_and_policy(
+            def,
+            source,
+            path,
+            text,
+            Context::new(def.plan.context.layout.clone()),
+            Some(output_policy),
+        )
     }
 
     /// The context as the latest item left it: at an import request, the

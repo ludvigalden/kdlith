@@ -1,0 +1,13 @@
+schema bad version="1" {
+    types {
+        object Pair {
+            parameter T
+            parameter U
+            field left T
+            field right U
+        }
+        object Uses {
+            field p "Pair<String>"
+        }
+    }
+}

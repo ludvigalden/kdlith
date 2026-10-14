@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "A pattern codec with one typed capture and a namespace decodes at bind time: the whole-string match on \"12s\" yields the capture as U64 and the emitted field carries the decoded number, not the original spelling",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"name\":\"stamp\",\"value\":{\"kind\":\"number\",\"value\":\"12\"}",
+      "\"validation\":\"valid\""
+    ]
+  }
+}

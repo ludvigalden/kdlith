@@ -10,7 +10,7 @@
     "exit": 0,
     "stdout-contains": [
       "ok: schema catalog version 1 scope=complete documents=2 ",
-      "digest=e62487cbe1138e7f"
+      "digest=f9f788303b1753ec"
     ]
   }
 }

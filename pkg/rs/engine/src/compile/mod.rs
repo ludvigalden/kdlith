@@ -5,9 +5,11 @@
 mod collect;
 mod conform;
 mod document;
+mod expansions;
 pub mod input;
 mod link;
 mod literals;
+mod mono;
 mod nodes;
 mod reader;
 mod scopes;
@@ -135,6 +137,9 @@ pub(crate) struct Cx<'d> {
     pub(crate) slots: Vec<SlotDecl>,
     pub(crate) imports: Vec<ImportDecl>,
     pub(crate) document_rule: Option<DocumentRule>,
+    /// The `include` markers read in type declarations, spliced by the
+    /// complete-checking expansion pass.
+    pub(crate) expansions: Vec<expansions::Pending>,
     /// The identity every contributing document repeats, read by `roots`.
     pub(crate) name: Option<String>,
     pub(crate) version: Option<String>,
@@ -168,6 +173,7 @@ fn start<'d>(
         slots: Vec::new(),
         imports: Vec::new(),
         document_rule: None,
+        expansions: Vec::new(),
         name: None,
         version: None,
     };
@@ -190,13 +196,20 @@ fn start<'d>(
     Ok(cx)
 }
 
-/// Complete a compilation: scopes, linking, literal checks, the plan,
-/// and the self-description walk, then the merged definition.
+/// Complete a compilation: expansion resolution, monomorphization,
+/// scopes, linking, literal checks, the plan, and the self-description
+/// walk, then the merged definition.
 fn finish<'d>(
     mut cx: Cx<'d>,
     documents: &'d [ParsedDocument],
     governing: Option<&Definition>,
 ) -> Result<Definition, Vec<DiagnosticRecord>> {
+    if cx.scope == CheckScope::Complete && !cx.diags.has_errors() {
+        expansions::run(&mut cx);
+        if !cx.diags.has_errors() {
+            mono::run(&mut cx);
+        }
+    }
     let bindings = scopes::build(&mut cx);
     let symbols = SymbolCatalog::build(&bindings);
     if cx.scope == CheckScope::Complete && !cx.diags.has_errors() {
@@ -425,20 +438,20 @@ impl Cx<'_> {
     }
 
     /// Compile a type expression with the `type-expression` validator.
+    /// A generic instantiation is in the grammar; a dialect that still
+    /// defers `generic-types` rejects the spelling.
     pub(crate) fn type_expr(&mut self, site: Site, text: &str) -> Option<TypeExpr> {
         match type_expr::parse(text, &mut self.names) {
-            Ok(expr) => Some(expr),
-            Err(ExprError::Generic(name)) => {
+            Ok(expr)
+                if type_expr::instantiates(&expr)
+                    && crate::deferred::defers(&self.deferrals, "generic-types") =>
+            {
                 let construct = format!("type expression {text:?}");
-                if crate::deferred::defers(&self.deferrals, "generic-types") {
-                    self.diags
-                        .error(DEFERRED_MECHANISM, site, &[&construct, "generic-types"]);
-                } else {
-                    let reason = format!("{name} is instantiated with type arguments");
-                    self.diags.error(TYPE_EXPRESSION, site, &[text, &reason]);
-                }
+                self.diags
+                    .error(DEFERRED_MECHANISM, site, &[&construct, "generic-types"]);
                 None
             }
+            Ok(expr) => Some(expr),
             Err(ExprError::Syntax(reason)) => {
                 self.diags.error(TYPE_EXPRESSION, site, &[text, &reason]);
                 None

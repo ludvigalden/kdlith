@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "An expand source inside a from block splices the target declaration's keyed member into the bound collection at the expansion point: Base's id field arrives beside the locally bound tag entry, in declaration order",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"key\":\"greeting\",\"value\":{\"kind\":\"map\",\"value\":[{\"key\":\"extra\",\"value\":{\"kind\":\"string\",\"value\":\"hi\"}}]}",
+      "{\"key\":\"id\",\"value\":{\"kind\":\"map\",\"value\":[{\"key\":\"type\",\"value\":{\"kind\":\"string\",\"value\":\"String\"}}]}",
+      "\"validation\":\"valid\""
+    ]
+  }
+}

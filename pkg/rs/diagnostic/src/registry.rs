@@ -421,6 +421,26 @@ pub const CODES: &[CodeDefinition] = &[
         correction: "Write a literal of the declared type, or change the type",
         retired: false,
     },
+    CodeDefinition {
+        code: "KDLITH-SCH009",
+        label: "expansion-or-instantiation-cycle",
+        severity: Severity::Error,
+        exit_class: 1,
+        trigger: "a cycle in a definition's declaration-expansion or generic-instantiation graph, so a member group or a monomorphized type would include or instantiate itself",
+        message_template: "cycle through <cycle>: expansion and instantiation must terminate",
+        correction: "Remove one include or type argument so the cycle breaks",
+        retired: false,
+    },
+    CodeDefinition {
+        code: "KDLITH-SCH010",
+        label: "ambiguous-dispatch-prefix",
+        severity: Severity::Error,
+        exit_class: 1,
+        trigger: "variant prefixes of one union where one is a prefix of another, so value-prefix dispatch cannot select a variant deterministically",
+        message_template: "prefix <prefix> of variant <variant> is extended by prefix <other> of variant <earlier>",
+        correction: "Give every variant a prefix no other variant's prefix extends",
+        retired: false,
+    },
     // BND
     CodeDefinition {
         code: "KDLITH-BND001",

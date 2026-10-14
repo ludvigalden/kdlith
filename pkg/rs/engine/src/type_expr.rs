@@ -12,11 +12,10 @@ const MAX_DEPTH: usize = 32;
 pub(crate) enum ExprError {
     /// Not in the grammar; the reason is user-facing.
     Syntax(String),
-    /// A generic instantiation `T<A>` of a declared type name.
-    Generic(String),
 }
 
-/// Parse `name`, `constructor<arg, ...>`, interning every type name.
+/// Parse `name`, `constructor<arg, ...>`, and the generic
+/// instantiation `T<A, B>`, interning every type name.
 pub(crate) fn parse(text: &str, names: &mut Names) -> Result<TypeExpr, ExprError> {
     let mut parser = ExprParser { text, at: 0 };
     let expr = parser.expr(names, 0)?;
@@ -28,6 +27,23 @@ pub(crate) fn parse(text: &str, names: &mut Names) -> Result<TypeExpr, ExprError
         )));
     }
     Ok(expr)
+}
+
+/// Whether a parsed expression instantiates a generic, so a dialect that
+/// still defers `generic-types` can reject the spelling.
+pub(crate) fn instantiates(expr: &TypeExpr) -> bool {
+    match expr {
+        TypeExpr::Instantiation(_, _) => true,
+        TypeExpr::Named(_) => false,
+        TypeExpr::Optional(inner)
+        | TypeExpr::Nullable(inner)
+        | TypeExpr::List(inner)
+        | TypeExpr::Ref(inner) => instantiates(inner),
+        TypeExpr::Map(key, value) | TypeExpr::OrderedMap(key, value) => {
+            instantiates(key) || instantiates(value)
+        }
+        TypeExpr::Union(members) => members.iter().any(instantiates),
+    }
 }
 
 struct ExprParser<'t> {
@@ -114,10 +130,11 @@ fn build(
                     "{head} is neither a constructor nor a type name"
                 )));
             }
-            if args.is_some() {
-                return Err(ExprError::Generic(head.to_owned()));
-            }
-            return Ok(TypeExpr::Named(names.intern(head)));
+            return Ok(match args {
+                None => TypeExpr::Named(names.intern(head)),
+                // A declared type instantiated with type arguments.
+                Some(args) => TypeExpr::Instantiation(names.intern(head), args),
+            });
         }
     };
     let Some(mut args) = args else {

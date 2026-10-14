@@ -4,6 +4,6 @@
   "args": ["vet", "dialect", "{fx-suite}/../../pkg/kdl/schemas/dialect/types.kdl", "{fx-suite}/../../pkg/kdl/schemas/dialect/bindings.kdl", "{fx-suite}/../../pkg/kdl/schemas/dialect/context.kdl", "{fx-suite}/../../pkg/kdl/schemas/dialect/documents.kdl"],
   "expect": {
     "exit": 0,
-    "stdout-contains": ["ok: dialect kdlith version 0 scope=complete documents=4 ", " deferrals=19 ", " digest=a01c83f83f57d364"]
+    "stdout-contains": ["ok: dialect kdlith version 0 scope=complete documents=4 ", " deferrals=12 ", " digest=fbbbd4f0f6625a48"]
   }
 }

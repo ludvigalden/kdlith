@@ -81,6 +81,18 @@ dialect kdlith version="0" {
             member zero-padded
         }
 
+        // The sensitivity a logical field may declare: `secret` marks a
+        // resolved sensitive value, `reference` an identifier that locates
+        // one. A type modeling both keeps two separate fields, each
+        // tagged. Metadata is not enforcement: every serialization and
+        // diagnostic surface applies an explicit output policy (emit,
+        // omit, redact), and a secret is emitted only when the policy
+        // explicitly says emit.
+        enum Sensitivity {
+            member secret
+            member reference
+        }
+
         // A type declaration, discriminated by the declaring node's name.
         union TypeDef {
             variant string StringType
@@ -88,6 +100,7 @@ dialect kdlith version="0" {
             variant object ObjectType
             variant union UnionType
             variant map MapType
+            variant codec CodecType
         }
 
         // A string type: a pattern validates the whole string; a semantic
@@ -95,6 +108,7 @@ dialect kdlith version="0" {
         // than an approximate pattern.
         object StringType {
             field name TypeName
+            field parameters "optional<list<TypeName>>"
             field format "optional<StringFormat>"
             field width "optional<U64>"
             field pattern "optional<String>"
@@ -105,6 +119,7 @@ dialect kdlith version="0" {
 
         object EnumType {
             field name TypeName
+            field parameters "optional<list<TypeName>>"
             field members "ordered-map<MemberName, EnumMember>"
         }
 
@@ -117,6 +132,7 @@ dialect kdlith version="0" {
 
         object ObjectType {
             field name TypeName
+            field parameters "optional<list<TypeName>>"
             field fields "ordered-map<FieldName, FieldDef>"
             field constraints "list<Constraint>"
         }
@@ -131,25 +147,60 @@ dialect kdlith version="0" {
             field description "optional<String>"
             field documented-default "optional<ValueExpr>"
             field fallback "optional<ValueExpr>"
+            field sensitivity "optional<Sensitivity>"
         }
 
         // A union selects one alternative by explicit discrimination: the
         // variant's discriminator is the node name that selects it, so no
-        // speculative parsing or backtracking is needed.
+        // speculative parsing or backtracking is needed. A variant of a
+        // union bound from a scalar value may carry a prefix= that
+        // selects it when the value's text starts with it.
         object UnionType {
             field name TypeName
+            field parameters "optional<list<TypeName>>"
             field variants "ordered-map<NodeName, Variant>"
         }
 
         // The variant's discriminator is the key of the enclosing map.
         object Variant {
             field type TypeExpression
+            field prefix "optional<String>"
         }
 
         object MapType {
             field name TypeName
+            field parameters "optional<list<TypeName>>"
             field key-type TypeExpression
             field value-type TypeExpression
+        }
+
+        // A pattern codec: one regular expression that must match the
+        // whole string, the named captures it types (covering the
+        // match's named groups exactly), and the output type a decoded
+        // value carries. The namespace records, as metadata, the
+        // reference namespace a decoded identity belongs to. A codec
+        // name is usable wherever a type expression names a declared
+        // type; at bind time a matching string decodes through it in the
+        // stream while provenance retains the original spelling.
+        object CodecType {
+            field name TypeName
+            field parameters "optional<list<TypeName>>"
+            field output TypeExpression
+            field match String
+            field captures "ordered-map<MemberName, Capture>"
+            field namespace "optional<MemberName>"
+        }
+
+        // The capture's name is the key of the enclosing ordered map.
+        object Capture {
+            field type TypeExpression
+        }
+
+        // An include directive among a declaring container's like
+        // members: the named declaration's keyed member group splices in
+        // at that point.
+        object IncludeRef {
+            field target TypeName
         }
 
         // Declarative constraints over an object's fields. They are
@@ -177,6 +228,11 @@ dialect kdlith version="0" {
 
     node string role=declaration type=StringType parent=types {
         field name arg=0
+        field parameters {
+            from {
+                children parameter
+            }
+        }
         field format {
             from {
                 child format {
@@ -211,10 +267,16 @@ dialect kdlith version="0" {
         children pattern max-occurs=1
         children validator max-occurs=1
         children min-length max-occurs=1
+        children parameter
     }
 
     node enum role=declaration type=EnumType parent=types {
         field name arg=0
+        field parameters {
+            from {
+                children parameter
+            }
+        }
         field members {
             from {
                 entries member key="arg(0)" value=EnumMember
@@ -222,6 +284,8 @@ dialect kdlith version="0" {
             duplicate-keys reject
         }
         children member min-occurs=1
+        children include
+        children parameter
     }
 
     node member type=EnumMember parent=enum {
@@ -230,6 +294,11 @@ dialect kdlith version="0" {
 
     node object role=declaration type=ObjectType parent=types {
         field name arg=0
+        field parameters {
+            from {
+                children parameter
+            }
+        }
         field fields {
             from {
                 entries field key="arg(0)" value=FieldDef
@@ -246,6 +315,8 @@ dialect kdlith version="0" {
         }
         children field
         children constraints max-occurs=1
+        children include
+        children parameter
     }
 
     node field type=FieldDef parent=object {
@@ -253,6 +324,7 @@ dialect kdlith version="0" {
         field description property=description
         field documented-default child=documented-default
         field fallback child=fallback
+        field sensitivity property=sensitivity
         children documented-default max-occurs=1
         children fallback max-occurs=1
     }
@@ -277,6 +349,11 @@ dialect kdlith version="0" {
 
     node union role=declaration type=UnionType parent=types {
         field name arg=0
+        field parameters {
+            from {
+                children parameter
+            }
+        }
         field variants {
             from {
                 entries variant key="arg(0)" value=Variant
@@ -284,23 +361,64 @@ dialect kdlith version="0" {
             duplicate-keys reject
         }
         children variant min-occurs=1
+        children include
+        children parameter
     }
 
     node variant type=Variant parent=union {
         field type arg=1
+        field prefix property=prefix
     }
 
     node map role=declaration type=MapType parent=types {
         field name arg=0
+        field parameters {
+            from {
+                children parameter
+            }
+        }
         field key-type child=key-type
         field value-type child=value-type
         children key-type min-occurs=1 max-occurs=1
         children value-type min-occurs=1 max-occurs=1
+        children parameter
     }
 
-    // Deferred: declared here so the boundary is explicit, not defined.
-    deferred generic-types note="Generic type declarations and instantiation T<A>"
-    deferred codecs note="Pattern codecs that decode typed captures from a string, and codec-driven value binding"
-    deferred union-dispatch note="Union discrimination by value prefix or property case; v0 discriminates by node name only"
-    deferred sensitivity note="Field sensitivity metadata and the output policy that enforces it"
+    // A pattern codec declaration. The match child carries one regular
+    // expression as its single value; each capture child names a capture
+    // group and its type.
+    node codec role=declaration type=CodecType parent=types {
+        field name arg=0
+        field output property=output
+        field parameters {
+            from {
+                children parameter
+            }
+        }
+        field match child=match
+        field captures {
+            from {
+                entries capture key="arg(0)" value=Capture
+            }
+            duplicate-keys reject
+        }
+        field namespace child=namespace
+        children match min-occurs=1 max-occurs=1
+        children capture
+        children namespace max-occurs=1
+        children include
+        children parameter
+    }
+
+    node capture type=Capture parent=codec {
+        field type arg=1
+    }
+
+    // The include short form: an `include NAME` child among like members
+    // of a declaring container, splicing the named declaration's keyed
+    // member group at that point.
+    node include type=IncludeRef {
+        parents object enum union codec
+        field target arg=0
+    }
 }

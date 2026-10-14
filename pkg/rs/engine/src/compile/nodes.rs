@@ -2,8 +2,8 @@
 //! their sources, child rules, effect groups, and exactly-one groups.
 
 use crate::bindings::{
-    ChildRule, Collision, ContextPolicy, DuplicateKeys, Effect, EffectGroup, EffectTarget,
-    FieldBinding, NodeDecl, Placement, Role, SetFrom, Source,
+    BindingCodec, CaseRule, ChildRule, Collision, ContextPolicy, DependentBinding, DuplicateKeys,
+    Effect, EffectGroup, EffectTarget, FieldBinding, NodeDecl, Placement, Role, SetFrom, Source,
 };
 use crate::compile::Cx;
 use crate::compile::reader::Construct;
@@ -12,6 +12,7 @@ use crate::deferred::defers;
 use crate::diag::{DEFERRED_MECHANISM, INVALID_BINDING, NOT_INSTALLED, Site, duplicate_key};
 use crate::names::Sym;
 use crate::syntax::{SyntaxNode, parse_u64};
+use crate::types::TypeExpr;
 
 /// Nested `child` and `children` sources nest at most this deep.
 const MAX_SOURCE_DEPTH: usize = 16;
@@ -47,6 +48,11 @@ pub(crate) fn declaration(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) {
     let mut children: Vec<ChildRule> = Vec::new();
     let mut effects: Vec<EffectGroup> = Vec::new();
     let mut groups: Vec<Vec<Sym>> = Vec::new();
+    let mut value = None;
+    let mut value_site = None;
+    let mut cases: Vec<CaseRule> = Vec::new();
+    let mut otherwise = None;
+    let mut cases_site = None;
     for child in &node.children {
         let child_site = Site::new(doc, child.span);
         match child.name.as_str() {
@@ -55,6 +61,16 @@ pub(crate) fn declaration(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) {
                     let mut part = Construct::new(cx, doc, child);
                     parents = Some(part.rest_strings(cx, 0, "parent name"));
                     part.finish_leaf(cx);
+                }
+            }
+            "value" => {
+                if cx.only_once(&mut value_site, child_site, &label, "value") {
+                    value = value_block(cx, doc, child, &name);
+                }
+            }
+            "cases" => {
+                if cx.only_once(&mut cases_site, child_site, &label, "cases") {
+                    cases_block(cx, doc, child, &name, &mut cases, &mut otherwise);
                 }
             }
             "field" => {
@@ -168,6 +184,9 @@ pub(crate) fn declaration(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) {
         children,
         effects,
         groups,
+        value,
+        cases,
+        otherwise,
         site,
     });
 }
@@ -285,11 +304,16 @@ fn field_binding(
     }
     let spellings = sources
         .iter()
-        .filter(|s| !matches!(s, Source::Context { .. }))
+        .filter(|s| !matches!(s, Source::Context { .. } | Source::Expand { .. }))
         .count();
     let alternatives = sources
         .iter()
-        .filter(|s| !matches!(s, Source::Context { .. } | Source::Children { .. }))
+        .filter(|s| {
+            !matches!(
+                s,
+                Source::Context { .. } | Source::Children { .. } | Source::Expand { .. }
+            )
+        })
         .count();
     if alternatives > 1 && collision.is_none() {
         let reason = format!(
@@ -380,6 +404,11 @@ fn source_list(
                 let value = part.string_prop(cx, "value");
                 entries(cx, site, &label, node_name, key, value)
             }
+            "expand" if top => {
+                let target = part.string_prop(cx, "target");
+                let member = part.string_prop(cx, "member");
+                expand_source(cx, site, &label, target, member)
+            }
             "context" if top => {
                 let slot = part.string_arg(cx, 0, "slot");
                 let policy = part.string_prop(cx, "policy");
@@ -455,6 +484,184 @@ fn entries(
         key: index,
         value: cx.names.intern(&value),
     })
+}
+
+/// An `expand target=TYPE member=NAME` source: the entries of the named
+/// keyed member of the named declaration splice into the collection
+/// being bound.
+fn expand_source(
+    cx: &mut Cx<'_>,
+    site: Site,
+    label: &str,
+    target: Option<String>,
+    member: Option<String>,
+) -> Option<Source> {
+    let missing = if target.is_none() {
+        "target"
+    } else if member.is_none() {
+        "member"
+    } else {
+        ""
+    };
+    if !missing.is_empty() {
+        cx.missing(site, "expand", missing);
+        return None;
+    }
+    let (target, member) = (target?, member?);
+    if !cx.type_name(site, label, &target) {
+        return None;
+    }
+    if member.is_empty() {
+        let found = format!("string {member:?}");
+        cx.mistyped(site, "the member of expand", "MemberName", &found);
+        return None;
+    }
+    Some(Source::Expand {
+        target: cx.names.intern(&target),
+        member: cx.names.intern(&member),
+    })
+}
+
+/// A `value` block: the dependent payload binding of a node declaration.
+fn value_block(
+    cx: &mut Cx<'_>,
+    doc: usize,
+    node: &SyntaxNode,
+    owner: &str,
+) -> Option<DependentBinding> {
+    let site = Site::new(doc, node.span);
+    let mut part = Construct::new(cx, doc, node);
+    let codec = part.string_prop(cx, "codec");
+    part.finish(cx);
+    let codec = codec.and_then(|name| match BindingCodec::from_name(&name) {
+        Some(parsed) => Some(parsed),
+        None => {
+            cx.not_member(site, "value.codec", "BindingCodec", &name);
+            None
+        }
+    });
+    let codec = codec.filter(|codec| {
+        if cx.extensions.has_binding_codec(codec.name()) {
+            return true;
+        }
+        cx.diags
+            .error(NOT_INSTALLED, site, &["binding codec", codec.name()]);
+        false
+    });
+    let mut against: Option<(String, String)> = None;
+    let mut seen = None;
+    for child in &node.children {
+        let child_site = Site::new(doc, child.span);
+        if child.name != "against" {
+            cx.unknown(doc, child, "value");
+            continue;
+        }
+        if !cx.only_once(&mut seen, child_site, owner, "against") {
+            continue;
+        }
+        let mut part = Construct::new(cx, doc, child);
+        let target = part.string_prop(cx, "target");
+        let member = part.string_prop(cx, "member");
+        part.finish_leaf(cx);
+        against = match (target, member) {
+            (Some(target), Some(member)) => Some((target, member)),
+            _ => {
+                cx.missing(child_site, "against", "target and member");
+                None
+            }
+        };
+    }
+    let codec = codec?;
+    let Some((target, member)) = against else {
+        cx.missing(site, owner, "against");
+        return None;
+    };
+    for (spelled, what) in [(&target, "target field"), (&member, "member field")] {
+        if !crate::compile::types::field_name(spelled) {
+            let found = format!("string {spelled:?}");
+            cx.mistyped(site, what, "FieldName", &found);
+            return None;
+        }
+    }
+    Some(DependentBinding {
+        target: cx.names.intern(&target),
+        member: cx.names.intern(&member),
+        codec,
+        site,
+    })
+}
+
+/// A `cases` block: the property-value dispatch that selects the type a
+/// node binds as, top-down, first match winning.
+fn cases_block(
+    cx: &mut Cx<'_>,
+    doc: usize,
+    node: &SyntaxNode,
+    owner: &str,
+    cases: &mut Vec<CaseRule>,
+    otherwise: &mut Option<TypeExpr>,
+) {
+    let site = Site::new(doc, node.span);
+    Construct::new(cx, doc, node).finish(cx);
+    let mut seen_otherwise = None;
+    for child in &node.children {
+        let child_site = Site::new(doc, child.span);
+        match child.name.as_str() {
+            "case" => {
+                let mut part = Construct::new(cx, doc, child);
+                let property = part.string_prop(cx, "property");
+                let equals = part.value_prop("equals");
+                let ty = part.string_prop(cx, "type");
+                part.finish_leaf(cx);
+                if property.is_none() {
+                    cx.missing(child_site, "case", "property");
+                    continue;
+                }
+                if equals.is_none() {
+                    cx.missing(child_site, "case", "equals");
+                    continue;
+                }
+                if ty.is_none() {
+                    cx.missing(child_site, "case", "type");
+                    continue;
+                }
+                let Some((property, equals, ty)) =
+                    property.zip(equals).zip(ty).map(|((p, e), t)| (p, e, t))
+                else {
+                    continue;
+                };
+                if !crate::compile::types::field_name(&property) {
+                    let found = format!("string {property:?}");
+                    cx.mistyped(child_site, "the property of case", "FieldName", &found);
+                    continue;
+                }
+                let Some(ty) = cx.type_expr(child_site, &ty) else {
+                    continue;
+                };
+                cases.push(CaseRule {
+                    property: cx.names.intern(&property),
+                    equals,
+                    ty,
+                    site: child_site,
+                });
+            }
+            "otherwise" => {
+                if cx.only_once(&mut seen_otherwise, child_site, owner, "otherwise") {
+                    let mut part = Construct::new(cx, doc, child);
+                    let ty = part.string_prop(cx, "type");
+                    part.finish_leaf(cx);
+                    match ty {
+                        Some(ty) => *otherwise = cx.type_expr(child_site, &ty),
+                        None => cx.missing(child_site, "otherwise", "type"),
+                    }
+                }
+            }
+            _ => cx.unknown(doc, child, "cases"),
+        }
+    }
+    if cases.is_empty() {
+        cx.cardinality(site, "case under cases", "0", "at least 1");
+    }
 }
 
 fn child_rule(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode, owner: &str) -> Option<ChildRule> {

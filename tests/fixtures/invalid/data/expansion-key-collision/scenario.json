@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "An expanded key colliding with a locally declared key is rejected under duplicate-keys reject",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

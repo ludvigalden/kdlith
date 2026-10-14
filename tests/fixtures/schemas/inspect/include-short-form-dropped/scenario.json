@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "Declared elision, pinned honestly: the include short form is compile-path-only, and every CLI reading path goes through the typed reader, which admits include children but drops them (no engine channel carries the expansion request). The typed Extended declaration therefore shows only its locally declared field - Base's id is silently absent rather than spliced or rejected. See the COVERAGE.md declared-elision row; rewrite this pin when the include splice (or a loud rejection) reaches the reader path",
+  "args": [
+    "inspect",
+    "schema",
+    "schema.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"identity\":{\"domain\":\"ObjectType\",\"name\":[\"Base\"]},\"type\":\"ObjectType\",\"value\":{\"name\":\"Base\",\"fields\":{\"id\":{\"type\":\"String\"}},\"constraints\":[]}}",
+      "\"identity\":{\"domain\":\"ObjectType\",\"name\":[\"Extended\"]},\"type\":\"ObjectType\",\"value\":{\"name\":\"Extended\",\"fields\":{\"extra\":{\"type\":\"String\"}},\"constraints\":[]}}"
+    ]
+  }
+}

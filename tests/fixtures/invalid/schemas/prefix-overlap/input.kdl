@@ -1,0 +1,8 @@
+schema bad version="1" {
+    types {
+        union Channel {
+            variant email String prefix="mailto:"
+            variant anything String prefix="mail"
+        }
+    }
+}

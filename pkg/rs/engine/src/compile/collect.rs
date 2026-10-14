@@ -6,24 +6,24 @@ use kdlith_model::Value;
 use kdlith_runtime::Repeated;
 
 use crate::bindings::{
-    ChildRule, Collision, ContextPolicy, DuplicateKeys, Effect, EffectGroup, EffectTarget,
-    FieldBinding, NodeDecl, Placement, Role, SetFrom, Source,
+    BindingCodec, CaseRule, ChildRule, Collision, ContextPolicy, DependentBinding, DuplicateKeys,
+    Effect, EffectGroup, EffectTarget, FieldBinding, NodeDecl, Placement, Role, SetFrom, Source,
 };
 use crate::compile::Cx;
 use crate::compile::input::{
-    ChildRuleInput, ConstraintInput, Construct, DeferralInput, DefinitionInput, DocumentRuleInput,
-    EffectGroupInput, EffectInput, FieldBindingInput, FieldInput, ImportInput, Located,
-    MemberInput, NodeInput, SlotInput, SourceInput, TypeInput,
+    ChildRuleInput, ConstraintInput, Construct, DeferralInput, DefinitionInput, DependentInput,
+    DocumentRuleInput, EffectGroupInput, EffectInput, FieldBindingInput, FieldInput, ImportInput,
+    Located, MemberInput, NodeInput, SlotInput, SourceInput, TypeInput,
 };
 use crate::compile::types::{declare, field_name, format_rule, validator_use};
 use crate::decode::found;
 use crate::definition::{Deferral, DocumentRule, ImportDecl, SlotDecl};
-use crate::diag::{INVALID_BINDING, NOT_INSTALLED, Site, duplicate};
+use crate::diag::{INVALID_BINDING, NOT_INSTALLED, Site, duplicate, duplicate_key};
 use crate::names::Sym;
 use crate::syntax::parse_u64;
 use crate::types::{
-    Constraint, EnumMember, EnumType, FieldDef, MapType, ObjectType, StringType, TypeKind,
-    UnionType, Variant,
+    CaptureDef, CodecDecl, Constraint, EnumMember, EnumType, FieldDef, MapType, ObjectType,
+    Sensitivity, StringType, TypeKind, UnionType, Variant,
 };
 
 /// Read every construct of every document, in stream order.
@@ -61,9 +61,10 @@ fn construct(cx: &mut Cx<'_>, doc: usize, located: &Located<Construct>) {
 }
 
 fn type_decl(cx: &mut Cx<'_>, site: Site, ty: &TypeInput) {
-    let (name, kind) = match ty {
+    let (name, parameters, kind) = match ty {
         TypeInput::String {
             name,
+            parameters,
             format,
             pattern,
             validator,
@@ -80,16 +81,26 @@ fn type_decl(cx: &mut Cx<'_>, site: Site, ty: &TypeInput) {
                     validator_use(cx, site, &label, use_.name.clone(), use_.version.clone());
             }
             string.min_length = *min_length;
-            (name.clone(), TypeKind::String(string))
+            (
+                name.clone(),
+                parameter_list(cx, site, &label, parameters),
+                TypeKind::String(string),
+            )
         }
-        TypeInput::Enum { name, members } => (
+        TypeInput::Enum {
+            name,
+            parameters,
+            members,
+        } => (
             name.clone(),
+            parameter_list(cx, site, &format!("enum {name}"), parameters),
             TypeKind::Enum(EnumType {
                 members: members.iter().map(member).collect(),
             }),
         ),
         TypeInput::Object {
             name,
+            parameters,
             fields,
             constraints,
         } => {
@@ -123,14 +134,20 @@ fn type_decl(cx: &mut Cx<'_>, site: Site, ty: &TypeInput) {
             }
             (
                 name.clone(),
+                parameter_list(cx, site, &format!("object {name}"), parameters),
                 TypeKind::Object(ObjectType {
                     fields: built,
                     constraints,
                 }),
             )
         }
-        TypeInput::Union { name, variants } => (
+        TypeInput::Union {
+            name,
+            parameters,
+            variants,
+        } => (
             name.clone(),
+            parameter_list(cx, site, &format!("union {name}"), parameters),
             TypeKind::Union(UnionType {
                 variants: variants
                     .iter()
@@ -139,20 +156,83 @@ fn type_decl(cx: &mut Cx<'_>, site: Site, ty: &TypeInput) {
                         Some(Variant {
                             discriminator: cx.names.intern(&variant.discriminator),
                             ty,
+                            prefix: variant.prefix.clone(),
                         })
                     })
                     .collect(),
             }),
         ),
-        TypeInput::Map { name, key, value } => {
+        TypeInput::Map {
+            name,
+            parameters,
+            key,
+            value,
+        } => {
             let (Some(key), Some(value)) = (cx.type_expr(site, key), cx.type_expr(site, value))
             else {
                 return;
             };
-            (name.clone(), TypeKind::Map(MapType { key, value }))
+            (
+                name.clone(),
+                parameter_list(cx, site, &format!("map {name}"), parameters),
+                TypeKind::Map(MapType { key, value }),
+            )
+        }
+        TypeInput::Codec {
+            name,
+            parameters,
+            output,
+            pattern,
+            captures,
+            namespace,
+        } => {
+            let label = format!("codec {name}");
+            let Some(output) = cx.type_expr(site, output) else {
+                return;
+            };
+            let mut built: Vec<CaptureDef> = Vec::new();
+            for capture in captures {
+                let Some(ty) = cx.type_expr(site, &capture.ty) else {
+                    continue;
+                };
+                built.push(CaptureDef {
+                    name: capture.name.clone(),
+                    ty,
+                });
+            }
+            let namespace = namespace.as_ref().map(|n| cx.names.intern(n));
+            (
+                name.clone(),
+                parameter_list(cx, site, &label, parameters),
+                TypeKind::Codec(CodecDecl {
+                    output,
+                    pattern: pattern.clone(),
+                    captures: built,
+                    namespace,
+                }),
+            )
         }
     };
-    declare(cx, site, name, kind);
+    declare(cx, site, name, parameters, kind);
+}
+
+/// The parameter names a declaration carries, in order.
+fn parameter_list(cx: &mut Cx<'_>, site: Site, label: &str, parameters: &[String]) -> Vec<Sym> {
+    let mut out = Vec::new();
+    for name in parameters {
+        if !crate::type_expr::is_type_name(name) {
+            let spelled = found(&Value::String(name.clone()));
+            cx.mistyped(site, "the name of parameter", "TypeName", &spelled);
+            continue;
+        }
+        let sym = cx.names.intern(name);
+        if out.contains(&sym) {
+            duplicate_key(&mut cx.diags, (site, site), name, label);
+            continue;
+        }
+        out.push(sym);
+    }
+    out
 }
 
 fn member(member: &MemberInput) -> EnumMember {
@@ -169,12 +249,24 @@ fn field_def(cx: &mut Cx<'_>, site: Site, field: &FieldInput) -> Option<FieldDef
         return None;
     }
     let ty = cx.type_expr(site, &field.ty)?;
+    let sensitivity =
+        field
+            .sensitivity
+            .as_deref()
+            .and_then(|value| match Sensitivity::from_name(value) {
+                Some(parsed) => Some(parsed),
+                None => {
+                    cx.not_member(site, "field.sensitivity", "Sensitivity", value);
+                    None
+                }
+            });
     Some(FieldDef {
         name: cx.names.intern(&field.name),
         ty,
         description: field.description.clone(),
         documented_default: field.documented_default.clone(),
         fallback: field.fallback.clone(),
+        sensitivity,
     })
 }
 
@@ -246,6 +338,31 @@ fn node(cx: &mut Cx<'_>, site: Site, input: &NodeInput) {
         }
         groups.push(members);
     }
+    let value = input
+        .value
+        .as_ref()
+        .and_then(|value| dependent(cx, site, value));
+    let mut cases = Vec::new();
+    for case in &input.cases {
+        if !field_name(&case.property) {
+            let spelled = found(&Value::String(case.property.clone()));
+            cx.mistyped(site, "the property of case", "FieldName", &spelled);
+            continue;
+        }
+        let Some(ty) = cx.type_expr(site, &case.ty) else {
+            continue;
+        };
+        cases.push(CaseRule {
+            property: cx.names.intern(&case.property),
+            equals: case.equals.clone(),
+            ty,
+            site,
+        });
+    }
+    let otherwise = input
+        .otherwise
+        .as_deref()
+        .and_then(|ty| cx.type_expr(site, ty));
     let placement = match (&input.parent, &input.parents) {
         (Some(_), Some(_)) => {
             cx.diags.error(
@@ -290,8 +407,44 @@ fn node(cx: &mut Cx<'_>, site: Site, input: &NodeInput) {
         children,
         effects,
         groups,
+        value,
+        cases,
+        otherwise,
         site,
     });
+}
+
+/// A node declaration's dependent payload binding, with its codec
+/// checked for installation.
+fn dependent(cx: &mut Cx<'_>, site: Site, input: &DependentInput) -> Option<DependentBinding> {
+    let codec = match BindingCodec::from_name(&input.codec) {
+        Some(parsed) => parsed,
+        None => {
+            cx.not_member(site, "value.codec", "BindingCodec", &input.codec);
+            return None;
+        }
+    };
+    if !cx.extensions.has_binding_codec(codec.name()) {
+        cx.diags
+            .error(NOT_INSTALLED, site, &["binding codec", codec.name()]);
+        return None;
+    }
+    for (spelled, what) in [
+        (&input.target, "target field"),
+        (&input.member, "member field"),
+    ] {
+        if !field_name(spelled) {
+            let found = format!("string {spelled:?}");
+            cx.mistyped(site, what, "FieldName", &found);
+            return None;
+        }
+    }
+    Some(DependentBinding {
+        target: cx.names.intern(&input.target),
+        member: cx.names.intern(&input.member),
+        codec,
+        site,
+    })
 }
 
 fn field_binding(
@@ -350,11 +503,16 @@ fn field_binding(
         });
     let spellings = sources
         .iter()
-        .filter(|s| !matches!(s, Source::Context { .. }))
+        .filter(|s| !matches!(s, Source::Context { .. } | Source::Expand { .. }))
         .count();
     let alternatives = sources
         .iter()
-        .filter(|s| !matches!(s, Source::Context { .. } | Source::Children { .. }))
+        .filter(|s| {
+            !matches!(
+                s,
+                Source::Context { .. } | Source::Children { .. } | Source::Expand { .. }
+            )
+        })
         .count();
     if alternatives > 1 && collision.is_none() {
         let reason = format!(
@@ -403,6 +561,20 @@ fn source(cx: &mut Cx<'_>, site: Site, label: &str, input: &SourceInput) -> Opti
             sources: nested(cx, site, label, sources),
         }),
         SourceInput::Entries { node, key, value } => entries(cx, site, label, node, key, value),
+        SourceInput::Expand { target, member } => {
+            if !cx.type_name(site, label, target) {
+                return None;
+            }
+            if member.is_empty() {
+                let found = format!("string {member:?}");
+                cx.mistyped(site, "the member of expand", "MemberName", &found);
+                return None;
+            }
+            Some(Source::Expand {
+                target: cx.names.intern(target),
+                member: cx.names.intern(member),
+            })
+        }
         SourceInput::Context { slot, policy } => {
             let policy = match policy.as_deref() {
                 None => None,

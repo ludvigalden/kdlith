@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A node whose cases block matches no case and declares no otherwise is unbound",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

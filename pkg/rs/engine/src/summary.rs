@@ -78,6 +78,10 @@ pub(crate) fn expr(n: &Names, ty: &TypeExpr) -> String {
     };
     match ty {
         TypeExpr::Named(name) => n.resolve(*name).to_owned(),
+        TypeExpr::Instantiation(head, args) => {
+            let args: Vec<&TypeExpr> = args.iter().collect();
+            apply(n.resolve(*head), &args)
+        }
         TypeExpr::Optional(inner) => apply("optional", &[inner]),
         TypeExpr::Nullable(inner) => apply("nullable", &[inner]),
         TypeExpr::List(inner) => apply("list", &[inner]),
@@ -109,12 +113,13 @@ fn kind(n: &Names, kind: &TypeKind) -> String {
                 .iter()
                 .map(|f| {
                     format!(
-                        "{}:{} {:?} default={:?} fallback={:?}",
+                        "{}:{} {:?} default={:?} fallback={:?} sensitivity={:?}",
                         n.resolve(f.name),
                         expr(n, &f.ty),
                         f.description,
                         f.documented_default,
-                        f.fallback
+                        f.fallback,
+                        f.sensitivity.map(|s| s.name())
                     )
                 })
                 .collect();
@@ -138,11 +143,32 @@ fn kind(n: &Names, kind: &TypeKind) -> String {
             let variants: Vec<String> = union
                 .variants
                 .iter()
-                .map(|v| format!("{}:{}", n.resolve(v.discriminator), expr(n, &v.ty)))
+                .map(|v| match &v.prefix {
+                    Some(prefix) => format!(
+                        "{}:{} prefix={prefix:?}",
+                        n.resolve(v.discriminator),
+                        expr(n, &v.ty)
+                    ),
+                    None => format!("{}:{}", n.resolve(v.discriminator), expr(n, &v.ty)),
+                })
                 .collect();
             format!("union [{}]", variants.join(","))
         }
         TypeKind::Map(map) => format!("map {} {}", expr(n, &map.key), expr(n, &map.value)),
+        TypeKind::Codec(codec) => {
+            let captures: Vec<String> = codec
+                .captures
+                .iter()
+                .map(|c| format!("{}:{}", c.name, expr(n, &c.ty)))
+                .collect();
+            format!(
+                "codec output={} pattern={:?} captures [{}] namespace={:?}",
+                expr(n, &codec.output),
+                codec.pattern,
+                captures.join(","),
+                codec.namespace.map(|ns| n.resolve(ns))
+            )
+        }
     }
 }
 
@@ -172,13 +198,41 @@ fn node_line(n: &Names, node: &NodeDecl) -> String {
         })
         .collect();
     let groups: Vec<String> = node.groups.iter().map(|g| list(n, g)).collect();
+    let value = node.value.as_ref().map_or_else(
+        || "-".to_owned(),
+        |value| {
+            format!(
+                "against {} {} codec {}",
+                n.resolve(value.target),
+                n.resolve(value.member),
+                value.codec.name()
+            )
+        },
+    );
+    let cases: Vec<String> = node
+        .cases
+        .iter()
+        .map(|case| {
+            format!(
+                "{}={:?} {}",
+                n.resolve(case.property),
+                case.equals,
+                expr(n, &case.ty)
+            )
+        })
+        .collect();
+    let otherwise = node
+        .otherwise
+        .as_ref()
+        .map_or_else(|| "-".to_owned(), |ty| expr(n, ty));
     format!(
-        "node {} role={role} type={ty} under={placement} fields [{}] children [{}] effects [{}] groups [{}]",
+        "node {} role={role} type={ty} under={placement} fields [{}] children [{}] effects [{}] groups [{}] value {value} cases [{}] otherwise {otherwise}",
         n.resolve(node.name),
         fields.join("; "),
         children.join(","),
         effects.join(","),
-        groups.join(",")
+        groups.join(","),
+        cases.join(";")
     )
 }
 
@@ -217,6 +271,13 @@ fn source(n: &Names, source: &Source) -> String {
             n.resolve(*node),
             n.resolve(*value)
         ),
+        Source::Expand { target, member } => {
+            format!(
+                "expand {} member={}",
+                n.resolve(*target),
+                n.resolve(*member)
+            )
+        }
         Source::Context { slot, policy } => {
             let policy = match policy {
                 None => "-",

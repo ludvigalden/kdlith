@@ -1,0 +1,22 @@
+schema pairs version="1" {
+    types {
+        enum Mode {
+            member fast
+            member slow
+        }
+        object Pair {
+            parameter T
+            parameter U
+            field left T
+            field right U
+        }
+    }
+    node pairish role=record {
+        field shape String property=shape
+        field left String arg=0
+        field right Mode arg=1
+        cases {
+            case property=shape equals="pair" type="Pair<String, Mode>"
+        }
+    }
+}

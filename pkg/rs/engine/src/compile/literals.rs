@@ -23,7 +23,7 @@ pub(crate) fn run(cx: &mut Cx<'_>, bindings: &BindingCatalog) {
         };
         let reason = format!("pattern does not compile: {}", pattern.reason);
         cx.diags
-            .error(MALFORMED, site, &[&format!("string {name}"), &reason]);
+            .error(MALFORMED, site, &[&format!("type {name}"), &reason]);
     }
     let mut found: Vec<(Site, String, TypeExpr, Value)> = Vec::new();
     for (_, decl) in cx.types.iter() {

@@ -1,0 +1,12 @@
+schema timing version="1" {
+    types {
+        codec Stamp output=U64 {
+            match #"(?<seconds>[0-9]+)s"#
+            capture seconds U64
+            namespace time
+        }
+    }
+    node event role=record {
+        field stamp Stamp arg=0
+    }
+}

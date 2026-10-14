@@ -1,0 +1,11 @@
+schema bad version="1" {
+    types {
+        object C {
+            parameter T
+            field c "C<list<T>>"
+        }
+        object Uses {
+            field x "C<String>"
+        }
+    }
+}

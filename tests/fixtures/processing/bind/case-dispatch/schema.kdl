@@ -1,0 +1,18 @@
+schema shapes version="1" {
+    types {
+        object Small {
+            field kind String
+        }
+        object Large {
+            field kind String
+        }
+    }
+    node shaped role=record {
+        field kind String property=kind
+        cases {
+            case property=kind equals="small" type=Small
+            case property=kind equals="large" type=Large
+            otherwise type=Small
+        }
+    }
+}

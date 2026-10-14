@@ -30,8 +30,8 @@ target/debug/kdlith-fixtures --fx-suite tests/fixtures --fx-kdlith target/debug/
 then diffing the listed names (all except `parse/kdl-spec/*`) against the
 scenario names occurring in this file, in both directions.
 
-Suite state at the time of writing: 486 scenarios — 243 `parse/kdl-spec`,
-243 others — all green.
+Suite state at the time of writing: 505 scenarios — 243 `parse/kdl-spec`,
+262 others — all green.
 
 ## Construct census
 
@@ -55,6 +55,10 @@ that declares the mechanism.
 | Maps (`key-type`/`value-type`) | types.kdl | schemas/vet/catalog, schemas/inspect/constructs | |
 | Documented default versus fallback | types.kdl | schemas/inspect/constructs, schemas/inspect/shelf, processing/bind/defaults, invalid/schemas/documented-default-type, invalid/schemas/fallback-type, processing/inspect-accepts-schema-literal | Literal-decode negatives are SCH008 |
 | Object constraints (`all-or-none`/`requires`) | types.kdl | schemas/inspect/constructs | |
+| Generic type declarations (`parameter` children, `T<A, B>` instantiation) | types.kdl | processing/bind/generic-types, invalid/schemas/generic-arity-mismatch, invalid/schemas/instantiation-cycle | Monomorphization at compile time; the bind positive proves the instantiated declaration through case-selected retyping, the only CLI-reachable path for a monomorphized object type (the `TypeName` pattern blocks `node type=` spellings of the mangled name) |
+| Pattern codecs (`codec`/`match`/`capture`/`namespace`) | types.kdl | processing/bind/codecs, invalid/schemas/codec-pattern-invalid, invalid/schemas/codec-capture-unknown-type, invalid/data/codec-match-failure | Whole-string match, typed captures decoded at bind time |
+| Union dispatch by value prefix (`prefix=`) | types.kdl | processing/bind/union-dispatch, invalid/schemas/prefix-overlap, invalid/data/union-prefix-miss | Single probe, no fallback; overlapping prefixes are SCH010 |
+| Field sensitivity (`sensitivity=secret`/`reference`) | types.kdl | processing/bind/sensitivity, invalid/schemas/sensitivity-inline | Redact-by-default for `secret`; inline field bindings cannot declare it |
 
 ### Bindings, roles, and cardinality (`pkg/kdl/schemas/dialect/bindings.kdl`)
 
@@ -72,6 +76,9 @@ that declares the mechanism.
 | Compile-time binding checks (overlaps, unconsumed arguments) | bindings.kdl | invalid/schemas/duplicate-argument, invalid/schemas/rest-arguments-overlap, invalid/schemas/inspect-duplicate-argument, invalid/schemas/inspect-duplicate-nested-argument, invalid/schemas/inspect-duplicate-property, invalid/schemas/inspect-rest-arguments-overlap, processing/sch003-span-vet, processing/sch003-span-inspect | Span pinned: SCH003 reports the node declaration on both reading paths |
 | Child permission and cardinality | bindings.kdl | invalid/schemas/cardinality, invalid/schemas/inspect-cardinality, invalid/data/min-occurs, invalid/data/max-occurs | Minimums at scope completion |
 | Compiled plans | bindings.kdl | processing/bind/stream, processing/bind/context | Item streams come from the compiled plan, not re-reading the schema KDL |
+| Declaration-group expansion (`expand` sources, `include` short form) | bindings.kdl | processing/bind/expansion, invalid/data/expansion-key-collision, schemas/inspect/include-short-form-dropped | The `expand` source splices on every CLI path; the `include` short form is compile-path-only and dropped by the typed reader (declared elision below) |
+| Dependent value binding (`value`/`against`, `argument-tail`) | bindings.kdl | processing/bind/dependent-binding, invalid/data/dependent-payload-type | Payload validated inline; no pending typed-binding item exists yet |
+| Case dispatch (`cases`/`case`/`otherwise`) | bindings.kdl | processing/bind/case-dispatch, invalid/data/case-no-match | Top-down first-match retyping; no match without `otherwise` is BND001 |
 
 ### Context (`pkg/kdl/schemas/dialect/context.kdl`)
 
@@ -96,7 +103,7 @@ that declares the mechanism.
 | Exactly-one groups | documents.kdl | invalid/data/exactly-one-missing, invalid/data/exactly-one-repeated | Checked at scope completion |
 | Source imports | documents.kdl | dialect/entrypoint-vet/dialect, invalid/dialect/import-missing, invalid/dialect/import-cycle, invalid/schemas/import-missing | Projection only, mutations never escape |
 | Repeated imports (`reject`/`coalesce`/`instantiate`) | documents.kdl | invalid/dialect/import-repeated, schemas/vet/import-repeat-coalesce, schemas/vet/import-repeat-instantiate, invalid/dialect/import-repeated-property | Positives pinned on the schema path; the dialect self-description rejects any `repeated=` property at v0 (see elisions) |
-| Deferral marker | documents.kdl | dialect/canonical-vet/merged, invalid/schemas/deferred-mechanism, invalid/schemas/inspect-deferred-mechanism | `deferrals=19` pinned in the merged digest line |
+| Deferral marker | documents.kdl | dialect/canonical-vet/merged, invalid/schemas/deferred-mechanism, invalid/schemas/inspect-deferred-mechanism | `deferrals=12` pinned in the merged digest line; the seven types/bindings mechanisms moved from deferred to defined |
 | This dialect's own document rule | documents.kdl | invalid/dialect/not-self-describing, invalid/schemas/root-not-schema | |
 | Document rules are records | documents.kdl | schemas/inspect/shelf, processing/round-trip/data-through-schema | |
 | Self-hosted reader | documents.kdl | dialect/canonical-inspect/merged, dialect/entrypoint-inspect/dialect | Reading the canonical files through the reader they seed |
@@ -112,22 +119,22 @@ code is absent from the design record's table.
 
 | Code | Exercising scenarios | Status |
 | --- | --- | --- |
-| KDLITH-BND001 | invalid/data/first-node, invalid/data/not-following, invalid/data/union-variant, invalid/data/unknown-node, invalid/schemas/unknown-node, invalid/schemas/inspect-unknown-node | covered |
+| KDLITH-BND001 | invalid/data/case-no-match, invalid/data/first-node, invalid/data/not-following, invalid/data/union-variant, invalid/data/unknown-node, invalid/schemas/unknown-node, invalid/schemas/inspect-unknown-node | covered |
 | KDLITH-BND002 | invalid/data/exactly-one-missing, invalid/data/exactly-one-repeated, invalid/data/max-occurs, invalid/data/min-occurs, invalid/schemas/cardinality, invalid/schemas/inspect-cardinality | covered |
-| KDLITH-BND003 | invalid/data/failed-control, invalid/data/slot-type, invalid/data/value-type, invalid/schemas/name-format, invalid/schemas/inspect-name-format | covered |
+| KDLITH-BND003 | invalid/data/codec-match-failure, invalid/data/dependent-payload-type, invalid/data/failed-control, invalid/data/slot-type, invalid/data/union-prefix-miss, invalid/data/value-type, invalid/schemas/name-format, invalid/schemas/inspect-name-format | covered |
 | KDLITH-BND004 | invalid/data/entries-key, invalid/data/failed-control, invalid/data/missing-field, invalid/schemas/missing-argument, invalid/schemas/root-without-version, invalid/schemas/inspect-missing-argument, invalid/schemas/inspect-root-without-version | covered |
-| KDLITH-BND005 | invalid/data/unbound-entry, invalid/schemas/unbound-property, invalid/schemas/inspect-unbound-property | covered |
-| KDLITH-BND006 | invalid/data/duplicate-key, invalid/schemas/duplicate-binding, invalid/schemas/inspect-duplicate-binding | covered |
+| KDLITH-BND005 | invalid/data/unbound-entry, invalid/schemas/sensitivity-inline, invalid/schemas/unbound-property, invalid/schemas/inspect-unbound-property | covered |
+| KDLITH-BND006 | invalid/data/duplicate-key, invalid/data/expansion-key-collision, invalid/schemas/duplicate-binding, invalid/schemas/inspect-duplicate-binding | covered |
 | KDLITH-BND007 | invalid/data/collision | covered |
 | KDLITH-BND008 | invalid/data/enum-member, invalid/schemas/unknown-format, invalid/schemas/unknown-role, invalid/schemas/inspect-unknown-format, invalid/schemas/inspect-unknown-role | covered |
 | KDLITH-DLC002 | (none) | UNCOVERED — reachable (a dialect document declaring one construct twice is rejected with it), no fixture yet |
 | KDLITH-DLC003 | invalid/schemas/deferred-mechanism, invalid/schemas/inspect-deferred-mechanism | covered |
 | KDLITH-DLC004 | invalid/schemas/root-not-schema | covered |
-| KDLITH-DLC005 | invalid/schemas/pattern-invalid, processing/inspect-accepts-malformed-pattern | covered |
+| KDLITH-DLC005 | invalid/schemas/codec-pattern-invalid, invalid/schemas/generic-arity-mismatch, invalid/schemas/pattern-invalid, processing/inspect-accepts-malformed-pattern | covered |
 | KDLITH-DLC006 | invalid/schemas/handler-not-installed, invalid/schemas/validator-not-installed, processing/inspect-accepts-handler-not-installed | covered |
 | KDLITH-DLC007 | invalid/schemas/bad-type-expression, invalid/schemas/inspect-bad-type-expression | covered |
 | KDLITH-DLC008 | invalid/dialect/import-repeated-property, invalid/dialect/not-self-describing, invalid/dialect/unknown-type | covered |
-| KDLITH-SCH001 | invalid/schemas/unknown-type, processing/inspect-accepts-unknown-type | covered |
+| KDLITH-SCH001 | invalid/schemas/codec-capture-unknown-type, invalid/schemas/unknown-type, processing/inspect-accepts-unknown-type | covered |
 | KDLITH-SCH002 | invalid/schemas/duplicate-type, processing/inspect-accepts-duplicate-type | covered |
 | KDLITH-SCH003 | invalid/schemas/duplicate-argument, invalid/schemas/inspect-duplicate-argument, invalid/schemas/inspect-duplicate-nested-argument, invalid/schemas/inspect-duplicate-property, invalid/schemas/inspect-rest-arguments-overlap, invalid/schemas/rest-arguments-overlap, processing/sch003-span-inspect, processing/sch003-span-vet | covered |
 | KDLITH-SCH004 | invalid/schemas/duplicate-declaration | covered |
@@ -135,6 +142,8 @@ code is absent from the design record's table.
 | KDLITH-SCH006 | invalid/schemas/import-projects-unknown-slot, invalid/schemas/inspect-import-projects-unknown-slot, invalid/schemas/ref-without-declaration, invalid/schemas/unknown-field, invalid/schemas/unknown-parent, invalid/schemas/unknown-slot | covered |
 | KDLITH-SCH007 | invalid/schemas/children-effect-from-child, processing/inspect-accepts-not-streamable | covered |
 | KDLITH-SCH008 | invalid/schemas/documented-default-type, invalid/schemas/fallback-type, invalid/schemas/set-value-type, processing/inspect-accepts-schema-literal | covered |
+| KDLITH-SCH009 | invalid/schemas/instantiation-cycle | covered — the include-cycle arm of the code is unreachable through the CLI (see the include short-form elision); the instantiation-cycle arm is pinned |
+| KDLITH-SCH010 | invalid/schemas/prefix-overlap | covered |
 | KDLITH-IMP001 | invalid/dialect/import-missing, invalid/schemas/import-missing | covered |
 | KDLITH-IMP002 | invalid/dialect/import-cycle | covered |
 | KDLITH-IMP003 | invalid/dialect/import-repeated | covered |
@@ -232,14 +241,14 @@ under test.
 | Verb contract | Exercised by | State |
 | --- | --- | --- |
 | `vet dialect` local scope, one file each | dialect/canonical-vet/bindings-local, dialect/canonical-vet/context-local, dialect/canonical-vet/documents-local, dialect/canonical-vet/types-local | covered |
-| `vet dialect` complete, digest pin | dialect/canonical-vet/merged, dialect/entrypoint-vet/dialect | covered — same digest `a01c83f83f57d364` on both paths |
+| `vet dialect` complete, digest pin | dialect/canonical-vet/merged, dialect/entrypoint-vet/dialect | covered — same digest `fbbbd4f0f6625a48` on both paths |
 | `vet schema` bundled default | processing/vet-schema-default, schemas/vet/catalog | covered — catalog digest pinned |
 | `vet schema` `--dialect` override | processing/vet-schema-override | covered — same digest as the default |
 | `vet schema` multi-document and import policies | schemas/vet/import-repeat-coalesce, schemas/vet/import-repeat-instantiate, invalid/schemas/duplicate-type | covered |
-| `vet data` item stream | processing/bind/stream, processing/bind/context, processing/bind/defaults, processing/bind/nullable, processing/bind/value-expr, dialect/canonical-bind/bindings, dialect/canonical-bind/context, dialect/canonical-bind/documents, dialect/canonical-bind/types, dialect/entrypoint-bind/dialect | covered |
+| `vet data` item stream | processing/bind/case-dispatch, processing/bind/codecs, processing/bind/context, processing/bind/defaults, processing/bind/dependent-binding, processing/bind/expansion, processing/bind/generic-types, processing/bind/nullable, processing/bind/sensitivity, processing/bind/stream, processing/bind/union-dispatch, processing/bind/value-expr, dialect/canonical-bind/bindings, dialect/canonical-bind/context, dialect/canonical-bind/documents, dialect/canonical-bind/types, dialect/entrypoint-bind/dialect | covered |
 | `vet data` negatives | every invalid/data/ scenario (see code census) | covered |
 | `inspect dialect` | dialect/canonical-inspect/bindings, dialect/canonical-inspect/context, dialect/canonical-inspect/documents, dialect/canonical-inspect/merged, dialect/canonical-inspect/types, dialect/entrypoint-inspect/dialect | covered |
-| `inspect schema` | schemas/inspect/catalog, schemas/inspect/constructs, schemas/inspect/shelf | covered |
+| `inspect schema` | schemas/inspect/catalog, schemas/inspect/constructs, schemas/inspect/include-short-form-dropped, schemas/inspect/shelf | covered — include-short-form-dropped pins the reader-path include drop, not a splice |
 | `inspect data` | processing/inspect-data, processing/round-trip/inspect-data-catalog | covered |
 | `inspect --view` fail-closed | processing/inspect-view-bound, processing/inspect-view-context, processing/inspect-view-effective, processing/inspect-view-origins, processing/inspect-view-plan, processing/inspect-view-references | covered — all six unimplemented views pinned as fail-closed |
 | `read` bare form | dialect/canonical-read/bindings, dialect/canonical-read/context, dialect/canonical-read/documents, dialect/canonical-read/types, dialect/entrypoint-read/dialect | covered |
@@ -272,6 +281,8 @@ behavior as passed.
 | `repeated=coalesce`/`instantiate` on dialect documents | The dialect self-description rejects any `repeated=` property at v0 (KDLITH-DLC008, pinned by `invalid/dialect/import-repeated-property`); the policies are pinned on the schema path only | The dialect conform walk admits the property — rewrite the negative into dialect-path positives |
 | Reference resolution failures (`KDLITH-REF001`/`REF002`) | References bind provisionally at v0; linking never fails a run, so `read data --entry` composition is pinned via the source index rather than resolution | Linking gains a failure surface — add resolution negatives and tighten `processing/read-data-entry` |
 | Registered CLI/export/generation error codes (`KDLITH-CLI001`-`003`, `EXP001`-`002`, `GEN001`-`002`) | No emitting path exists at v0: usage errors are clap's exit-2 stratum, and `export`/`gen` are stubs | The emitting paths land — add one negative control per code |
+| Reader-path `include` short form silently dropped | Every CLI reading path goes through the typed reader, which admits `include` children and binds them through `node include`/`IncludeRef` but has no field consuming them, so the typed value drops them and the reader-path compile records no pending expansion — a schema using `include` silently loses the included members (fail-open, recorded as a superproc-side deviation; `schemas/inspect/include-short-form-dropped` pins the drop). Consequences also elided: the include splice is unprovable through the CLI, and SCH009's include-cycle arm is unreachable (the instantiation-cycle arm is pinned by `invalid/schemas/instantiation-cycle`) | The engine grows an expansion-request channel the typed reader can feed (`kdlith_model::ExpansionRequest` exists unproduced) or the binder rejects reader-path includes loudly — then rewrite the pin into the splice or the rejection and un-elide the SCH009 include-cycle arm (candidate for a later dialect-expansion story) |
+| Pending typed-binding item emission | The model's `PendingBinding` has no producer: the engine binder validates dependent `argument-tail` payloads inline (BND003/BND002) and `BoundItem`/`TypedItem` carry no pending variant, so a dependent payload's validated value never surfaces as its own item (a superproc-side deviation; `processing/bind/dependent-binding` pins the inline validation instead) | An engine surface grows the pending item — extend the dependent-binding positive to pin the emitted pending item |
 | Committed run commands name the `target/debug` build path | The committed commands are the contract; on hosts where that build path is unavailable a host-local substitution runs the same binaries | None — host note only |
 
 ## Story checklist

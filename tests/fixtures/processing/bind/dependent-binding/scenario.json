@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "A contribution node with a dependent value binding validates its argument-tail payload against the referenced declaration's member: the tail (list<String>) binds from the declaration and the contribution is emitted provisional with no diagnostic. The payload itself is validated inline (the BND003 mismatch is pinned by invalid/data/dependent-payload-type); no pending typed-binding item exists yet",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"identity\":{\"domain\":\"Target\",\"name\":[\"t1\"]}",
+      "\"item\":\"contribution\"",
+      "\"validation\":\"provisional\""
+    ]
+  }
+}
