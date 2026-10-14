@@ -196,6 +196,11 @@ dependencies = [
 [[package]]
 name = "kdlith-codegen"
 version = "0.1.0"
+dependencies = [
+ "kdlith-diagnostic",
+ "kdlith-engine",
+ "kdlith-superproc",
+]
 
 [[package]]
 name = "kdlith-diagnostic"
