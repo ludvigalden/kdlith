@@ -30,8 +30,8 @@ target/debug/kdlith-fixtures --fx-suite tests/fixtures --fx-kdlith target/debug/
 then diffing the listed names (all except `parse/kdl-spec/*`) against the
 scenario names occurring in this file, in both directions.
 
-Suite state at the time of writing: 555 scenarios — 243 `parse/kdl-spec`,
-312 others — all green.
+Suite state at the time of writing: 572 scenarios — 243 `parse/kdl-spec`,
+329 others — all green.
 
 ## Construct census
 
@@ -240,8 +240,9 @@ invalid/kdl-spec/zero_space_before_second_arg_fail
 | KDLITH-REF002 | (none) | elided-with-reason — no emitting path at v0; symbol-identity clashes surface as DLC002/SCH002/SCH004 first |
 | KDLITH-GEN001 | codegen/gen-refuses-unowned-overwrite | covered |
 | KDLITH-GEN002 | codegen/gen-dialect-check-drift | covered — the missing, changed, and stale arms in one destination |
-| KDLITH-EXP001 | (none) | elided-with-reason — `export` is a stub |
-| KDLITH-EXP002 | (none) | elided-with-reason — `export` is a stub |
+| KDLITH-EXP001 | invalid/export/exp001-unwritable-output | covered — an output destination whose directory does not exist |
+| KDLITH-EXP002 | invalid/export/exp002-provisional-incomplete, processing/export/delivery-provisional-failure, processing/export/delivery-provisional-failure-file | covered — warning class, rendered `warning[KDLITH-EXP002]` with the emitted count; the nonzero exit comes from the processing failure it accompanies |
+| KDLITH-EXP003 | invalid/export/exp003-unknown-type, invalid/export/exp003-non-record-type | covered — both rejected `--emit` forms: an undeclared type and a non-record type |
 | KDLITH-DLC001 | (none) | elided-with-reason — retired; a node no dialect binding accepts is BND001 on every reading path |
 
 ## Harness-protection census
@@ -277,7 +278,15 @@ under test.
 | `--help` | processing/smoke-help | covered |
 | `--version` | processing/cli/version | covered |
 | `help` verb | processing/cli/help-verb, processing/cli/help-vet | covered |
-| stub verbs fail closed | processing/cli/stub-export, processing/cli/stub-list, processing/cli/stub-cache, processing/cli/stub-changelog | covered — exit 1 plus "not implemented yet"; `gen` is implemented, its scenarios are the gen rows below |
+| stub verbs fail closed | processing/cli/stub-list, processing/cli/stub-cache, processing/cli/stub-changelog | covered — exit 1 plus "not implemented yet"; `gen` and `export` are implemented, their scenarios are the gen and export rows |
+| `export` required arguments | processing/cli/export-missing-arguments | covered — exit 2, the usage error names `--schema`, `--emit`, `--format`, and the files |
+| `export --emit roots` | processing/export/emit-roots | covered — the listed entry's top-level declaration and contribution in document order, the imported document's root never included; stdout pinned byte for byte |
+| `export --emit <TYPE>` | processing/export/emit-type, invalid/export/exp003-unknown-type, invalid/export/exp003-non-record-type | covered — every record of the type across the executed import graph (entry and imported sources); stdout pinned byte for byte |
+| `export --output FILE` | processing/export/output-file, invalid/export/exp001-unwritable-output | covered — the file is pinned byte for byte (the same bytes `emit-type` pins on stdout), stdout is empty, the summary is the only stderr, and no staging part file remains |
+| `export` data-vs-response streams | processing/export/stdout-no-envelope | covered — stdout is exactly the NDJSON item lines of two listed entries, pinned byte for byte, and the completion summary is the whole of stderr |
+| `export --delivery atomic` (default) | processing/export/delivery-atomic-stdout, processing/export/delivery-atomic-file | covered — a run that fails after two records bound publishes nothing to stdout, leaves a pre-existing destination byte-identical, removes its part file, and adds no EXP002 |
+| `export --delivery provisional` | processing/export/delivery-provisional, processing/export/delivery-provisional-failure, processing/export/delivery-provisional-failure-file | covered — a successful run streams the same bytes as atomic; a run failing mid-stream keeps the two completed items (stdout or file, pinned byte for byte), exits 1, and names the stream incomplete with `warning[KDLITH-EXP002]` and the count |
+| `export` provenance and `--sensitive` | processing/export/sensitive-default, processing/export/sensitive-omit, processing/export/sensitive-emit, processing/export/sensitive-redact | covered — every line carries its provenance envelope (node, source revisions, origins, per-field origin), pinned byte for byte in every export golden; the default redacts the secret and emits the reference, `omit` drops both, `emit` writes the secret, `redact` redacts both |
 | `--stdout-format` non-text | processing/cli/stdout-format-invalid | covered — exit 2 |
 | `--verbosity` out of band | processing/cli/verbosity-out-of-band | covered — exit 2 |
 | bare `kdlith` no args | processing/cli/no-args | covered — exit 2, usage on stderr |
@@ -296,7 +305,7 @@ behavior as passed.
 
 | Gap | Why it is not exercised | Reopen condition |
 | --- | --- | --- |
-| Stub verbs beyond fail-closed (`export`, `list`, `cache`, `changelog`) | The verbs are stubs; only their exit-1 "not implemented yet" contract exists | Each verb is implemented — replace its processing/cli stub pin with the real contract scenarios |
+| Stub verbs beyond fail-closed (`list`, `cache`, `changelog`) | The verbs are stubs; only their exit-1 "not implemented yet" contract exists | Each verb is implemented — replace its processing/cli stub pin with the real contract scenarios |
 | Unimplemented `inspect --view` views beyond the six fail-closed pins | The views do not exist; the pins prove the fail-closed rejection, not view content | A view is implemented — flip its inspect-view pin to the real output |
 | Compiler-only codes accepted on the inspect path | Deliberate product decision: `inspect` runs only the checks the dialect's declarations own, so it accepts inputs whose only faults are compiler-only checks (pinned by the six inspect-accepts scenarios) | The product decision changes — the inspect-accepts pins and the design record change together |
 | Import-alias namespace visibility gating | The alias value round-trips into the executed import item and a duplicate alias rejects BND006 (pinned by `processing/bind/import-alias-data` and `invalid/data/import-alias-duplicate`), but the exclusivity itself — imported declarations reachable only through the alias namespace — is a linking-stage behavior: references bind provisionally at v0 and linking never fails a run, and type-merging ignores the alias (an aliased duplicate type still rejects SCH002), so no CLI surface observes the gating yet | Linking gains a resolution surface — add the qualification negatives and the alias-gated visibility pins |
@@ -304,7 +313,7 @@ behavior as passed.
 | Snapshot restore surface (KDLITH-CTX004) | The engine's snapshot checkpoint/delta/restore API is not reachable from any verb; `read data` entry composition uses the source index, and no CLI path restores a context, so the fingerprint/lineage rejection cannot be honestly minted | A verb restores indexed records from snapshots — add the mismatch negative |
 | Required field with a computed-only fallback | The design record does not define the interplay: a non-optional field whose fallback is computed reports missing-required at bind (fail-closed) because the computed default never materializes; `processing/bind/computed-default` pins the optional-field arm only | A record ruling lands — pin whichever behavior it selects |
 | Reference resolution failures (`KDLITH-REF001`/`REF002`) | References bind provisionally at v0; linking never fails a run, so `read data --entry` composition is pinned via the source index rather than resolution | Linking gains a failure surface — add resolution negatives and tighten `processing/read-data-entry` |
-| Registered CLI/export error codes (`KDLITH-CLI001`-`003`, `EXP001`-`002`) | No emitting path exists at v0: usage errors are clap's exit-2 stratum, and `export` is a stub (the generation codes `GEN001`-`002` emit through `gen`, their controls live in the code census above) | The emitting paths land — add one negative control per code |
+| Registered CLI error codes (`KDLITH-CLI001`-`003`) | No emitting path exists at v0: usage errors are clap's exit-2 stratum (the generation codes `GEN001`-`002` emit through `gen` and the export codes `EXP001`-`003` through `export`; their controls live in the code census above) | The emitting paths land — add one negative control per code |
 | Reader-path `include` short form silently dropped | Every CLI reading path goes through the typed reader, which admits `include` children and binds them through `node include`/`IncludeRef` but has no field consuming them, so the typed value drops them and the reader-path compile records no pending expansion — a schema using `include` silently loses the included members (fail-open, recorded as a superproc-side deviation; `schemas/inspect/include-short-form-dropped` pins the drop). Consequences also elided: the include splice is unprovable through the CLI, and SCH009's include-cycle arm is unreachable (the instantiation-cycle arm is pinned by `invalid/schemas/instantiation-cycle`) | The engine grows an expansion-request channel the typed reader can feed (`kdlith_model::ExpansionRequest` exists unproduced) or the binder rejects reader-path includes loudly — then rewrite the pin into the splice or the rejection and un-elide the SCH009 include-cycle arm (candidate for a later dialect-expansion story) |
 | Pending typed-binding item emission | The model's `PendingBinding` has no producer: the engine binder validates dependent `argument-tail` payloads inline (BND003/BND002) and `BoundItem`/`TypedItem` carry no pending variant, so a dependent payload's validated value never surfaces as its own item (a superproc-side deviation; `processing/bind/dependent-binding` pins the inline validation instead) | An engine surface grows the pending item — extend the dependent-binding positive to pin the emitted pending item |
 | Committed run commands name the `target/debug` build path | The committed commands are the contract; on hosts where that build path is unavailable a host-local substitution runs the same binaries | None — host note only |

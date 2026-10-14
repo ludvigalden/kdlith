@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "--emit naming a declared type that is not a record type (an enum) is rejected with KDLITH-EXP003",
+  "args": [
+    "export",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "entry.kdl",
+    "--emit",
+    "Kind",
+    "--format",
+    "ndjson"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

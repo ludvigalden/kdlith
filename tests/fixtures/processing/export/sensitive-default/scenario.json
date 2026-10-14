@@ -1,0 +1,23 @@
+{
+  "binary": "kdlith",
+  "description": "With no --sensitive policy the fail-closed defaults apply: the secret field is redacted in data and marked redacted in the provenance envelope (its literal origin kept), while the reference field emits; the line is pinned byte for byte",
+  "args": [
+    "export",
+    "--schema",
+    "{fx-suite}/processing/bind/sensitivity/schema.kdl",
+    "input.kdl",
+    "--emit",
+    "Secret",
+    "--format",
+    "ndjson"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden",
+    "stdout-contains": [
+      "{\"name\":\"value\",\"value\":{\"kind\":\"string\",\"value\":\"[redacted]\"}",
+      "{\"name\":\"value\",\"origin\":1,\"redacted\":true}"
+    ]
+  }
+}

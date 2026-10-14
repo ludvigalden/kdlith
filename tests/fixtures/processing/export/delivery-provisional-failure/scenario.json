@@ -1,0 +1,24 @@
+{
+  "binary": "kdlith",
+  "description": "Provisional delivery that fails mid-stream: the two items completed before the failure are already on stdout (pinned byte for byte), the run exits nonzero, and stderr pins that the written stream is not a validated complete dataset with warning[KDLITH-EXP002] naming the emitted count",
+  "args": [
+    "export",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "failing.kdl",
+    "--emit",
+    "Item",
+    "--format",
+    "ndjson",
+    "--delivery",
+    "provisional"
+  ],
+  "expect": {
+    "exit": 1,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden",
+    "stderr-contains": [
+      "warning[KDLITH-EXP002]: 2 items were emitted provisionally; the stream is incomplete"
+    ]
+  }
+}

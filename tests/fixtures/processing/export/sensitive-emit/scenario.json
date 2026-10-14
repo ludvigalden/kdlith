@@ -1,0 +1,24 @@
+{
+  "binary": "kdlith",
+  "description": "--sensitive emit is the explicit opt-in that writes the secret value itself; the line is pinned byte for byte",
+  "args": [
+    "export",
+    "--schema",
+    "{fx-suite}/processing/bind/sensitivity/schema.kdl",
+    "input.kdl",
+    "--emit",
+    "Secret",
+    "--format",
+    "ndjson",
+    "--sensitive",
+    "emit"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden",
+    "stdout-contains": [
+      "{\"name\":\"value\",\"value\":{\"kind\":\"string\",\"value\":\"hunter2\"}"
+    ]
+  }
+}

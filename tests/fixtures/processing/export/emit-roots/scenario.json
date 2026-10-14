@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "--emit roots selects the syntactic top-level nodes of the listed entry document only: the entry's root declaration and contribution are emitted in document order, while the imported document's root declaration is never included; stdout is pinned byte for byte, provenance envelope included",
+  "args": [
+    "export",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "entry.kdl",
+    "--emit",
+    "roots",
+    "--format",
+    "ndjson"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

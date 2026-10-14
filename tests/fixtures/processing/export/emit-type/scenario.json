@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "--emit <TYPE> selects every record of the type across the executed import graph: the entry's two items (source 0) and the imported document's item (source 1), in stream order; stdout is pinned byte for byte",
+  "args": [
+    "export",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "entry.kdl",
+    "--emit",
+    "Item",
+    "--format",
+    "ndjson"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

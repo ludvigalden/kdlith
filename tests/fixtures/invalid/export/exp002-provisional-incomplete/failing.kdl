@@ -1,0 +1,10 @@
+locale en-gb
+section "A" {
+    public
+    item one kind=book
+    item two kind=film
+}
+section "B" {
+    public
+    item three kind=bogus
+}

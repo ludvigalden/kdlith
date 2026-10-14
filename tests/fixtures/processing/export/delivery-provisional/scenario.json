@@ -1,0 +1,21 @@
+{
+  "binary": "kdlith",
+  "description": "Provisional delivery emits each completed item as it is produced; on a successful run the stream is the same bytes the atomic emit-type scenario pins for the same input, and no incomplete-stream warning appears",
+  "args": [
+    "export",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "entry.kdl",
+    "--emit",
+    "Item",
+    "--format",
+    "ndjson",
+    "--delivery",
+    "provisional"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

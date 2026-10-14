@@ -1,0 +1,29 @@
+{
+  "binary": "kdlith",
+  "description": "Provisional delivery to a file that fails mid-stream keeps the partial stream in place (the two completed items, pinned byte for byte), exits nonzero, and names the stream incomplete with warning[KDLITH-EXP002] and the emitted count",
+  "args": [
+    "export",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "failing.kdl",
+    "--emit",
+    "Item",
+    "--format",
+    "ndjson",
+    "--delivery",
+    "provisional",
+    "--output",
+    "out.ndjson"
+  ],
+  "expect": {
+    "exit": 1,
+    "files": {
+      "out.ndjson": "expected.ndjson"
+    },
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden",
+    "stderr-contains": [
+      "warning[KDLITH-EXP002]: 2 items were emitted provisionally; the stream is incomplete"
+    ]
+  }
+}

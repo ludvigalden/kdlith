@@ -1,0 +1,27 @@
+{
+  "binary": "kdlith",
+  "description": "--output writes the data to the named file and nothing to stdout: the file is pinned byte for byte (the same bytes emit-type pins on stdout for the same input), stdout is empty, stderr carries only the completion summary, and no staging part file is left behind",
+  "args": [
+    "export",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "entry.kdl",
+    "--emit",
+    "Item",
+    "--format",
+    "ndjson",
+    "--output",
+    "out.ndjson"
+  ],
+  "expect": {
+    "exit": 0,
+    "files": {
+      "out.ndjson": "expected.ndjson"
+    },
+    "absent": [
+      ".out.ndjson.kdlith-export-part"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

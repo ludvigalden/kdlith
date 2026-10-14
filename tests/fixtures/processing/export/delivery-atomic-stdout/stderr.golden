@@ -1,0 +1,2 @@
+error[KDLITH-BND008]: item.kind expects a member of Kind, found string "bogus"
+  --> failing.kdl:9:16

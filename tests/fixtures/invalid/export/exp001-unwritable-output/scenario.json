@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "An output destination that cannot be opened (its directory does not exist) fails the export with KDLITH-EXP001",
+  "args": [
+    "export",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "entry.kdl",
+    "--emit",
+    "Item",
+    "--format",
+    "ndjson",
+    "--output",
+    "missing-dir/out.ndjson"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

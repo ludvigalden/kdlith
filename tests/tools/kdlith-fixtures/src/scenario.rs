@@ -171,14 +171,39 @@ impl PlantKind {
 /// made here.
 #[derive(Debug)]
 pub(crate) enum Expectation {
-    /// Positive control: exact exit code plus stream substrings.
+    /// Positive control: exact exit code, stream substrings, and the
+    /// optional byte-exact goldens.
     Positive {
         exit: i32,
         stdout_contains: Vec<String>,
         stderr_contains: Vec<String>,
+        goldens: Goldens,
     },
     /// Negative control: a nonzero exit whose stderr names every code.
     Invalid { input: PathBuf, codes: Vec<String> },
+}
+
+/// Byte-exact pins a positive control may declare. Every golden is a
+/// committed file inside the scenario directory, read at load time, so
+/// a missing golden fails the load rather than the comparison.
+#[derive(Debug, Default)]
+pub(crate) struct Goldens {
+    /// The whole of stdout must equal these bytes.
+    pub(crate) stdout: Option<GoldenFile>,
+    /// The whole of stderr must equal these bytes.
+    pub(crate) stderr: Option<GoldenFile>,
+    /// Files the run leaves in the materialized copy, each required to be
+    /// a regular file equal to its golden.
+    pub(crate) files: Vec<(String, GoldenFile)>,
+    /// Paths that must not exist in the materialized copy after the run.
+    pub(crate) absent: Vec<String>,
+}
+
+/// A committed golden: its scenario-relative path and its bytes.
+#[derive(Debug)]
+pub(crate) struct GoldenFile {
+    pub(crate) path: String,
+    pub(crate) bytes: Vec<u8>,
 }
 
 /// Load and validate a scenario from its source directory with
@@ -499,10 +524,8 @@ fn required_command(obj: &Map<String, Value>, what: &str) -> Result<Vec<String>,
     Ok(command)
 }
 
-/// Parse the positive control `expect`: `exit` (default 0), the
-/// `stdout-contains` and `stderr-contains` arrays, and a
-/// `scratch-check` block declaring violations the harness plants and
-/// classifies itself.
+/// Parse the positive control `expect`: exit code, stream substrings,
+/// byte-exact goldens, and an optional scratch check.
 fn positive(dir: &Path, value: &Value) -> Result<(Expectation, Option<ScratchCheck>), String> {
     let obj = value
         .as_object()
@@ -513,6 +536,10 @@ fn positive(dir: &Path, value: &Value) -> Result<(Expectation, Option<ScratchChe
             "exit",
             "stdout-contains",
             "stderr-contains",
+            "stdout-golden",
+            "stderr-golden",
+            "files",
+            "absent",
             "scratch-check",
         ],
         "\"expect\"",
@@ -536,14 +563,73 @@ fn positive(dir: &Path, value: &Value) -> Result<(Expectation, Option<ScratchChe
         None => None,
         Some(v) => Some(scratch_check(dir, v)?),
     };
+    let goldens = goldens(dir, obj)?;
     Ok((
         Expectation::Positive {
             exit,
             stdout_contains,
             stderr_contains,
+            goldens,
         },
         scratch_check,
     ))
+}
+
+/// Parse the byte-exact pins: stream goldens, produced files mapped to
+/// goldens, and paths that must stay absent, all inside the scenario.
+fn goldens(dir: &Path, obj: &Map<String, Value>) -> Result<Goldens, String> {
+    let stream = |key: &str| -> Result<Option<GoldenFile>, String> {
+        match obj.get(key) {
+            None => Ok(None),
+            Some(Value::String(s)) => golden_file(dir, s, &format!("expect.{key}")).map(Some),
+            Some(_) => Err(format!("{MANIFEST}: \"expect.{key}\" must be a string")),
+        }
+    };
+    let stdout = stream("stdout-golden")?;
+    let stderr = stream("stderr-golden")?;
+    let mut files = Vec::new();
+    if let Some(v) = obj.get("files") {
+        let map = v
+            .as_object()
+            .ok_or_else(|| format!("{MANIFEST}: \"expect.files\" must be an object"))?;
+        if map.is_empty() {
+            return Err(format!("{MANIFEST}: \"expect.files\" must not be empty"));
+        }
+        for (produced, golden) in map {
+            contained(produced, "\"expect.files\" key")?;
+            let golden = golden.as_str().ok_or_else(|| {
+                format!("{MANIFEST}: \"expect.files\" values must be golden file paths")
+            })?;
+            files.push((produced.clone(), golden_file(dir, golden, "expect.files")?));
+        }
+    }
+    let absent = match obj.get("absent") {
+        None => Vec::new(),
+        Some(v) => {
+            let list = string_array(v, "expect.absent")?;
+            if list.is_empty() {
+                return Err(format!("{MANIFEST}: \"expect.absent\" must not be empty"));
+            }
+            for path in &list {
+                contained(path, "\"expect.absent\" entry")?;
+            }
+            list
+        }
+    };
+    Ok(Goldens {
+        stdout,
+        stderr,
+        files,
+        absent,
+    })
+}
+
+/// Read a committed golden inside the scenario directory.
+fn golden_file(dir: &Path, raw: &str, what: &str) -> Result<GoldenFile, String> {
+    let path = contained(raw, &format!("\"{what}\" golden"))?;
+    let bytes = std::fs::read(dir.join(&path))
+        .map_err(|e| format!("{MANIFEST}: cannot read {what} golden {path:?}: {e}"))?;
+    Ok(GoldenFile { path, bytes })
 }
 
 /// Parse the `scratch-check` block: a non-empty `plant` array whose

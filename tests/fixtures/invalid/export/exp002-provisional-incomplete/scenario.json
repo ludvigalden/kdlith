@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "A provisional export that fails after items were emitted reports the processing error and the incomplete-stream warning KDLITH-EXP002, and exits nonzero",
+  "args": [
+    "export",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "failing.kdl",
+    "--emit",
+    "Item",
+    "--format",
+    "ndjson",
+    "--delivery",
+    "provisional"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

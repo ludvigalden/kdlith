@@ -1,0 +1,27 @@
+{
+  "binary": "kdlith",
+  "description": "Atomic delivery to a file (the default) leaves a pre-existing destination byte-identical when processing fails, and removes its staging part file",
+  "args": [
+    "export",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "failing.kdl",
+    "--emit",
+    "Item",
+    "--format",
+    "ndjson",
+    "--output",
+    "out.ndjson"
+  ],
+  "expect": {
+    "exit": 1,
+    "files": {
+      "out.ndjson": "expected.ndjson"
+    },
+    "absent": [
+      ".out.ndjson.kdlith-export-part"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

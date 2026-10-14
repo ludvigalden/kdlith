@@ -140,11 +140,23 @@ span of one diagnostic: an overlapping binding (`KDLITH-SCH003`) is reported
 at the node declaration, at the same span on both reading paths, because the
 reader-path binder check fires first in `vet`.
 
-`processing/cli/` holds the CLI-surface contracts: the four stub verbs
-(`export`, `list`, `cache`, `changelog`) each fail closed with exit 1
-and a "not implemented yet" message, `--version`, the `help` verb, the
-exit-2 rejections of a non-text `--stdout-format` and an out-of-band
-`--verbosity`, and the bare no-arguments invocation.
+`processing/cli/` holds the CLI-surface contracts: the three stub verbs
+(`list`, `cache`, `changelog`) each fail closed with exit 1 and a "not
+implemented yet" message, `export` without its required arguments,
+`--version`, the `help` verb, the exit-2 rejections of a non-text
+`--stdout-format` and an out-of-band `--verbosity`, and the bare
+no-arguments invocation.
+
+`processing/export/` holds the `export` contract scenarios: `--emit
+roots` and `--emit <TYPE>` selection over an entry document that imports
+another, `--output`, the stream discipline (stdout carries only the data
+lines), both delivery modes including a provisional run that fails
+mid-stream, and the `--sensitive` policies. Each scenario carries its
+own input copies, so the provenance envelope's source paths and revision
+digests are stable, and pins its streams and written files byte for
+byte with committed goldens. Editing an input changes its revision
+digest, so regenerate the goldens with it. `invalid/export/` holds the
+`KDLITH-EXP001`-`003` negative controls.
 
 `processing/round-trip/` runs the full chain entrypoint to dialect to
 schema to data over the committed catalog schema: `vet data` and
@@ -321,6 +333,10 @@ and any consumer crate the exercise step runs.
 | `exit`            | `0`     | The exact exit code the run must produce  |
 | `stdout-contains` | `[]`    | Substrings that must all appear in stdout |
 | `stderr-contains` | `[]`    | Substrings that must all appear in stderr |
+| `stdout-golden`   | absent  | A committed file the whole of stdout must equal byte for byte |
+| `stderr-golden`   | absent  | A committed file the whole of stderr must equal byte for byte |
+| `files`           | absent  | Object mapping a path the run leaves in the scenario copy to a committed golden it must equal byte for byte (a regular file, never a link) |
+| `absent`          | absent  | Paths the run must not leave in the scenario copy |
 | `scratch-check`   | absent  | Violations the harness must plant and then classify itself (see below) |
 
 #### Scratch check: `scratch-check`

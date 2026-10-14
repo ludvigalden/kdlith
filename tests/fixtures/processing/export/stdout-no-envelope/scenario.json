@@ -1,0 +1,20 @@
+{
+  "binary": "kdlith",
+  "description": "Data on stdout carries no summary envelope: with two listed entries, stdout is exactly the four NDJSON item lines (pinned byte for byte, nothing before, between, or after them) and the completion summary is the only stderr content",
+  "args": [
+    "export",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "entry.kdl",
+    "other.kdl",
+    "--emit",
+    "Item",
+    "--format",
+    "ndjson"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

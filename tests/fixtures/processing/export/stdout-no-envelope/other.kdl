@@ -1,0 +1,5 @@
+locale de
+section "Extra" {
+    public
+    item four kind=film
+}

@@ -1,0 +1,21 @@
+{
+  "binary": "kdlith",
+  "description": "--sensitive omit drops every sensitive field (secret and reference) from data, from the provenance field list, and from the origin table; the line is pinned byte for byte",
+  "args": [
+    "export",
+    "--schema",
+    "{fx-suite}/processing/bind/sensitivity/schema.kdl",
+    "input.kdl",
+    "--emit",
+    "Secret",
+    "--format",
+    "ndjson",
+    "--sensitive",
+    "omit"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

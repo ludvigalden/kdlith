@@ -1,0 +1,21 @@
+{
+  "binary": "kdlith",
+  "description": "Atomic delivery (explicit here, also the default) stages every item until processing succeeds: a run whose third record fails to bind after two bound publishes nothing on stdout, reports the binding error, and adds no incomplete-stream warning",
+  "args": [
+    "export",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "failing.kdl",
+    "--emit",
+    "Item",
+    "--format",
+    "ndjson",
+    "--delivery",
+    "atomic"
+  ],
+  "expect": {
+    "exit": 1,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

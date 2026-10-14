@@ -1,0 +1,21 @@
+{
+  "binary": "kdlith",
+  "description": "--sensitive redact redacts every sensitive field, the reference field included, and marks each redacted in the provenance envelope; the line is pinned byte for byte",
+  "args": [
+    "export",
+    "--schema",
+    "{fx-suite}/processing/bind/sensitivity/schema.kdl",
+    "input.kdl",
+    "--emit",
+    "Secret",
+    "--format",
+    "ndjson",
+    "--sensitive",
+    "redact"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "--emit naming a type the schema does not declare is rejected with KDLITH-EXP003 before any reading, never a silent empty export",
+  "args": [
+    "export",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "entry.kdl",
+    "--emit",
+    "Nope",
+    "--format",
+    "ndjson"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

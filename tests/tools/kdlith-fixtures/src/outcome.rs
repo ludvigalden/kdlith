@@ -11,7 +11,9 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use rustix::fd::OwnedFd;
 
 use crate::fxbin::{ENV_KDLITH, ENV_SCENARIO, ENV_SCRATCH, ENV_SUITE};
-use crate::scenario::{Expectation, Invocation, PlantKind, ScratchCheck, expand_args};
+use crate::scenario::{
+    Expectation, GoldenFile, Goldens, Invocation, PlantKind, ScratchCheck, expand_args,
+};
 use crate::walk::{self, Expected, RelPath};
 
 /// The content of every planted foreign file.
@@ -55,6 +57,9 @@ pub(crate) fn execute(
         .output()
         .map_err(|e| format!("cannot run {}: {e}", env.kdlith.display()))?;
     let mut failures = judge(&invocation.expectation, &output);
+    if let Expectation::Positive { goldens, .. } = &invocation.expectation {
+        failures.extend(judge_goldens(goldens, &output, cwd));
+    }
     if let Some(check) = &invocation.scratch_check {
         failures.extend(scratch_check(check, cwd, env, source));
     }
@@ -76,6 +81,7 @@ fn judge(expectation: &Expectation, output: &Output) -> Vec<String> {
             exit,
             stdout_contains,
             stderr_contains,
+            ..
         } => {
             if code != Some(*exit) {
                 failures.push(format!("exit: expected {exit}, got {}", describe(code)));
@@ -110,6 +116,62 @@ fn judge(expectation: &Expectation, output: &Output) -> Vec<String> {
         }
     }
     failures
+}
+
+/// The byte-exact pins: each stream golden against the captured stream,
+/// each declared file against its golden (the file must be a regular
+/// file, never followed through a link), and each absent path missing.
+fn judge_goldens(goldens: &Goldens, output: &Output, cwd: &Path) -> Vec<String> {
+    let mut failures = Vec::new();
+    for (stream, actual, golden) in [
+        ("stdout", &output.stdout, &goldens.stdout),
+        ("stderr", &output.stderr, &goldens.stderr),
+    ] {
+        if let Some(golden) = golden {
+            if let Some(diff) = golden_diff(actual, golden) {
+                failures.push(format!("{stream} {diff}"));
+            }
+        }
+    }
+    for (produced, golden) in &goldens.files {
+        let path = cwd.join(produced);
+        match path.symlink_metadata() {
+            Ok(meta) if meta.file_type().is_file() => match std::fs::read(&path) {
+                Ok(bytes) => {
+                    if let Some(diff) = golden_diff(&bytes, golden) {
+                        failures.push(format!("file {produced:?} {diff}"));
+                    }
+                }
+                Err(e) => failures.push(format!("file {produced:?} is unreadable: {e}")),
+            },
+            Ok(_) => failures.push(format!("file {produced:?} is not a regular file")),
+            Err(e) => failures.push(format!("file {produced:?} is missing: {e}")),
+        }
+    }
+    for path in &goldens.absent {
+        if cwd.join(path).symlink_metadata().is_ok() {
+            failures.push(format!("path {path:?} exists but must be absent"));
+        }
+    }
+    failures
+}
+
+/// `None` when the bytes equal the golden, else where they first differ.
+fn golden_diff(actual: &[u8], golden: &GoldenFile) -> Option<String> {
+    if actual == golden.bytes.as_slice() {
+        return None;
+    }
+    let at = actual
+        .iter()
+        .zip(&golden.bytes)
+        .position(|(a, b)| a != b)
+        .unwrap_or_else(|| actual.len().min(golden.bytes.len()));
+    Some(format!(
+        "differs from golden {:?} at byte {at} ({} vs {} bytes)",
+        golden.path,
+        actual.len(),
+        golden.bytes.len()
+    ))
 }
 
 fn describe(code: Option<i32>) -> String {
