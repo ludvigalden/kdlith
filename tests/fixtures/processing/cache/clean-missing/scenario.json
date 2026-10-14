@@ -1,0 +1,11 @@
+{
+  "binary": "kdlith",
+  "description": "cache clean over a state directory that does not exist has nothing to do: it says so, exits 0, and creates nothing",
+  "args": ["cache", "clean", "--state", "state"],
+  "expect": {
+    "exit": 0,
+    "absent": ["state"],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

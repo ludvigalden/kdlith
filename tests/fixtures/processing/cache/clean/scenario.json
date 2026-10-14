@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "cache clean removes every cache-owned entry, intact or of another format version, names each removed file on stdout, keeps the state directory itself, and exits 0 when nothing foreign remains",
+  "args": ["cache", "clean", "--state", "state"],
+  "expect": {
+    "exit": 0,
+    "absent": [
+      "state/0000000000000000.kdlith-cache",
+      "state/ed73773e2bbc55bf.kdlith-cache",
+      "state/fbc3953e246d3013.kdlith-cache"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

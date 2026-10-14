@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "list types over a schema declaring no types prints nothing and exits 0: an empty collection is an empty stdout body, pinned byte for byte",
+  "args": [
+    "list",
+    "types",
+    "--schema",
+    "{fx-suite}/processing/list/empty.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

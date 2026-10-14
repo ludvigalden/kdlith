@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "cache clean removes only cache-owned entries: the two owned entries are gone, while a foreign file, a file named like an entry but without the ownership header, and a foreign directory with its content all survive byte-identical; each foreign entry is named on stderr as KDLITH-CAC001 and the run fails closed with exit 1",
+  "args": ["cache", "clean", "--state", "state"],
+  "expect": {
+    "exit": 1,
+    "files": {
+      "state/notes.txt": "expected/notes.txt",
+      "state/2222222222222222.kdlith-cache": "expected/2222222222222222.kdlith-cache",
+      "state/archive/kept.txt": "expected/kept.txt"
+    },
+    "absent": [
+      "state/ed73773e2bbc55bf.kdlith-cache",
+      "state/fbc3953e246d3013.kdlith-cache"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

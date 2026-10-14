@@ -1,14 +1,16 @@
 //! `kdlith export`: thin orchestration over the engine's export. Data
 //! goes to the `--format` stream; diagnostics and the completion
-//! summary go to stderr only.
+//! summary go to stderr only. Inputs come from the shared
+//! [`DataOptions`].
 
 use std::path::{Path, PathBuf};
 
 use kdlith_diagnostic::ExitStatus;
-use kdlith_engine::{CheckScope, Delivery, Emit, Extensions, OutputPolicy, export_under};
+use kdlith_engine::{CheckScope, DataReader, Delivery, Emit, OutputPolicy, export_read};
 use kdlith_superproc::{load_schema, seed};
 
 use crate::report::report_all;
+use crate::vet::DataOptions;
 use crate::{DeliveryArg, ExportArgs, SensitiveArg};
 
 /// Run a parsed `export` argument set.
@@ -27,12 +29,14 @@ pub(crate) fn run(args: ExportArgs) -> ExitStatus {
         SensitiveArg::Omit => OutputPolicy::Omit,
         SensitiveArg::Redact => OutputPolicy::Redact,
     });
+    let options = DataOptions::new(args.anchors, args.profile, args.handlers);
     export(
         &args.schema,
         &paths(&args.files),
         &emit,
         (delivery, policy),
         args.output.as_deref(),
+        &options,
     )
 }
 
@@ -41,8 +45,10 @@ fn paths(files: &[PathBuf]) -> Vec<&Path> {
 }
 
 /// Export the data documents under the schema: load the bundled dialect
-/// and the schema with complete checking, run the engine's export under
-/// the delivery and the explicit output policy (`None` keeps the
+/// and the schema with complete checking under the data options'
+/// extensions, run the engine's export through a reader carrying the
+/// options' handlers, under the options' anchors and profile, the
+/// delivery, and the explicit output policy (`None` keeps the
 /// fail-closed sensitivity defaults), and report. A failed run's
 /// diagnostics decide the exit; a successful run writes its summary to
 /// stderr so the data stream stays pure.
@@ -52,8 +58,9 @@ pub fn export(
     emit: &Emit,
     (delivery, policy): (Delivery, Option<OutputPolicy>),
     output: Option<&Path>,
+    options: &DataOptions,
 ) -> ExitStatus {
-    let extensions = Extensions::standard();
+    let extensions = options.extensions();
     let governing = match seed(&extensions) {
         Ok(governing) => governing,
         Err(records) => return report_all(&records),
@@ -62,7 +69,12 @@ pub fn export(
         Ok(definition) => definition,
         Err(records) => return report_all(&records),
     };
-    let outcome = export_under(&definition, entries, emit, delivery, output, policy);
+    let mut read_options = options.read_options();
+    if let Some(policy) = policy {
+        read_options = read_options.with_output_policy(policy);
+    }
+    let reader = DataReader::with_handlers(&definition, options.registry());
+    let outcome = export_read(&reader, entries, emit, delivery, output, &read_options);
     let status = report_all(&outcome.records);
     if outcome.rejected.is_some() {
         return ExitStatus::Failure;

@@ -1,0 +1,21 @@
+{
+  "binary": "kdlith",
+  "description": "export takes --handler like the other data verbs: --handler copy-fields admits the schema's handler name at load and runs it at its following-effects point, so the exported stamp record reads sv-se through the context and its provenance names the handler as the provided origin; stdout is pinned byte for byte",
+  "args": [
+    "export",
+    "--schema",
+    "{fx-suite}/processing/bind/handler-effect/schema.kdl",
+    "--handler",
+    "copy-fields",
+    "data.kdl",
+    "--emit",
+    "Stamp",
+    "--format",
+    "ndjson"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

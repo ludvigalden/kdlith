@@ -41,6 +41,17 @@ pub struct InvocationIdentity {
     pub policy: Repeated,
 }
 
+impl InvocationIdentity {
+    pub fn new(revision: u64, schema: u64, context: u64, policy: Repeated) -> Self {
+        Self {
+            revision,
+            schema,
+            context,
+            policy,
+        }
+    }
+}
+
 /// One invocation of a source.
 #[derive(Debug)]
 #[non_exhaustive]

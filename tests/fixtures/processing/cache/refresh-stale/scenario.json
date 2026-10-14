@@ -1,0 +1,22 @@
+{
+  "binary": "kdlith",
+  "description": "cache refresh over a state holding an entry from an older source revision and an owned entry of another format version replaces both: the current entries are written byte for byte and the two stale owned files are removed",
+  "args": [
+    "cache", "refresh", "--state", "state",
+    "--schema", "{fx-suite}/processing/bind/imports.kdl",
+    "data.kdl", "other.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "files": {
+      "state/ed73773e2bbc55bf.kdlith-cache": "expected/ed73773e2bbc55bf.kdlith-cache",
+      "state/fbc3953e246d3013.kdlith-cache": "expected/fbc3953e246d3013.kdlith-cache"
+    },
+    "absent": [
+      "state/0000000000000000.kdlith-cache",
+      "state/5a0faf508ec31869.kdlith-cache"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

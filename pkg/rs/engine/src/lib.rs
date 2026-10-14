@@ -3,6 +3,7 @@
 //! and reads them into a typed processor's own types.
 mod bind;
 mod bindings;
+mod cache;
 mod compile;
 mod data;
 mod decode;
@@ -12,6 +13,7 @@ mod discovery;
 mod documents;
 mod export;
 mod extensions;
+mod list;
 mod names;
 mod overlap;
 mod plan;
@@ -33,6 +35,7 @@ pub use bindings::{
     FieldBinding, IdentityDecl, NodeDecl, NodeDeclId, ParentKey, Placement, Role, Scope, ScopeId,
     SequenceDecl, SequenceStep, SetFrom, Source,
 };
+pub use cache::{DerivedState, derive_state};
 pub use compile::input::{
     AnchorInput, CaptureInput, CaseInput, ChildRuleInput, ConstraintInput, Construct, DefaultInput,
     DefinitionInput, DependentInput, DescendantRuleInput, DiscoveryInput, DocumentInput,
@@ -42,7 +45,7 @@ pub use compile::input::{
     SourceFieldInput, SourceInput, StepInput, TypeInput, ValidatorInput, VariantInput,
 };
 pub use compile::{DIALECT_VERSION, compile_dialect, compile_dialect_input, compile_schema_input};
-pub use data::{DataReader, ReadOptions};
+pub use data::{BoundResult, DataReader, ReadOptions};
 pub use definition::{
     AccumulateOp, AnchorDecl, CheckScope, Definition, DefinitionKind, DiscoveryDecl, DocumentRule,
     DuplicateTreatment, ImportDecl, MissingRequirement, Patterns, ProfileDecl, ProviderDecl,
@@ -52,13 +55,21 @@ pub use definition::{
 pub use diag::Site;
 pub use discovery::{Expansion, ExpansionError, Segment, expand, is_expression, parse};
 pub use documents::MAX_DOCUMENT_BYTES;
-pub use export::{Emit, ExportOutcome, export, export_under};
+pub use export::{Emit, ExportOutcome, export, export_read, export_under};
 pub use extensions::{
     Extensions, PATH_STEM_SOURCE, TYPE_EXPRESSION_VALIDATOR, TYPE_EXPRESSION_VERSION,
 };
 pub use kdlith_runtime::{
+    CacheEntry, CacheScan, CleanOutcome, Derivation, EncodedEntry, EntryFault, WriteOutcome,
+    cache_key, clean_state, scan_state, write_state,
+};
+pub use kdlith_runtime::{
     Delivery, FieldProvenance, HandlerCall, HandlerEffect, HandlerFn, Handlers, Provenance,
     SourceRevision, SourceRevisions, export_line,
+};
+pub use list::{
+    IndexEntry, IndexKind, ItemIndex, NodeEntry, ProfileEntry, TypeEntry, index_items, list_nodes,
+    list_profiles, list_types, record_identity,
 };
 pub use names::{Names, Sym};
 pub use plan::{ContextPlan, ContextRead, DeferredBinding, EffectStep, NodePlan, ProcessingPlan};

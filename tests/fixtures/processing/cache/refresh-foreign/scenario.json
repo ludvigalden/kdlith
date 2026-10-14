@@ -1,0 +1,22 @@
+{
+  "binary": "kdlith",
+  "description": "cache refresh refuses a state directory holding a foreign entry before reading anything: KDLITH-CAC001 names it, exit 1, and the stale owned entry and the foreign file are both left byte-identical with no new entry written",
+  "args": [
+    "cache", "refresh", "--state", "state",
+    "--schema", "{fx-suite}/processing/bind/imports.kdl",
+    "data.kdl", "other.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "files": {
+      "state/5a0faf508ec31869.kdlith-cache": "expected/5a0faf508ec31869.kdlith-cache",
+      "state/notes.txt": "expected/notes.txt"
+    },
+    "absent": [
+      "state/ed73773e2bbc55bf.kdlith-cache",
+      "state/fbc3953e246d3013.kdlith-cache"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

@@ -127,8 +127,9 @@ fn summary_line(definition: &Definition) -> String {
 /// What one data reading supplies beyond its documents: the discovery
 /// anchors the host passes on the command line, the profile the
 /// invocation names, and the built-in context handlers to install. The
-/// three data verbs (`vet data`, `inspect data`, `read data`) share one
-/// of these, so every path observes the same execution semantics.
+/// data verbs (`vet data`, `inspect data`, `read data`, `list items`,
+/// `cache`, and `export`) share one of these, so every path observes
+/// the same execution semantics.
 #[derive(Default)]
 pub struct DataOptions {
     anchors: Vec<(String, PathBuf)>,

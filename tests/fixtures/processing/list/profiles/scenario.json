@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "list profiles prints each profile the schema declares as one line (name, sorted root types or - for every root, discovery grammar), sorted by name rather than in declaration order; stdout is pinned byte for byte and stderr is empty",
+  "args": [
+    "list",
+    "profiles",
+    "--schema",
+    "{fx-suite}/processing/list/schema.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

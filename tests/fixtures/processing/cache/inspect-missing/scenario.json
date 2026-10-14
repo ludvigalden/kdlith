@@ -1,0 +1,11 @@
+{
+  "binary": "kdlith",
+  "description": "cache inspect over a state directory that does not exist reports that nothing is cached and exits 0 without creating it",
+  "args": ["cache", "inspect", "--state", "state"],
+  "expect": {
+    "exit": 0,
+    "absent": ["state"],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

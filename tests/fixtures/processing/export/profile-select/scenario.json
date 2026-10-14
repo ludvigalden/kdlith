@@ -1,0 +1,21 @@
+{
+  "binary": "kdlith",
+  "description": "export takes --profile like the other data verbs: --profile main binds the data document under the profile the schema declares (whose root types admit the part record), so --emit roots exports it, where the same run without a named profile fails closed with KDLITH-SCH011; stdout is pinned byte for byte",
+  "args": [
+    "export",
+    "--schema",
+    "{fx-suite}/processing/bind/profile-bind/schema.kdl",
+    "--profile",
+    "main",
+    "data.kdl",
+    "--emit",
+    "roots",
+    "--format",
+    "ndjson"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

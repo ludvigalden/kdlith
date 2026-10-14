@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "list items over a data document that binds only context controls (no declarations, no records) prints nothing and exits 0: an empty index is an empty stdout body, pinned byte for byte",
+  "args": [
+    "list",
+    "items",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

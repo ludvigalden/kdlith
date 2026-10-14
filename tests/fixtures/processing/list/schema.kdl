@@ -1,0 +1,63 @@
+// The schema the list scenarios share. Every collection is declared out
+// of name order, so a sorted listing proves the order is chosen rather
+// than inherited from declaration order: types of each declaration kind
+// (one generic), root nodes of four roles plus a record admitted under
+// two parents, and two profiles (one binding a discovery grammar and
+// root types, one admitting every root).
+schema shop version="1" {
+    types {
+        object Widget {
+            field id String
+            field tone Tone
+        }
+        enum Tone {
+            member warm
+            member cool
+        }
+        object Pair {
+            parameter T
+            field left T
+            field right T
+        }
+        string Slug {
+            format kebab-case
+        }
+        object Bin {
+            field name String
+        }
+        codec BinRef output=Bin {
+            match "^([a-z]+)$"
+            capture name String
+        }
+    }
+    discovery found {
+        anchor root provider=path
+        patterns star=#true
+    }
+    node widget role=record type=Widget {
+        field id arg=0
+        field tone property=tone
+    }
+    node bin role=declaration type=Bin {
+        field name arg=0
+    }
+    node gadget role=record type=Widget {
+        field id arg=0
+        field tone property=tone
+    }
+    node part role=record type=Widget {
+        parents widget bin
+        field id arg=0
+        field tone property=tone
+    }
+    node use role=source-import {
+        field path String arg=0
+    }
+    profile wholesale grammar=found {
+        roots {
+            allow Widget
+            allow Bin
+        }
+    }
+    profile retail
+}

@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "list types prints each type the schema declares as one line, name (with any type parameters) then declaration kind, sorted by name rather than in declaration order; built-in types are not listed; stdout is pinned byte for byte and stderr is empty",
+  "args": [
+    "list",
+    "types",
+    "--schema",
+    "{fx-suite}/processing/list/schema.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

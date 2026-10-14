@@ -1,0 +1,21 @@
+{
+  "binary": "kdlith",
+  "description": "export takes --anchor like the other data verbs: --anchor root=parts expands the grammar-admitted $root/part-*.kdl import, so --emit Part selects the entry's record (source 0) and each anchor-expanded document's record (sources 1 and 2, in portable-path-byte order) with their provenance; stdout is pinned byte for byte",
+  "args": [
+    "export",
+    "--schema",
+    "{fx-suite}/processing/bind/import-anchor/schema.kdl",
+    "--anchor",
+    "root=parts",
+    "data.kdl",
+    "--emit",
+    "Part",
+    "--format",
+    "ndjson"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

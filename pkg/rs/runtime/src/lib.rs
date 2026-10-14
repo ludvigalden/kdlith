@@ -1,5 +1,6 @@
 //! Binding frames, context operations, session machinery, and processor
 //! interfaces shared by every kdlith processor, hand-written or generated.
+mod cache;
 mod context;
 mod export;
 mod frame;
@@ -10,6 +11,11 @@ mod provenance;
 mod session;
 mod source;
 
+pub use cache::{
+    CACHE_CANONICALIZATION, CACHE_FORMAT, CacheEntry, CacheScan, CleanOutcome, Derivation,
+    EncodedEntry, EntryFault, MAX_ENTRY_BYTES, WriteOutcome, cache_key, clean_state, encode_entry,
+    scan_state, write_state,
+};
 pub use context::{
     Context, ContextEffect, ContextError, ContextLayout, ContextTarget, FollowingEffects,
     HeaderEffects, NamespaceId, Scope, SlotId, SlotValue, stable_hash, stable_hash_step,

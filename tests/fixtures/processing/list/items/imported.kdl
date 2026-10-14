@@ -1,0 +1,7 @@
+group archive {
+    label b "Second"
+}
+section "Other" {
+    private
+    item middle kind=book locale=sv-se
+}

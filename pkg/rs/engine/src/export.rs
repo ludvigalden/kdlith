@@ -86,6 +86,35 @@ pub fn export_under(
     output: Option<&Path>,
     policy: Option<OutputPolicy>,
 ) -> ExportOutcome {
+    let options = match policy {
+        Some(policy) => ReadOptions::new().with_output_policy(policy),
+        None => ReadOptions::new(),
+    };
+    export_read(
+        &DataReader::new(def),
+        entries,
+        emit,
+        delivery,
+        output,
+        &options,
+    )
+}
+
+/// Run one export as [`export_under`] does, through a configured
+/// reader and its reading options: the reader carries the context
+/// handlers the processor installed, and `options` the profile, the
+/// discovery anchors, and the explicit output policy. The type
+/// selection is checked against the reader's definition before any
+/// document is read.
+pub fn export_read(
+    reader: &DataReader<'_>,
+    entries: &[&Path],
+    emit: &Emit,
+    delivery: Delivery,
+    output: Option<&Path>,
+    options: &ReadOptions,
+) -> ExportOutcome {
+    let def = reader.definition();
     if let Emit::Type(name) = emit
         && let Some(rejection) = reject_type(def, name)
     {
@@ -117,10 +146,6 @@ pub fn export_under(
     let mut records: Vec<DiagnosticRecord> = Vec::new();
     let mut write_failed = false;
     let mut revisions = SourceRevisions::new();
-    let options = match policy {
-        Some(policy) => ReadOptions::new().with_output_policy(policy),
-        None => ReadOptions::new(),
-    };
     let read = {
         let mut sink = |item: Item| {
             revisions.observe(&item);
@@ -160,8 +185,7 @@ pub fn export_under(
                 }
             }
         };
-        let reader = DataReader::new(def);
-        reader.read(entries, &options, &mut sink)
+        reader.read(entries, options, &mut sink)
     };
     let mut outcome = ExportOutcome {
         records,

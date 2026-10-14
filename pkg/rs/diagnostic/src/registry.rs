@@ -119,6 +119,11 @@ pub const AREAS: &[AreaDefinition] = &[
         owner: "cli",
         scope: "export: item selection, output destinations, atomic and provisional delivery",
     },
+    AreaDefinition {
+        name: "CAC",
+        owner: "runtime",
+        scope: "derived processing state: the explicit state directory, its owned entries, foreign entries",
+    },
 ];
 
 /// The registered codes, grouped by area in [`AREAS`] order and
@@ -674,6 +679,37 @@ pub const CODES: &[CodeDefinition] = &[
         trigger: "an export selects a type the schema does not declare, or one that is not a record type",
         message_template: "cannot emit <type>: <reason>",
         correction: "Name a record type the schema declares, or select roots",
+        retired: false,
+    },
+    // CAC
+    CodeDefinition {
+        code: "KDLITH-CAC001",
+        label: "foreign-state-entry",
+        severity: Severity::Error,
+        exit_class: 1,
+        trigger: "a state directory holds an entry the cache does not own",
+        message_template: "<path> is not a cache-owned entry; it was left in place",
+        correction: "Move the entry out of the state directory, or name a directory only the cache writes",
+        retired: false,
+    },
+    CodeDefinition {
+        code: "KDLITH-CAC002",
+        label: "corrupt-state-entry",
+        severity: Severity::Error,
+        exit_class: 1,
+        trigger: "a cache-owned entry fails its envelope check: another format version, an interrupted write, or damage",
+        message_template: "cache entry <path> is unusable: <reason>",
+        correction: "Run cache clean to remove it, then cache refresh to derive it again",
+        retired: false,
+    },
+    CodeDefinition {
+        code: "KDLITH-CAC003",
+        label: "state-inaccessible",
+        severity: Severity::Error,
+        exit_class: 1,
+        trigger: "the state directory or one of its entries cannot be read, created, written, or removed",
+        message_template: "cannot <action> <path>: <reason>",
+        correction: "Check the state path and its permissions",
         retired: false,
     },
 ];

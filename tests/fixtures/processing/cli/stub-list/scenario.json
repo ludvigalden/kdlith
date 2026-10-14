@@ -1,9 +1,0 @@
-{
-  "binary": "kdlith",
-  "description": "The list verb is a fail-closed stub: it exits 1 and says it is not implemented yet",
-  "args": ["list"],
-  "expect": {
-    "exit": 1,
-    "stderr-contains": ["kdlith: list is not implemented yet"]
-  }
-}

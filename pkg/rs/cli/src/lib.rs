@@ -1,10 +1,13 @@
 //! Commands, arguments, output conventions, and orchestration: a
 //! verb-first clap command tree (gen, vet, export, inspect, list,
 //! read, cache, changelog, plus help) behind three global options.
+mod cache;
+mod changelog;
 mod export;
 mod generate;
 mod handlers;
 mod inspect;
+mod list;
 mod read;
 mod report;
 mod vet;
@@ -70,11 +73,11 @@ enum Command {
     /// Explain definitions, bindings, references, and provenance
     Inspect(InspectArgs),
     /// List declared types, nodes, profiles, or indexed items
-    List,
+    List(ListArgs),
     /// Read one definition or indexed data item
     Read(ReadArgs),
     /// Inspect, refresh, or clean derived processing state
-    Cache,
+    Cache(CacheArgs),
     /// Show the embedded changelog archive
     Changelog,
     /// Print help for a command
@@ -304,6 +307,116 @@ impl ViewArg {
     }
 }
 
+/// `kdlith list types|nodes|profiles|items`.
+#[derive(Args)]
+struct ListArgs {
+    #[command(subcommand)]
+    command: ListCommand,
+}
+
+#[derive(Subcommand)]
+enum ListCommand {
+    /// List the types the schema declares, one per line, sorted by name
+    Types(ListSchemaArgs),
+    /// List the node bindings the schema declares, one per line, sorted
+    /// by name
+    Nodes(ListSchemaArgs),
+    /// List the profiles the schema declares, one per line, sorted by
+    /// name
+    Profiles(ListSchemaArgs),
+    /// Index data documents through the schema and list each bound
+    /// declaration and record by its identity, one per line, sorted
+    Items(ListItemsArgs),
+}
+
+#[derive(Args)]
+struct ListSchemaArgs {
+    /// A schema definition document, read under the bundled dialect
+    #[arg(long, value_name = "FILE", required = true)]
+    schema: PathBuf,
+}
+
+#[derive(Args)]
+struct ListItemsArgs {
+    /// A schema definition document, read under the bundled dialect
+    #[arg(long, value_name = "FILE", required = true)]
+    schema: PathBuf,
+    /// A discovery anchor the data path expands import expressions
+    /// against, as NAME=PATH (repeatable)
+    #[arg(
+        long = "anchor",
+        value_name = "NAME=PATH",
+        value_parser = handlers::parse_anchor
+    )]
+    anchors: Vec<(String, PathBuf)>,
+    /// The profile the invocation binds
+    #[arg(long, value_name = "NAME")]
+    profile: Option<String>,
+    /// A built-in context handler to install, by name (repeatable)
+    #[arg(long = "handler", value_name = "NAME", value_parser = handlers::parse_handler)]
+    handlers: Vec<String>,
+    /// Data documents: the entrypoints
+    #[arg(required = true)]
+    files: Vec<PathBuf>,
+}
+
+/// `kdlith cache inspect|refresh|clean --state <DIR>`. Every form names
+/// its state directory explicitly; there is no default location.
+#[derive(Args)]
+struct CacheArgs {
+    #[command(subcommand)]
+    command: CacheCommand,
+}
+
+#[derive(Subcommand)]
+enum CacheCommand {
+    /// List each cached entry with its invocation identity and the
+    /// readings it was derived from; report entries the cache does not
+    /// own or cannot use
+    Inspect(CacheStateArgs),
+    /// Read the data documents through the schema and replace the
+    /// state's owned entries with the bound results the reading caches
+    Refresh(CacheRefreshArgs),
+    /// Remove every cache-owned entry; report, never remove, anything
+    /// else in the state directory
+    Clean(CacheStateArgs),
+}
+
+#[derive(Args)]
+struct CacheStateArgs {
+    /// The state directory the cache keeps its entries in
+    #[arg(long, value_name = "DIR", required = true)]
+    state: PathBuf,
+}
+
+#[derive(Args)]
+struct CacheRefreshArgs {
+    /// The state directory the cache keeps its entries in; created when
+    /// it does not exist, its parent must
+    #[arg(long, value_name = "DIR", required = true)]
+    state: PathBuf,
+    /// A schema definition document, read under the bundled dialect
+    #[arg(long, value_name = "FILE", required = true)]
+    schema: PathBuf,
+    /// A discovery anchor the data path expands import expressions
+    /// against, as NAME=PATH (repeatable)
+    #[arg(
+        long = "anchor",
+        value_name = "NAME=PATH",
+        value_parser = handlers::parse_anchor
+    )]
+    anchors: Vec<(String, PathBuf)>,
+    /// The profile the invocation binds
+    #[arg(long, value_name = "NAME")]
+    profile: Option<String>,
+    /// A built-in context handler to install, by name (repeatable)
+    #[arg(long = "handler", value_name = "NAME", value_parser = handlers::parse_handler)]
+    handlers: Vec<String>,
+    /// Data documents: the entrypoints
+    #[arg(required = true)]
+    files: Vec<PathBuf>,
+}
+
 /// `kdlith read [file <FILE>|data ...]`, with the bare one-argument
 /// form `kdlith read <FILE>` accepted as a compatibility alias of
 /// `read file`.
@@ -409,6 +522,20 @@ struct ExportArgs {
     /// secret is redacted and a reference emitted
     #[arg(long, value_enum, value_name = "POLICY")]
     sensitive: Option<SensitiveArg>,
+    /// A discovery anchor the data path expands import expressions
+    /// against, as NAME=PATH (repeatable)
+    #[arg(
+        long = "anchor",
+        value_name = "NAME=PATH",
+        value_parser = handlers::parse_anchor
+    )]
+    anchors: Vec<(String, PathBuf)>,
+    /// The profile the invocation binds
+    #[arg(long, value_name = "NAME")]
+    profile: Option<String>,
+    /// A built-in context handler to install, by name (repeatable)
+    #[arg(long = "handler", value_name = "NAME", value_parser = handlers::parse_handler)]
+    handlers: Vec<String>,
     /// Data documents: the entrypoints
     #[arg(required = true)]
     files: Vec<PathBuf>,
@@ -438,10 +565,10 @@ pub fn run() -> ExitStatus {
         Command::Vet(args) => vet::run(args.command),
         Command::Export(args) => export::run(args),
         Command::Inspect(args) => inspect::run(args.command),
-        Command::List => stub("list"),
+        Command::List(args) => list::run(args.command),
         Command::Read(args) => read::run(&args),
-        Command::Cache => stub("cache"),
-        Command::Changelog => stub("changelog"),
+        Command::Cache(args) => cache::run(args.command),
+        Command::Changelog => changelog::run(),
         Command::Help(args) => help(&args.command),
     }
 }
@@ -467,13 +594,6 @@ fn help(path: &[String]) -> ExitStatus {
     let _ = shown.print_help();
     println!();
     ExitStatus::Success
-}
-
-/// Every not-yet-wired verb fails closed with a clear diagnostic
-/// rather than pretending to work.
-fn stub(verb: &str) -> ExitStatus {
-    eprintln!("kdlith: {verb} is not implemented yet");
-    ExitStatus::Failure
 }
 
 /// `--verbosity` takes a number from 0 to 10.

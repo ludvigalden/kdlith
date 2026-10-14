@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "cache inspect lists the intact entry, reports an owned entry written under another format version as KDLITH-CAC002 (a typed version outcome, never misread) and a foreign file as KDLITH-CAC001, fails closed with exit 1, and leaves every entry in place",
+  "args": ["cache", "inspect", "--state", "state"],
+  "expect": {
+    "exit": 1,
+    "files": {
+      "state/0000000000000000.kdlith-cache": "state/0000000000000000.kdlith-cache",
+      "state/ed73773e2bbc55bf.kdlith-cache": "state/ed73773e2bbc55bf.kdlith-cache",
+      "state/notes.txt": "state/notes.txt"
+    },
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

@@ -1,0 +1,4 @@
+error[KDLITH-CAC001]: state/2222222222222222.kdlith-cache is not a cache-owned entry; it was left in place
+error[KDLITH-CAC001]: state/archive is not a cache-owned entry; it was left in place
+error[KDLITH-CAC001]: state/notes.txt is not a cache-owned entry; it was left in place
+kdlith: removed 2 owned entries from state; left 3 foreign

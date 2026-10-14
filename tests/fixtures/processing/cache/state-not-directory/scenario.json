@@ -1,0 +1,13 @@
+{
+  "binary": "kdlith",
+  "description": "cache clean over a state path that is a plain file fails closed before touching anything: KDLITH-CAC003 names the path, exit 1, and the file is left byte-identical",
+  "args": ["cache", "clean", "--state", "state"],
+  "expect": {
+    "exit": 1,
+    "files": {
+      "state": "state"
+    },
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

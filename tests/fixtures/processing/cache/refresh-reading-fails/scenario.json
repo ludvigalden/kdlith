@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "cache refresh whose reading reports an error persists nothing: the reading's diagnostic is reported, exit 1, and the state directory is never created",
+  "args": [
+    "cache", "refresh", "--state", "state",
+    "--schema", "{fx-suite}/processing/bind/imports.kdl",
+    "data.kdl", "other.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "absent": ["state"],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

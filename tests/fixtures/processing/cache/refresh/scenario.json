@@ -1,0 +1,22 @@
+{
+  "binary": "kdlith",
+  "description": "cache refresh creates the missing state directory and writes one owned entry per bound result the reading caches: the twice-instantiated import is one entry with two derived lines (the second invocation replayed it), the second entrypoint is its own entry; each entry file is pinned byte for byte (versioned header, identity metadata, item lines), no part file remains, the entry lines go to stdout and the summary to stderr",
+  "args": [
+    "cache", "refresh", "--state", "state",
+    "--schema", "{fx-suite}/processing/bind/imports.kdl",
+    "data.kdl", "other.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "files": {
+      "state/ed73773e2bbc55bf.kdlith-cache": "expected/ed73773e2bbc55bf.kdlith-cache",
+      "state/fbc3953e246d3013.kdlith-cache": "expected/fbc3953e246d3013.kdlith-cache"
+    },
+    "absent": [
+      "state/.ed73773e2bbc55bf.kdlith-cache-part",
+      "state/.fbc3953e246d3013.kdlith-cache-part"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

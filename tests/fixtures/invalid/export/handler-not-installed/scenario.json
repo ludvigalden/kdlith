@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "A schema naming a handler the export run does not install fails closed: without --handler, the load admits no handler names, the schema's effect site reports the uninstalled one, and nothing is exported",
+  "args": [
+    "export",
+    "--schema",
+    "{fx-suite}/processing/bind/handler-effect/schema.kdl",
+    "input.kdl",
+    "--emit",
+    "Stamp",
+    "--format",
+    "ndjson"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

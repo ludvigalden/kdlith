@@ -1,0 +1,10 @@
+{
+  "binary": "kdlith",
+  "description": "changelog prints the embedded changelog archive to stdout byte for byte (the committed pkg/kdl/CHANGELOG.md compiled into the binary, never read from the filesystem at runtime) and exits 0 with stderr empty; the verb runs in the scenario's scratch copy, which holds no changelog source, so the archive comes from the binary alone",
+  "args": ["changelog"],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

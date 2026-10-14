@@ -7,8 +7,8 @@ use std::path::Path;
 
 use kdlith_diagnostic::registry::{lookup, render};
 use kdlith_diagnostic::{DiagnosticRecord, ExitStatus};
-use kdlith_engine::{CheckScope, DataReader};
-use kdlith_model::{Item, Value};
+use kdlith_engine::{CheckScope, DataReader, record_identity};
+use kdlith_model::Item;
 use kdlith_parse::Parser;
 use kdlith_superproc::{load_schema, seed};
 
@@ -110,7 +110,7 @@ pub(crate) fn read_data(args: &crate::ReadDataArgs) -> ExitStatus {
         if let Item::Diagnostic(record) = &item {
             records.push((**record).clone());
         }
-        if found.is_none() && identity_of(&item) == Some(args.id.as_str()) {
+        if found.is_none() && record_identity(&item) == Some(args.id.as_str()) {
             found = Some(item);
         }
     };
@@ -142,23 +142,6 @@ pub(crate) fn read_data(args: &crate::ReadDataArgs) -> ExitStatus {
             ExitStatus::Failure
         }
     }
-}
-
-/// A record item's lookup identity: the string value of its bound
-/// `id` field. Records carry no registered identity of their own, and
-/// the schemas read here bind their record identity from that field.
-fn identity_of(item: &Item) -> Option<&str> {
-    let Item::Record(record) = item else {
-        return None;
-    };
-    record
-        .fields
-        .iter()
-        .find(|field| field.name == "id")
-        .and_then(|field| match &field.value {
-            Value::String(id) => Some(id.as_str()),
-            _ => None,
-        })
 }
 
 fn write_item(out: &mut impl std::io::Write, item: &Item) -> std::io::Result<()> {

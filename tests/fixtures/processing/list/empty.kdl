@@ -1,0 +1,4 @@
+// A schema declaring nothing: no types, nodes, or profiles. The list
+// scenarios whose collection is genuinely empty read it.
+schema empty version="1" {
+}

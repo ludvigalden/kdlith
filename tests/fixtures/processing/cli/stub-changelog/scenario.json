@@ -1,9 +1,0 @@
-{
-  "binary": "kdlith",
-  "description": "The changelog verb is a fail-closed stub: it exits 1 and says it is not implemented yet",
-  "args": ["changelog"],
-  "expect": {
-    "exit": 1,
-    "stderr-contains": ["kdlith: changelog is not implemented yet"]
-  }
-}

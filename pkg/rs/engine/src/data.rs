@@ -9,8 +9,8 @@ use std::rc::Rc;
 use kdlith_diagnostic::DiagnosticRecord;
 use kdlith_model::{ImportRequest, Item, SourceDocument, SourceId};
 use kdlith_runtime::{
-    Admission, Context, Handlers, InvocationId, InvocationIdentity, Invocations, SlotId,
-    stable_hash,
+    Admission, Context, Derivation, Handlers, InvocationId, InvocationIdentity, Invocations,
+    SlotId, stable_hash,
 };
 
 use crate::bind::BindingSession;
@@ -68,6 +68,21 @@ impl ReadOptions {
     }
 }
 
+/// One bound result a reading cached: the invocation identity it is
+/// keyed by, where it was derived, and its items under one canonical
+/// source identity, so equal semantics give equal items wherever the
+/// invocation sat.
+#[derive(Clone, Debug)]
+#[non_exhaustive]
+pub struct BoundResult {
+    pub identity: InvocationIdentity,
+    /// Every place the reading bound or replayed this result: the
+    /// entrypoint, the document, and its importer, as the reading
+    /// showed them, in reading order.
+    pub derivations: Vec<Derivation>,
+    pub items: Vec<Item>,
+}
+
 /// A reader of data documents over one compiled definition: the entry
 /// documents, and the documents they import, as one item stream.
 pub struct DataReader<'d> {
@@ -95,6 +110,11 @@ impl<'d> DataReader<'d> {
         Self { def, handlers }
     }
 
+    /// The definition the reader binds under.
+    pub fn definition(&self) -> &'d Definition {
+        self.def
+    }
+
     /// Read every entry document and the documents they import, giving
     /// each item to `sink` as it is read. Each document's items follow a
     /// document item naming its source and path. `Ok(true)` when any
@@ -105,6 +125,18 @@ impl<'d> DataReader<'d> {
         options: &ReadOptions,
         sink: &mut dyn FnMut(Item),
     ) -> Result<bool, ReadError> {
+        self.read_scoped(entries, options, sink, true)
+            .map(|(failed, _)| failed)
+    }
+
+    /// Read as [`DataReader::read`] does, and also return every bound
+    /// result the reading cached, in the order each was first bound.
+    pub fn read_results(
+        &self,
+        entries: &[&Path],
+        options: &ReadOptions,
+        sink: &mut dyn FnMut(Item),
+    ) -> Result<(bool, Vec<BoundResult>), ReadError> {
         self.read_scoped(entries, options, sink, true)
     }
 
@@ -118,6 +150,7 @@ impl<'d> DataReader<'d> {
         sink: &mut dyn FnMut(Item),
     ) -> Result<bool, ReadError> {
         self.read_scoped(entries, options, sink, false)
+            .map(|(failed, _)| failed)
     }
 
     fn read_scoped(
@@ -126,7 +159,7 @@ impl<'d> DataReader<'d> {
         options: &ReadOptions,
         sink: &mut dyn FnMut(Item),
         follow: bool,
-    ) -> Result<bool, ReadError> {
+    ) -> Result<(bool, Vec<BoundResult>), ReadError> {
         let mut anchors = BTreeMap::new();
         for (name, path) in &options.anchors {
             // Only anchors the definition names land in the map: the
@@ -149,6 +182,8 @@ impl<'d> DataReader<'d> {
             invocations: Invocations::new().with_schema_fingerprint(self.schema_fingerprint()),
             syntax: HashMap::new(),
             bound: HashMap::new(),
+            results: Vec::new(),
+            result_of: HashMap::new(),
             handlers: self.handlers.clone(),
             output_policy: options.output_policy,
             sink,
@@ -169,7 +204,7 @@ impl<'d> DataReader<'d> {
                 return Err(error);
             }
         }
-        Ok(reading.failed)
+        Ok((reading.failed, reading.results))
     }
 
     /// The fingerprint of the definition every invocation binds under.
@@ -196,6 +231,10 @@ struct Reading<'r, 'd> {
     /// invocation semantics, so a repeated invocation with equal
     /// semantics replays instead of rebinding.
     bound: HashMap<InvocationIdentity, Rc<Vec<Item>>>,
+    /// Every result the bound-result cache took, in insertion order.
+    results: Vec<BoundResult>,
+    /// The position of each cached identity's result in `results`.
+    result_of: HashMap<InvocationIdentity, usize>,
     /// The context handlers the reading installed, passed into every
     /// invocation's binding session.
     handlers: Handlers,
@@ -240,7 +279,12 @@ impl Reading<'_, '_> {
                     let identity = self.invocations.get(id).and_then(|i| i.identity());
                     let digest = revision_digest(revision);
                     if let Some(cached) = identity.as_ref().and_then(|k| self.bound.get(k)) {
-                        self.replay(id, &shown, &digest, cached.clone());
+                        let cached = cached.clone();
+                        if let Some(at) = identity.and_then(|k| self.result_of.get(&k).copied()) {
+                            let derivation = self.derivation(id);
+                            self.results[at].derivations.push(derivation);
+                        }
+                        self.replay(id, &shown, &digest, cached);
                     } else {
                         self.bind(id, (&shown, &digest), &text, context.ok(), identity);
                     }
@@ -322,9 +366,33 @@ impl Reading<'_, '_> {
         self.failed = failed;
         if cacheable && identity.is_some() && self.broken.is_none() {
             if let Some(identity) = identity.filter(|_| !failed) {
+                let derivation = self.derivation(id);
+                self.result_of.insert(identity, self.results.len());
+                self.results.push(BoundResult {
+                    identity,
+                    derivations: vec![derivation],
+                    items: own.iter().map(|item| remap(item, SourceId(0))).collect(),
+                });
                 self.bound.insert(identity, Rc::new(own));
             }
         }
+    }
+
+    /// Where an invocation sits: its entrypoint, itself, and its
+    /// importer, each as the reading showed it.
+    fn derivation(&self, id: InvocationId) -> Derivation {
+        let shown = |id: InvocationId| {
+            self.invocations
+                .get(id)
+                .map(|i| i.shown.clone())
+                .unwrap_or_default()
+        };
+        let caller = self.invocations.get(id).and_then(|i| i.caller);
+        let mut root = id;
+        while let Some(up) = self.invocations.get(root).and_then(|i| i.caller) {
+            root = up;
+        }
+        Derivation::new(shown(root), shown(id), caller.map(shown))
     }
 
     /// The import site's context, holding only the slots it projects.

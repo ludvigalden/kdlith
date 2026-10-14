@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "list over a schema that does not load fails closed: the load diagnostic goes to stderr, exit 1, and nothing is listed on stdout",
+  "args": [
+    "list",
+    "nodes",
+    "--schema",
+    "missing.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

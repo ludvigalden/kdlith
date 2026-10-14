@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "cache inspect lists each owned entry of the explicit state directory, sorted by key: the entry key, the invocation identity it caches (source revision, schema fingerprint, context fingerprint, repeat policy), the bound-item count, and one derived line per reading that bound or replayed it (entrypoint, source, importer or -); stdout and stderr pinned byte for byte, and inspection writes nothing",
+  "args": ["cache", "inspect", "--state", "state"],
+  "expect": {
+    "exit": 0,
+    "files": {
+      "state/ed73773e2bbc55bf.kdlith-cache": "state/ed73773e2bbc55bf.kdlith-cache",
+      "state/fbc3953e246d3013.kdlith-cache": "state/fbc3953e246d3013.kdlith-cache"
+    },
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

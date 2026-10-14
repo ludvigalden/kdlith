@@ -1,0 +1,5 @@
+bin parent=root role=declaration type=Bin profile=-
+gadget parent=root role=record type=Widget profile=-
+part parent=bin,widget role=record type=Widget profile=-
+use parent=root role=source-import type=- profile=-
+widget parent=root role=record type=Widget profile=-

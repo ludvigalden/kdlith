@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "list items indexes the entry document and the document it imports through the schema and prints one line per bound declaration and record (kind, identity domain or record type, identity or - when the record binds none, path:line:column), sorted rather than in stream order; identities only, never the bound fields; stdout is pinned byte for byte and stderr is empty",
+  "args": [
+    "list",
+    "items",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "entry.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}
