@@ -1,0 +1,47 @@
+schema shelf version="1" {
+    types {
+        string Locale {
+            format kebab-case
+        }
+        enum Tier {
+            member basic
+            member premium
+        }
+        object Group {
+            field name String
+        }
+        object Entry {
+            field id String
+            field tier Tier
+            field locale "optional<Locale>"
+        }
+    }
+    context {
+        slot locale Locale namespace=defaults
+    }
+    node group role=declaration type=Group {
+        field name arg=0
+    }
+    node entry role=record type=Entry {
+        field id arg=0
+        field tier property=tier
+        field locale {
+            from {
+                property locale
+                context locale policy=fallback
+            }
+        }
+    }
+    node locale role=context-control {
+        field value Locale arg=0
+        effects target=following {
+            set locale field=value
+        }
+    }
+    document {
+        first {
+            exactly-one locale
+        }
+        following group entry locale
+    }
+}

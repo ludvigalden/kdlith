@@ -30,8 +30,8 @@ target/debug/kdlith-fixtures --fx-suite tests/fixtures --fx-kdlith target/debug/
 then diffing the listed names (all except `parse/kdl-spec/*`) against the
 scenario names occurring in this file, in both directions.
 
-Suite state at the time of writing: 554 scenarios — 243 `parse/kdl-spec`,
-311 others — all green.
+Suite state at the time of writing: 555 scenarios — 243 `parse/kdl-spec`,
+312 others — all green.
 
 ## Construct census
 
@@ -282,7 +282,7 @@ under test.
 | `--verbosity` out of band | processing/cli/verbosity-out-of-band | covered — exit 2 |
 | bare `kdlith` no args | processing/cli/no-args | covered — exit 2, usage on stderr |
 | `gen dialect <entrypoint>` | codegen/gen-dialect, codegen/gen-dialect-entrypoint-read, codegen/gen-dialect-entrypoint-vet | covered — generation runs end to end into scratch (never the reference crate) with the summary pinned, over the same entrypoint whose parse and vet preconditions the entrypoint scenarios pin |
-| `gen schema <schema>` | codegen/gen-schema | covered — a committed schema generates its data-reader crate into scratch |
+| `gen schema <schema>` | codegen/gen-schema, codegen/gen-schema-oracle | covered — a committed schema generates its data-reader crate into scratch, and the schema-form oracle scenario generates a committed schema (patterned string, enum, and object types; declaration, record, and context-control node roles; a namespaced context slot with a following `set` effect and a context-source field; a document rule) twice into scratch trees the harness requires byte-identical, compiles the generated crate in a scratch workspace materialized from the scenario's committed template with the repository's engine and reference-processor crates copied in, and exercises the compiled processor: it loads its own schema with the digest the reference CLI reports, reads a committed data document through its typed reader (records, declarations, and a field the context effect supplied), and rejects a committed document whose enum value names no member with `KDLITH-BND008` |
 | `gen --dry-run` plan, write nothing | codegen/gen-dialect-dry-run | covered — the plan lists the generator-owned paths, and the scratch check proves nothing but the planted file appears in the materialized copy |
 | `gen --check` drift report | codegen/gen-dialect-check-drift | covered — missing, changed, and stale generator-owned files each reported KDLITH-GEN002 with exit 1; the destination's unowned extension file is present and not flagged |
 | `gen` refuses an unowned overwrite | codegen/gen-refuses-unowned-overwrite | covered — KDLITH-GEN001, exit 1, and the scratch check proves nothing was written |

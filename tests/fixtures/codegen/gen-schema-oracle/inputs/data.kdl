@@ -1,0 +1,4 @@
+locale en-us
+group "core"
+entry "alpha" tier=basic
+entry "beta" tier=premium locale=de

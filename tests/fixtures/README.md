@@ -211,7 +211,13 @@ harness requires byte-identical, compares the generated
 generated-marker header line, compiles the generated crate in a scratch
 workspace materialized from the scenario's committed template, and
 exercises the compiled processor's schema reading — every step judged
-by the harness and fail-closed on any difference.
+by the harness and fail-closed on any difference. The schema-form
+companion is `codegen/gen-schema-oracle`: the same step chain over a
+committed schema definition (no reference comparison — the reference
+processor is the dialect form's oracle), with the exercise reading a
+committed data document through the generated typed reader and
+requiring the `KDLITH-BND008` rejection a value outside the schema's
+enum type produces.
 
 ## Scenario format v0
 

@@ -233,7 +233,7 @@ use kdlith_engine::{CheckScope, Definition, Extensions};
 
 /// Load this schema's definition from its entry documents and compile it
 /// under the canonical dialect: the definition language every schema is
-//! written in.
+/// written in.
 pub fn load(
     entries: &[&Path],
     extensions: &Extensions,

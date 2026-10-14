@@ -585,16 +585,17 @@ impl Emission<'_> {
         types.sort();
         types.dedup();
 
-        // A slot whose type is a constructor spells the expression
-        // through the `LogicalType` trait, which the file must import.
+        // A slot whose type is a plain named type spells the expression
+        // through the `LogicalType` trait, which the file must import;
+        // constructor types spell it fully qualified and need nothing.
         let mut engine = vec!["SlotShape".to_owned()];
-        let mut qualified = false;
+        let mut short_form = false;
         for slot in &doc.slots {
-            if rust_type(&slot.ty, self.names)?.contains('<') {
-                qualified = true;
+            if !rust_type(&slot.ty, self.names)?.contains('<') {
+                short_form = true;
             }
         }
-        if qualified {
+        if short_form {
             engine.push("LogicalType".to_owned());
         }
 

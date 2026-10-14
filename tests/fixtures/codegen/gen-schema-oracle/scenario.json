@@ -1,0 +1,36 @@
+{
+  "binary": "kdlith",
+  "kind": "codegen-oracle",
+  "description": "The schema-form generation fixture: gen schema generates this committed schema's data-reader crate twice into two scratch trees the harness requires byte-identical (the in-suite determinism pin for the schema form), the generated crate compiles inside a scratch workspace materialized from this scenario's committed template with the repository's engine and reference-processor crates copied in at the pinned layout positions, and the compiled processor loads its own schema with the same digest the reference CLI reports, then reads a committed data document through its own typed reader — records, declarations, and a field a context effect supplied — and rejects a committed document whose value names no member of its field's enum type, reporting the unknown-member code",
+  "form": "schema",
+  "entrypoint": "inputs/shelf.kdl",
+  "crate": "shelf-proc",
+  "steps": [
+    { "generate": "ws/rs/shelf-proc" },
+    { "generate": "gen-again" },
+    { "determinism": ["ws/rs/shelf-proc", "gen-again"] },
+    {
+      "compile": {
+        "workspace": "ws",
+        "copy": {
+          "crates": ["diagnostic", "engine", "model", "parse", "runtime", "superproc"],
+          "kdl": true
+        },
+        "command": ["cargo", "build", "--offline", "--manifest-path", "ws/rs/shelf-proc/Cargo.toml"]
+      }
+    },
+    {
+      "exercise": {
+        "command": ["cargo", "run", "--offline", "--quiet", "--manifest-path", "ws/rs/exercise/Cargo.toml", "--", "inputs/shelf.kdl", "inputs/data.kdl", "inputs/bad-data.kdl"],
+        "stdout-contains": [
+          "schema ok digest=fc433df66d040263",
+          "read ok entries=2 groups=1",
+          "entry id=alpha tier=basic locale=en-us",
+          "entry id=beta tier=premium locale=de",
+          "group name=core",
+          "rejected KDLITH-BND008"
+        ]
+      }
+    }
+  ]
+}
