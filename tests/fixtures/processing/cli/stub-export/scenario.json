@@ -1,9 +1,15 @@
 {
   "binary": "kdlith",
-  "description": "The export verb is a fail-closed stub: it exits 1 and says it is not implemented yet",
+  "description": "The export verb without its required arguments fails closed as a usage error naming every one of them",
   "args": ["export"],
   "expect": {
-    "exit": 1,
-    "stderr-contains": ["kdlith: export is not implemented yet"]
+    "exit": 2,
+    "stderr-contains": [
+      "the following required arguments were not provided",
+      "--schema <FILE>",
+      "--emit <TYPE|roots>",
+      "--format <FORMAT>",
+      "<FILES>..."
+    ]
   }
 }

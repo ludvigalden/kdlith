@@ -10,6 +10,7 @@ mod definition;
 mod diag;
 mod discovery;
 mod documents;
+mod export;
 mod extensions;
 mod names;
 mod overlap;
@@ -51,10 +52,11 @@ pub use definition::{
 pub use diag::Site;
 pub use discovery::{Expansion, ExpansionError, Segment, expand, is_expression, parse};
 pub use documents::MAX_DOCUMENT_BYTES;
+pub use export::{Emit, ExportOutcome, export};
 pub use extensions::{
     Extensions, PATH_STEM_SOURCE, TYPE_EXPRESSION_VALIDATOR, TYPE_EXPRESSION_VERSION,
 };
-pub use kdlith_runtime::{HandlerCall, HandlerEffect, HandlerFn, Handlers};
+pub use kdlith_runtime::{Delivery, HandlerCall, HandlerEffect, HandlerFn, Handlers};
 pub use names::{Names, Sym};
 pub use plan::{ContextPlan, ContextRead, DeferredBinding, EffectStep, NodePlan, ProcessingPlan};
 pub use resolution::{

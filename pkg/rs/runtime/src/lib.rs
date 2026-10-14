@@ -1,6 +1,7 @@
 //! Binding frames, context operations, session machinery, and processor
 //! interfaces shared by every kdlith processor, hand-written or generated.
 mod context;
+mod export;
 mod frame;
 mod handlers;
 mod imports;
@@ -12,6 +13,7 @@ pub use context::{
     Context, ContextEffect, ContextError, ContextLayout, ContextTarget, FollowingEffects,
     HeaderEffects, NamespaceId, Scope, SlotId, SlotValue, stable_hash, stable_hash_step,
 };
+pub use export::{Delivery, ExportWriter, write_ndjson};
 pub use handlers::{HandlerCall, HandlerEffect, HandlerFn, Handlers};
 pub use imports::{
     Admission, ImportFailure, Invocation, InvocationId, InvocationIdentity, Invocations,

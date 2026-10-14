@@ -1246,7 +1246,7 @@ impl<'d, 's> Binder<'d, 's> {
                         .collect(),
                 );
                 let mut contribution =
-                    BoundContribution::new(node, target, value, origin, validation);
+                    BoundContribution::new(node, target, value, origin, validation, frame.span);
                 // The preserved record carries its layer and application
                 // scope as metadata for the registered resolver.
                 contribution.layer = layer;

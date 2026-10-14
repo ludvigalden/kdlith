@@ -1,6 +1,7 @@
 //! Commands, arguments, output conventions, and orchestration: a
 //! verb-first clap command tree (gen, vet, export, inspect, list,
 //! read, cache, changelog, plus help) behind three global options.
+mod export;
 mod generate;
 mod handlers;
 mod inspect;
@@ -13,6 +14,7 @@ use std::path::PathBuf;
 use clap::{Args, CommandFactory, Parser, Subcommand, ValueEnum};
 use kdlith_diagnostic::ExitStatus;
 
+pub use export::export;
 pub use generate::{GenMode, GenTarget, generate};
 pub use inspect::inspect;
 pub use read::read;
@@ -64,7 +66,7 @@ enum Command {
     /// Validate dialect definitions, schemas, or data
     Vet(VetArgs),
     /// Process data and write typed output
-    Export,
+    Export(ExportArgs),
     /// Explain definitions, bindings, references, and provenance
     Inspect(InspectArgs),
     /// List declared types, nodes, profiles, or indexed items
@@ -358,6 +360,45 @@ struct ReadDataArgs {
     id: String,
 }
 
+/// The `--delivery` value of `export`.
+#[derive(Clone, Copy, Debug, ValueEnum)]
+enum DeliveryArg {
+    /// Stage output until processing succeeds, then publish in one step
+    Atomic,
+    /// Emit completed items immediately; a failing exit invalidates the
+    /// stream
+    Provisional,
+}
+
+/// `kdlith export --schema <FILE> <files...>`.
+#[derive(Args)]
+struct ExportArgs {
+    /// A schema definition document, read under the bundled dialect
+    #[arg(long, value_name = "FILE", required = true)]
+    schema: PathBuf,
+    /// What to emit: `roots` for the entry documents' top-level nodes,
+    /// or the name of a record type
+    #[arg(long, value_name = "TYPE|roots", required = true)]
+    emit: String,
+    /// The output format; only ndjson exists
+    #[arg(
+        long,
+        value_name = "FORMAT",
+        required = true,
+        value_parser = parse_export_format
+    )]
+    format: String,
+    /// The file results are written to; stdout when absent
+    #[arg(long, value_name = "FILE")]
+    output: Option<PathBuf>,
+    /// When results become visible
+    #[arg(long, value_enum, default_value_t = DeliveryArg::Atomic)]
+    delivery: DeliveryArg,
+    /// Data documents: the entrypoints
+    #[arg(required = true)]
+    files: Vec<PathBuf>,
+}
+
 /// Parse the process arguments, dispatch the verb, and resolve the
 /// exit stratum. Usage errors print clap's diagnostic and exit 2;
 /// `--help` and `--version` print to stdout and exit 0.
@@ -380,7 +421,7 @@ pub fn run() -> ExitStatus {
     match cli.command {
         Command::Gen(args) => generate::run(args.command),
         Command::Vet(args) => vet::run(args.command),
-        Command::Export => stub("export"),
+        Command::Export(args) => export::run(args),
         Command::Inspect(args) => inspect::run(args.command),
         Command::List => stub("list"),
         Command::Read(args) => read::run(&args),
@@ -441,6 +482,19 @@ fn parse_stdout_format(value: &str) -> Result<String, String> {
     } else {
         Err(format!(
             "only the text stdout format is supported for now, not {value}"
+        ))
+    }
+}
+
+/// `export --format` is validated up front and only `ndjson` is
+/// supported; anything else is a clear rejection, never a silently
+/// ignored value.
+fn parse_export_format(value: &str) -> Result<String, String> {
+    if value == "ndjson" {
+        Ok(value.to_owned())
+    } else {
+        Err(format!(
+            "only the ndjson export format exists for now, not {value}"
         ))
     }
 }

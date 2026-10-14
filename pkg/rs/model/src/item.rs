@@ -61,6 +61,10 @@ pub struct BoundContribution {
     pub scope: Option<String>,
     pub origin: OriginId,
     pub validation: ValidationState,
+    /// The span of the node this contribution is; not part of the
+    /// item's serialized form.
+    #[serde(skip)]
+    pub span: ByteSpan,
 }
 
 /// A request to invoke another source: the original expression, any
@@ -208,6 +212,7 @@ impl BoundContribution {
         value: Value,
         origin: OriginId,
         validation: ValidationState,
+        span: ByteSpan,
     ) -> Self {
         Self {
             node,
@@ -217,6 +222,7 @@ impl BoundContribution {
             scope: None,
             origin,
             validation,
+            span,
         }
     }
 }
