@@ -140,8 +140,8 @@ span of one diagnostic: an overlapping binding (`KDLITH-SCH003`) is reported
 at the node declaration, at the same span on both reading paths, because the
 reader-path binder check fires first in `vet`.
 
-`processing/cli/` holds the CLI-surface contracts: the five stub verbs
-(`gen`, `export`, `list`, `cache`, `changelog`) each fail closed with exit 1
+`processing/cli/` holds the CLI-surface contracts: the four stub verbs
+(`export`, `list`, `cache`, `changelog`) each fail closed with exit 1
 and a "not implemented yet" message, `--version`, the `help` verb, the
 exit-2 rejections of a non-text `--stdout-format` and an out-of-band
 `--verbosity`, and the bare no-arguments invocation.
@@ -191,17 +191,23 @@ code. Each negative control keeps the upstream input byte-for-byte in
 header line alters the document. The pinned upstream commit, the derivation,
 and the declared elisions are in `parse/kdl-spec/PROVENANCE.md`.
 
-## Codegen: declared elision
+## Codegen
 
-`codegen/` holds the reference-generation scenarios, and codegen is
-skeleton-only. The generation oracle comparison — generate from
-`contracts/super-schemas/dialect.kdl` into scratch, compare against
-`pkg/rs/superproc` excluding only the generated marker, compile, and
-exercise — is not implemented and is never reported passed. These scenarios
-pin the steps that exist: the entrypoint parses and vets (to the canonical
-digest), and the `gen` verb fails closed with exit 1 and a "not implemented
-yet" message, writing nothing anywhere. [COVERAGE.md](COVERAGE.md) carries
-the full elision table with its reopen conditions.
+`codegen/` holds the generation scenarios. `gen dialect` generates the
+committed super-schema entrypoint's processor crate end to end into a
+scratch `out/` directory inside the materialized copy — never the
+reference crate — and `gen schema` does the same for a committed schema
+definition. `--dry-run` prints the generator-owned plan while the
+scratch check proves nothing was written; `--check` compares against a
+destination holding an injected difference and classifies missing,
+changed, and stale generator-owned files as `KDLITH-GEN002`; and a
+writing run into a destination holding an unowned file at a
+generator-owned path is refused `KDLITH-GEN001` before anything is
+written. The oracle comparison — comparing the generated `src/**/*.rs`
+against `pkg/rs/superproc`, compiling the generated crate, and
+exercising it — remains a declared elision in
+[COVERAGE.md](COVERAGE.md) until the harness can express multi-step
+runs and file comparison.
 
 ## Scenario format v0
 

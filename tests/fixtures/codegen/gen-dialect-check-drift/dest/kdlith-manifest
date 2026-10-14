@@ -1,0 +1,5 @@
+# a hand-written manifest standing in for a generated one: it owns one
+# path the current generation no longer produces, so --check classifies
+# that path stale
+kdlith-manifest
+src/gone.rs

@@ -1,9 +1,0 @@
-{
-  "binary": "kdlith",
-  "description": "The gen verb is a fail-closed stub: it exits 1 and says it is not implemented yet, and writes nothing",
-  "args": ["gen"],
-  "expect": {
-    "exit": 1,
-    "stderr-contains": ["kdlith: gen is not implemented yet"]
-  }
-}

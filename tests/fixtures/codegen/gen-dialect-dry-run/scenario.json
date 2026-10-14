@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "--dry-run prints the plan — the generator-owned paths a writing run would emit, the output manifest included — and writes nothing: the scratch check classifies the materialized copy after the run and requires that nothing but the planted foreign file appears in it",
+  "args": ["gen", "dialect", "{fx-suite}/../../contracts/super-schemas/dialect.kdl", "--crate", "demo", "--out", "out", "--dry-run"],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": ["dry run", "Cargo.toml", "kdlith-manifest", "src/lib.rs"],
+    "scratch-check": {
+      "plant": [{ "path": "planted-foreign.txt", "kind": "file" }]
+    }
+  }
+}

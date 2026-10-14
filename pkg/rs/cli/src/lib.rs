@@ -1,6 +1,7 @@
 //! Commands, arguments, output conventions, and orchestration: a
 //! verb-first clap command tree (gen, vet, export, inspect, list,
 //! read, cache, changelog, plus help) behind three global options.
+mod generate;
 mod handlers;
 mod inspect;
 mod read;
@@ -12,6 +13,7 @@ use std::path::PathBuf;
 use clap::{Args, CommandFactory, Parser, Subcommand, ValueEnum};
 use kdlith_diagnostic::ExitStatus;
 
+pub use generate::{GenMode, GenTarget, generate};
 pub use inspect::inspect;
 pub use read::read;
 pub use vet::{DataOptions, VetTarget, vet, vet_data};
@@ -58,7 +60,7 @@ struct Cli {
 #[derive(Subcommand)]
 enum Command {
     /// Generate a Rust processor crate from definitions
-    Gen,
+    Gen(GenArgs),
     /// Validate dialect definitions, schemas, or data
     Vet(VetArgs),
     /// Process data and write typed output
@@ -82,6 +84,45 @@ enum Command {
 struct HelpArgs {
     /// The command to print help for
     command: Vec<String>,
+}
+
+/// `kdlith gen dialect|schema`.
+#[derive(Args)]
+struct GenArgs {
+    #[command(subcommand)]
+    command: GenCommand,
+}
+
+#[derive(Subcommand)]
+enum GenCommand {
+    /// Generate the processor crate a dialect definition's documents
+    /// compile to, embedding them as its seed
+    Dialect(GenFormArgs),
+    /// Generate the data reader a schema definition compiles to, under
+    /// the canonical dialect
+    Schema(GenFormArgs),
+}
+
+#[derive(Args)]
+struct GenFormArgs {
+    /// The crate name the generated package publishes as
+    #[arg(long = "crate", value_name = "NAME", required = true)]
+    crate_name: String,
+    /// The directory the generated crate is written to
+    #[arg(long, value_name = "DIR", required = true)]
+    out: PathBuf,
+    /// Print the generator-owned paths a writing run would emit; write
+    /// nothing
+    #[arg(long)]
+    dry_run: bool,
+    /// Compare the generated tree against the destination without
+    /// writing; report drift and exit nonzero on any difference
+    #[arg(long, conflicts_with = "dry_run")]
+    check: bool,
+    /// Definition documents: the dialect entrypoint, or the schema's
+    /// documents
+    #[arg(required = true)]
+    files: Vec<PathBuf>,
 }
 
 /// `kdlith vet dialect|schema|data`.
@@ -337,7 +378,7 @@ pub fn run() -> ExitStatus {
     let _band = if cli.debug { 10 } else { cli.verbosity };
     let _format = cli.stdout_format.as_str();
     match cli.command {
-        Command::Gen => stub("gen"),
+        Command::Gen(args) => generate::run(args.command),
         Command::Vet(args) => vet::run(args.command),
         Command::Export => stub("export"),
         Command::Inspect(args) => inspect::run(args.command),

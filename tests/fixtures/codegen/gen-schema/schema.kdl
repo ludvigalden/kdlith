@@ -1,0 +1,12 @@
+schema parts version="1" {
+    types {
+        object Part {
+            field id String
+            field count "optional<U64>"
+        }
+    }
+    node part role=record type=Part {
+        field id arg=0
+        field count property=count
+    }
+}

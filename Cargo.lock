@@ -185,6 +185,7 @@ name = "kdlith-cli"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "kdlith-codegen",
  "kdlith-diagnostic",
  "kdlith-engine",
  "kdlith-model",

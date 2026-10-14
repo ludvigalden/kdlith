@@ -10,6 +10,7 @@ workspace = true
 
 [dependencies]
 clap = { workspace = true }
+kdlith-codegen = { path = "../codegen" }
 kdlith-diagnostic = { path = "../diagnostic" }
 kdlith-engine = { path = "../engine" }
 kdlith-model = { path = "../model" }
