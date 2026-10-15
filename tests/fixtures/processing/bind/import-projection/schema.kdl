@@ -1,0 +1,47 @@
+// The import-mechanics schema with its locale slot declared last-wins:
+// an imported document may set the slot it was projected, replacing the
+// projected value inside its own invocation only.
+schema imports version="1" {
+    types {
+        string Locale {
+            format kebab-case
+        }
+        object Part {
+            field id String
+        }
+        object Stamp {
+            field at Locale
+        }
+    }
+    context {
+        slot locale Locale namespace=defaults duplicates=last-wins
+    }
+    node part role=record type=Part {
+        field id arg=0
+    }
+    node stamp role=record type=Stamp {
+        field at context=locale
+    }
+    node locale role=context-control {
+        field value Locale arg=0
+        effects target=following {
+            set locale field=value
+        }
+    }
+    node use role=source-import {
+        field path String arg=0
+        field repeated "optional<String>" property=repeated
+        field alias "optional<String>" property=as
+        field project "optional<list<String>>" {
+            from {
+                child project {
+                    args
+                }
+            }
+        }
+        children project max-occurs=1
+    }
+    document {
+        following locale part stamp use
+    }
+}

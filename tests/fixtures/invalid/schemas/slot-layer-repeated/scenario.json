@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A layer order lists each layer once: a repeated layer is KDLITH-DLC005",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

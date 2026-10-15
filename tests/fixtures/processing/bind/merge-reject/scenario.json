@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "A merge-accumulating slot under the reject duplicate treatment combines distinct keys: two labels controls contributing keys a and b bind, and the record reads both in contribution order; a key given twice is invalid/data/merge-duplicate-reject",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/policies.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":4},\"type_name\":\"Seen\",\"fields\":[{\"name\":\"labels\",\"value\":{\"kind\":\"map\",\"value\":[{\"key\":\"a\",\"value\":{\"kind\":\"map\",\"value\":[{\"key\":\"text\",\"value\":{\"kind\":\"string\",\"value\":\"one\"}}]}},{\"key\":\"b\",\"value\":{\"kind\":\"map\",\"value\":[{\"key\":\"text\",\"value\":{\"kind\":\"string\",\"value\":\"two\"}}]}}]},\"origin\":4}],\"origin\":4,\"validation\":\"valid\"}}\n{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":null}}\n"
+    ]
+  }
+}

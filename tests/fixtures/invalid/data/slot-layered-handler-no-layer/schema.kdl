@@ -1,0 +1,27 @@
+schema s version="1" {
+    types {
+        string Locale {
+            format kebab-case
+        }
+        object Stamp {
+            field lay "optional<Locale>"
+        }
+    }
+    context {
+        slot lay Locale duplicates=layered {
+            layers override base
+        }
+    }
+    node lay role=context-control {
+        field lay Locale arg=0
+        effects target=following {
+            handler copy-fields
+        }
+    }
+    node stamp role=record type=Stamp {
+        field lay context=lay
+    }
+    document {
+        following lay stamp
+    }
+}

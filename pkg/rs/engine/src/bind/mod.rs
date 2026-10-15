@@ -13,7 +13,7 @@ use kdlith_diagnostic::registry::{lookup, render};
 use kdlith_diagnostic::{ByteSpan, DiagnosticRecord};
 use kdlith_model::{
     BoundContribution, BoundDeclaration, BoundItem, BoundRecord, Derivation, Entry, Field,
-    Identity, ImportRequest, Location, OriginId, QualifiedName, Reference, Repeated,
+    Identity, ImportRequest, Location, Origin, OriginId, QualifiedName, Reference, Repeated,
     ScopeCompletion, SourceId, Trace, ValidationState, Value,
 };
 use kdlith_parse::{Locator, Parser};
@@ -25,7 +25,9 @@ use kdlith_runtime::{
 
 use crate::bindings::{BindingCodec, ChildPlan, ContextPolicy, NodeDeclId, Role, SetFrom};
 use crate::decode::{self, Decoder, Mismatch};
-use crate::definition::{AccumulateOp, Definition, DefinitionKind};
+use crate::definition::{
+    AccumulateOp, Definition, DefinitionKind, MergeDuplicates, SlotDuplicates,
+};
 use crate::diag::{
     CONFLICTING_BINDING, DUPLICATE_KEY, MALFORMED, MISSING_FIELD, NOT_INSTALLED, TYPE_EXPRESSION,
     UNBOUND_ENTRY, UNKNOWN_MEMBER, UNKNOWN_NODE, VALUE_TYPE,
@@ -47,7 +49,7 @@ const COLLISION: &str = "KDLITH-BND007";
 const DUPLICATE_PROPERTY: &str = "KDLITH-SYN003";
 const CONTEXT_UNAVAILABLE: &str = "KDLITH-CTX001";
 const CONTEXT_DISAGREES: &str = "KDLITH-CTX002";
-const CONTEXT_ACCUMULATE: &str = "KDLITH-CTX003";
+const SLOT_DUPLICATE: &str = "KDLITH-CTX006";
 const HANDLER_UNDECLARED: &str = "KDLITH-CTX005";
 const PROFILE_NOT_SELECTED: &str = "KDLITH-SCH011";
 
@@ -992,7 +994,7 @@ impl<'d, 's> Binder<'d, 's> {
         let mut out = Vec::new();
         for step in steps {
             match step {
-                EffectStep::Set { slot, from } => {
+                EffectStep::Set { slot, from, layer } => {
                     let site = self.location(frame.span);
                     let (value, trace) = match from {
                         // The schema's own constant, set at this node.
@@ -1012,7 +1014,8 @@ impl<'d, 's> Binder<'d, 's> {
                         out.push(ContextEffect::Set {
                             slot: *slot,
                             value: SlotValue::new(value, OriginId(cx.node().index))
-                                .with_trace(trace),
+                                .with_trace(trace)
+                                .with_layer(layer.map(|layer| self.name(layer).to_owned())),
                         });
                     }
                 }
@@ -1140,9 +1143,9 @@ impl<'d, 's> Binder<'d, 's> {
         }
     }
 
-    /// Keep the effects whose set value decodes as its slot's type,
-    /// reporting the others: values set into a slot are validated
-    /// against the slot, not only against the field they came from.
+    /// Keep the sets that decode as their slot's type and pass its
+    /// duplicate policy, reporting the others. Each set meets the held
+    /// value as the effects before it in the list leave it.
     fn typed(
         &mut self,
         cx: &mut Cx<'_>,
@@ -1150,13 +1153,32 @@ impl<'d, 's> Binder<'d, 's> {
         span: ByteSpan,
     ) -> Vec<ContextEffect> {
         let mut kept = Vec::with_capacity(effects.len());
+        // The slots the effects kept so far have written, as they leave
+        // them: `None` is unset by a remove or a clear.
+        let mut written: BTreeMap<SlotId, Option<SlotValue>> = BTreeMap::new();
         for effect in effects {
-            let ContextEffect::Set { slot, value } = &effect else {
-                kept.push(effect);
-                continue;
+            let (slot, value) = match effect {
+                ContextEffect::Set { slot, value } => (slot, value),
+                ContextEffect::Remove { slot } => {
+                    written.insert(slot, None);
+                    kept.push(ContextEffect::Remove { slot });
+                    continue;
+                }
+                ContextEffect::Clear { namespace } => {
+                    for &member in cx.context().layout().members(namespace) {
+                        written.insert(member, None);
+                    }
+                    kept.push(ContextEffect::Clear { namespace });
+                    continue;
+                }
+                other => {
+                    kept.push(other);
+                    continue;
+                }
             };
             let Some(info) = self.tables.slots.get(slot.index()).cloned() else {
-                kept.push(effect);
+                written.insert(slot, Some(value.clone()));
+                kept.push(ContextEffect::Set { slot, value });
                 continue;
             };
             let what = format!("context {}", self.name(info.name));
@@ -1165,83 +1187,218 @@ impl<'d, 's> Binder<'d, 's> {
             else {
                 continue;
             };
-            let accumulated = info.accumulate.is_some() && cx.context().get(*slot).is_some();
-            let Some(combined) = self.combine(cx, *slot, &info, decoded, span) else {
+            let held = match written.get(&slot) {
+                Some(held) => held.clone(),
+                None => cx.context().get(slot).cloned(),
+            };
+            let incoming = SlotValue::new(decoded, value.origin)
+                .with_trace(value.trace)
+                .with_layer(value.layer);
+            let Some(placed) = self.combine(cx, &info, held.as_ref(), incoming, span) else {
                 continue;
             };
-            let trace = match cx.context().get(*slot) {
-                Some(held) if accumulated => {
-                    let site = self.location(span);
-                    Trace::derived(
-                        Derivation::Merge,
-                        site,
-                        vec![held.trace.clone(), value.trace.clone()],
-                    )
-                }
-                _ => value.trace.clone(),
-            };
+            written.insert(slot, Some(placed.clone()));
             kept.push(ContextEffect::Set {
-                slot: *slot,
-                value: SlotValue::new(combined, value.origin).with_trace(trace),
+                slot,
+                value: placed,
             });
         }
         kept
     }
 
-    /// Combine an incoming set with the value its slot already holds,
-    /// under the slot's declared accumulation operation.
+    /// Place a set under the slot's accumulation or duplicate policy.
+    /// `Some` is the slot's value after it; `None` leaves the slot as it
+    /// was: rejected and reported, or outranked by a held layer.
     fn combine(
         &mut self,
         cx: &mut Cx<'_>,
-        slot: SlotId,
         info: &SlotInfo,
+        held: Option<&SlotValue>,
+        incoming: SlotValue,
+        span: ByteSpan,
+    ) -> Option<SlotValue> {
+        let Some(held) = held else {
+            return self.first_value(cx, info, incoming, span);
+        };
+        match info.accumulate {
+            Some(op) => {
+                let combined = self.accumulate(cx, info, op, &held.value, incoming.value, span)?;
+                let site = self.location(span);
+                let trace = Trace::derived(
+                    Derivation::Merge,
+                    site,
+                    vec![held.trace.clone(), incoming.trace],
+                );
+                Some(SlotValue::new(combined, incoming.origin).with_trace(trace))
+            }
+            None => match info.duplicates {
+                SlotDuplicates::Reject => {
+                    self.duplicate_set(cx, info, held, &incoming, span);
+                    None
+                }
+                SlotDuplicates::LastWins => Some(incoming),
+                SlotDuplicates::Layered => self.layered(cx, info, held, incoming, span),
+            },
+        }
+    }
+
+    /// A set reaching an unset slot: the value it carries. A layered
+    /// slot first checks the set's layer, as every layered set does.
+    fn first_value(
+        &mut self,
+        cx: &mut Cx<'_>,
+        info: &SlotInfo,
+        incoming: SlotValue,
+        span: ByteSpan,
+    ) -> Option<SlotValue> {
+        if info.duplicates == SlotDuplicates::Layered
+            && !self.layer_declared(cx, info, &incoming, span)
+        {
+            return None;
+        }
+        Some(incoming)
+    }
+
+    /// Whether a set on a layered slot names a layer the slot declares.
+    /// The compiler rejects every declarative set that does not; a
+    /// handler's set cannot name one, so it fails closed here
+    /// (`KDLITH-DLC005`) rather than landing outside the layer order.
+    fn layer_declared(
+        &mut self,
+        cx: &mut Cx<'_>,
+        info: &SlotInfo,
+        incoming: &SlotValue,
+        span: ByteSpan,
+    ) -> bool {
+        let slot = self.name(info.name);
+        let reason = match &incoming.layer {
+            Some(layer) if info.layers.contains(layer) => return true,
+            Some(layer) => format!("layer {layer} is not declared by layered slot {slot}"),
+            None => format!("a set on layered slot {slot} names no layer"),
+        };
+        self.diagnose(cx, MALFORMED, span, &["set", &reason]);
+        false
+    }
+
+    /// The layered arm, by declared order, highest first: a higher layer
+    /// replaces, a lower one leaves the held value, so order never
+    /// matters. Same layer, or a held value without one, rejects.
+    fn layered(
+        &mut self,
+        cx: &mut Cx<'_>,
+        info: &SlotInfo,
+        held: &SlotValue,
+        incoming: SlotValue,
+        span: ByteSpan,
+    ) -> Option<SlotValue> {
+        let rank = |layer: &Option<String>| {
+            layer
+                .as_ref()
+                .and_then(|layer| info.layers.iter().position(|declared| declared == layer))
+        };
+        if !self.layer_declared(cx, info, &incoming, span) {
+            return None;
+        }
+        match (rank(&incoming.layer), rank(&held.layer)) {
+            (Some(ours), Some(theirs)) if ours < theirs => Some(incoming),
+            (Some(ours), Some(theirs)) if ours > theirs => None,
+            _ => {
+                self.duplicate_set(cx, info, held, &incoming, span);
+                None
+            }
+        }
+    }
+
+    /// Combine an incoming value with the held one under the slot's
+    /// declared accumulation operation.
+    fn accumulate(
+        &mut self,
+        cx: &mut Cx<'_>,
+        info: &SlotInfo,
+        op: AccumulateOp,
+        held: &Value,
         incoming: Value,
         span: ByteSpan,
     ) -> Option<Value> {
-        let held = cx.context().get(slot).map(|held| held.value.clone());
-        match info.accumulate {
-            Some(AccumulateOp::Append) => match (held, incoming) {
-                (None, incoming) => Some(incoming),
-                (Some(Value::List(mut held)), Value::List(mut items)) => {
-                    held.append(&mut items);
-                    Some(Value::List(held))
-                }
-                (Some(held), _) => {
-                    let what = format!("context {}", self.name(info.name));
-                    self.mismatched(cx, &info.ty, &what, &held, span);
-                    None
-                }
-            },
-            Some(AccumulateOp::Merge) => match (held, incoming) {
-                (None, incoming) => Some(incoming),
-                (Some(Value::Map(mut held)), Value::Map(entries)) => {
-                    let slot = self.name(info.name);
-                    let label = format!("context {slot}");
-                    for entry in entries {
-                        if held.iter().any(|held| held.key == entry.key) {
-                            self.diagnose(cx, DUPLICATE_KEY, span, &[&entry.key, &label]);
-                            return None;
-                        }
-                        held.push(entry);
-                    }
-                    Some(Value::Map(held))
-                }
-                (Some(held), _) => {
-                    let what = format!("context {}", self.name(info.name));
-                    self.mismatched(cx, &info.ty, &what, &held, span);
-                    None
-                }
-            },
-            None => {
-                // Accumulation is defined for list- and map-typed slots
-                // only; a scalar slot re-set is an ordinary replacement.
-                if held.is_some() && collects(&info.ty) {
-                    let slot = self.name(info.name);
-                    self.diagnose(cx, CONTEXT_ACCUMULATE, span, &[slot]);
-                    return None;
-                }
-                Some(incoming)
+        match (op, held.clone(), incoming) {
+            (AccumulateOp::Append, Value::List(mut held), Value::List(mut items)) => {
+                held.append(&mut items);
+                Some(Value::List(held))
             }
+            (AccumulateOp::Merge, Value::Map(mut held), Value::Map(entries)) => {
+                let label = format!("context {}", self.name(info.name));
+                for entry in entries {
+                    match held.iter_mut().find(|held| held.key == entry.key) {
+                        // The declared treatment decides a key the held
+                        // map already carries: reject keeps the
+                        // duplicate-key code; last-wins replaces the
+                        // value in the key's first position.
+                        Some(existing) => match info.merge_duplicates {
+                            MergeDuplicates::LastWins => existing.value = entry.value,
+                            _ => {
+                                self.diagnose(cx, DUPLICATE_KEY, span, &[&entry.key, &label]);
+                                return None;
+                            }
+                        },
+                        None => held.push(entry),
+                    }
+                }
+                Some(Value::Map(held))
+            }
+            (_, held, _) => {
+                let what = format!("context {}", self.name(info.name));
+                self.mismatched(cx, &info.ty, &what, &held, span);
+                None
+            }
+        }
+    }
+
+    /// The reject arm (`KDLITH-CTX006`): slot, policy, and both
+    /// contributions by origin. Values stay out, since a slot may carry
+    /// a sensitive field's value.
+    fn duplicate_set(
+        &mut self,
+        cx: &mut Cx<'_>,
+        info: &SlotInfo,
+        held: &SlotValue,
+        incoming: &SlotValue,
+        span: ByteSpan,
+    ) {
+        let slot = self.name(info.name);
+        let held = self.contribution(held);
+        let incoming = self.contribution(incoming);
+        let values = [slot, info.duplicates.name(), &incoming, &held];
+        self.diagnose(cx, SLOT_DUPLICATE, span, &values);
+    }
+
+    /// One contribution to a slot, as a diagnostic names it: its layer,
+    /// when it has one, and where its value was set.
+    fn contribution(&self, value: &SlotValue) -> String {
+        let at = if value.origin == OriginId::SOURCE_METADATA {
+            "source metadata".to_owned()
+        } else {
+            match value.trace.origins().first() {
+                Some(origin) => match origin.location() {
+                    Some(location) => {
+                        let start = location.span.start;
+                        let place = format!("line {} column {}", start.line, start.column);
+                        if location.source == self.source {
+                            place
+                        } else {
+                            format!("source {} {place}", location.source.0)
+                        }
+                    }
+                    None => match origin {
+                        Origin::Provided { provider } => provider.clone(),
+                        _ => "an untraced origin".to_owned(),
+                    },
+                },
+                None => "an untraced origin".to_owned(),
+            }
+        };
+        match &value.layer {
+            Some(layer) => format!("layer {layer} at {at}"),
+            None => at,
         }
     }
 
@@ -2164,18 +2321,5 @@ impl<'d, 's> BindingSession<'d, 's> {
     /// the stream stopped early.
     pub fn failed(&self) -> bool {
         self.stopped || !self.pending.is_empty() || self.session.processor().errors() > 0
-    }
-}
-
-/// Whether a slot's type is list- or map-shaped, once optional and
-/// nullable wrappers are stripped: the shapes accumulation is defined
-/// for.
-fn collects(mut ty: &TypeExpr) -> bool {
-    loop {
-        match ty {
-            TypeExpr::Optional(inner) | TypeExpr::Nullable(inner) => ty = inner,
-            TypeExpr::List(_) | TypeExpr::Map(_, _) | TypeExpr::OrderedMap(_, _) => return true,
-            _ => return false,
-        }
     }
 }

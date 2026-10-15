@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "The rejected second value of a reject-default slot leaves the held value bound: plain en then plain fr is KDLITH-CTX006 naming both contributions by line and column, the following stamp reads en, and the run exits 1; the code-only negative control is invalid/data/slot-duplicate-reject",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/policies.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stdout-contains": [
+      "{\"item\":\"diagnostic\",\"data\":{\"code\":\"KDLITH-CTX006\",\"severity\":\"error\",\"source_path\":\"data.kdl\",\"span\":{\"start\":9,\"end\":14},\"line\":2,\"col\":1,\"origin\":\"data-document\",\"labels\":[],\"related\":[],\"correction\":\"Remove the held value before setting the slot again, or declare duplicates=last-wins or duplicates=layered on the slot\",\"message\":\"context plain under duplicates=reject receives a second value from line 2 column 7 while it holds one from line 1 column 7\"}}\n{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":2},\"type_name\":\"Stamp\",\"fields\":[{\"name\":\"plain\",\"value\":{\"kind\":\"string\",\"value\":\"en\"},\"origin\":2}],\"origin\":2,\"validation\":\"valid\"}}\n"
+    ],
+    "stderr-golden": "stderr.golden"
+  }
+}

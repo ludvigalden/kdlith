@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "A merge-accumulating slot declaring accumulate merge duplicates=last-wins replaces a twice-contributed key's value in its first position: kept {a one, b two} then kept {a again} binds, and the record reads a=again before b=two",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/policies.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":5},\"type_name\":\"Seen\",\"fields\":[{\"name\":\"kept\",\"value\":{\"kind\":\"map\",\"value\":[{\"key\":\"a\",\"value\":{\"kind\":\"map\",\"value\":[{\"key\":\"text\",\"value\":{\"kind\":\"string\",\"value\":\"again\"}}]}},{\"key\":\"b\",\"value\":{\"kind\":\"map\",\"value\":[{\"key\":\"text\",\"value\":{\"kind\":\"string\",\"value\":\"two\"}}]}}]},\"origin\":5}],\"origin\":5,\"validation\":\"valid\"}}\n{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":null}}\n"
+    ]
+  }
+}

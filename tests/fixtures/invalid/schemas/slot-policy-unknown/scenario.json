@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A duplicates= value naming no SlotDuplicates member is KDLITH-BND008",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

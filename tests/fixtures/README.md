@@ -104,7 +104,10 @@ schemas and scenarios that bind data documents against them, each asserting
 the ordered JSON-line item stream on stdout; most scenarios share one
 `schema.kdl`, the import-mechanics scenarios share `imports.kdl` (whose
 `use` node carries the repeated policy, the alias, and the projected
-slots), while `processing/bind/nullable/` and
+slots), the slot-duplicate-policy scenarios (`slot-*`, `merge-*`) share
+`policies.kdl` (one slot per policy arm, a layered slot with its declared
+layer order, and children scopes and a projecting import over it), while
+`processing/bind/nullable/` and
 `processing/bind/value-expr/` carry their own schemas for the `nullable<T>`
 type constructor and the `ValueExpr` scalar, and the focused directories
 `generic-types/`, `codecs/`, `union-dispatch/`, `sensitivity/`,

@@ -21,9 +21,9 @@ use crate::compile::types::{declare, field_name, format_rule, validator_use};
 use crate::decode::found;
 use crate::definition::{
     AccumulateOp, AnchorDecl, DiscoveryDecl, DocumentRule, DuplicateTreatment, ImportDecl,
-    MissingRequirement, Patterns, ProfileDecl, ProviderDecl, Qualification, QualifierDecl,
-    ReferenceDecl, ResolutionPolicyDecl, ResolutionSelection, SlotDecl, SourceContextDecl,
-    SourceContextMode, SourceFieldDecl,
+    MergeDuplicates, MissingRequirement, Patterns, ProfileDecl, ProviderDecl, Qualification,
+    QualifierDecl, ReferenceDecl, ResolutionPolicyDecl, ResolutionSelection, SlotDecl,
+    SlotDuplicates, SourceContextDecl, SourceContextMode, SourceFieldDecl,
 };
 use crate::diag::{
     IMPORT_ANCHOR, IMPORT_GRAMMAR, INVALID_BINDING, NOT_INSTALLED, Site, duplicate, duplicate_key,
@@ -835,7 +835,12 @@ fn effect_group(cx: &mut Cx<'_>, site: Site, input: &EffectGroupInput) -> Option
 
 fn effect(cx: &mut Cx<'_>, site: Site, input: &EffectInput) -> Option<Effect> {
     match input {
-        EffectInput::Set { slot, field, value } => {
+        EffectInput::Set {
+            slot,
+            field,
+            value,
+            layer,
+        } => {
             let from = match (field, value) {
                 (Some(field), None) => Some(SetFrom::Field(cx.names.intern(field))),
                 (None, Some(value)) => Some(SetFrom::Value(value.clone())),
@@ -847,6 +852,7 @@ fn effect(cx: &mut Cx<'_>, site: Site, input: &EffectInput) -> Option<Effect> {
             from.map(|from| Effect::Set {
                 slot: cx.names.intern(slot),
                 from,
+                layer: layer.as_deref().map(|layer| cx.names.intern(layer)),
             })
         }
         EffectInput::Remove { slot } => Some(Effect::Remove {
@@ -915,14 +921,120 @@ fn slot(cx: &mut Cx<'_>, site: Site, input: &SlotInput) {
         }
         Some(parsed)
     });
+    let (duplicates, merge_duplicates, layers) = slot_policy(cx, site, input, accumulate);
     cx.slots.push(SlotDecl {
         name: sym,
         ty,
         namespace,
         description: input.description.clone(),
         accumulate,
+        merge_duplicates,
+        duplicates,
+        layers,
         site,
     });
+}
+
+/// A slot's duplicate policy, merge treatment, and layer order, checked
+/// against each other and its accumulation (`KDLITH-DLC005`). Absent or
+/// broken, the slot keeps the fail-closed reject defaults.
+fn slot_policy(
+    cx: &mut Cx<'_>,
+    site: Site,
+    input: &SlotInput,
+    accumulate: Option<AccumulateOp>,
+) -> (SlotDuplicates, MergeDuplicates, Vec<Sym>) {
+    const CLOSED: (SlotDuplicates, MergeDuplicates, Vec<Sym>) =
+        (SlotDuplicates::Reject, MergeDuplicates::Reject, Vec::new());
+    let label = format!("slot {}", input.name);
+    let duplicates = match input.duplicates.as_deref() {
+        None => SlotDuplicates::Reject,
+        Some(name) => {
+            let Some(parsed) = SlotDuplicates::from_name(name) else {
+                cx.not_member(site, "slot.duplicates", "SlotDuplicates", name);
+                return CLOSED;
+            };
+            parsed
+        }
+    };
+    let merge_duplicates = match input.accumulate_duplicates.as_deref() {
+        None => MergeDuplicates::Reject,
+        Some(name) => {
+            let Some(parsed) = MergeDuplicates::from_name(name) else {
+                cx.not_member(site, "slot.accumulate.duplicates", "MergeDuplicates", name);
+                return CLOSED;
+            };
+            parsed
+        }
+    };
+    let mut ok = true;
+    if input.accumulate.is_some() && duplicates != SlotDuplicates::Reject {
+        // Accumulation already defines how a second value combines; a
+        // slot-level policy would contradict it.
+        let reason = format!(
+            "an accumulating slot combines through its operation, so duplicates={} contradicts it",
+            duplicates.name()
+        );
+        cx.malformed(site, &label, &reason);
+        ok = false;
+    }
+    // The dialect's fallback spells `reject` on every accumulation, so
+    // only a declared non-default treatment can contradict its operation.
+    if merge_duplicates != MergeDuplicates::Reject {
+        let reason = match (input.accumulate.as_deref(), accumulate) {
+            (None, _) => Some("an accumulation duplicate treatment needs an accumulate operation"),
+            (Some(_), Some(AccumulateOp::Append)) => Some(
+                "an accumulation duplicate treatment is declared for merge only; append has no keys",
+            ),
+            // Merge, or an operation already reported as no member.
+            _ => None,
+        };
+        if let Some(reason) = reason {
+            cx.malformed(site, &label, reason);
+            ok = false;
+        }
+    }
+    let mut layers: Vec<Sym> = Vec::new();
+    match (duplicates, input.layers.as_deref()) {
+        (SlotDuplicates::Layered, None | Some([])) => {
+            cx.malformed(
+                site,
+                &label,
+                "a layered slot lists its layer order in layers",
+            );
+            ok = false;
+        }
+        (SlotDuplicates::Layered, Some(names)) => {
+            for name in names {
+                if !cx.kebab(site, &label, name, "layer name") {
+                    ok = false;
+                    continue;
+                }
+                let sym = cx.names.intern(name);
+                if layers.contains(&sym) {
+                    let reason = format!("layers lists {name} more than once");
+                    cx.malformed(site, &label, &reason);
+                    ok = false;
+                    continue;
+                }
+                layers.push(sym);
+            }
+        }
+        (_, Some(_)) => {
+            let reason = format!(
+                "layers is declared only by a layered slot, and this slot is duplicates={}",
+                duplicates.name()
+            );
+            cx.malformed(site, &label, &reason);
+            ok = false;
+        }
+        (_, None) => {}
+    }
+    if ok {
+        (duplicates, merge_duplicates, layers)
+    } else {
+        CLOSED
+    }
 }
 
 /// The collection shape a slot's type has, once optional and nullable

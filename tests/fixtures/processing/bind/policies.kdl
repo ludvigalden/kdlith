@@ -1,0 +1,139 @@
+// The slot-duplicate-policy schema the policy scenarios share: one slot
+// per policy arm (the reject default, last-wins, layered with a declared
+// layer order, merge under the reject default, merge last-wins), a
+// following-effect control per slot and layer, children-effect scopes
+// over the layered and reject slots, records reading every slot, and a
+// source-import node projecting slots into imported documents.
+schema policies version="1" {
+    types {
+        string Locale {
+            format kebab-case
+        }
+        string Key {
+            format kebab-case
+        }
+        object Label {
+            field text String
+        }
+        object Labels {
+            field labels "ordered-map<Key, Label>"
+        }
+        object Stamp {
+            field plain "optional<Locale>"
+            field lw "optional<Locale>"
+            field lay "optional<Locale>"
+        }
+        object Seen {
+            field labels "optional<ordered-map<Key, Label>>"
+            field kept "optional<ordered-map<Key, Label>>"
+        }
+    }
+    context {
+        slot plain Locale
+        slot lw Locale duplicates=last-wins
+        slot lay Locale duplicates=layered {
+            layers override base
+        }
+        slot labels "ordered-map<Key, Label>" {
+            accumulate merge
+        }
+        slot kept "ordered-map<Key, Label>" {
+            accumulate merge duplicates=last-wins
+        }
+    }
+    node plain role=context-control {
+        field value Locale arg=0
+        effects target=following {
+            set plain field=value
+        }
+    }
+    node lw role=context-control {
+        field value Locale arg=0
+        effects target=following {
+            set lw field=value
+        }
+    }
+    node base role=context-control {
+        field value Locale arg=0
+        effects target=following {
+            set lay field=value layer=base
+        }
+    }
+    node override role=context-control {
+        field value Locale arg=0
+        effects target=following {
+            set lay field=value layer=override
+        }
+    }
+    node scope role=context-control {
+        field value Locale arg=0
+        effects target=children {
+            set lay field=value layer=override
+        }
+        children inner
+    }
+    node pscope role=context-control {
+        field value Locale arg=0
+        effects target=children {
+            set plain field=value
+        }
+        children inner
+    }
+    node inner role=record type=Stamp {
+        parents scope pscope
+        field plain context=plain
+        field lw context=lw
+        field lay context=lay
+    }
+    node stamp role=record type=Stamp {
+        field plain context=plain
+        field lw context=lw
+        field lay context=lay
+    }
+    node labels role=context-control type=Labels {
+        field labels {
+            from {
+                entries label key="arg(0)" value=Label
+            }
+            duplicate-keys reject
+        }
+        effects target=following {
+            set labels field=labels
+        }
+    }
+    node label type=Label parent=labels {
+        field text arg=1
+    }
+    node kept role=context-control type=Labels {
+        field labels {
+            from {
+                entries entry key="arg(0)" value=Label
+            }
+            duplicate-keys reject
+        }
+        effects target=following {
+            set kept field=labels
+        }
+    }
+    node entry type=Label parent=kept {
+        field text arg=1
+    }
+    node seen role=record type=Seen {
+        field labels context=labels
+        field kept context=kept
+    }
+    node use role=source-import {
+        field path String arg=0
+        field project "optional<list<String>>" {
+            from {
+                child project {
+                    args
+                }
+            }
+        }
+        children project max-occurs=1
+    }
+    document {
+        following plain lw base override scope pscope stamp labels kept seen use
+    }
+}

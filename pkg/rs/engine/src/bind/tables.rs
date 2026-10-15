@@ -126,8 +126,8 @@ impl Table {
 pub(crate) struct Tables {
     pub(crate) decls: Vec<DeclInfo>,
     pub(crate) scopes: Vec<Option<Table>>,
-    /// Each slot's name, type, and declared accumulation operation, by
-    /// slot index.
+    /// Each slot's name, type, declared accumulation operation, and
+    /// declared duplicate policy, by slot index.
     pub(crate) slots: Vec<SlotInfo>,
 }
 
@@ -137,6 +137,12 @@ pub(crate) struct SlotInfo {
     pub(crate) name: Sym,
     pub(crate) ty: TypeExpr,
     pub(crate) accumulate: Option<crate::definition::AccumulateOp>,
+    /// How a `merge` accumulation treats a key contributed twice.
+    pub(crate) merge_duplicates: crate::definition::MergeDuplicates,
+    /// How a plain set reaching the occupied slot is treated.
+    pub(crate) duplicates: crate::definition::SlotDuplicates,
+    /// The layer order of a layered slot, highest precedence first.
+    pub(crate) layers: Vec<String>,
 }
 
 /// One binding source and the owner field it supplies.
@@ -160,14 +166,25 @@ pub(crate) fn build(def: &Definition) -> Tables {
         scopes: vec![None; def.bindings.scopes().len()],
         slots: slots
             .into_iter()
-            .map(|(_, name, ty)| SlotInfo {
-                name,
-                ty,
-                accumulate: def
-                    .slots
-                    .iter()
-                    .find(|slot| slot.name == name)
-                    .and_then(|slot| slot.accumulate),
+            .map(|(_, name, ty)| {
+                let decl = def.slots.iter().find(|slot| slot.name == name);
+                SlotInfo {
+                    name,
+                    ty,
+                    accumulate: decl.and_then(|slot| slot.accumulate),
+                    // A slot the plan lays out always has a declaration;
+                    // were one missing, the fail-closed defaults apply.
+                    merge_duplicates: decl.map(|slot| slot.merge_duplicates).unwrap_or_default(),
+                    duplicates: decl.map(|slot| slot.duplicates).unwrap_or_default(),
+                    layers: decl
+                        .map(|slot| {
+                            slot.layers
+                                .iter()
+                                .map(|layer| def.names.resolve(*layer).to_owned())
+                                .collect()
+                        })
+                        .unwrap_or_default(),
+                }
             })
             .collect(),
     };

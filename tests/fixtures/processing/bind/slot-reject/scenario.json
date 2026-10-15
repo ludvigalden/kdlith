@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "The reject default (no duplicates= declared) is satisfied by a single contribution: one plain set binds and the following stamp reads it; the second-value rejection is invalid/data/slot-duplicate-reject",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/policies.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":1},\"type_name\":\"Stamp\",\"fields\":[{\"name\":\"plain\",\"value\":{\"kind\":\"string\",\"value\":\"en\"},\"origin\":1}],\"origin\":1,\"validation\":\"valid\"}}\n{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":null}}\n"
+    ]
+  }
+}

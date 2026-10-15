@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A handler cannot name a layer, so its set on a layered slot fails closed at its effect point as KDLITH-DLC005 rather than landing in an undeclared layer",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "--handler",
+    "copy-fields",
+    "data.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "The base value restored on leaving a children scope is still held: a later base set is KDLITH-CTX006 against the base set before the scope",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/policies.kdl",
+    "data.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

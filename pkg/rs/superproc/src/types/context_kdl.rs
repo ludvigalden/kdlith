@@ -20,6 +20,10 @@ string_type! {
     pub struct HandlerName;
 }
 
+string_type! {
+    pub struct LayerName;
+}
+
 object_type! {
     pub struct SlotDef {
         "name" => name: SlotName,
@@ -29,12 +33,29 @@ object_type! {
         // The slot's accumulation policy: how an accumulating effect
         // combines with the value already held.
         "accumulate" => accumulate: Option<AccumulationPolicy>,
+        // How a second value reaching a slot that already holds one is
+        // treated when the slot does not accumulate.
+        "duplicates" => duplicates: SlotDuplicates,
+        // The layer order of a layered slot, highest precedence first.
+        "layers" => layers: Option<Vec<LayerName>>,
+    }
+}
+
+enum_type! {
+    /// How a set effect reaching an occupied slot is treated; the
+    /// fail-closed default rejects.
+    pub enum SlotDuplicates {
+        "reject" => Reject,
+        "last-wins" => LastWins,
+        "layered" => Layered,
     }
 }
 
 object_type! {
     pub struct AccumulationPolicy {
         "op" => op: AccumulateOp,
+        // How merge treats a key contributed twice.
+        "duplicates" => duplicates: MergeDuplicates,
     }
 }
 
@@ -44,6 +65,15 @@ enum_type! {
     pub enum AccumulateOp {
         "append" => Append,
         "merge" => Merge,
+    }
+}
+
+enum_type! {
+    /// How merge treats a key the held map already carries; the
+    /// fail-closed default rejects.
+    pub enum MergeDuplicates {
+        "reject" => Reject,
+        "last-wins" => LastWins,
     }
 }
 
@@ -75,6 +105,8 @@ object_type! {
         "slot" => slot: SlotName,
         "field" => field: Option<FieldName>,
         "value" => value: Option<ValueExpr>,
+        // The layer a set on a layered slot names.
+        "layer" => layer: Option<LayerName>,
     }
 }
 
@@ -161,9 +193,12 @@ pub(crate) const TYPES: &[TypeShape] = &[
     SlotName::SHAPE,
     NamespaceName::SHAPE,
     HandlerName::SHAPE,
+    LayerName::SHAPE,
     SlotDef::SHAPE,
+    SlotDuplicates::SHAPE,
     AccumulationPolicy::SHAPE,
     AccumulateOp::SHAPE,
+    MergeDuplicates::SHAPE,
     EffectTarget::SHAPE,
     EffectGroup::SHAPE,
     Effect::SHAPE,

@@ -49,9 +49,10 @@ pub use compile::{DIALECT_VERSION, compile_dialect, compile_dialect_input, compi
 pub use data::{BoundResult, DataReader, ReadOptions};
 pub use definition::{
     AccumulateOp, AnchorDecl, CheckScope, Definition, DefinitionKind, DiscoveryDecl, DocumentRule,
-    DuplicateTreatment, ImportDecl, MissingRequirement, Patterns, ProfileDecl, ProviderDecl,
-    Qualification, QualifierDecl, ReferenceDecl, ResolutionPolicyDecl, ResolutionSelection,
-    SlotDecl, SourceContextDecl, SourceContextMode, SourceFieldDecl,
+    DuplicateTreatment, ImportDecl, MergeDuplicates, MissingRequirement, Patterns, ProfileDecl,
+    ProviderDecl, Qualification, QualifierDecl, ReferenceDecl, ResolutionPolicyDecl,
+    ResolutionSelection, SlotDecl, SlotDuplicates, SourceContextDecl, SourceContextMode,
+    SourceFieldDecl,
 };
 pub use diag::Site;
 pub use discovery::{Expansion, ExpansionError, Segment, expand, is_expression, parse};

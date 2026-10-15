@@ -87,6 +87,12 @@ pub struct SlotValue {
     /// How the value came to be; empty when untraced. Fingerprints
     /// ignore it: provenance is not semantics.
     pub trace: Trace,
+    /// The declared override layer the value was set under, for a slot
+    /// whose duplicate policy is layered; `None` for every other value.
+    /// It travels with the value through scope restore, projection, and
+    /// snapshots, so layered precedence never depends on where the held
+    /// value came from.
+    pub layer: Option<String>,
 }
 
 impl SlotValue {
@@ -95,6 +101,7 @@ impl SlotValue {
             value,
             origin,
             trace: Trace::default(),
+            layer: None,
         }
     }
 
@@ -102,6 +109,13 @@ impl SlotValue {
     #[must_use]
     pub fn with_trace(mut self, trace: Trace) -> Self {
         self.trace = trace;
+        self
+    }
+
+    /// The value with the override layer it was set under.
+    #[must_use]
+    pub fn with_layer(mut self, layer: Option<String>) -> Self {
+        self.layer = layer;
         self
     }
 }
@@ -250,6 +264,12 @@ impl Context {
                 Some(held) => {
                     hash = stable_hash_step(hash, b"=");
                     hash = hash_value(hash, &held.value);
+                    // A layer is semantics: it decides what a later set
+                    // may replace. An unlayered value hashes as before.
+                    if let Some(layer) = &held.layer {
+                        hash = stable_hash_step(hash, b"@");
+                        hash = stable_hash_step(hash, layer.as_bytes());
+                    }
                 }
                 None => hash = stable_hash_step(hash, b"-"),
             }

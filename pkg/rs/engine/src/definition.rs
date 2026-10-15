@@ -124,7 +124,81 @@ pub struct SlotDecl {
     /// How an accumulating set combines with the value the slot already
     /// holds; `None` leaves sets plain.
     pub accumulate: Option<AccumulateOp>,
+    /// How a `merge` accumulation treats a key the held map already
+    /// carries; `Reject` for every slot that does not merge.
+    pub merge_duplicates: MergeDuplicates,
+    /// How a plain set reaching an occupied slot is treated.
+    pub duplicates: SlotDuplicates,
+    /// The layer order of a layered slot, highest precedence first;
+    /// empty for every other slot.
+    pub layers: Vec<Sym>,
     pub site: Site,
+}
+
+/// How a set reaching a slot that already holds a value is treated when
+/// the slot does not accumulate. The fail-closed default rejects.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum SlotDuplicates {
+    /// A second value is rejected (`KDLITH-CTX006`).
+    #[default]
+    Reject,
+    /// The later value replaces the held one.
+    LastWins,
+    /// A higher layer's value replaces a lower layer's; a lower layer's
+    /// later value leaves the held value in place; a second value within
+    /// one layer, or meeting a held value without a layer, is rejected.
+    Layered,
+}
+
+impl SlotDuplicates {
+    pub fn from_name(name: &str) -> Option<Self> {
+        Some(match name {
+            "reject" => SlotDuplicates::Reject,
+            "last-wins" => SlotDuplicates::LastWins,
+            "layered" => SlotDuplicates::Layered,
+            _ => return None,
+        })
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            SlotDuplicates::Reject => "reject",
+            SlotDuplicates::LastWins => "last-wins",
+            SlotDuplicates::Layered => "layered",
+        }
+    }
+}
+
+/// How a `merge` accumulation treats a key contributed twice. The
+/// fail-closed default rejects.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum MergeDuplicates {
+    /// A key contributed twice is a duplicate-key rejection
+    /// (`KDLITH-BND006`), never a silent overwrite.
+    #[default]
+    Reject,
+    /// The later entry replaces the held entry's value, keeping the
+    /// key's first position.
+    LastWins,
+}
+
+impl MergeDuplicates {
+    pub fn from_name(name: &str) -> Option<Self> {
+        Some(match name {
+            "reject" => MergeDuplicates::Reject,
+            "last-wins" => MergeDuplicates::LastWins,
+            _ => return None,
+        })
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            MergeDuplicates::Reject => "reject",
+            MergeDuplicates::LastWins => "last-wins",
+        }
+    }
 }
 
 /// How an accumulating effect combines with the slot's incoming value.
@@ -133,8 +207,8 @@ pub struct SlotDecl {
 pub enum AccumulateOp {
     /// Concatenate lists in effect order; for list-typed slots.
     Append,
-    /// Combine maps key-wise; a key contributed twice is a duplicate-key
-    /// rejection, never a silent overwrite.
+    /// Combine maps key-wise under the slot's declared merge duplicate
+    /// treatment.
     Merge,
 }
 

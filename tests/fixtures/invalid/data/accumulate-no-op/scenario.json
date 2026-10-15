@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "A second value reaching an occupied list-typed slot that declares no combining operation is rejected: accumulation is a declared policy, not an implicit replacement",
+  "description": "A second value reaching an occupied list-typed slot that declares no combining operation is rejected under the slot's reject default as KDLITH-CTX006: accumulation is a declared policy, not an implicit replacement (the retired KDLITH-CTX003 named this case before the duplicate policy subsumed it)",
   "args": [
     "vet",
     "data",

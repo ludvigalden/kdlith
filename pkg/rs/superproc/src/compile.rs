@@ -406,7 +406,21 @@ fn declaration(value: Item) -> Option<Construct> {
             ty: slot.ty.as_str().to_owned(),
             namespace: slot.namespace.as_ref().map(|ns| ns.as_str().to_owned()),
             description: slot.description,
-            accumulate: slot.accumulate.map(|policy| policy.op.member().to_owned()),
+            accumulate: slot
+                .accumulate
+                .as_ref()
+                .map(|policy| policy.op.member().to_owned()),
+            accumulate_duplicates: slot
+                .accumulate
+                .as_ref()
+                .map(|policy| policy.duplicates.member().to_owned()),
+            duplicates: Some(slot.duplicates.member().to_owned()),
+            layers: slot.layers.as_ref().map(|layers| {
+                layers
+                    .iter()
+                    .map(|layer| layer.as_str().to_owned())
+                    .collect()
+            }),
         }),
         Item::ProfileDef(ProfileDef {
             name,
@@ -717,6 +731,7 @@ fn effect(effect: &Effect) -> EffectInput {
             slot: set.slot.as_str().to_owned(),
             field: set.field.as_ref().map(|field| field.as_str().to_owned()),
             value: set.value.clone(),
+            layer: set.layer.as_ref().map(|layer| layer.as_str().to_owned()),
         },
         Effect::Remove(remove) => EffectInput::Remove {
             slot: remove.slot.as_str().to_owned(),

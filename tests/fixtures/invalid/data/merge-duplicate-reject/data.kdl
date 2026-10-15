@@ -1,0 +1,7 @@
+labels {
+    label a "one"
+}
+labels {
+    label a "again"
+}
+seen

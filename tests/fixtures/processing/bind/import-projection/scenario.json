@@ -1,11 +1,11 @@
 {
   "binary": "kdlith",
-  "description": "An import projecting the locale slot gives the imported invocation the caller's value only: the imported document's first node is a stamp, which reads en-gb — a value it can only have through the projection — before the imported document sets its own locale to sv-se, and the caller's later stamp still reads en-gb, proving the imported context is a projection whose mutations never escape",
+  "description": "An import projecting a last-wins locale slot gives the imported invocation the caller's value only: the imported document's first node is a stamp, which reads en-gb — a value it can only have through the projection — before the imported document sets its own locale to sv-se, which the slot's declared last-wins policy lets replace the projected value, and the caller's later stamp still reads en-gb, proving the imported context is a projection whose mutations never escape (under the reject default that second value is KDLITH-CTX006, invalid/data/slot-duplicate-reject)",
   "args": [
     "vet",
     "data",
     "--schema",
-    "{fx-suite}/processing/bind/imports.kdl",
+    "schema.kdl",
     "data.kdl"
   ],
   "expect": {

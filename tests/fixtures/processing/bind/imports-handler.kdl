@@ -1,7 +1,8 @@
 // The import-mechanics schema with a handler-driven context control:
 // the locale control's effect is the built-in copy-fields handler, so
 // the locale slot is set by an installed handler rather than by a
-// declarative set, and an import may project that slot.
+// declarative set, and an import may project that slot. The slot is
+// last-wins, so a handler setting it again replaces the held value.
 schema imports version="1" {
     types {
         string Locale {
@@ -15,7 +16,7 @@ schema imports version="1" {
         }
     }
     context {
-        slot locale Locale namespace=defaults
+        slot locale Locale namespace=defaults duplicates=last-wins
     }
     node part role=record type=Part {
         field id arg=0

@@ -1,0 +1,8 @@
+kept {
+    entry a "one"
+    entry b "two"
+}
+kept {
+    entry a "again"
+}
+seen

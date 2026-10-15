@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A second value reaching a slot under the reject default is KDLITH-CTX006 naming both contributions by origin; the held value stays bound for later nodes (processing/bind/slot-reject-keeps-held pins the stamp)",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/policies.kdl",
+    "data.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

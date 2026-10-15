@@ -4,7 +4,7 @@
 
 use crate::bindings::{BindingCatalog, Effect, EffectTarget, NodeDecl, Placement, SetFrom, Source};
 use crate::compile::Cx;
-use crate::definition::DefinitionKind;
+use crate::definition::{DefinitionKind, SlotDuplicates};
 use crate::diag::{
     DISPATCH_PREFIX, NOT_STREAMABLE, Site, TYPE_EXPRESSION, UNKNOWN_TYPE, UNRESOLVED_DIALECT,
     UNRESOLVED_SCHEMA,
@@ -285,8 +285,9 @@ fn node_refs(cx: &mut Cx<'_>, bindings: &BindingCatalog, symbols: &SymbolCatalog
     for group in &node.effects {
         for effect in &group.effects {
             match effect {
-                Effect::Set { slot, from } => {
+                Effect::Set { slot, from, layer } => {
                     slot_ref(cx, group.site, *slot);
+                    set_layer(cx, &label, group.site, *slot, *layer);
                     if let SetFrom::Field(field) = from {
                         effect_field(cx, node, &label, group.target, group.site, (*slot, *field));
                     }
@@ -313,6 +314,35 @@ fn object_fields(cx: &mut Cx<'_>, site: Site, label: &str, ty: Sym) -> Option<Ve
     let spelled = format!("{} of node {label}", cx.names.resolve(ty));
     unresolved(cx, site, "object type", &spelled);
     None
+}
+
+/// A set's layer against its slot's duplicate policy: every set on a
+/// layered slot names one of the slot's layers, and a set on any other
+/// slot names none. An undeclared slot is reported by `slot_ref`.
+fn set_layer(cx: &mut Cx<'_>, label: &str, site: Site, slot: Sym, layer: Option<Sym>) {
+    let Some(decl) = cx.slots.iter().find(|s| s.name == slot) else {
+        return;
+    };
+    let layered = decl.duplicates == SlotDuplicates::Layered;
+    let declared = layer.is_none_or(|layer| decl.layers.contains(&layer));
+    let spelled = cx.names.resolve(slot).to_owned();
+    match layer {
+        None if layered => {
+            let reason = format!("set {spelled} names no layer, but slot {spelled} is layered");
+            cx.malformed(site, label, &reason);
+        }
+        Some(layer) if !layered => {
+            let layer = cx.names.resolve(layer).to_owned();
+            let reason =
+                format!("set {spelled} names layer {layer}, but slot {spelled} is not layered");
+            cx.malformed(site, label, &reason);
+        }
+        Some(layer) if !declared => {
+            let spelled = format!("{} of slot {spelled}", cx.names.resolve(layer));
+            unresolved(cx, site, "context layer", &spelled);
+        }
+        _ => {}
+    }
 }
 
 fn slot_ref(cx: &mut Cx<'_>, site: Site, slot: Sym) {

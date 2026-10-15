@@ -101,7 +101,9 @@ and binder every processor uses. Negative controls under
 rejected construct. The mechanisms this expansion defines carry the same
 coverage discipline: at least one positive bind scenario per mechanism
 and one negative control per new code (`KDLITH-SCH011`, `KDLITH-IMP004`,
-`KDLITH-IMP005`, `KDLITH-CTX003`, `KDLITH-CTX004`), landing with the
+`KDLITH-IMP005`, `KDLITH-CTX006`, `KDLITH-CTX004`; the retired
+`KDLITH-CTX003` is subsumed by `KDLITH-CTX006`, whose negative control is
+the `accumulate-no-op` scenario), landing with the
 canonical declarations that define them.
 
 ## In-scope mechanisms
@@ -159,7 +161,9 @@ canonical declarations that define them.
 | Context-bound fields and policies      | A field may read a slot (`context=` shorthand or a `context` source) under policy `fallback` (supplies the field only when no explicit value is present) or `fixed` (an explicit value must agree)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | R1 §4, R2 §10 |
 | Execution timing                       | A node is bound against its incoming context, then its effects are computed. Children effects apply on entering the children and must be computable from the node's header; one that depends on a child field is rejected as incompatible with streaming. Following effects apply only after the node completes successfully. Leaving a boundary restores the caller's context. A late effect never changes nodes already bound.                                                                                                                                                                                                                                                              | R1 §4, R2 §11 |
 | Source context                         | A `source-context` block in a schema definition declares fields derived from source metadata — `source-context { field NAME TYPE { from { ... } } }` — where sources such as `path-stem` name registered source-metadata providers the processor installs (an unregistered source fails closed). The block declares its mode — `initial`, `fallback`, or `fixed` — explicitly; there is no default, so an undeclared mode is a missing required property (`KDLITH-BND004`), never a silent fallback. Values apply before the document's first semantic node, and every derived value records its origin in provenance, so filename inference never becomes an invisible source of precedence. | R1 §5, R2 §11 |
-| Accumulating context                   | A slot may declare an accumulation policy naming its combining operation: `append` for list-typed slots (the incoming list concatenates in effect order) and `merge` for map-typed slots (key-wise, where a key contributed twice is a duplicate-key rejection, never a silent overwrite). An accumulating effect on a slot that declares no operation is rejected (`KDLITH-CTX003`). `remove` still unsets and `clear` still clears; accumulation is a third policy, not a replacement for either.                                                                                                                                                                                           | R1 §4         |
+| Accumulating context                   | A slot may declare an accumulation policy naming its combining operation: `append` for list-typed slots (the incoming list concatenates in effect order) and `merge` for map-typed slots (key-wise). `merge` declares how a key contributed twice is treated: `accumulate merge duplicates=reject`, the default, rejects it as a duplicate key (`KDLITH-BND006`), never a silent overwrite; `duplicates=last-wins` replaces the held entry's value and keeps the key's first position. `remove` still unsets and `clear` still clears; accumulation is a third policy, not a replacement for either.                                                                                          | R1 §4         |
+| Slot duplicate policies                | A slot that does not accumulate declares how a second value reaching it is treated: `slot NAME TYPE duplicates=reject`, the fail-closed default, rejects it (`KDLITH-CTX006`); `duplicates=last-wins` replaces the held value; `duplicates=layered` orders values by declared layer. The held value is the slot's incoming one, inherited by a children scope, projected into an import, or set earlier in the scope; an equal value is still a second value. `remove` and `clear` unset, so a later set is a first one.                                                                                                                                                                      | R1 §4, R3 §9  |
+| Layered slots                          | A layered slot lists its layers highest precedence first (`layers override base`), and every `set` on it names one (`set NAME field=F layer=L`). A higher layer's value replaces a lower one's, a lower layer's leaves the held value in place, and a second value in one layer, or meeting a held value without a layer, is rejected (`KDLITH-CTX006`), so the result does not depend on effect order. A layer on another slot's set, a layered set with none, or layers without `layered` is malformed.                                                                                                                                                                                     | R3 §9         |
 | Context snapshots                      | The engine persists context as shared immutable snapshots or checkpoint-plus-delta chains and records, per indexed record, its identity and type, source digest and span, schema fingerprint, context snapshot ID, invocation ID, and validation status. On-demand resolution restores the snapshot and binds the recorded span instead of replaying every preceding control. A restore whose schema fingerprint or invocation lineage does not match the requesting context is rejected (`KDLITH-CTX004`), and a file without a prior scan or a trustworthy checkpoint cannot be entered at an arbitrary node: forward context makes that impossible by construction, not by policy.         | R1 §7         |
 
 ### Documents, structure, and imports (`documents.kdl`)
@@ -370,12 +374,16 @@ dialect for every processor, hand-written or generated:
     exactly one named by the invocation (`KDLITH-SCH011` otherwise);
     dispatch consults the profile as part of position and never tries
     profiles in turn.
-14. **Apply source context and accumulation.** Source-context values
-    apply under their declared mode before the document's first semantic
-    node, with their origin recorded; an accumulating slot combines only
-    through its declared operation (`KDLITH-CTX003` otherwise), with
-    `append` concatenating lists in effect order and `merge` rejecting a
-    twice-contributed key.
+14. **Apply source context, accumulation, and duplicate policies.**
+    Source-context values apply under their declared mode before the
+    document's first semantic node, with their origin recorded. An
+    accumulating slot combines through its declared operation, with
+    `append` concatenating lists in effect order and `merge` treating a
+    twice-contributed key under its declared duplicate treatment
+    (`reject` by default, `KDLITH-BND006`). Every other set reaching an
+    occupied slot follows the slot's declared duplicate policy: `reject`
+    by default (`KDLITH-CTX006`), `last-wins`, or `layered` under the
+    slot's declared layer order.
 15. **Preserve contributions and provider descriptors.** Yield
     contributions as preserved records — target, value, layer,
     application scope, source origin — and route them to the registered
@@ -435,7 +443,9 @@ compiled definition once and never reads the definition's KDL:
   agree with the slot (`fixed`). A field read only from context fails
   where no control provides the slot. Source-context values apply under
   their declared mode before the first semantic node; an accumulating
-  slot combines only through its declared operation. Effects follow the
+  slot combines only through its declared operation, and any other set
+  reaching an occupied slot follows the slot's declared duplicate
+  policy, rejecting it by default. Effects follow the
   execution timing above, and a node that fails applies no following
   effects.
 - **Items.** A bound node yields the item its role names: a record, a
@@ -489,8 +499,25 @@ The expanded surface adds `KDLITH-SCH011` to this table and retires
 live with their mechanisms: the discovery failures `KDLITH-IMP004` and
 `KDLITH-IMP005` extend the import codes in
 [Import resolution](#import-resolution), and the context failures
-`KDLITH-CTX003`, `KDLITH-CTX004`, and `KDLITH-CTX005` are stated in the
-context rows above.
+`KDLITH-CTX004` and `KDLITH-CTX005` are stated in the context rows
+above (the expansion's `KDLITH-CTX003` is retired, as below).
+
+The slot duplicate policies add `KDLITH-CTX006`, minted only by the
+`reject` arm of a slot's declared duplicate policy: a set reaching an
+occupied slot that does not accumulate, under `reject` (the default),
+or under `layered` within one layer or against a held value that carries
+no layer. It subsumes `KDLITH-CTX003`, which is retired: a second value
+on a list- or map-typed slot without an accumulation operation is a
+duplicate under that slot's policy like any other, so one construct
+keeps one code. A twice-contributed `merge` key under its `reject`
+default keeps its duplicate-key code, `KDLITH-BND006`. A `layer=` on a
+set whose slot is not layered, a set on a layered slot without one,
+`layers` on a slot that is not layered, a non-`reject` duplicate
+policy on an accumulating slot, and a non-`reject` duplicate treatment
+on `append` are malformed constructs
+(`KDLITH-DLC005`); a layer name the slot does not list is an unresolved
+reference (`KDLITH-SCH006`, or `KDLITH-DLC008` in a dialect
+definition).
 
 The remaining definition codes (`KDLITH-SCH001`, `KDLITH-SCH002`,
 `KDLITH-SCH004`, `KDLITH-SCH005`, `KDLITH-SCH007`, `KDLITH-SCH008`,

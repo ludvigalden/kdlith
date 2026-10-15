@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "A caller-projected value and an imported document's own value collide at the same node index in two documents without being confused: the caller sets base de at source 0 node 0, the imported part sets base fr at source 1 node 0, and the rejection KDLITH-CTX006 names the held contribution as source 0 while the part's stamp keeps de and the run exits 1",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/policies.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stdout-contains": [
+      "{\"item\":\"document\",\"data\":{\"source\":1,\"path\":\"part.kdl\"}}\n{\"item\":\"diagnostic\",\"data\":{\"code\":\"KDLITH-CTX006\",\"severity\":\"error\",\"source_path\":\"part.kdl\",\"span\":{\"start\":0,\"end\":4},\"line\":1,\"col\":1,\"origin\":\"data-document\",\"labels\":[],\"related\":[],\"correction\":\"Remove the held value before setting the slot again, or declare duplicates=last-wins or duplicates=layered on the slot\",\"message\":\"context lay under duplicates=layered receives a second value from layer base at line 1 column 6 while it holds one from layer base at source 0 line 1 column 6\"}}\n{\"item\":\"record\",\"data\":{\"node\":{\"source\":1,\"index\":1},\"type_name\":\"Stamp\",\"fields\":[{\"name\":\"lay\",\"value\":{\"kind\":\"string\",\"value\":\"de\"},\"origin\":1}],\"origin\":1,\"validation\":\"valid\"}}\n{\"item\":\"scope-complete\",\"data\":{\"source\":1,\"scope\":null}}\n{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":3},\"type_name\":\"Stamp\",\"fields\":[{\"name\":\"lay\",\"value\":{\"kind\":\"string\",\"value\":\"de\"},\"origin\":3}],\"origin\":3,\"validation\":\"valid\"}}\n"
+    ],
+    "stderr-golden": "stderr.golden"
+  }
+}

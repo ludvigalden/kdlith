@@ -41,6 +41,8 @@ pub enum EffectStep {
     Set {
         slot: SlotId,
         from: SetFrom,
+        /// The layer a set on a layered slot names.
+        layer: Option<Sym>,
     },
     Remove {
         slot: SlotId,
@@ -167,9 +169,10 @@ fn effects(context: &ContextPlan, node: &NodeDecl, target: EffectTarget) -> Vec<
         .filter(|group| group.target == target)
         .flat_map(|group| &group.effects)
         .filter_map(|effect| match effect {
-            Effect::Set { slot, from } => context.slot(*slot).map(|slot| EffectStep::Set {
+            Effect::Set { slot, from, layer } => context.slot(*slot).map(|slot| EffectStep::Set {
                 slot,
                 from: from.clone(),
+                layer: *layer,
             }),
             Effect::Remove { slot } => context.slot(*slot).map(|slot| EffectStep::Remove { slot }),
             Effect::Clear { namespace } => context

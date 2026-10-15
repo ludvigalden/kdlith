@@ -1,0 +1,2 @@
+error[KDLITH-CTX006]: context loc under duplicates=reject receives a second value from line 1 column 5 while it holds one from source metadata
+  --> en-gb.kdl:1:1

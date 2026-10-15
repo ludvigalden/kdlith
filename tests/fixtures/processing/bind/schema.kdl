@@ -1,7 +1,9 @@
 // A small schema the binding scenarios share: every binding source, the
 // collision and duplicate-key policies, context slots under fallback and
-// fixed policies, children and following effects, cardinality, an
-// exactly-one group, a document rule, and each processing role.
+// fixed policies, a layered slot (a following set is the base layer, a
+// children set the override layer), children and following effects,
+// cardinality, an exactly-one group, a document rule, and each
+// processing role.
 schema shelf version="1" {
     types {
         string Locale {
@@ -55,7 +57,9 @@ schema shelf version="1" {
         }
     }
     context {
-        slot locale Locale namespace=defaults
+        slot locale Locale namespace=defaults duplicates=layered {
+            layers override base
+        }
         slot region Locale namespace=defaults
     }
     node group role=declaration type=Group {
@@ -134,14 +138,14 @@ schema shelf version="1" {
     node override role=context-control parent=section {
         field value Locale arg=0
         effects target=children {
-            set locale field=value
+            set locale field=value layer=override
         }
         children item
     }
     node locale role=context-control {
         field value Locale arg=0
         effects target=following {
-            set locale field=value
+            set locale field=value layer=base
         }
     }
     node region role=context-control {
@@ -162,7 +166,7 @@ schema shelf version="1" {
     }
     node english role=context-control {
         effects target=following {
-            set locale value=en
+            set locale value=en layer=base
         }
     }
     node setting role=contribution type=Setting {

@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "A layered slot projected into an import keeps its layer: the caller sets base de and projects lay, the imported document sets the override layer to en and its stamp reads en, and the caller's later stamp reads de, because the imported invocation's value never escapes",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/policies.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"import\",\"data\":{\"node\":{\"source\":0,\"index\":1},\"expression\":\"part.kdl\",\"alias\":null,\"project\":[\"lay\"],\"repeated\":\"reject\",\"site\":{\"source\":0,\"span\":{\"start\":{\"offset\":8,\"line\":2,\"column\":1},\"end\":{\"offset\":11,\"line\":2,\"column\":4}}},\"origin\":1}}\n{\"item\":\"document\",\"data\":{\"source\":1,\"path\":\"part.kdl\"}}\n{\"item\":\"record\",\"data\":{\"node\":{\"source\":1,\"index\":1},\"type_name\":\"Stamp\",\"fields\":[{\"name\":\"lay\",\"value\":{\"kind\":\"string\",\"value\":\"en\"},\"origin\":1}],\"origin\":1,\"validation\":\"valid\"}}\n{\"item\":\"scope-complete\",\"data\":{\"source\":1,\"scope\":null}}\n{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":3},\"type_name\":\"Stamp\",\"fields\":[{\"name\":\"lay\",\"value\":{\"kind\":\"string\",\"value\":\"de\"},\"origin\":3}],\"origin\":3,\"validation\":\"valid\"}}\n"
+    ]
+  }
+}

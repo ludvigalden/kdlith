@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "A document set against a value the source context derived from the file name obeys the slot's declared policy: under duplicates=last-wins lw fr replaces the en-gb from the file stem, while the reject and layered slots keep the source value; the reject collision is invalid/data/slot-source-context-duplicate",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "en-gb.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":1},\"type_name\":\"Stamp\",\"fields\":[{\"name\":\"loc\",\"value\":{\"kind\":\"string\",\"value\":\"en-gb\"},\"origin\":1},{\"name\":\"lw\",\"value\":{\"kind\":\"string\",\"value\":\"fr\"},\"origin\":1},{\"name\":\"lay\",\"value\":{\"kind\":\"string\",\"value\":\"en-gb\"},\"origin\":1}],\"origin\":1,\"validation\":\"valid\"}}\n{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":null}}\n"
+    ]
+  }
+}

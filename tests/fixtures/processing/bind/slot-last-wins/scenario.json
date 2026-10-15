@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "A slot declaring duplicates=last-wins takes the later of two following sets: lw en then lw fr binds, and the stamp reads fr, the declared winner",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/policies.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":2},\"type_name\":\"Stamp\",\"fields\":[{\"name\":\"lw\",\"value\":{\"kind\":\"string\",\"value\":\"fr\"},\"origin\":2}],\"origin\":2,\"validation\":\"valid\"}}\n{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":null}}\n"
+    ]
+  }
+}

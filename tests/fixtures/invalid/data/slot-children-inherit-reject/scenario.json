@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A children effect setting a reject-default slot its children already inherit a value for is a duplicate, KDLITH-CTX006",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/policies.kdl",
+    "data.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

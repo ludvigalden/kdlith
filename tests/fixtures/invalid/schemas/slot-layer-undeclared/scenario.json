@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A set naming a layer the slot's layer order does not list is an unresolved reference, KDLITH-SCH006",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

@@ -6,6 +6,7 @@ locale en-us {
 group "extra"
 group "twice"
 group "twice"
+defaults-reset
 locale de {
     entry "gamma" group=extra
     entry "delta" group=late

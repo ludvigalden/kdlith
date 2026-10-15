@@ -32,6 +32,10 @@ dialect kdlith version="0" {
             format kebab-case
         }
 
+        string LayerName {
+            format kebab-case
+        }
+
         // A typed context slot. Values set into a slot are validated
         // against its type; a slot may belong to a namespace that a clear
         // effect empties at once.
@@ -43,19 +47,50 @@ dialect kdlith version="0" {
             // The slot's accumulation policy: how an accumulating effect
             // combines with the value already held.
             field accumulate "optional<AccumulationPolicy>"
+            // How a second value reaching a slot that already holds one
+            // is treated when the slot does not accumulate. The default
+            // rejects: a slot is replaced only under a declared policy.
+            field duplicates SlotDuplicates {
+                fallback reject
+            }
+            // The layer order of a layered slot, highest precedence
+            // first. Required by duplicates=layered and allowed with it
+            // only.
+            field layers "optional<list<LayerName>>"
+        }
+
+        // How a set effect reaching an occupied slot is treated. The
+        // held value is the one in the slot's incoming context, inherited
+        // or set in the same scope; remove and clear unset a slot, so a
+        // later set after either is a first value again.
+        enum SlotDuplicates {
+            member reject description="A second value reaching an occupied slot is rejected"
+            member last-wins description="The later value replaces the held one"
+            member layered description="A higher layer's value replaces a lower layer's; a lower layer's later value leaves the held value in place; a second value within one layer is rejected"
         }
 
         // How an accumulating effect combines with the slot's incoming
         // value: append concatenates lists in effect order; merge combines
-        // maps key-wise, where a key contributed twice is a duplicate-key
-        // rejection, never a silent overwrite.
+        // maps key-wise under its declared duplicate treatment, which by
+        // default rejects a key contributed twice.
         object AccumulationPolicy {
             field op AccumulateOp
+            // How merge treats a key contributed twice. Declared for
+            // merge only; append has no keys.
+            field duplicates MergeDuplicates {
+                fallback reject
+            }
         }
 
         enum AccumulateOp {
             member append description="Concatenate the incoming list in effect order; for list-typed slots"
-            member merge description="Combine key-wise; a key contributed twice is a duplicate-key rejection"
+            member merge description="Combine key-wise under the declared duplicate treatment; for map-typed slots"
+        }
+
+        // How merge treats a key the held map already carries.
+        enum MergeDuplicates {
+            member reject description="A key contributed twice is a duplicate-key rejection, never a silent overwrite"
+            member last-wins description="The later entry replaces the held entry's value, keeping the key's first position"
         }
 
         // Where a group of effects takes effect. A node affecting both its
@@ -79,10 +114,13 @@ dialect kdlith version="0" {
 
         // Set a slot from a bound field of the node, or to a literal value
         // checked against the slot's type. Exactly one of field and value.
+        // A set on a layered slot names one of the slot's layers; a set on
+        // any other slot names none.
         object SetEffect {
             field slot SlotName
             field field "optional<FieldName>"
             field value "optional<ValueExpr>"
+            field layer "optional<LayerName>"
         }
 
         // Remove a slot's value; the slot becomes unset, not null.
@@ -180,19 +218,36 @@ dialect kdlith version="0" {
     //         }
     //     }
 
+    // A slot declaration. Its duplicate policy is a property; a layered
+    // slot lists its layer order in a layers child, for example:
+    //
+    //     slot locale Locale duplicates=layered {
+    //         layers override base
+    //     }
+
     node slot role=declaration type=SlotDef parent=context {
         field name arg=0
         field type arg=1
         field namespace property=namespace
         field description property=description
         field accumulate child=accumulate
+        field duplicates property=duplicates
+        field layers {
+            from {
+                child layers {
+                    args
+                }
+            }
+        }
         children accumulate max-occurs=1
+        children layers max-occurs=1
     }
 
     // The slot's accumulation policy.
 
     node accumulate type=AccumulationPolicy parent=slot {
         field op arg=0
+        field duplicates property=duplicates
     }
 
     // Source context: fields derived from source metadata, applied under
@@ -244,6 +299,7 @@ dialect kdlith version="0" {
         field slot arg=0
         field field property=field
         field value property=value
+        field layer property=layer
     }
 
     node remove type=RemoveEffect parent=effects {

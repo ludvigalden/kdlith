@@ -688,6 +688,7 @@ fn effect(effect: &Effect) -> EffectInput {
             slot: set.slot.as_str().to_owned(),
             field: set.field.as_ref().map(|field| field.as_str().to_owned()),
             value: set.value.clone(),
+            layer: set.layer.as_ref().map(|layer| layer.as_str().to_owned()),
         },
         Effect::Remove(remove) => EffectInput::Remove {
             slot: remove.slot.as_str().to_owned(),

@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "An accumulating slot combines through its operation, so a non-reject duplicates= on it is a contradiction, KDLITH-DLC005",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

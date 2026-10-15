@@ -7,7 +7,7 @@ use std::fmt::Write as _;
 use crate::bindings::{
     ContextPolicy, Effect, EffectTarget, FieldBinding, NodeDecl, Placement, Role, SetFrom, Source,
 };
-use crate::definition::Definition;
+use crate::definition::{Definition, MergeDuplicates, SlotDuplicates};
 use crate::names::{Names, Sym};
 use crate::types::{Constraint, TypeExpr, TypeKind};
 
@@ -34,9 +34,21 @@ impl Definition {
             let accumulate = slot
                 .accumulate
                 .map_or_else(|| "-".to_owned(), |op| op.name().to_owned());
+            // A policy at its fail-closed default adds nothing, so every
+            // digest of a definition declaring none is unchanged.
+            let mut policy = String::new();
+            if slot.merge_duplicates != MergeDuplicates::Reject {
+                let _ = write!(policy, " merge-duplicates={}", slot.merge_duplicates.name());
+            }
+            if slot.duplicates != SlotDuplicates::Reject {
+                let _ = write!(policy, " duplicates={}", slot.duplicates.name());
+            }
+            if !slot.layers.is_empty() {
+                let _ = write!(policy, " layers={}", list(n, &slot.layers));
+            }
             let _ = writeln!(
                 out,
-                "slot {} {} namespace={namespace} accumulate={accumulate}",
+                "slot {} {} namespace={namespace} accumulate={accumulate}{policy}",
                 n.resolve(slot.name),
                 expr(n, &slot.ty)
             );
@@ -418,12 +430,20 @@ fn source(n: &Names, source: &Source) -> String {
 
 fn effect(n: &Names, effect: &Effect) -> String {
     match effect {
-        Effect::Set { slot, from } => match from {
-            SetFrom::Field(field) => {
-                format!("set {} field={}", n.resolve(*slot), n.resolve(*field))
+        Effect::Set { slot, from, layer } => {
+            let set = match from {
+                SetFrom::Field(field) => {
+                    format!("set {} field={}", n.resolve(*slot), n.resolve(*field))
+                }
+                SetFrom::Value(value) => format!("set {} value={value:?}", n.resolve(*slot)),
+            };
+            // An unlayered set summarizes exactly as before its policy
+            // existed, so every digest without a layer is unchanged.
+            match layer {
+                Some(layer) => format!("{set} layer={}", n.resolve(*layer)),
+                None => set,
             }
-            SetFrom::Value(value) => format!("set {} value={value:?}", n.resolve(*slot)),
-        },
+        }
         Effect::Remove { slot } => format!("remove {}", n.resolve(*slot)),
         Effect::Clear { namespace } => format!("clear {}", n.resolve(*namespace)),
         Effect::Handler { name } => format!("handler {name}"),

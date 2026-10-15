@@ -330,6 +330,9 @@ pub enum Effect {
     Set {
         slot: Sym,
         from: SetFrom,
+        /// The layer a set on a layered slot names; `None` on every
+        /// other slot.
+        layer: Option<Sym>,
     },
     /// The slot becomes unset, not null.
     Remove {

@@ -50,6 +50,14 @@ pub(crate) fn type_doc(name: &str) -> Option<&'static [&'static str]> {
             "How an accumulating effect combines with the slot's incoming",
             "value: append concatenates lists; merge combines maps key-wise.",
         ],
+        "SlotDuplicates" => &[
+            "How a set effect reaching an occupied slot is treated; the",
+            "fail-closed default rejects.",
+        ],
+        "MergeDuplicates" => &[
+            "How merge treats a key the held map already carries; the",
+            "fail-closed default rejects.",
+        ],
         "SourceContextDef" => &[
             "Fields derived from source metadata before the document's first",
             "semantic node; the mode is explicit, with no default.",
@@ -120,6 +128,13 @@ pub(crate) fn field_comment(ty: &str, field: &str) -> Option<&'static [&'static 
             "The slot's accumulation policy: how an accumulating effect",
             "combines with the value already held.",
         ],
+        ("SlotDef", "duplicates") => &[
+            "How a second value reaching a slot that already holds one is",
+            "treated when the slot does not accumulate.",
+        ],
+        ("SlotDef", "layers") => &["The layer order of a layered slot, highest precedence first."],
+        ("AccumulationPolicy", "duplicates") => &["How merge treats a key contributed twice."],
+        ("SetEffect", "layer") => &["The layer a set on a layered slot names."],
         ("ImportRequest", "alias") => &[
             "The imported declarations are reachable through the alias",
             "namespace and not by their unqualified names.",
@@ -476,7 +491,21 @@ const SLOT_DEF_ARM: &str = r##"        Item::SlotDef(slot) => Construct::Slot(Sl
             ty: slot.ty.as_str().to_owned(),
             namespace: slot.namespace.as_ref().map(|ns| ns.as_str().to_owned()),
             description: slot.description,
-            accumulate: slot.accumulate.map(|policy| policy.op.member().to_owned()),
+            accumulate: slot
+                .accumulate
+                .as_ref()
+                .map(|policy| policy.op.member().to_owned()),
+            accumulate_duplicates: slot
+                .accumulate
+                .as_ref()
+                .map(|policy| policy.duplicates.member().to_owned()),
+            duplicates: Some(slot.duplicates.member().to_owned()),
+            layers: slot.layers.as_ref().map(|layers| {
+                layers
+                    .iter()
+                    .map(|layer| layer.as_str().to_owned())
+                    .collect()
+            }),
         }),
 "##;
 

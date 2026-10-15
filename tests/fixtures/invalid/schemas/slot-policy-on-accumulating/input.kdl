@@ -1,0 +1,21 @@
+schema s version="1" {
+    types {
+        string Locale {
+            format kebab-case
+        }
+        object Tags {
+            field tags "list<Locale>"
+        }
+    }
+    context {
+        slot lay "list<Locale>" duplicates=last-wins {
+            accumulate append
+        }
+    }
+    node loc role=context-control {
+        field value Locale arg=0
+        effects target=following {
+            set lay field=value
+        }
+    }
+}

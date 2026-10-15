@@ -711,6 +711,7 @@ fn effect_group(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) -> Option<Effect
                 let slot = part.string_arg(cx, 0, "slot");
                 let field = part.string_prop(cx, "field");
                 let value = part.value_prop("value");
+                let layer = part.string_prop(cx, "layer");
                 let from = match (field, value) {
                     (Some(field), None) => Some(SetFrom::Field(cx.names.intern(&field))),
                     (None, Some(value)) => Some(SetFrom::Value(value)),
@@ -727,6 +728,7 @@ fn effect_group(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) -> Option<Effect
                     (Some(slot), Some(from)) => Some(Effect::Set {
                         slot: cx.names.intern(&slot),
                         from,
+                        layer: layer.map(|layer| cx.names.intern(&layer)),
                     }),
                     _ => None,
                 }

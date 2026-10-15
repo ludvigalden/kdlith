@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A key contributed twice to a merge-accumulating slot under the reject duplicate treatment keeps its declared rejection, KDLITH-BND006",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/policies.kdl",
+    "data.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

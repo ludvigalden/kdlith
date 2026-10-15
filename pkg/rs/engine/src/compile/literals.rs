@@ -49,6 +49,7 @@ pub(crate) fn run(cx: &mut Cx<'_>, bindings: &BindingCatalog) {
                 let Effect::Set {
                     slot,
                     from: SetFrom::Value(value),
+                    ..
                 } = effect
                 else {
                     continue;

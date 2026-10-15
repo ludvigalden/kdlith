@@ -279,6 +279,8 @@ pub enum EffectInput {
         slot: String,
         field: Option<String>,
         value: Option<Value>,
+        /// The layer a set on a layered slot names.
+        layer: Option<String>,
     },
     Remove {
         slot: String,
@@ -301,6 +303,14 @@ pub struct SlotInput {
     /// The accumulation operation the slot declares, when it declares
     /// one: `append` or `merge`.
     pub accumulate: Option<String>,
+    /// The accumulation's duplicate treatment, when it declares one:
+    /// `reject` or `last-wins`.
+    pub accumulate_duplicates: Option<String>,
+    /// The slot's duplicate policy, when it declares one: `reject`,
+    /// `last-wins`, or `layered`. Absent is the fail-closed `reject`.
+    pub duplicates: Option<String>,
+    /// The layer order of a layered slot, highest precedence first.
+    pub layers: Option<Vec<String>>,
 }
 
 /// The document rule: first-node choices and following nodes.

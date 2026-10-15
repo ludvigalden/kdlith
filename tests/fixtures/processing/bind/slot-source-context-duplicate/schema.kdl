@@ -1,0 +1,62 @@
+schema sourced version="1" {
+    types {
+        string Locale {
+            format kebab-case
+        }
+        object Stamp {
+            field loc "optional<Locale>"
+            field lw "optional<Locale>"
+            field lay "optional<Locale>"
+        }
+    }
+    context {
+        slot loc Locale
+        slot lw Locale duplicates=last-wins
+        slot lay Locale duplicates=layered {
+            layers override base
+        }
+        source-context mode=initial {
+            field loc String {
+                from {
+                    path-stem
+                }
+            }
+            field lw String {
+                from {
+                    path-stem
+                }
+            }
+            field lay String {
+                from {
+                    path-stem
+                }
+            }
+        }
+    }
+    node loc role=context-control {
+        field value Locale arg=0
+        effects target=following {
+            set loc field=value
+        }
+    }
+    node lw role=context-control {
+        field value Locale arg=0
+        effects target=following {
+            set lw field=value
+        }
+    }
+    node base role=context-control {
+        field value Locale arg=0
+        effects target=following {
+            set lay field=value layer=base
+        }
+    }
+    node stamp role=record type=Stamp {
+        field loc context=loc
+        field lw context=lw
+        field lay context=lay
+    }
+    document {
+        following loc lw base stamp
+    }
+}
