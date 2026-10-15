@@ -1,0 +1,21 @@
+{
+  "binary": "kdlith",
+  "description": "An extends chain composes the child's effective roots: under --profile retail (which extends base) the retail-owned Gizmo root, the inherited base roots Part and Widget, and the widget declaration carrying profile=base (admitted under every profile whose chain reaches base) all bind",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/profiles.kdl",
+    "--profile",
+    "retail",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":0},\"type_name\":\"Part\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"p1\"},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n",
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":1},\"type_name\":\"Gizmo\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"g1\"},\"origin\":1}],\"origin\":1,\"validation\":\"valid\"}}\n",
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":2},\"type_name\":\"Widget\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"w1\"},\"origin\":2}],\"origin\":2,\"validation\":\"valid\"}}\n"
+    ]
+  }
+}

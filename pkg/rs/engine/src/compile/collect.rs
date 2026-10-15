@@ -14,19 +14,21 @@ use crate::compile::Cx;
 use crate::compile::input::{
     ChildRuleInput, ConstraintInput, Construct, DefaultInput, DefinitionInput, DependentInput,
     DiscoveryInput, DocumentRuleInput, EffectGroupInput, EffectInput, FieldBindingInput,
-    FieldInput, ImportInput, MemberInput, NodeInput, ProfileInput, ProviderInput, ReferenceInput,
-    ResolutionInput, SequenceInput, SlotInput, SourceContextInput, SourceInput, TypeInput,
+    FieldInput, ImportInput, MatchRuleInput, MemberInput, NodeInput, ProfileInput, ProviderInput,
+    ReferenceInput, ResolutionInput, SequenceInput, SlotInput, SourceContextInput, SourceInput,
+    TypeInput,
 };
 use crate::compile::types::{declare, field_name, format_rule, validator_use};
 use crate::decode::found;
 use crate::definition::{
     AccumulateOp, AnchorDecl, DiscoveryDecl, DocumentRule, DuplicateTreatment, ImportDecl,
-    MergeDuplicates, MissingRequirement, Patterns, ProfileDecl, ProviderDecl, Qualification,
-    QualifierDecl, ReferenceDecl, ResolutionPolicyDecl, ResolutionSelection, SlotDecl,
-    SlotDuplicates, SourceContextDecl, SourceContextMode, SourceFieldDecl,
+    MatchKind, MatchRule, MergeDuplicates, MissingRequirement, Patterns, ProfileDecl, ProviderDecl,
+    Qualification, QualifierDecl, ReferenceDecl, ResolutionPolicyDecl, ResolutionSelection,
+    SlotDecl, SlotDuplicates, SourceContextDecl, SourceContextMode, SourceFieldDecl,
 };
 use crate::diag::{
-    IMPORT_ANCHOR, IMPORT_GRAMMAR, INVALID_BINDING, NOT_INSTALLED, Site, duplicate, duplicate_key,
+    IMPORT_ANCHOR, IMPORT_GRAMMAR, INVALID_BINDING, NOT_INSTALLED, SECOND_DEFAULT, Site, duplicate,
+    duplicate_key,
 };
 use crate::discovery::{self, ExpansionError};
 use crate::names::Sym;
@@ -1215,12 +1217,76 @@ fn profile(cx: &mut Cx<'_>, site: Site, input: &ProfileInput) {
         cx.kebab(site, &label, grammar, "grammar name")
             .then(|| cx.names.intern(grammar))
     });
+    let extends = input.extends.as_deref().and_then(|parent| {
+        cx.kebab(site, &label, parent, "extended profile name")
+            .then(|| cx.names.intern(parent))
+    });
+    let rules = match profile_rules(cx, site, &label, input.rules.as_deref()) {
+        Some(rules) => rules,
+        None => return,
+    };
+    // At most one profile of a schema is the default: the first in
+    // contribution order keeps the mark, and every later one is
+    // rejected at its own site.
+    let mut default = input.default == Some(true);
+    if default
+        && let Some(first) = cx
+            .profiles
+            .iter()
+            .find(|profile| profile.default)
+            .map(|profile| (profile.site, cx.names.resolve(profile.name).to_owned()))
+    {
+        let shown = format!("profile {}", input.name);
+        let earlier = format!("profile {}", first.1);
+        cx.diags.labelled(
+            SECOND_DEFAULT,
+            site,
+            first.0,
+            &[&shown, &earlier],
+            "first marked default here",
+        );
+        default = false;
+    }
     cx.profiles.push(ProfileDecl {
         name,
+        extends,
+        default,
         roots,
         grammar,
+        rules,
         site,
     });
+}
+
+/// A profile's declared match rules, in written order; `None` when the
+/// block is malformed. A `match` block holding no rule would select
+/// nothing, so it is malformed rather than silently inert.
+fn profile_rules(
+    cx: &mut Cx<'_>,
+    site: Site,
+    label: &str,
+    rules: Option<&[MatchRuleInput]>,
+) -> Option<Vec<MatchRule>> {
+    let Some(rules) = rules else {
+        return Some(Vec::new());
+    };
+    if rules.is_empty() {
+        cx.malformed(site, label, "match holds no rule");
+        return None;
+    }
+    let mut out = Vec::with_capacity(rules.len());
+    for rule in rules {
+        let Some(kind) = MatchKind::from_name(&rule.kind) else {
+            cx.malformed(
+                site,
+                label,
+                &format!("match rule {} is not a rule", rule.kind),
+            );
+            return None;
+        };
+        out.push(MatchRule::new(kind, rule.text.clone()));
+    }
+    Some(out)
 }
 
 /// A discovery grammar declaration.

@@ -103,18 +103,70 @@ object_type! {
 }
 
 object_type! {
-    /// A named selection of root types; the processing invocation names
-    /// the profile explicitly, never inferred from document content.
+    /// A named selection of root types; the invocation selects it by
+    /// name, else by the first matching declared rule, else as the
+    /// schema's default, never from document content.
     pub struct ProfileDef {
         "name" => name: ProfileName,
+        // The profile this one extends: roots and match rules compose with
+        // the parent's, and an own grammar overrides the inherited one.
+        "extends" => extends: Option<ProfileName>,
+        // Marks the schema's default profile; at most one profile is the
+        // default.
+        "default" => default: Option<bool>,
         "roots" => roots: Option<RootsRule>,
         "grammar" => grammar: Option<DiscoveryName>,
+        "match" => r#match: Option<ProfileMatch>,
     }
 }
 
 object_type! {
     pub struct RootsRule {
         "allow" => allow: Vec<TypeName>,
+    }
+}
+
+object_type! {
+    /// The match rules that select a profile from the source path as
+    /// the invocation spells it; the first matching rule wins.
+    pub struct ProfileMatch {
+        "rules" => rules: Vec<MatchRule>,
+    }
+}
+
+union_type! {
+    /// One match rule, discriminated by its node name.
+    pub enum MatchRule {
+        "path-suffix" => PathSuffix(PathSuffixMatch),
+        "path-prefix" => PathPrefix(PathPrefixMatch),
+        "file-name" => FileName(FileNameMatch),
+    }
+}
+
+string_type! {
+    /// The text a match rule compares; never empty.
+    pub struct MatchText;
+}
+
+object_type! {
+    /// Matches when the source path ends with the text.
+    pub struct PathSuffixMatch {
+        "text" => text: MatchText,
+    }
+}
+
+object_type! {
+    /// Matches when the source path starts with the text.
+    pub struct PathPrefixMatch {
+        "text" => text: MatchText,
+    }
+}
+
+object_type! {
+    /// Matches when the source path's final component, extension
+    /// included, equals the text.
+    pub struct FileNameMatch {
+        "text" => text: MatchText,
     }
 }
 
@@ -333,6 +385,12 @@ pub(crate) const TYPES: &[TypeShape] = &[
     ImportRequest::SHAPE,
     ProfileDef::SHAPE,
     RootsRule::SHAPE,
+    ProfileMatch::SHAPE,
+    MatchRule::SHAPE,
+    MatchText::SHAPE,
+    PathSuffixMatch::SHAPE,
+    PathPrefixMatch::SHAPE,
+    FileNameMatch::SHAPE,
     DescendantRule::SHAPE,
     SequenceRule::SHAPE,
     SequenceStep::SHAPE,

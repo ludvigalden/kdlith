@@ -15,7 +15,7 @@ use serde::Serialize;
 use crate::anchors::{self, Base, DeclaredGrammars};
 use crate::bind::BindingSession;
 use crate::bindings::Role;
-use crate::definition::{Definition, DefinitionKind};
+use crate::definition::{Definition, DefinitionKind, ProfileSelection};
 use crate::diag::{UNRESOLVED_DIALECT, UNRESOLVED_SCHEMA, record};
 use crate::discovery;
 use crate::documents::{import_failure, read_text};
@@ -164,6 +164,7 @@ impl<'d, T: 'static> TypedReader<'d, T> {
             reader: self,
             invocations: Invocations::new(),
             grammars: DeclaredGrammars::compiled(self.def),
+            selection: ProfileSelection::Unprofiled,
             sink,
             failed: false,
             broken: None,
@@ -181,6 +182,10 @@ impl<'d, T: 'static> TypedReader<'d, T> {
         }
         let layout = self.def.plan.context.layout.clone();
         for entry in entries {
+            // One selection per entry document, from its source path as
+            // the reading spells it; its imports bind under it.
+            let shown = entry.display().to_string();
+            reading.selection = self.def.select_profile(None, &shown);
             match reading
                 .invocations
                 .enter_root(entry, Context::new(layout.clone()))
@@ -236,6 +241,8 @@ struct Reading<'r, 'd, T: 'static> {
     invocations: Invocations,
     /// The discovery grammars the documents read so far declare.
     grammars: DeclaredGrammars,
+    /// The profile selection of the entry document being read.
+    selection: ProfileSelection,
     sink: &'r mut dyn FnMut(TypedItem<T>),
     failed: bool,
     broken: Option<ReadError>,
@@ -284,7 +291,9 @@ impl<T: 'static> Reading<'_, '_, T> {
             path: shown.to_owned(),
             text: text.to_owned(),
         });
-        let mut session = BindingSession::with_context(def, source, shown, text, context);
+        let selection = self.selection.clone();
+        let mut session =
+            BindingSession::with_selection(def, source, shown, text, context, selection);
         while self.broken.is_none() {
             match session.next_item() {
                 Ok(Some(item)) => {

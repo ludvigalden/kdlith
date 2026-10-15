@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "A path-prefix match rule compares the path's leading components: outlet/stock.kdl starts with outlet's outlet, so outlet is selected with no flag and its Gadget root binds",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/profiles.kdl",
+    "outlet/stock.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":0},\"type_name\":\"Gadget\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"g1\"},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n"
+    ]
+  }
+}

@@ -6,8 +6,8 @@ use crate::bindings::{BindingCatalog, Effect, EffectTarget, NodeDecl, Placement,
 use crate::compile::Cx;
 use crate::definition::{DefinitionKind, SlotDuplicates};
 use crate::diag::{
-    DISPATCH_PREFIX, NOT_STREAMABLE, Site, TYPE_EXPRESSION, UNKNOWN_TYPE, UNRESOLVED_DIALECT,
-    UNRESOLVED_SCHEMA,
+    DISPATCH_PREFIX, INHERITANCE_CYCLE, NOT_STREAMABLE, Site, TYPE_EXPRESSION, UNKNOWN_TYPE,
+    UNRESOLVED_DIALECT, UNRESOLVED_SCHEMA,
 };
 use crate::names::Sym;
 use crate::symbols::SymbolCatalog;
@@ -23,7 +23,60 @@ pub(crate) fn run(cx: &mut Cx<'_>, bindings: &BindingCatalog, symbols: &SymbolCa
     for (_, node) in bindings.iter() {
         node_refs(cx, bindings, symbols, node);
     }
+    profiles(cx);
     document_rule(cx, bindings);
+}
+
+/// A profile's `extends` names a profile the definition declares, and
+/// no `extends` chain returns to a profile already on it. Each cycle is
+/// reported once, at the first-declared profile on it.
+fn profiles(cx: &mut Cx<'_>) {
+    let declared = |cx: &Cx<'_>, name: Sym| cx.profiles.iter().position(|p| p.name == name);
+    for at in 0..cx.profiles.len() {
+        let profile = &cx.profiles[at];
+        if let Some(parent) = profile.extends
+            && declared(cx, parent).is_none()
+        {
+            let (site, name) = (profile.site, profile.name);
+            let spelled = format!(
+                "{} extended by profile {}",
+                cx.names.resolve(parent),
+                cx.names.resolve(name)
+            );
+            unresolved(cx, site, "profile", &spelled);
+        }
+    }
+    let mut reported: Vec<usize> = Vec::new();
+    for start in 0..cx.profiles.len() {
+        let mut chain = vec![start];
+        let mut next = cx.profiles[start]
+            .extends
+            .and_then(|parent| declared(cx, parent));
+        while let Some(at) = next {
+            if let Some(from) = chain.iter().position(|seen| *seen == at) {
+                let cycle = &chain[from..];
+                let first = cycle.iter().copied().min().unwrap_or(at);
+                if !reported.contains(&first) {
+                    reported.extend_from_slice(cycle);
+                    let rotation = cycle.iter().position(|i| *i == first).unwrap_or(0);
+                    let mut spelled: Vec<&str> = cycle[rotation..]
+                        .iter()
+                        .chain(&cycle[..rotation])
+                        .map(|i| cx.names.resolve(cx.profiles[*i].name))
+                        .collect();
+                    spelled.push(cx.names.resolve(cx.profiles[first].name));
+                    let shown = spelled.join(" -> ");
+                    let site = cx.profiles[first].site;
+                    cx.diags.error(INHERITANCE_CYCLE, site, &[&shown]);
+                }
+                break;
+            }
+            chain.push(at);
+            next = cx.profiles[at]
+                .extends
+                .and_then(|parent| declared(cx, parent));
+        }
+    }
 }
 
 /// An undeclared reference, reported in the definition's own area.

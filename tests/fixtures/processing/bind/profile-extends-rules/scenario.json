@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "An extends chain composes the child's effective match rules: shared/stock.kdl satisfies only base's path-prefix rule, yet retail, declared first, inherits that rule after its own, so with no flag retail is selected and its own Gizmo root binds (base alone would reject gizmo as unbound)",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/profiles.kdl",
+    "shared/stock.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":0},\"type_name\":\"Gizmo\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"g1\"},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n"
+    ]
+  }
+}

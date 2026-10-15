@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "An extends naming an undeclared profile is an undeclared reference (KDLITH-SCH006), the node profile= precedent: a extends ghost, which the schema does not declare",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

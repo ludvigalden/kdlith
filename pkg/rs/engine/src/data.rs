@@ -15,7 +15,7 @@ use kdlith_runtime::{
 
 use crate::anchors::{self, Base, Target};
 use crate::bind::BindingSession;
-use crate::definition::Definition;
+use crate::definition::{Definition, ProfileSelection};
 use crate::diag::{UNRESOLVED_DIALECT, UNRESOLVED_SCHEMA, record};
 use crate::discovery;
 use crate::documents::{import_failure, read_text};
@@ -44,8 +44,11 @@ impl ReadOptions {
         Self::default()
     }
 
-    /// Name the profile the invocation binds; a definition declaring
-    /// profiles fails closed without one (`KDLITH-SCH011`).
+    /// Name the profile the invocation binds. Without one, each entry
+    /// document's profile is selected from its source path by the
+    /// schema's declared match rules, else its default profile; a
+    /// definition declaring profiles that selects none fails closed
+    /// (`KDLITH-SCH011`).
     #[must_use]
     pub fn with_profile(mut self, profile: impl Into<String>) -> Self {
         self.profile = Some(profile.into());
@@ -178,14 +181,7 @@ impl<'d> DataReader<'d> {
         let anchors = anchors::anchor_map(&options.anchors, &def.names);
         let mut reading = Reading {
             reader: self,
-            // The raw name reaches the binder, so an unknown name
-            // reports the unknown-name arm rather than degrading to a
-            // none-named invocation.
-            profile_name: options.profile.clone(),
-            profile: options
-                .profile
-                .as_deref()
-                .and_then(|p| self.def.names.get(p)),
+            selection: ProfileSelection::Unprofiled,
             anchors,
             invocations: Invocations::new().with_schema_fingerprint(self.schema_fingerprint()),
             syntax: HashMap::new(),
@@ -201,6 +197,12 @@ impl<'d> DataReader<'d> {
         };
         let layout = self.def.plan.context.layout.clone();
         for entry in entries {
+            // Selected once per entry document, before any of its nodes
+            // binds, from the explicit name and the entry's source path
+            // as the invocation spells it — never from its content. The
+            // documents its imports reach bind under this selection.
+            let shown = entry.display().to_string();
+            reading.selection = def.select_profile(options.profile.as_deref(), &shown);
             match reading
                 .invocations
                 .enter_root(entry, Context::new(layout.clone()))
@@ -225,24 +227,24 @@ impl<'d> DataReader<'d> {
 /// sink.
 struct Reading<'r, 'd> {
     reader: &'r DataReader<'d>,
-    /// The profile name as the invocation spelled it, for the binder.
-    profile_name: Option<String>,
-    /// The profile resolved for grammar selection; `None` when absent
-    /// or unknown to the definition.
-    profile: Option<Sym>,
+    /// The profile selection of the entry document being read; every
+    /// document its imports reach binds under it, and its selected
+    /// profile's grammar governs their import expressions.
+    selection: ProfileSelection,
     anchors: BTreeMap<Sym, PathBuf>,
     invocations: Invocations,
     /// The syntax cache: document text by source revision, so a source
     /// invoked again under the same revision is read and stored once.
     syntax: HashMap<u64, Rc<str>>,
     /// The bound-result cache: the items of one invocation by their
-    /// invocation semantics, so a repeated invocation with equal
-    /// semantics replays instead of rebinding.
-    bound: HashMap<InvocationIdentity, Rc<Vec<Item>>>,
+    /// invocation semantics and the profile they bound under, so a
+    /// repeated invocation with equal semantics under the same profile
+    /// replays instead of rebinding.
+    bound: HashMap<(InvocationIdentity, Option<Sym>), Rc<Vec<Item>>>,
     /// Every result the bound-result cache took, in insertion order.
     results: Vec<BoundResult>,
     /// The position of each cached identity's result in `results`.
-    result_of: HashMap<InvocationIdentity, usize>,
+    result_of: HashMap<(InvocationIdentity, Option<Sym>), usize>,
     /// The context handlers the reading installed, passed into every
     /// invocation's binding session.
     handlers: Handlers,
@@ -286,9 +288,12 @@ impl Reading<'_, '_> {
                         .clone();
                     let identity = self.invocations.get(id).and_then(|i| i.identity());
                     let digest = revision_digest(revision);
-                    if let Some(cached) = identity.as_ref().and_then(|k| self.bound.get(k)) {
+                    let profile = self.selection.profile();
+                    if let Some(cached) = identity.and_then(|k| self.bound.get(&(k, profile))) {
                         let cached = cached.clone();
-                        if let Some(at) = identity.and_then(|k| self.result_of.get(&k).copied()) {
+                        if let Some(at) =
+                            identity.and_then(|k| self.result_of.get(&(k, profile)).copied())
+                        {
                             let derivation = self.derivation(id);
                             self.results[at].derivations.push(derivation);
                         }
@@ -324,7 +329,6 @@ impl Reading<'_, '_> {
     ) {
         let def = self.reader.def;
         let source = SourceId(u32::try_from(id.index()).unwrap_or(u32::MAX));
-        let profile = self.profile_name.as_deref();
         let context = context.unwrap_or_else(|| Context::new(def.plan.context.layout.clone()));
         (self.sink)(Item::Document(
             SourceDocument::new(source, shown.to_owned()).with_digest(digest),
@@ -335,7 +339,7 @@ impl Reading<'_, '_> {
             shown,
             text,
             context,
-            profile,
+            self.selection.clone(),
             self.handlers.clone(),
         )
         .under_policy(self.output_policy);
@@ -375,13 +379,15 @@ impl Reading<'_, '_> {
         if cacheable && identity.is_some() && self.broken.is_none() {
             if let Some(identity) = identity.filter(|_| !failed) {
                 let derivation = self.derivation(id);
-                self.result_of.insert(identity, self.results.len());
+                self.result_of
+                    .insert((identity, self.selection.profile()), self.results.len());
                 self.results.push(BoundResult {
                     identity,
                     derivations: vec![derivation],
                     items: own.iter().map(|item| remap(item, SourceId(0))).collect(),
                 });
-                self.bound.insert(identity, Rc::new(own));
+                self.bound
+                    .insert((identity, self.selection.profile()), Rc::new(own));
             }
         }
     }
@@ -502,7 +508,7 @@ impl Reading<'_, '_> {
         };
         anchors::expression_targets(
             &request.expression,
-            def.grammar_for(self.profile),
+            def.grammar_for(self.selection.profile()),
             &def.names,
             &self.anchors,
             &base,

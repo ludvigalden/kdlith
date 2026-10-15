@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "A path-suffix match rule compares the path's trailing components: shops/eu/shop.kdl ends with retail's eu/shop.kdl, so retail is selected with no flag and its Gizmo root binds",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/profiles.kdl",
+    "shops/eu/shop.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":0},\"type_name\":\"Gizmo\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"g1\"},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n"
+    ]
+  }
+}

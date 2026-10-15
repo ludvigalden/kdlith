@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "Path-suffix rules compare whole components: xeu/shop.kdl does not end with eu/shop.kdl component-wise, so retail is not selected, the default fallback is, and its gizmo node is unbound (KDLITH-BND001)",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/profiles.kdl",
+    "xeu/shop.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

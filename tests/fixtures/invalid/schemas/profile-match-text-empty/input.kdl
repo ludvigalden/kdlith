@@ -1,0 +1,15 @@
+schema neg version="1" {
+    types {
+        object Part {
+            field id String
+        }
+    }
+    node part role=record type=Part {
+        field id arg=0
+    }
+    profile a {
+        match {
+            file-name ""
+        }
+    }
+}

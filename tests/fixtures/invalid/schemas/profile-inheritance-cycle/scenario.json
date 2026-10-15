@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "An extends chain that returns to a profile already on it is an inheritance cycle: a extends b, b extends c, c extends a, rejected once as KDLITH-SCH012",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

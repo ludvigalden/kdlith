@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "An explicit name the schema does not declare never falls through to inference or the default: retail.kdl would select retail by its file name, but --profile nope fails closed with KDLITH-SCH011",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/profiles.kdl",
+    "--profile",
+    "nope",
+    "retail.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

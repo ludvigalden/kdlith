@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A match block holding no rule is malformed (KDLITH-DLC005)",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

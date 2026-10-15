@@ -26,7 +26,7 @@ use kdlith_runtime::{
 use crate::bindings::{BindingCodec, ChildPlan, ContextPolicy, NodeDeclId, Role, SetFrom};
 use crate::decode::{self, Decoder, Mismatch};
 use crate::definition::{
-    AccumulateOp, Definition, DefinitionKind, MergeDuplicates, SlotDuplicates,
+    AccumulateOp, Definition, DefinitionKind, MergeDuplicates, ProfileSelection, SlotDuplicates,
 };
 use crate::diag::{
     CONFLICTING_BINDING, DUPLICATE_KEY, MALFORMED, MISSING_FIELD, NOT_INSTALLED, TYPE_EXPRESSION,
@@ -142,14 +142,20 @@ pub struct Binder<'d, 's> {
     /// The explicit output policy for sensitive fields; `None` applies
     /// each sensitivity's fail-closed default.
     output_policy: Option<OutputPolicy>,
-    /// The profile the invocation named, and the root types it admits;
-    /// `None` with a definition that declares profiles fails closed
-    /// (`KDLITH-SCH011`).
-    profile: Option<Sym>,
+    /// The profiles whose node declarations the selected profile admits:
+    /// the selected profile and every profile it extends, in chain
+    /// order; empty when none is selected.
+    profile_chain: Vec<Sym>,
+    /// The root types the selected profile admits once composed along
+    /// its chain; `None` admits every declared root.
     profile_roots: Option<Vec<Sym>>,
-    /// The profile name as the invocation spelled it, selected or not,
-    /// so a rejected name reports itself rather than a missing one.
+    /// The explicit profile name as the invocation spelled it, when it
+    /// selected nothing, so a rejected name reports itself rather than
+    /// a missing one.
     profile_named: Option<String>,
+    /// Whether selection needs no report: a profile was selected, or the
+    /// definition declares none and none was named. Otherwise the first
+    /// root node fails closed (`KDLITH-SCH011`).
     profile_reported: bool,
     /// A root node broke the document's order rule, so the missing first
     /// node is not reported again at the end.
@@ -204,8 +210,10 @@ impl<'d, 's> Binder<'d, 's> {
     }
 
     /// A binder applying the named profile and one explicit output
-    /// policy. An unknown profile name fails closed exactly as a missing
-    /// one does.
+    /// policy. The profile is selected for `path` as an entry document
+    /// by [`Definition::select_profile`]: the named one, else the first
+    /// matching declared rule, else the default. An unknown name, or no
+    /// selection at all, fails closed.
     pub fn with_profile_and_policy(
         def: &'d Definition,
         source: SourceId,
@@ -214,20 +222,40 @@ impl<'d, 's> Binder<'d, 's> {
         profile: Option<&str>,
         output_policy: Option<OutputPolicy>,
     ) -> Self {
+        let path = path.into();
+        let selection = def.select_profile(profile, &path);
+        Self::with_selection(def, source, path, text, &selection, output_policy)
+    }
+
+    /// A binder applying a profile selection already resolved for the
+    /// invocation, so a document an import reaches binds under its
+    /// importing entry's selection rather than one inferred from its
+    /// own path.
+    pub fn with_selection(
+        def: &'d Definition,
+        source: SourceId,
+        path: impl Into<String>,
+        text: &'s str,
+        selection: &ProfileSelection,
+        output_policy: Option<OutputPolicy>,
+    ) -> Self {
         let root = def
             .bindings
             .scope(def.bindings.root_scope())
             .map_or_else(|| ScopeRules::default().start(), |s| s.rules.start());
-        let named = profile.and_then(|name| def.names.get(name));
-        let unknown = profile.is_some_and(|name| def.names.get(name).is_none());
-        let profile_named = profile.map(str::to_owned);
-        let selected = match named {
-            Some(name) => def.profiles.iter().find(|p| p.name == name),
-            None => None,
+        let (profile_chain, profile_roots) = match selection.profile() {
+            Some(selected) => (
+                def.profile_chain(selected)
+                    .iter()
+                    .map(|profile| profile.name)
+                    .collect(),
+                def.effective_roots(selected),
+            ),
+            None => (Vec::new(), None),
         };
-        let (profile, profile_roots) = match selected {
-            Some(selected) => (Some(selected.name), selected.roots.clone()),
-            None => (None, None),
+        let (profile_named, profile_reported) = match selection {
+            ProfileSelection::Unselected { named } => (named.clone(), false),
+            _ => (None, true),
         };
         Self {
             def,
@@ -238,10 +266,10 @@ impl<'d, 's> Binder<'d, 's> {
             source,
             root,
             output_policy,
-            profile,
+            profile_chain,
             profile_roots,
             profile_named,
-            profile_reported: profile.is_some() || (!unknown && def.profiles.is_empty()),
+            profile_reported,
             order_broken: false,
             root_name: None,
             aliases: Vec::new(),
@@ -1815,10 +1843,10 @@ impl<'s> Processor for Binder<'_, 's> {
             self.root_name = Some(node.name.to_string());
         }
         if parent.is_none() && !self.profile_reported {
-            // A schema that declares profiles must have exactly one named
-            // by the invocation; the engine never infers one from
-            // document content. A name that selected nothing reports
-            // itself; no name at all reports the missing one.
+            // A schema that declares profiles must have exactly one
+            // selected from invocation context — never from document
+            // content. A name that selected nothing reports itself; no
+            // selection at all reports the missing one.
             self.profile_reported = true;
             let named = self.profile_named.as_deref().unwrap_or("(none)");
             let shown = format!("profile {named}");
@@ -1865,11 +1893,11 @@ impl<'s> Processor for Binder<'_, 's> {
             }
         };
         // Dispatch consults the active profile as part of position: a
-        // declaration another profile owns, or a root the profile's
-        // roots do not allow, is rejected as unbound.
+        // declaration no profile on the active chain owns, or a root the
+        // profile's effective roots do not allow, is rejected as unbound.
         if let Kind::Declared { decl, .. } = kind {
             let declared = def.bindings.get(decl);
-            if declared.is_some_and(|d| d.profile.is_some_and(|p| Some(p) != self.profile))
+            if declared.is_some_and(|d| d.profile.is_some_and(|p| !self.profile_chain.contains(&p)))
                 || (parent.is_none()
                     && self.profile_roots.as_ref().is_some_and(|roots| {
                         declared
@@ -2090,6 +2118,9 @@ impl<'s> Processor for Binder<'_, 's> {
 /// installed context handlers.
 struct Knobs<'a> {
     profile: Option<&'a str>,
+    /// A selection the reading already resolved; when absent, the
+    /// session selects for its own path as an entry document.
+    selection: Option<ProfileSelection>,
     output_policy: Option<OutputPolicy>,
     handlers: Handlers,
 }
@@ -2098,6 +2129,7 @@ impl Knobs<'_> {
     fn plain() -> Self {
         Self {
             profile: None,
+            selection: None,
             output_policy: None,
             handlers: Handlers::new(),
         }
@@ -2201,17 +2233,18 @@ impl<'d, 's> BindingSession<'d, 's> {
         )
     }
 
-    /// Bind starting from `context` under the named profile, with the
-    /// context handlers the reading processor installed: a handler
-    /// effect executes at its declared timing through `handlers`, and
-    /// one the registry lacks fails at its site.
+    /// Bind starting from `context` under a profile selection the
+    /// reading resolved once for the document's entry, with the context
+    /// handlers the reading processor installed: a handler effect
+    /// executes at its declared timing through `handlers`, and one the
+    /// registry lacks fails at its site.
     pub fn with_handlers(
         def: &'d Definition,
         source: SourceId,
         path: &str,
         text: &'s str,
         context: Context,
-        profile: Option<&str>,
+        selection: ProfileSelection,
         handlers: Handlers,
     ) -> Self {
         Self::with_all(
@@ -2221,8 +2254,31 @@ impl<'d, 's> BindingSession<'d, 's> {
             text,
             context,
             Knobs {
-                profile,
+                selection: Some(selection),
                 handlers,
+                ..Knobs::plain()
+            },
+        )
+    }
+
+    /// Bind starting from `context` under a profile selection the
+    /// reading resolved once for the document's entry.
+    pub fn with_selection(
+        def: &'d Definition,
+        source: SourceId,
+        path: &str,
+        text: &'s str,
+        context: Context,
+        selection: ProfileSelection,
+    ) -> Self {
+        Self::with_all(
+            def,
+            source,
+            path,
+            text,
+            context,
+            Knobs {
+                selection: Some(selection),
                 ..Knobs::plain()
             },
         )
@@ -2238,14 +2294,11 @@ impl<'d, 's> BindingSession<'d, 's> {
         knobs: Knobs<'_>,
     ) -> Self {
         let events = ParseEvents::new(Parser::new(text), text, path);
-        let mut binder = Binder::with_profile_and_policy(
-            def,
-            source,
-            path,
-            text,
-            knobs.profile,
-            knobs.output_policy,
-        );
+        let selection = knobs
+            .selection
+            .unwrap_or_else(|| def.select_profile(knobs.profile, path));
+        let mut binder =
+            Binder::with_selection(def, source, path, text, &selection, knobs.output_policy);
         binder.handlers = knobs.handlers;
         // Source-context values apply before the document's first
         // semantic node — before the stream begins — under their declared

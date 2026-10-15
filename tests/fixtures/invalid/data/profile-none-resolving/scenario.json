@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "None resolving is KDLITH-SCH011: the schema declares a profile with a file-name rule but no default, b.kdl satisfies no rule, and no profile is named, so selection fails closed",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "b.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

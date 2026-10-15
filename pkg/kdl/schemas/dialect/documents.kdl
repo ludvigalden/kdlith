@@ -122,21 +122,69 @@ dialect kdlith version="0" {
             field alias "optional<AliasName>"
         }
 
-        // A document profile: a named selection of root types. The
-        // processing invocation names the profile explicitly; the engine
-        // never infers one from document content. A node declaration may
-        // carry profile=NAME so one node name binds differently per
-        // profile.
+        // A document profile: a named selection of root types. A node
+        // declaration may carry profile=NAME so one node name binds
+        // differently per profile. The invocation selects the profile:
+        // an explicit name, else the first declared match rule its
+        // invocation context satisfies, else the schema's default
+        // profile. Selection reads invocation context only, never
+        // document content.
         object ProfileDef {
             field name ProfileName
+            // The profile this one extends: its effective roots and match
+            // rules compose with the parent's, and its own grammar
+            // overrides the inherited one.
+            field extends "optional<ProfileName>"
+            // Marks the schema's default profile, selected when no name
+            // is given and no match rule applies. At most one profile of
+            // a schema is the default.
+            field default "optional<Bool>"
             field roots "optional<RootsRule>"
             field grammar "optional<DiscoveryName>"
+            field match "optional<ProfileMatch>"
         }
 
         // The root types a profile admits. A root node the active
         // profile's roots do not allow is rejected as unbound.
         object RootsRule {
             field allow "list<TypeName>"
+        }
+
+        // The match rules that select a profile from invocation context:
+        // the processed document's source path as the invocation spells
+        // it. Rules are evaluated in declaration order, and the first
+        // rule that matches selects its profile.
+        object ProfileMatch {
+            field rules "list<MatchRule>"
+        }
+
+        // One match rule, discriminated by its node name.
+        union MatchRule {
+            variant path-suffix PathSuffixMatch
+            variant path-prefix PathPrefixMatch
+            variant file-name FileNameMatch
+        }
+
+        // The text a match rule compares; an empty text would match
+        // every path.
+        string MatchText {
+            min-length 1
+        }
+
+        // Matches when the source path ends with the text.
+        object PathSuffixMatch {
+            field text MatchText
+        }
+
+        // Matches when the source path starts with the text.
+        object PathPrefixMatch {
+            field text MatchText
+        }
+
+        // Matches when the source path's final component, extension
+        // included, equals the text.
+        object FileNameMatch {
+            field text MatchText
         }
 
         // An occurrence bound over the declaring node's whole subtree,
@@ -422,14 +470,19 @@ dialect kdlith version="0" {
         children project max-occurs=1
     }
 
-    // Document profiles. The invocation names the profile explicitly; a
-    // schema that declares profiles must have exactly one named.
+    // Document profiles. A schema that declares profiles has exactly
+    // one selected per invocation: named explicitly, else inferred from
+    // the first matching declared rule, else the declared default.
 
     node profile role=declaration type=ProfileDef parent=schema {
         field name arg=0
+        field extends property=extends
+        field default property=default
         field grammar property=grammar
         field roots child=roots
+        field match child=match
         children roots max-occurs=1
+        children match max-occurs=1
     }
 
     node roots type=RootsRule parent=profile {
@@ -439,6 +492,28 @@ dialect kdlith version="0" {
             }
         }
         children allow
+    }
+
+    node match type=ProfileMatch parent=profile {
+        field rules {
+            from {
+                children path-suffix
+                children path-prefix
+                children file-name
+            }
+        }
+    }
+
+    node path-suffix type=PathSuffixMatch parent=match {
+        field text arg=0
+    }
+
+    node path-prefix type=PathPrefixMatch parent=match {
+        field text arg=0
+    }
+
+    node file-name type=FileNameMatch parent=match {
+        field text arg=0
     }
 
     // Descendant rules and ordered sequences, declared inside a node

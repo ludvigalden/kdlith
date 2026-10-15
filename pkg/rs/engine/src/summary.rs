@@ -59,9 +59,26 @@ impl Definition {
                 .as_ref()
                 .map_or_else(|| "-".to_owned(), |roots| list(n, roots));
             let grammar = profile.grammar.map_or("-", |g| n.resolve(g));
+            // The extended surface is written only when declared, so a
+            // profile without it keeps its summary line and digest.
+            let mut extended = String::new();
+            if let Some(parent) = profile.extends {
+                let _ = write!(extended, " extends={}", n.resolve(parent));
+            }
+            if profile.default {
+                extended.push_str(" default");
+            }
+            if !profile.rules.is_empty() {
+                let rules: Vec<String> = profile
+                    .rules
+                    .iter()
+                    .map(|rule| format!("{} {:?}", rule.kind.name(), rule.text))
+                    .collect();
+                let _ = write!(extended, " match=[{}]", rules.join(","));
+            }
             let _ = writeln!(
                 out,
-                "profile {} roots={roots} grammar={grammar}",
+                "profile {} roots={roots} grammar={grammar}{extended}",
                 n.resolve(profile.name)
             );
         }

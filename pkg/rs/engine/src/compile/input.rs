@@ -334,9 +334,25 @@ pub struct ImportInput {
 #[derive(Clone, Debug, Default)]
 pub struct ProfileInput {
     pub name: String,
+    /// The profile this one extends, when it declares one.
+    pub extends: Option<String>,
+    /// Whether the profile is marked the schema's default; `None` and
+    /// `Some(false)` are the same.
+    pub default: Option<bool>,
     /// The root types the profile admits, when it declares roots.
     pub roots: Option<Vec<String>>,
     pub grammar: Option<String>,
+    /// The match rules of the profile's `match` block, in written order:
+    /// each rule's node name (`path-suffix`, `path-prefix`, or
+    /// `file-name`) and its text. `None` when it declares no block.
+    pub rules: Option<Vec<MatchRuleInput>>,
+}
+
+/// One profile match rule, as declared.
+#[derive(Clone, Debug, Default)]
+pub struct MatchRuleInput {
+    pub kind: String,
+    pub text: String,
 }
 
 /// A discovery grammar, as declared.

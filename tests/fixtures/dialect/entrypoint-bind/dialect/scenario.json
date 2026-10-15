@@ -15,7 +15,7 @@
       "\"identity\":{\"domain\":\"EnumType\",\"name\":[\"Role\"]}",
       "\"origin\":3}}\n{\"item\":\"document\",\"data\":{\"source\":3,\"path\":\"",
       "\"origin\":4}}\n{\"item\":\"document\",\"data\":{\"source\":4,\"path\":\"",
-      "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":4,\"index\":183},\"identity\":{\"domain\":\"NodeDef\",\"name\":[\"import\"]}",
+      "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":4,\"index\":200},\"identity\":{\"domain\":\"NodeDef\",\"name\":[\"import\"]}",
       "{\"name\":\"role\",\"value\":{\"kind\":\"string\",\"value\":\"source-import\"}",
       "{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":{\"source\":0,\"index\":0}}}\n{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":null}}\n"
     ]

@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A profile extending itself is the shortest inheritance cycle, rejected as KDLITH-SCH012",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

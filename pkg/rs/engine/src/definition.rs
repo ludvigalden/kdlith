@@ -105,11 +105,112 @@ impl Definition {
     /// binds none, exactly as dispatch fails closed without one.
     pub fn grammar_for(&self, profile: Option<Sym>) -> Option<&DiscoveryDecl> {
         let bound = match profile {
-            Some(named) => self.profiles.iter().find(|p| p.name == named)?.grammar?,
+            Some(named) => self.effective_grammar(named)?,
             None if self.profiles.is_empty() => self.root_grammar?,
             None => return None,
         };
         self.discoveries.iter().find(|decl| decl.name == bound)
+    }
+
+    /// Select the profile one entry document binds under, in the one
+    /// total order every reading path shares: the explicitly `named`
+    /// profile; else the first declared match rule `path` satisfies,
+    /// taking profiles in declaration order and each profile's
+    /// effective rules in order; else the schema's default profile;
+    /// else nothing (`KDLITH-SCH011`). An explicit name the schema does
+    /// not declare selects nothing and never falls through. `path` is
+    /// the entry's source path as the invocation spells it — the path
+    /// the `path-stem` source-context provider reads — and the only
+    /// input inference reads: document content is never consulted.
+    pub fn select_profile(&self, named: Option<&str>, path: &str) -> ProfileSelection {
+        if let Some(name) = named {
+            let declared = self
+                .names
+                .get(name)
+                .and_then(|sym| self.profile(sym))
+                .map(|profile| profile.name);
+            return match declared {
+                Some(sym) => ProfileSelection::Selected(sym),
+                None => ProfileSelection::Unselected {
+                    named: Some(name.to_owned()),
+                },
+            };
+        }
+        if self.profiles.is_empty() {
+            return ProfileSelection::Unprofiled;
+        }
+        for profile in &self.profiles {
+            if self
+                .effective_rules(profile.name)
+                .iter()
+                .any(|rule| rule.matches(path))
+            {
+                return ProfileSelection::Selected(profile.name);
+            }
+        }
+        match self.profiles.iter().find(|profile| profile.default) {
+            Some(profile) => ProfileSelection::Selected(profile.name),
+            None => ProfileSelection::Unselected { named: None },
+        }
+    }
+
+    /// The declared profile named `name`.
+    pub fn profile(&self, name: Sym) -> Option<&ProfileDecl> {
+        self.profiles.iter().find(|profile| profile.name == name)
+    }
+
+    /// The `extends` chain of `name`: the profile itself, then each
+    /// declared profile it extends in turn. The walk stops at an
+    /// undeclared parent and before a profile already on the chain, so
+    /// it terminates even on a definition whose cycles were not checked.
+    pub fn profile_chain(&self, name: Sym) -> Vec<&ProfileDecl> {
+        let mut chain: Vec<&ProfileDecl> = Vec::new();
+        let mut next = self.profile(name);
+        while let Some(profile) = next {
+            if chain.iter().any(|seen| seen.name == profile.name) {
+                break;
+            }
+            chain.push(profile);
+            next = profile.extends.and_then(|parent| self.profile(parent));
+        }
+        chain
+    }
+
+    /// The root types `name` admits once composed along its chain: the
+    /// union of its own and every ancestor's roots, own first; `None`
+    /// (every declared root) when any profile on the chain declares no
+    /// roots.
+    pub fn effective_roots(&self, name: Sym) -> Option<Vec<Sym>> {
+        let chain = self.profile_chain(name);
+        if chain.is_empty() {
+            return None;
+        }
+        let mut roots: Vec<Sym> = Vec::new();
+        for profile in chain {
+            for root in profile.roots.as_ref()? {
+                if !roots.contains(root) {
+                    roots.push(*root);
+                }
+            }
+        }
+        Some(roots)
+    }
+
+    /// The match rules of `name` composed along its chain: its own in
+    /// written order, then each ancestor's in turn.
+    pub fn effective_rules(&self, name: Sym) -> Vec<&MatchRule> {
+        self.profile_chain(name)
+            .into_iter()
+            .flat_map(|profile| profile.rules.iter())
+            .collect()
+    }
+
+    /// The discovery grammar `name` binds: its own, else the nearest
+    /// ancestor's.
+    pub fn effective_grammar(&self, name: Sym) -> Option<Sym> {
+        self.profile_chain(name)
+            .into_iter()
+            .find_map(|profile| profile.grammar)
     }
 }
 
@@ -243,18 +344,122 @@ pub struct ImportDecl {
     pub site: Site,
 }
 
-/// A document profile: a named selection of root types the invocation
-/// names explicitly.
+/// A document profile: a named selection of root types. The invocation
+/// selects one per entry document from invocation context (see
+/// [`Definition::select_profile`]), never from document content.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct ProfileDecl {
     pub name: Sym,
-    /// The root types the profile admits; `None` admits every declared
-    /// root.
+    /// The profile this one extends, as declared; its effective roots,
+    /// match rules, and grammar compose along the chain.
+    pub extends: Option<Sym>,
+    /// Whether the profile is the schema's default. Never inherited.
+    pub default: bool,
+    /// The root types the profile itself admits; `None` admits every
+    /// declared root.
     pub roots: Option<Vec<Sym>>,
-    /// The discovery grammar the profile binds, by name.
+    /// The discovery grammar the profile itself binds, by name.
     pub grammar: Option<Sym>,
+    /// The match rules the profile itself declares, in written order.
+    pub rules: Vec<MatchRule>,
     pub site: Site,
+}
+
+/// What a profile match rule compares against the source path.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum MatchKind {
+    /// The path's trailing components equal the text's components.
+    PathSuffix,
+    /// The path's leading components equal the text's components.
+    PathPrefix,
+    /// The path's final component, extension included, equals the text.
+    FileName,
+}
+
+impl MatchKind {
+    pub fn from_name(name: &str) -> Option<Self> {
+        Some(match name {
+            "path-suffix" => MatchKind::PathSuffix,
+            "path-prefix" => MatchKind::PathPrefix,
+            "file-name" => MatchKind::FileName,
+            _ => return None,
+        })
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            MatchKind::PathSuffix => "path-suffix",
+            MatchKind::PathPrefix => "path-prefix",
+            MatchKind::FileName => "file-name",
+        }
+    }
+}
+
+/// One declared profile match rule.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct MatchRule {
+    pub kind: MatchKind,
+    pub text: String,
+}
+
+impl MatchRule {
+    pub fn new(kind: MatchKind, text: impl Into<String>) -> Self {
+        Self {
+            kind,
+            text: text.into(),
+        }
+    }
+
+    /// Whether the rule matches `path`, the source path as the
+    /// invocation spells it. Both sides split into components on `/`
+    /// and `\`; nothing is normalized, and comparison is exact.
+    pub fn matches(&self, path: &str) -> bool {
+        let path: Vec<&str> = components(path).collect();
+        match self.kind {
+            MatchKind::FileName => path.last().is_some_and(|last| *last == self.text),
+            MatchKind::PathSuffix => {
+                let text: Vec<&str> = components(&self.text).collect();
+                path.ends_with(&text)
+            }
+            MatchKind::PathPrefix => {
+                let text: Vec<&str> = components(&self.text).collect();
+                path.starts_with(&text)
+            }
+        }
+    }
+}
+
+fn components(path: &str) -> impl Iterator<Item = &str> {
+    path.split(['/', '\\'])
+}
+
+/// The profile selected for one entry document, by
+/// [`Definition::select_profile`]. Documents an import reaches bind
+/// under their importing entry's selection.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum ProfileSelection {
+    /// The definition declares no profiles and none was named: every
+    /// declared root is admitted.
+    Unprofiled,
+    /// The selected profile.
+    Selected(Sym),
+    /// Nothing was selected (`KDLITH-SCH011`): the explicit name as the
+    /// invocation spelled it, if one was given.
+    Unselected { named: Option<String> },
+}
+
+impl ProfileSelection {
+    /// The selected profile, if any.
+    pub fn profile(&self) -> Option<Sym> {
+        match self {
+            ProfileSelection::Selected(sym) => Some(*sym),
+            _ => None,
+        }
+    }
 }
 
 /// The pattern syntax a discovery grammar admits.

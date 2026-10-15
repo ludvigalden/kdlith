@@ -9,19 +9,19 @@ use kdlith_engine::{
     AnchorInput, CaptureInput, CaseInput, CheckScope, ChildRuleInput, ConstraintInput, Construct,
     DefaultInput, Definition, DefinitionInput, DependentInput, DescendantRuleInput, DiscoveryInput,
     DocumentInput, DocumentRuleInput, EffectGroupInput, EffectInput, Extensions, FieldBindingInput,
-    FieldInput, FormatInput, IdentityInput, ImportInput, Located, MemberInput, NodeInput,
-    ParsedDocument, ProfileInput, ProviderInput, QualifierInput, ReferenceInput, ResolutionInput,
-    SequenceInput, SlotInput, SourceContextInput, SourceFieldInput, SourceInput, StepInput,
-    TypeInput, TypedItem, ValidatorInput, VariantInput, compile_dialect, compile_dialect_input,
-    compile_schema_input,
+    FieldInput, FormatInput, IdentityInput, ImportInput, Located, MatchRuleInput, MemberInput,
+    NodeInput, ParsedDocument, ProfileInput, ProviderInput, QualifierInput, ReferenceInput,
+    ResolutionInput, SequenceInput, SlotInput, SourceContextInput, SourceFieldInput, SourceInput,
+    StepInput, TypeInput, TypedItem, ValidatorInput, VariantInput, compile_dialect,
+    compile_dialect_input, compile_schema_input,
 };
 use kdlith_runtime::Repeated;
 
 use crate::processors::{Item, reader};
 use crate::types::{
     CodecType, Constraint, DefaultSpec, DiscoveryDef, DocumentRule, Effect, EnumType, FieldBinding,
-    MapType, NodeDef, ObjectType, ProfileDef, ReferenceDef, ResolutionPolicyDef, SecretProvider,
-    Source, StringType, UnionType,
+    MapType, MatchRule, NodeDef, ObjectType, ProfileDef, ReferenceDef, ResolutionPolicyDef,
+    SecretProvider, Source, StringType, UnionType,
 };
 
 /// The canonical dialect's contributing documents, embedded so the
@@ -424,10 +424,15 @@ fn declaration(value: Item) -> Option<Construct> {
         }),
         Item::ProfileDef(ProfileDef {
             name,
+            extends,
+            default,
             roots,
             grammar,
+            r#match,
         }) => Construct::Profile(ProfileInput {
             name: name.as_str().to_owned(),
+            extends: extends.map(|parent| parent.as_str().to_owned()),
+            default,
             roots: roots.map(|roots| {
                 roots
                     .allow
@@ -436,6 +441,23 @@ fn declaration(value: Item) -> Option<Construct> {
                     .collect()
             }),
             grammar: grammar.map(|grammar| grammar.as_str().to_owned()),
+            rules: r#match.map(|block| {
+                block
+                    .rules
+                    .iter()
+                    .map(|rule| {
+                        let (kind, text) = match rule {
+                            MatchRule::PathSuffix(rule) => ("path-suffix", &rule.text),
+                            MatchRule::PathPrefix(rule) => ("path-prefix", &rule.text),
+                            MatchRule::FileName(rule) => ("file-name", &rule.text),
+                        };
+                        MatchRuleInput {
+                            kind: kind.to_owned(),
+                            text: text.as_str().to_owned(),
+                        }
+                    })
+                    .collect()
+            }),
         }),
         Item::DiscoveryDef(DiscoveryDef {
             name,

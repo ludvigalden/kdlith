@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A second profile marked default is rejected as KDLITH-SCH013: a and c both carry default=#true (b's default=#false is the same as absent)",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

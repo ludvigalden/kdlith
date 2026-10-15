@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "Selection reads the source name, never content: two entries both named retail.kdl, with different content, each select retail through its file-name rule and bind under it (north's Gizmo from retail's own roots, south's Part and Widget from base's inherited ones); invalid/data/profile-no-content-trial pins the converse",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/profiles.kdl",
+    "north/retail.kdl",
+    "south/retail.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"document\",\"data\":{\"source\":0,\"path\":\"north/retail.kdl\"}}\n{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":0},\"type_name\":\"Gizmo\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"g1\"},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":null}}\n{\"item\":\"document\",\"data\":{\"source\":1,\"path\":\"south/retail.kdl\"}}\n{\"item\":\"record\",\"data\":{\"node\":{\"source\":1,\"index\":0},\"type_name\":\"Part\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"p1\"},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n{\"item\":\"record\",\"data\":{\"node\":{\"source\":1,\"index\":1},\"type_name\":\"Widget\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"w1\"},\"origin\":1}],\"origin\":1,\"validation\":\"valid\"}}\n"
+    ]
+  }
+}

@@ -26,6 +26,18 @@ pub(crate) const NODES: &[NodeShape] = &[
         .declaration()
         .ty("ProfileDef"),
     NodeShape::new("roots").under(&["profile"]).ty("RootsRule"),
+    NodeShape::new("match")
+        .under(&["profile"])
+        .ty("ProfileMatch"),
+    NodeShape::new("path-suffix")
+        .under(&["match"])
+        .ty("PathSuffixMatch"),
+    NodeShape::new("path-prefix")
+        .under(&["match"])
+        .ty("PathPrefixMatch"),
+    NodeShape::new("file-name")
+        .under(&["match"])
+        .ty("FileNameMatch"),
     NodeShape::new("descendants")
         .under(&["node"])
         .ty("DescendantRule"),

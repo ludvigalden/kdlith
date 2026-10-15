@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A match rule's TEXT is a MatchText (min-length 1): an empty file-name text fails its type (KDLITH-BND003)",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

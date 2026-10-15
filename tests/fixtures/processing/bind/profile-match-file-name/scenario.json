@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "A file-name match rule selects the profile with no flag present, and inference wins over the default: retail.kdl satisfies retail's file-name rule, so its Gizmo root binds where the default profile (fallback, Part only) would reject it",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/profiles.kdl",
+    "retail.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":0},\"type_name\":\"Gizmo\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"g1\"},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n"
+    ]
+  }
+}

@@ -1,0 +1,65 @@
+// The profile-model schema the profile scenarios share: retail extends
+// base and is declared first, so its effective rules (its own, then
+// base's) are consulted before any other profile's; fallback is the
+// default; and one match rule of each kind selects a profile from the
+// source path alone. Each root type is admitted by one profile's
+// effective roots, so the record that binds names the selected profile.
+schema profiles version="1" {
+    types {
+        object Part {
+            field id String
+        }
+        object Gizmo {
+            field id String
+        }
+        object Widget {
+            field id String
+        }
+        object Gadget {
+            field id String
+        }
+    }
+    node part role=record type=Part {
+        field id arg=0
+    }
+    node gizmo role=record type=Gizmo {
+        field id arg=0
+    }
+    node widget role=record type=Widget profile=base {
+        field id arg=0
+    }
+    node gadget role=record type=Gadget {
+        field id arg=0
+    }
+    profile retail extends=base {
+        roots {
+            allow Gizmo
+        }
+        match {
+            file-name "retail.kdl"
+            path-suffix "eu/shop.kdl"
+        }
+    }
+    profile base {
+        roots {
+            allow Part
+            allow Widget
+        }
+        match {
+            path-prefix "shared"
+        }
+    }
+    profile outlet {
+        roots {
+            allow Gadget
+        }
+        match {
+            path-prefix "outlet"
+        }
+    }
+    profile fallback default=#true {
+        roots {
+            allow Part
+        }
+    }
+}

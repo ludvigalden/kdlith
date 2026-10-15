@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "No profile is tried against content: retail.kdl selects retail through its file-name rule, so its gadget node is unbound (KDLITH-BND001) even though the outlet profile would admit it; the same document under the same name always selects the same profile",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/profiles.kdl",
+    "retail.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

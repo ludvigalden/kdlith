@@ -68,8 +68,21 @@ pub(crate) fn type_doc(name: &str) -> Option<&'static [&'static str]> {
             "record can be resolved later by restoring its context snapshot.",
         ],
         "ProfileDef" => &[
-            "A named selection of root types; the processing invocation names",
-            "the profile explicitly, never inferred from document content.",
+            "A named selection of root types; the invocation selects it by",
+            "name, else by the first matching declared rule, else as the",
+            "schema's default, never from document content.",
+        ],
+        "ProfileMatch" => &[
+            "The match rules that select a profile from the source path as",
+            "the invocation spells it; the first matching rule wins.",
+        ],
+        "MatchRule" => &["One match rule, discriminated by its node name."],
+        "MatchText" => &["The text a match rule compares; never empty."],
+        "PathSuffixMatch" => &["Matches when the source path ends with the text."],
+        "PathPrefixMatch" => &["Matches when the source path starts with the text."],
+        "FileNameMatch" => &[
+            "Matches when the source path's final component, extension",
+            "included, equals the text.",
         ],
         "DescendantRule" => &[
             "An occurrence bound over the declaring node's whole subtree,",
@@ -135,6 +148,14 @@ pub(crate) fn field_comment(ty: &str, field: &str) -> Option<&'static [&'static 
         ("SlotDef", "layers") => &["The layer order of a layered slot, highest precedence first."],
         ("AccumulationPolicy", "duplicates") => &["How merge treats a key contributed twice."],
         ("SetEffect", "layer") => &["The layer a set on a layered slot names."],
+        ("ProfileDef", "extends") => &[
+            "The profile this one extends: roots and match rules compose with",
+            "the parent's, and an own grammar overrides the inherited one.",
+        ],
+        ("ProfileDef", "default") => &[
+            "Marks the schema's default profile; at most one profile is the",
+            "default.",
+        ],
         ("ImportRequest", "alias") => &[
             "The imported declarations are reachable through the alias",
             "namespace and not by their unqualified names.",
@@ -293,8 +314,8 @@ pub(crate) fn glue(name: &str) -> Option<Glue> {
         "ProfileDef" => Glue {
             arm: PROFILE_DEF_ARM,
             record_arm: None,
-            engine_inputs: &["ProfileInput"],
-            types: &["ProfileDef"],
+            engine_inputs: &["ProfileInput", "MatchRuleInput"],
+            types: &["ProfileDef", "MatchRule"],
         },
         "DiscoveryDef" => Glue {
             arm: DISCOVERY_DEF_ARM,
@@ -511,10 +532,15 @@ const SLOT_DEF_ARM: &str = r##"        Item::SlotDef(slot) => Construct::Slot(Sl
 
 const PROFILE_DEF_ARM: &str = r##"        Item::ProfileDef(ProfileDef {
             name,
+            extends,
+            default,
             roots,
             grammar,
+            r#match,
         }) => Construct::Profile(ProfileInput {
             name: name.as_str().to_owned(),
+            extends: extends.map(|parent| parent.as_str().to_owned()),
+            default,
             roots: roots.map(|roots| {
                 roots
                     .allow
@@ -523,6 +549,23 @@ const PROFILE_DEF_ARM: &str = r##"        Item::ProfileDef(ProfileDef {
                     .collect()
             }),
             grammar: grammar.map(|grammar| grammar.as_str().to_owned()),
+            rules: r#match.map(|block| {
+                block
+                    .rules
+                    .iter()
+                    .map(|rule| {
+                        let (kind, text) = match rule {
+                            MatchRule::PathSuffix(rule) => ("path-suffix", &rule.text),
+                            MatchRule::PathPrefix(rule) => ("path-prefix", &rule.text),
+                            MatchRule::FileName(rule) => ("file-name", &rule.text),
+                        };
+                        MatchRuleInput {
+                            kind: kind.to_owned(),
+                            text: text.as_str().to_owned(),
+                        }
+                    })
+                    .collect()
+            }),
         }),
 "##;
 

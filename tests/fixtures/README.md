@@ -106,7 +106,10 @@ the ordered JSON-line item stream on stdout; most scenarios share one
 `use` node carries the repeated policy, the alias, and the projected
 slots), the slot-duplicate-policy scenarios (`slot-*`, `merge-*`) share
 `policies.kdl` (one slot per policy arm, a layered slot with its declared
-layer order, and children scopes and a projecting import over it), while
+layer order, and children scopes and a projecting import over it), the
+profile-model scenarios (`profile-*` other than `profile-bind`) share
+`profiles.kdl` (an `extends` chain, a default, and one match rule of each
+kind, so each run's selected profile shows in which root binds), while
 `processing/bind/nullable/` and
 `processing/bind/value-expr/` carry their own schemas for the `nullable<T>`
 type constructor and the `ValueExpr` scalar, and the focused directories

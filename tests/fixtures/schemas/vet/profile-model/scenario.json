@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "The shared profile-model schema vets green under the extended profile surface: extends, default=#true, and each match-rule kind (file-name, path-suffix, path-prefix) compile, and the summary counts the four profiles",
+  "args": [
+    "vet",
+    "schema",
+    "{fx-suite}/processing/bind/profiles.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "ok: schema profiles version 1 scope=complete documents=1 types=4 nodes=4 slots=0 profiles=4 digest=0112c7326dc3f6ba"
+    ]
+  }
+}

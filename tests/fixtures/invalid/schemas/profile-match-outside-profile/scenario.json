@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A match block binds only as a profile's child, so a rule always targets its enclosing declared profile: a match at schema level is unbound (KDLITH-BND001)",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}
