@@ -8,8 +8,11 @@ describes one kind of data document within that dialect. kdlith reads these
 definitions and either processes data documents directly or generates a typed
 Rust processor for them.
 
-> Status: early development. The workspace layout is in place; most crates
-> are skeletons.
+> Status: early development, pre-release. Every `kdlith` command (`gen`,
+> `vet`, `export`, `inspect`, `list`, `read`, `cache`, `changelog`) is
+> implemented, and `gen` generates compilable processor crates from dialect
+> and schema definitions. Interfaces may still change between releases; the
+> `kdlith` facade crate does not yet re-export the library crates.
 
 ## Workspace layout
 
