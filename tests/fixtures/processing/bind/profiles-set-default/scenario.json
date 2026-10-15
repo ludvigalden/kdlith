@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "With no listed profile's rules matching, the listed profile carrying the schema's default mark is active: plain.kdl satisfies no rule, so under --profiles outlet,fallback the listed default fallback admits its Part root",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/profiles.kdl",
+    "--profiles",
+    "outlet,fallback",
+    "plain.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":0},\"type_name\":\"Part\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"p1\"},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n"
+    ]
+  }
+}

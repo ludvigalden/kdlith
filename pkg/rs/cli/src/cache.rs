@@ -10,7 +10,6 @@ use kdlith_diagnostic::{DiagnosticRecord, ExitStatus};
 use kdlith_engine::{CacheScan, DataReader, clean_state, derive_state, scan_state, write_state};
 
 use crate::report::{report, report_all};
-use crate::vet::DataOptions;
 use crate::{CacheCommand, CacheRefreshArgs};
 
 /// Run a parsed `cache` subcommand.
@@ -57,8 +56,10 @@ fn refresh(args: CacheRefreshArgs) -> ExitStatus {
         );
         return combine(ExitStatus::Failure, status);
     }
-    let options =
-        DataOptions::new(args.anchors, args.profile, args.handlers).with_dialect(args.dialect);
+    let options = match args.profiles.data_options(args.anchors, args.handlers) {
+        Ok(options) => options.with_dialect(args.dialect),
+        Err(status) => return status,
+    };
     let extensions = options.extensions();
     let def = match options.load_schema(&args.schema, &extensions) {
         Ok(def) => def,

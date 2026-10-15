@@ -1,0 +1,21 @@
+{
+  "binary": "kdlith",
+  "description": "A --profiles name that is not a kebab name is rejected by the argument parser before any schema is read: --profiles Base exits 2 under KDLITH-CLI001",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/profiles.kdl",
+    "--profiles",
+    "Base",
+    "plain.kdl"
+  ],
+  "expect": {
+    "exit": 2,
+    "stderr-contains": [
+      "error[KDLITH-CLI001]"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

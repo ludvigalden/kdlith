@@ -142,12 +142,13 @@ pub struct Binder<'d, 's> {
     /// The explicit output policy for sensitive fields; `None` applies
     /// each sensitivity's fail-closed default.
     output_policy: Option<OutputPolicy>,
-    /// The profiles whose node declarations the selected profile admits:
-    /// the selected profile and every profile it extends, in chain
-    /// order; empty when none is selected.
+    /// The profiles whose node declarations the active selection
+    /// admits: each active profile and every profile it extends, in
+    /// selection then chain order; empty when none is selected.
     profile_chain: Vec<Sym>,
-    /// The root types the selected profile admits once composed along
-    /// its chain; `None` admits every declared root.
+    /// The root types the active selection admits: the union of each
+    /// active profile's roots composed along its chain; `None` admits
+    /// every declared root.
     profile_roots: Option<Vec<Sym>>,
     /// The explicit profile name as the invocation spelled it, when it
     /// selected nothing, so a rejected name reports itself rather than
@@ -223,7 +224,7 @@ impl<'d, 's> Binder<'d, 's> {
         output_policy: Option<OutputPolicy>,
     ) -> Self {
         let path = path.into();
-        let selection = def.select_profile(profile, &path);
+        let selection = def.select_profile(profile, &[], &path);
         Self::with_selection(def, source, path, text, &selection, output_policy)
     }
 
@@ -243,16 +244,7 @@ impl<'d, 's> Binder<'d, 's> {
             .bindings
             .scope(def.bindings.root_scope())
             .map_or_else(|| ScopeRules::default().start(), |s| s.rules.start());
-        let (profile_chain, profile_roots) = match selection.profile() {
-            Some(selected) => (
-                def.profile_chain(selected)
-                    .iter()
-                    .map(|profile| profile.name)
-                    .collect(),
-                def.effective_roots(selected),
-            ),
-            None => (Vec::new(), None),
-        };
+        let (profile_chain, profile_roots) = active_profiles(def, selection.members());
         let (profile_named, profile_reported) = match selection {
             ProfileSelection::Unselected { named } => (named.clone(), false),
             _ => (None, true),
@@ -2113,6 +2105,34 @@ impl<'s> Processor for Binder<'_, 's> {
     }
 }
 
+/// The admission an active selection composes: every active profile
+/// with every profile it extends, and the union of their effective
+/// roots — `None`, every declared root, when any active profile admits
+/// every root or none is active.
+fn active_profiles(def: &Definition, members: &[Sym]) -> (Vec<Sym>, Option<Vec<Sym>>) {
+    let mut chain: Vec<Sym> = Vec::new();
+    let mut roots: Option<Vec<Sym>> = (!members.is_empty()).then(Vec::new);
+    for member in members {
+        for profile in def.profile_chain(*member) {
+            if !chain.contains(&profile.name) {
+                chain.push(profile.name);
+            }
+        }
+        roots = match (roots, def.effective_roots(*member)) {
+            (Some(mut union), Some(own)) => {
+                for root in own {
+                    if !union.contains(&root) {
+                        union.push(root);
+                    }
+                }
+                Some(union)
+            }
+            _ => None,
+        };
+    }
+    (chain, roots)
+}
+
 /// The knobs a binding session applies beyond its definition: the
 /// profile the invocation named, one explicit output policy, and the
 /// installed context handlers.
@@ -2296,7 +2316,7 @@ impl<'d, 's> BindingSession<'d, 's> {
         let events = ParseEvents::new(Parser::new(text), text, path);
         let selection = knobs
             .selection
-            .unwrap_or_else(|| def.select_profile(knobs.profile, path));
+            .unwrap_or_else(|| def.select_profile(knobs.profile, &[], path));
         let mut binder =
             Binder::with_selection(def, source, path, text, &selection, knobs.output_policy);
         binder.handlers = knobs.handlers;

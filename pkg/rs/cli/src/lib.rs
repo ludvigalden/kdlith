@@ -218,15 +218,52 @@ struct VetDataArgs {
         value_parser = handlers::parse_anchor
     )]
     anchors: Vec<(String, PathBuf)>,
-    /// The profile the invocation binds
-    #[arg(long, value_name = "NAME")]
-    profile: Option<String>,
+    #[command(flatten)]
+    profiles: ProfileArgs,
     /// A built-in context handler to install, by name (repeatable)
     #[arg(long = "handler", value_name = "NAME", value_parser = handlers::parse_handler)]
     handlers: Vec<String>,
     /// Data documents
     #[arg(required = true)]
     files: Vec<PathBuf>,
+}
+
+/// The profile selection every data verb shares: one explicit profile,
+/// or a listed profile set. The two exclude each other.
+#[derive(Args, Clone)]
+struct ProfileArgs {
+    /// The profile the invocation binds; excludes --profiles
+    #[arg(long, value_name = "NAME")]
+    profile: Option<String>,
+    /// The profile set the invocation admits, comma-separated: the
+    /// listed profiles whose match rules the entry's path satisfies,
+    /// else the listed default, else the first listed; excludes
+    /// --profile
+    #[arg(long, value_name = "NAMES", value_parser = handlers::parse_profiles)]
+    profiles: Option<handlers::ProfileSet>,
+}
+
+impl ProfileArgs {
+    /// The data options these profile flags and the verb's anchors and
+    /// handlers make. `--profile` and `--profiles` together are an
+    /// argument-form fault (`KDLITH-CLI001`, exit 2): the invocation
+    /// names one profile or one set, never both.
+    fn data_options(
+        self,
+        anchors: Vec<(String, PathBuf)>,
+        handlers: Vec<String>,
+    ) -> Result<DataOptions, ExitStatus> {
+        let set = match (self.profile.as_deref(), self.profiles) {
+            (Some(_), Some(_)) => {
+                return Err(usage::report_invalid_argument(
+                    "the argument '--profile <NAME>' cannot be used with '--profiles <NAMES>'",
+                ));
+            }
+            (_, Some(handlers::ProfileSet(names))) => names,
+            (_, None) => Vec::new(),
+        };
+        Ok(DataOptions::new(anchors, self.profile, handlers).with_profiles(set))
+    }
 }
 
 /// The `--scope` value of `vet dialect` and `vet schema`.
@@ -311,9 +348,8 @@ struct InspectDataArgs {
         value_parser = handlers::parse_anchor
     )]
     anchors: Vec<(String, PathBuf)>,
-    /// The profile the invocation binds
-    #[arg(long, value_name = "NAME")]
-    profile: Option<String>,
+    #[command(flatten)]
+    profiles: ProfileArgs,
     /// A built-in context handler to install, by name (repeatable)
     #[arg(long = "handler", value_name = "NAME", value_parser = handlers::parse_handler)]
     handlers: Vec<String>,
@@ -411,9 +447,8 @@ struct ListItemsArgs {
         value_parser = handlers::parse_anchor
     )]
     anchors: Vec<(String, PathBuf)>,
-    /// The profile the invocation binds
-    #[arg(long, value_name = "NAME")]
-    profile: Option<String>,
+    #[command(flatten)]
+    profiles: ProfileArgs,
     /// A built-in context handler to install, by name (repeatable)
     #[arg(long = "handler", value_name = "NAME", value_parser = handlers::parse_handler)]
     handlers: Vec<String>,
@@ -473,9 +508,8 @@ struct CacheRefreshArgs {
         value_parser = handlers::parse_anchor
     )]
     anchors: Vec<(String, PathBuf)>,
-    /// The profile the invocation binds
-    #[arg(long, value_name = "NAME")]
-    profile: Option<String>,
+    #[command(flatten)]
+    profiles: ProfileArgs,
     /// A built-in context handler to install, by name (repeatable)
     #[arg(long = "handler", value_name = "NAME", value_parser = handlers::parse_handler)]
     handlers: Vec<String>,
@@ -533,9 +567,8 @@ struct ReadDataArgs {
         value_parser = handlers::parse_anchor
     )]
     anchors: Vec<(String, PathBuf)>,
-    /// The profile the invocation binds
-    #[arg(long, value_name = "NAME")]
-    profile: Option<String>,
+    #[command(flatten)]
+    profiles: ProfileArgs,
     /// A built-in context handler to install, by name (repeatable)
     #[arg(long = "handler", value_name = "NAME", value_parser = handlers::parse_handler)]
     handlers: Vec<String>,
@@ -607,9 +640,8 @@ struct ExportArgs {
         value_parser = handlers::parse_anchor
     )]
     anchors: Vec<(String, PathBuf)>,
-    /// The profile the invocation binds
-    #[arg(long, value_name = "NAME")]
-    profile: Option<String>,
+    #[command(flatten)]
+    profiles: ProfileArgs,
     /// A built-in context handler to install, by name (repeatable)
     #[arg(long = "handler", value_name = "NAME", value_parser = handlers::parse_handler)]
     handlers: Vec<String>,

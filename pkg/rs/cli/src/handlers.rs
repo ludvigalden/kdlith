@@ -6,7 +6,7 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use kdlith_engine::{HandlerCall, HandlerEffect, HandlerFn, Handlers};
+use kdlith_engine::{HandlerCall, HandlerEffect, HandlerFn, Handlers, StringFormat};
 
 /// `copy-fields` sets each context slot the node's field names, from
 /// that field's value. A field naming no declared slot fails closed at
@@ -66,6 +66,31 @@ pub(crate) fn parse_anchor(value: &str) -> Result<(String, PathBuf), String> {
         return Err(format!("anchor {name:?} takes a non-empty path"));
     }
     Ok((name.to_owned(), PathBuf::from(path)))
+}
+
+/// A `--profiles` value: the listed profile names, in listed order.
+#[derive(Clone, Debug)]
+pub(crate) struct ProfileSet(pub(crate) Vec<String>);
+
+/// Validate one `--profiles` value: a comma-separated list of non-empty
+/// kebab names, the `kebab-case` form every declared profile name
+/// takes. Whether the
+/// schema declares each name is decided at reading time
+/// (`KDLITH-SCH011`), never here.
+pub(crate) fn parse_profiles(value: &str) -> Result<ProfileSet, String> {
+    let mut names = Vec::new();
+    for name in value.split(',') {
+        if name.is_empty() {
+            return Err(format!(
+                "profiles takes NAME[,NAME...] with no empty name, not {value:?}"
+            ));
+        }
+        if !StringFormat::KebabCase.matches(name, None) {
+            return Err(format!("profile name {name:?} is not a kebab name"));
+        }
+        names.push(name.to_owned());
+    }
+    Ok(ProfileSet(names))
 }
 
 /// Validate one `--handler` value against the built-in catalog.

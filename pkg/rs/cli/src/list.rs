@@ -58,8 +58,10 @@ fn load(
 /// indexed item. The reading runs to its end, so a diagnostic anywhere
 /// in the documents fails the listing after the index is printed.
 fn items(args: ListItemsArgs) -> ExitStatus {
-    let options =
-        DataOptions::new(args.anchors, args.profile, args.handlers).with_dialect(args.dialect);
+    let options = match args.profiles.data_options(args.anchors, args.handlers) {
+        Ok(options) => options.with_dialect(args.dialect),
+        Err(status) => return status,
+    };
     let def = match load(&args.schema, &options, &options.extensions()) {
         Ok(def) => def,
         Err(status) => return status,

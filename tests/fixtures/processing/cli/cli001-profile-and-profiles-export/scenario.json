@@ -1,0 +1,26 @@
+{
+  "binary": "kdlith",
+  "description": "export rejects --profile with --profiles the same way the other data verbs do: exit 2 under KDLITH-CLI001, nothing is exported",
+  "args": [
+    "export",
+    "--schema",
+    "{fx-suite}/processing/bind/profiles.kdl",
+    "--profile",
+    "base",
+    "--profiles",
+    "base",
+    "plain.kdl",
+    "--emit",
+    "roots",
+    "--format",
+    "ndjson"
+  ],
+  "expect": {
+    "exit": 2,
+    "stderr-contains": [
+      "error[KDLITH-CLI001]"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

@@ -185,7 +185,7 @@ impl<'d, T: 'static> TypedReader<'d, T> {
             // One selection per entry document, from its source path as
             // the reading spells it; its imports bind under it.
             let shown = entry.display().to_string();
-            reading.selection = self.def.select_profile(None, &shown);
+            reading.selection = self.def.select_profile(None, &[], &shown);
             match reading
                 .invocations
                 .enter_root(entry, Context::new(layout.clone()))

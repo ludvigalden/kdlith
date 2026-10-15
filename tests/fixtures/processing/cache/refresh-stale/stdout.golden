@@ -1,5 +1,5 @@
-ed73773e2bbc55bf revision=fnv1a64:36bdb8244ceeaa7e schema=fnv1a64:47b688abe06a8e86 context=fnv1a64:97c312de49340b52 policy=instantiate items=2
+b992d53eac9e24d0 revision=fnv1a64:36bdb8244ceeaa7e schema=fnv1a64:47b688abe06a8e86 context=fnv1a64:97c312de49340b52 profiles=fnv1a64:e1b51df36e161fca policy=instantiate items=2
   derived entry=data.kdl source=./part.kdl caller=data.kdl
   derived entry=data.kdl source=part.kdl caller=data.kdl
-fbc3953e246d3013 revision=fnv1a64:f2958960a2cd65cc schema=fnv1a64:47b688abe06a8e86 context=fnv1a64:97c312de49340b52 policy=reject items=2
+bc62d7990e5d1186 revision=fnv1a64:f2958960a2cd65cc schema=fnv1a64:47b688abe06a8e86 context=fnv1a64:97c312de49340b52 profiles=fnv1a64:e1b51df36e161fca policy=reject items=2
   derived entry=other.kdl source=other.kdl caller=-

@@ -1,0 +1,22 @@
+{
+  "binary": "kdlith",
+  "description": "When several listed profiles' rules match, all of them are active and admission is their union: outlet/retail.kdl satisfies outlet's path-prefix and retail's file-name rules, so outlet's Gadget, retail's own Gizmo, and the Part and Widget retail inherits from base all bind, the widget declaration's profile=base admitted because base is reached from a set member's extends chain",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/profiles.kdl",
+    "--profiles",
+    "outlet,retail",
+    "outlet/retail.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":0},\"type_name\":\"Part\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"p1\"},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n",
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":1},\"type_name\":\"Gizmo\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"g1\"},\"origin\":1}],\"origin\":1,\"validation\":\"valid\"}}\n",
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":2},\"type_name\":\"Widget\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"w1\"},\"origin\":2}],\"origin\":2,\"validation\":\"valid\"}}\n",
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":3},\"type_name\":\"Gadget\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"d1\"},\"origin\":3}],\"origin\":3,\"validation\":\"valid\"}}\n"
+    ]
+  }
+}

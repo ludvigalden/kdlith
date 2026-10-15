@@ -1,0 +1,3 @@
+error[KDLITH-CLI001]: invalid value 'base,' for '--profiles <NAMES>': profiles takes NAME[,NAME...] with no empty name, not "base,"
+
+For more information, try '--help'.

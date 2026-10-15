@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A --profiles name the schema does not declare fails closed with KDLITH-SCH011 and never falls through to the remaining members: --profiles ghost,base names no declared ghost",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/profiles.kdl",
+    "--profiles",
+    "ghost,base",
+    "plain.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

@@ -109,7 +109,8 @@ slots), the slot-duplicate-policy scenarios (`slot-*`, `merge-*`) share
 layer order, and children scopes and a projecting import over it), the
 profile-model scenarios (`profile-*` other than `profile-bind`) share
 `profiles.kdl` (an `extends` chain, a default, and one match rule of each
-kind, so each run's selected profile shows in which root binds), while
+kind, so each run's selected profile shows in which root binds), and so
+do the `--profiles` set scenarios (`profiles-*`), while
 `processing/bind/nullable/` and
 `processing/bind/value-expr/` carry their own schemas for the `nullable<T>`
 type constructor and the `ValueExpr` scalar, and the focused directories

@@ -26,8 +26,9 @@ impl InvocationId {
 }
 
 /// The semantics one invocation binds under: which revision of its
-/// source, which schema, which inherited context, under which repeat
-/// policy. Two invocations with one identity produce one bound result.
+/// source, which schema, which inherited context, which profile
+/// selection, under which repeat policy. Two invocations with one
+/// identity produce one bound result.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub struct InvocationIdentity {
@@ -37,16 +38,21 @@ pub struct InvocationIdentity {
     pub schema: u64,
     /// A fingerprint of the inherited (projected) context.
     pub context: u64,
+    /// A fingerprint of the resolved profile selection the invocation
+    /// binds under: a result bound under one selection is never the
+    /// result of another.
+    pub profiles: u64,
     /// The repeat policy the request carried.
     pub policy: Repeated,
 }
 
 impl InvocationIdentity {
-    pub fn new(revision: u64, schema: u64, context: u64, policy: Repeated) -> Self {
+    pub fn new(revision: u64, schema: u64, context: u64, profiles: u64, policy: Repeated) -> Self {
         Self {
             revision,
             schema,
             context,
+            profiles,
             policy,
         }
     }
@@ -71,6 +77,9 @@ pub struct Invocation {
     pub schema: u64,
     /// A fingerprint of the context as the invocation was entered with.
     pub context_fingerprint: u64,
+    /// The fingerprint of the profile selection the session binds the
+    /// invocation under.
+    pub profiles: u64,
     /// The source revision, once the host has read the document's text;
     /// `None` until then.
     pub revision: Option<u64>,
@@ -83,6 +92,7 @@ impl Invocation {
             revision: self.revision?,
             schema: self.schema,
             context: self.context_fingerprint,
+            profiles: self.profiles,
             policy: self.policy,
         })
     }
@@ -125,6 +135,9 @@ pub struct Invocations {
     /// The schema fingerprint every invocation of the session binds
     /// under; recorded on each invocation as it is admitted.
     schema: u64,
+    /// The fingerprint of the profile selection the invocations admitted
+    /// from now on bind under; recorded on each as it is admitted.
+    profiles: u64,
 }
 
 impl Invocations {
@@ -140,6 +153,13 @@ impl Invocations {
         }
         self.schema = schema;
         self
+    }
+
+    /// Record the fingerprint of the profile selection every invocation
+    /// admitted from now on binds under — an entry document and the
+    /// documents its imports reach; part of each one's identity.
+    pub fn select_profiles(&mut self, fingerprint: u64) {
+        self.profiles = fingerprint;
     }
 
     /// Invoke an entry document. Entries are never imported, so a
@@ -326,6 +346,7 @@ impl Invocations {
         }
         let context_fingerprint = context.fingerprint();
         let schema = self.schema;
+        let profiles = self.profiles;
         let id = index(self.invocations.len());
         self.invocations.push(Invocation {
             path,
@@ -335,6 +356,7 @@ impl Invocations {
             policy,
             schema,
             context_fingerprint,
+            profiles,
             revision: None,
         });
         self.active.push(id);

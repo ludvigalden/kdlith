@@ -1,0 +1,3 @@
+error[KDLITH-CLI001]: invalid value 'Base' for '--profiles <NAMES>': profile name "Base" is not a kebab name
+
+For more information, try '--help'.

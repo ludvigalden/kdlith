@@ -1,0 +1,21 @@
+{
+  "binary": "kdlith",
+  "description": "export resolves --profiles through the one shared selection vet data uses: outlet/retail.kdl under --profiles outlet,retail activates outlet and retail, so the same four roots processing/bind/profiles-set-multi binds are exported; stdout is pinned byte for byte",
+  "args": [
+    "export",
+    "--schema",
+    "{fx-suite}/processing/bind/profiles.kdl",
+    "--profiles",
+    "outlet,retail",
+    "outlet/retail.kdl",
+    "--emit",
+    "roots",
+    "--format",
+    "ndjson"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

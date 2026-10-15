@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "The listed default wins over the first listed: under --profiles outlet,fallback, plain.kdl selects fallback, not outlet, so the gadget outlet would admit is unbound (KDLITH-BND001)",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/profiles.kdl",
+    "--profiles",
+    "outlet,fallback",
+    "plain.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

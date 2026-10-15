@@ -1,0 +1,20 @@
+{
+  "binary": "kdlith",
+  "description": "With --profiles the listed profiles whose match rules the entry's path satisfies are the active set: shared/stock.kdl satisfies base's path-prefix rule and not outlet's, so base alone is active and its Part and Widget roots bind",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/profiles.kdl",
+    "--profiles",
+    "outlet,base",
+    "shared/stock.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":0},\"type_name\":\"Part\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"p1\"},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n",
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":1},\"type_name\":\"Widget\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"w1\"},\"origin\":1}],\"origin\":1,\"validation\":\"valid\"}}\n"
+    ]
+  }
+}

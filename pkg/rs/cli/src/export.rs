@@ -28,8 +28,10 @@ pub(crate) fn run(args: ExportArgs) -> ExitStatus {
         SensitiveArg::Omit => OutputPolicy::Omit,
         SensitiveArg::Redact => OutputPolicy::Redact,
     });
-    let options =
-        DataOptions::new(args.anchors, args.profile, args.handlers).with_dialect(args.dialect);
+    let options = match args.profiles.data_options(args.anchors, args.handlers) {
+        Ok(options) => options.with_dialect(args.dialect),
+        Err(status) => return status,
+    };
     export(
         &args.schema,
         &paths(&args.files),

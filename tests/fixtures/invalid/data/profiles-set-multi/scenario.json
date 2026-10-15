@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A node declaration whose profile= names a profile outside the active set stays unbound: under --profiles outlet,fallback, outlet/stock.kdl activates outlet alone, so the widget declaration carrying profile=base is unbound (KDLITH-BND001) while the gadget binds",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/profiles.kdl",
+    "--profiles",
+    "outlet,fallback",
+    "outlet/stock.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

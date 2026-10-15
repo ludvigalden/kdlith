@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "export resolves --profiles through the same shared selection: --profiles ghost,base fails the export closed with KDLITH-SCH011",
+  "args": [
+    "export",
+    "--schema",
+    "{fx-suite}/processing/bind/profiles.kdl",
+    "--profiles",
+    "ghost,base",
+    "plain.kdl",
+    "--emit",
+    "roots",
+    "--format",
+    "ndjson"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

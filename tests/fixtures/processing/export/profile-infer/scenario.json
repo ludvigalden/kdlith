@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "With neither --profile nor --profiles present, export infers the profile from match rules as vet data does: retail.kdl satisfies retail's file-name rule, so the Gizmo retail alone admits is exported; stdout is pinned byte for byte",
+  "args": [
+    "export",
+    "--schema",
+    "{fx-suite}/processing/bind/profiles.kdl",
+    "retail.kdl",
+    "--emit",
+    "roots",
+    "--format",
+    "ndjson"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

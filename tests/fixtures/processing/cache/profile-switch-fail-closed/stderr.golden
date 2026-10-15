@@ -1,0 +1,5 @@
+error[KDLITH-BND001]: unknown node part under the document root
+  --> data.kdl:1:1
+error[KDLITH-BND001]: unknown node widget under the document root
+  --> data.kdl:2:1
+kdlith: the reading failed; state was left unchanged

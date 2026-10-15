@@ -112,39 +112,47 @@ impl Definition {
         self.discoveries.iter().find(|decl| decl.name == bound)
     }
 
-    /// Select the profile one entry document binds under, in the one
+    /// Select the profiles one entry document binds under, in the one
     /// total order every reading path shares: the explicitly `named`
-    /// profile; else the first declared match rule `path` satisfies,
-    /// taking profiles in declaration order and each profile's
-    /// effective rules in order; else the schema's default profile;
-    /// else nothing (`KDLITH-SCH011`). An explicit name the schema does
-    /// not declare selects nothing and never falls through. `path` is
-    /// the entry's source path as the invocation spells it — the path
-    /// the `path-stem` source-context provider reads — and the only
-    /// input inference reads: document content is never consulted.
-    pub fn select_profile(&self, named: Option<&str>, path: &str) -> ProfileSelection {
+    /// profile; else the listed profile `set`; else the first declared
+    /// match rule `path` satisfies, taking profiles in declaration order
+    /// and each profile's effective rules in order; else the schema's
+    /// default profile; else nothing (`KDLITH-SCH011`). An explicit
+    /// name, or a set member, the schema does not declare selects
+    /// nothing and never falls through.
+    ///
+    /// A listed set resolves among its own members, in listed order:
+    /// every member whose effective match rules `path` satisfies
+    /// applies; when none does, the member carrying the schema's
+    /// default mark applies; when none carries it, the first listed
+    /// applies. A set resolving to one member selects it exactly as
+    /// naming it would.
+    ///
+    /// `path` is the entry's source path as the invocation spells it —
+    /// the path the `path-stem` source-context provider reads — and the
+    /// only input inference reads: document content is never consulted.
+    pub fn select_profile(
+        &self,
+        named: Option<&str>,
+        set: &[String],
+        path: &str,
+    ) -> ProfileSelection {
         if let Some(name) = named {
-            let declared = self
-                .names
-                .get(name)
-                .and_then(|sym| self.profile(sym))
-                .map(|profile| profile.name);
-            return match declared {
+            return match self.declared_profile(name) {
                 Some(sym) => ProfileSelection::Selected(sym),
                 None => ProfileSelection::Unselected {
                     named: Some(name.to_owned()),
                 },
             };
         }
+        if !set.is_empty() {
+            return self.select_from_set(set, path);
+        }
         if self.profiles.is_empty() {
             return ProfileSelection::Unprofiled;
         }
         for profile in &self.profiles {
-            if self
-                .effective_rules(profile.name)
-                .iter()
-                .any(|rule| rule.matches(path))
-            {
+            if self.applies(profile.name, path) {
                 return ProfileSelection::Selected(profile.name);
             }
         }
@@ -152,6 +160,61 @@ impl Definition {
             Some(profile) => ProfileSelection::Selected(profile.name),
             None => ProfileSelection::Unselected { named: None },
         }
+    }
+
+    /// The set arm of [`Definition::select_profile`]: every member must
+    /// be declared, then the members' rules apply, else the member
+    /// marked default, else the first listed. A member listed twice
+    /// counts once, at its first position.
+    fn select_from_set(&self, set: &[String], path: &str) -> ProfileSelection {
+        let mut members: Vec<Sym> = Vec::with_capacity(set.len());
+        for name in set {
+            match self.declared_profile(name) {
+                Some(sym) if !members.contains(&sym) => members.push(sym),
+                Some(_) => {}
+                None => {
+                    return ProfileSelection::Unselected {
+                        named: Some(name.clone()),
+                    };
+                }
+            }
+        }
+        let applicable: Vec<Sym> = members
+            .iter()
+            .copied()
+            .filter(|member| self.applies(*member, path))
+            .collect();
+        let chosen = if !applicable.is_empty() {
+            applicable
+        } else if let Some(default) = members
+            .iter()
+            .copied()
+            .find(|member| self.profile(*member).is_some_and(|p| p.default))
+        {
+            vec![default]
+        } else {
+            members.truncate(1);
+            members
+        };
+        match chosen.as_slice() {
+            [one] => ProfileSelection::Selected(*one),
+            _ => ProfileSelection::Set(chosen),
+        }
+    }
+
+    /// The symbol of the declared profile spelled `name`.
+    fn declared_profile(&self, name: &str) -> Option<Sym> {
+        self.names
+            .get(name)
+            .and_then(|sym| self.profile(sym))
+            .map(|profile| profile.name)
+    }
+
+    /// Whether any effective match rule of `name` matches `path`.
+    fn applies(&self, name: Sym, path: &str) -> bool {
+        self.effective_rules(name)
+            .iter()
+            .any(|rule| rule.matches(path))
     }
 
     /// The declared profile named `name`.
@@ -436,7 +499,7 @@ fn components(path: &str) -> impl Iterator<Item = &str> {
     path.split(['/', '\\'])
 }
 
-/// The profile selected for one entry document, by
+/// The profiles selected for one entry document, by
 /// [`Definition::select_profile`]. Documents an import reaches bind
 /// under their importing entry's selection.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -445,19 +508,33 @@ pub enum ProfileSelection {
     /// The definition declares no profiles and none was named: every
     /// declared root is admitted.
     Unprofiled,
-    /// The selected profile.
+    /// The one selected profile.
     Selected(Sym),
-    /// Nothing was selected (`KDLITH-SCH011`): the explicit name as the
-    /// invocation spelled it, if one was given.
+    /// Two or more profiles of a listed set applied together, in listed
+    /// order: a node declared under any of them, or under a profile any
+    /// of them extends, is admitted, and their effective roots compose
+    /// as a union.
+    Set(Vec<Sym>),
+    /// Nothing was selected (`KDLITH-SCH011`): the explicit name or the
+    /// undeclared set member as the invocation spelled it, if one was
+    /// given.
     Unselected { named: Option<String> },
 }
 
 impl ProfileSelection {
-    /// The selected profile, if any.
+    /// The selected profile, or the first member of a selected set:
+    /// the profile whose effective grammar governs import expressions.
     pub fn profile(&self) -> Option<Sym> {
+        self.members().first().copied()
+    }
+
+    /// Every active profile, in selection order; empty when none is
+    /// selected.
+    pub fn members(&self) -> &[Sym] {
         match self {
-            ProfileSelection::Selected(sym) => Some(*sym),
-            _ => None,
+            ProfileSelection::Selected(sym) => std::slice::from_ref(sym),
+            ProfileSelection::Set(members) => members,
+            _ => &[],
         }
     }
 }

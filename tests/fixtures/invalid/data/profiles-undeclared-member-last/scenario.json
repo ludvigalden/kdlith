@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "An undeclared member fails closed wherever it is listed: --profiles base,ghost is KDLITH-SCH011 although base, listed first, is declared",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/profiles.kdl",
+    "--profiles",
+    "base,ghost",
+    "plain.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

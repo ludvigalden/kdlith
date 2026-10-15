@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A listed profile whose rules the path does not satisfy is not active: under --profiles outlet,base, shared/stock.kdl selects base alone, so the gadget outlet would admit is unbound (KDLITH-BND001)",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/profiles.kdl",
+    "--profiles",
+    "outlet,base",
+    "shared/stock.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

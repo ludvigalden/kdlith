@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "the fail-closed arm of a profile switch: a state holding the entry derived under --profile base is refreshed under --profile outlet, whose roots admit neither part nor widget; the base entry's bound result is never replayed under outlet: the document is re-bound, both nodes are rejected as KDLITH-BND001, the run exits 1, and the state is left byte-identical",
+  "args": [
+    "cache", "refresh", "--state", "state",
+    "--schema", "{fx-suite}/processing/bind/profiles.kdl",
+    "--profile", "outlet",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "files": {
+      "state/e33c929203751731.kdlith-cache": "state/e33c929203751731.kdlith-cache"
+    },
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

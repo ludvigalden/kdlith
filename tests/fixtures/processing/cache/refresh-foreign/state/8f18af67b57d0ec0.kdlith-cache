@@ -1,0 +1,4 @@
+kdlith-cache format=2 canonicalization=1
+{"key":"8f18af67b57d0ec0","identity":{"revision":"fnv1a64:e258f1bae1cbec15","schema":"fnv1a64:47b688abe06a8e86","context":"fnv1a64:97c312de49340b52","profiles":"fnv1a64:e1b51df36e161fca","policy":"reject"},"derivations":[{"entry":"other.kdl","source":"other.kdl","caller":null}],"items":2,"digest":"fnv1a64:69a4646d751d4092"}
+{"item":"record","data":{"node":{"source":0,"index":0},"type_name":"Part","fields":[{"name":"id","value":{"kind":"string","value":"gamma"},"origin":0}],"origin":0,"validation":"valid"}}
+{"item":"scope-complete","data":{"source":0,"scope":null}}

@@ -79,12 +79,14 @@ pub(crate) fn source_error(code: &str, values: &[&str]) -> DiagnosticRecord {
 /// to the end, so a diagnostic anywhere in the documents fails the read
 /// even after the record is found.
 pub(crate) fn read_data(args: &crate::ReadDataArgs) -> ExitStatus {
-    let options = crate::vet::DataOptions::new(
-        args.anchors.clone(),
-        args.profile.clone(),
-        args.handlers.clone(),
-    )
-    .with_dialect(args.dialect.clone());
+    let options = match args
+        .profiles
+        .clone()
+        .data_options(args.anchors.clone(), args.handlers.clone())
+    {
+        Ok(options) => options.with_dialect(args.dialect.clone()),
+        Err(status) => return status,
+    };
     let extensions = options.extensions();
     let definition = match options.load_schema(&args.schema, &extensions) {
         Ok(definition) => definition,

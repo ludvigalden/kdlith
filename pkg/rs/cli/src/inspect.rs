@@ -35,12 +35,14 @@ pub(crate) fn run(command: InspectCommand) -> ExitStatus {
             if let Some(status) = reject_view(args.view) {
                 return status;
             }
-            crate::vet::vet_data(
-                args.schema.as_deref(),
-                &paths(&args.files),
-                &crate::vet::DataOptions::new(args.anchors, args.profile, args.handlers)
-                    .with_dialect(args.dialect),
-            )
+            match args.profiles.data_options(args.anchors, args.handlers) {
+                Ok(options) => crate::vet::vet_data(
+                    args.schema.as_deref(),
+                    &paths(&args.files),
+                    &options.with_dialect(args.dialect),
+                ),
+                Err(status) => status,
+            }
         }
     }
 }

@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "two entrypoints with byte-identical content read in one refresh under different inferred profiles (retail.kdl matches retail's file-name rule, plain.kdl matches no rule and falls to the fallback default) share the source revision, schema, and context but not the profile selection, so neither replays the other's bound result: each gets its own key and its own entry with one derived line, both written byte for byte",
+  "args": [
+    "cache", "refresh", "--state", "state",
+    "--schema", "{fx-suite}/processing/bind/profiles.kdl",
+    "retail.kdl", "plain.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "files": {
+      "state/1fb86e9d2ba614f1.kdlith-cache": "expected/1fb86e9d2ba614f1.kdlith-cache",
+      "state/5387b732add6db19.kdlith-cache": "expected/5387b732add6db19.kdlith-cache"
+    },
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

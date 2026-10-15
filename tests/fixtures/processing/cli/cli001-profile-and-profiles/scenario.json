@@ -1,0 +1,23 @@
+{
+  "binary": "kdlith",
+  "description": "--profile and --profiles together are an argument-form fault: the invocation names one profile or one set, never both; exit 2 under KDLITH-CLI001, nothing is read",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/profiles.kdl",
+    "--profile",
+    "base",
+    "--profiles",
+    "base",
+    "plain.kdl"
+  ],
+  "expect": {
+    "exit": 2,
+    "stderr-contains": [
+      "error[KDLITH-CLI001]"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

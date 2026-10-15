@@ -30,11 +30,14 @@ pub(crate) fn run(command: VetCommand) -> ExitStatus {
             scope_of(args.scope),
             &args.anchors,
         ),
-        VetCommand::Data(args) => vet_data(
-            args.schema.as_deref(),
-            &paths(&args.files),
-            &DataOptions::new(args.anchors, args.profile, args.handlers).with_dialect(args.dialect),
-        ),
+        VetCommand::Data(args) => match args.profiles.data_options(args.anchors, args.handlers) {
+            Ok(options) => vet_data(
+                args.schema.as_deref(),
+                &paths(&args.files),
+                &options.with_dialect(args.dialect),
+            ),
+            Err(status) => status,
+        },
     }
 }
 
@@ -130,8 +133,8 @@ fn summary_line(definition: &Definition) -> String {
 
 /// What one data reading supplies beyond its documents: the dialect
 /// definition replacing the bundled one, the discovery anchors the host
-/// passes on the command line, the profile the invocation names, and
-/// the built-in context handlers to install. The data verbs (`vet
+/// passes on the command line, the profile or profile set the
+/// invocation names, and the built-in context handlers to install. The data verbs (`vet
 /// data`, `inspect data`, `read data`, `list items`, `cache refresh`,
 /// and `export`) share one of these, so every path observes the same
 /// execution semantics.
@@ -140,6 +143,7 @@ pub struct DataOptions {
     dialect: Option<PathBuf>,
     anchors: Vec<(String, PathBuf)>,
     profile: Option<String>,
+    profiles: Vec<String>,
     handlers: Vec<String>,
 }
 
@@ -153,8 +157,18 @@ impl DataOptions {
             dialect: None,
             anchors,
             profile,
+            profiles: Vec::new(),
             handlers,
         }
+    }
+
+    /// The same options admitting the listed profile set, in listed
+    /// order; an empty list admits none. The engine resolves the set
+    /// per entry document in its one shared selection order.
+    #[must_use]
+    pub fn with_profiles(mut self, profiles: Vec<String>) -> Self {
+        self.profiles = profiles;
+        self
     }
 
     /// The same options under the dialect the one document `dialect`
@@ -204,9 +218,10 @@ impl DataOptions {
         Extensions::standard().with_installed_handlers(&self.registry())
     }
 
-    /// The reader options: the named profile and the supplied anchors.
+    /// The reader options: the named profile or profile set and the
+    /// supplied anchors.
     pub(crate) fn read_options(&self) -> ReadOptions {
-        let mut options = ReadOptions::new();
+        let mut options = ReadOptions::new().with_profiles(self.profiles.iter().cloned());
         if let Some(profile) = &self.profile {
             options = options.with_profile(profile.clone());
         }

@@ -9,12 +9,12 @@
   "expect": {
     "exit": 1,
     "files": {
-      "state/5a0faf508ec31869.kdlith-cache": "expected/5a0faf508ec31869.kdlith-cache",
+      "state/8f18af67b57d0ec0.kdlith-cache": "expected/8f18af67b57d0ec0.kdlith-cache",
       "state/notes.txt": "expected/notes.txt"
     },
     "absent": [
-      "state/ed73773e2bbc55bf.kdlith-cache",
-      "state/fbc3953e246d3013.kdlith-cache"
+      "state/b992d53eac9e24d0.kdlith-cache",
+      "state/bc62d7990e5d1186.kdlith-cache"
     ],
     "stdout-golden": "stdout.golden",
     "stderr-golden": "stderr.golden"
