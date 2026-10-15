@@ -5,7 +5,7 @@ dialect: the language schema definitions are written in. It lists every
 mechanism the dialect defines, maps the committed files that carry them,
 and states what the engine and the reference processor must honor when
 they implement it. No mechanism is deferred at this version; the
-[deferral disposition](#deferral-disposition) states how the twelve
+[deferral disposition](#deferral-disposition) states how the nineteen
 deferrals version 0 carried were retired.
 
 The record describes the committed dialect definition documents. It does
@@ -196,9 +196,11 @@ canonical declarations that define them.
 
 ## Deferral disposition
 
-No mechanism is deferred at this version. The twelve deferrals this
-record previously carried — `source-context`, `accumulating-context`,
-`context-snapshots`, `profiles`, `descendant-rules`, `ordered-sequences`,
+No mechanism is deferred at this version. The nineteen deferrals this
+record previously carried — `generic-types`, `codecs`, `union-dispatch`,
+`sensitivity`, `expansion`, `dependent-binding`, `case-dispatch`,
+`source-context`, `accumulating-context`, `context-snapshots`,
+`profiles`, `descendant-rules`, `ordered-sequences`,
 `discovery-grammars`, `import-aliases`, `symbol-catalogs`,
 `contribution-resolution`, `computed-defaults`, `secret-providers` — are
 all defined in the in-scope tables above, so the `deferred` node and the
@@ -316,10 +318,10 @@ dialect for every processor, hand-written or generated:
    anchors are host-supplied typed paths, ordering follows the declared
    policy, the inventory is a dependency, and no grammar admits
    environment-variable interpolation. Aliases preserve both source and
-   alias and gate visibility through the alias namespace. Once this
-   lands, processing `contracts/super-schemas/dialect.kdl` must yield
-   the same dialect as reading the four canonical files directly, and
-   that equivalence gets its own fixture scenario.
+   alias and gate visibility through the alias namespace. Processing
+   `contracts/super-schemas/dialect.kdl` yields the same dialect as
+   reading the four canonical files directly, and that equivalence has
+   its own fixture scenario (`dialect/entrypoint-vet/dialect`).
 4. **Link.** Check that every type, node, slot, and parent a definition
    references is declared, including the canonical files' own
    self-description. The compiled symbol catalog holds identity domains,

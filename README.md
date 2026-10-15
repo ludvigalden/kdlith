@@ -19,8 +19,8 @@ Rust processor for them.
 | Path                          | Package             | Role                                                               |
 | ----------------------------- | ------------------- | ------------------------------------------------------------------ |
 | `pkg/rs/kdlith`               | `kdlith`            | Public facade over the library crates                              |
-| `pkg/rs/parse`                | `kdlith-parse`      | KDL event adapter and source coordinates                           |
-| `pkg/rs/model`                | `kdlith-model`      | Type descriptors, identities, origins, and processing items        |
+| `pkg/rs/parse`                | `kdlith-parse`      | Streaming KDL v2 pull parser and source coordinates                |
+| `pkg/rs/model`                | `kdlith-model`      | Identities, origins, bound values, and processing items            |
 | `pkg/rs/runtime`              | `kdlith-runtime`    | Binding frames, context operations, sessions, processor interfaces |
 | `pkg/rs/diagnostic`           | `kdlith-diagnostic` | Diagnostic codes, labels, and presentation-neutral structures      |
 | `pkg/rs/engine`               | `kdlith-engine`     | Dialect and schema validation, linking, compiled processing plans  |
