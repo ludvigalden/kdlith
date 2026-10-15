@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "gen schema fails closed when a record node bound without type= would read as a node-local Rust type whose name a declared logical type already takes (node entry, declared object Entry): the schema itself vets green, generation exits 1 naming the node and the colliding type, and the scratch check proves nothing was written into the output directory",
+  "args": ["gen", "schema", "schema.kdl", "--crate", "clash-proc", "--out", "out"],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": [
+      "kdlith: gen schema: the node `entry` declares no type=, and its local type `Entry` collides with a declared type"
+    ],
+    "scratch-check": {
+      "plant": [{ "path": "planted-foreign.txt", "kind": "file" }]
+    }
+  }
+}

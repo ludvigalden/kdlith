@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "the help verb naming no command is an invalid argument: exit 2 under KDLITH-CLI001, nothing on stdout",
+  "args": [
+    "help",
+    "nosuch"
+  ],
+  "expect": {
+    "exit": 2,
+    "stderr-contains": [
+      "error[KDLITH-CLI001]"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

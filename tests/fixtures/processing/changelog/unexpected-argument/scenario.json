@@ -1,10 +1,14 @@
 {
   "binary": "kdlith",
-  "description": "changelog takes no arguments: an extra positional fails closed as a usage error (exit 2) naming the unexpected argument and the changelog usage line",
-  "args": ["changelog", "extra"],
+  "description": "changelog takes no arguments: an extra positional fails closed as a usage error (exit 2, KDLITH-CLI001) naming the unexpected argument and the changelog usage line",
+  "args": [
+    "changelog",
+    "extra"
+  ],
   "expect": {
     "exit": 2,
     "stderr-contains": [
+      "error[KDLITH-CLI001]",
       "unexpected argument 'extra' found",
       "Usage: kdlith changelog [OPTIONS]"
     ]

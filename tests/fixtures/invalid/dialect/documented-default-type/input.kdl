@@ -1,0 +1,13 @@
+dialect kdlith version="0" {
+    types {
+        enum Speed {
+            member fast
+            member slow
+        }
+        object Tuning {
+            field speed "optional<Speed>" {
+                documented-default medium
+            }
+        }
+    }
+}

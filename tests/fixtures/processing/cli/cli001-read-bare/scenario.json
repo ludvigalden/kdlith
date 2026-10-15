@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "read with neither a document nor a subcommand is an invalid argument: exit 2 under KDLITH-CLI001",
+  "args": [
+    "read"
+  ],
+  "expect": {
+    "exit": 2,
+    "stderr-contains": [
+      "error[KDLITH-CLI001]"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

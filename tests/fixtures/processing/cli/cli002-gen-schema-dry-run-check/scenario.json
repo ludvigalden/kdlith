@@ -1,0 +1,23 @@
+{
+  "binary": "kdlith",
+  "description": "the gen schema form shares the --dry-run/--check exclusion, in either order: exit 2 under KDLITH-CLI002",
+  "args": [
+    "gen",
+    "schema",
+    "schema.kdl",
+    "--crate",
+    "demo",
+    "--out",
+    "out",
+    "--check",
+    "--dry-run"
+  ],
+  "expect": {
+    "exit": 2,
+    "stderr-contains": [
+      "error[KDLITH-CLI002]"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

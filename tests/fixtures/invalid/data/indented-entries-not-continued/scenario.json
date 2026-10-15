@@ -1,0 +1,8 @@
+{
+  "binary": "kdlith",
+  "description": "KDL v2 spec Line Continuation example with its escline and comments removed: the newline terminates my-node, so the indented line starts a new node whose name 3 is not a string and the document is rejected",
+  "args": ["read", "file", "input.kdl"],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

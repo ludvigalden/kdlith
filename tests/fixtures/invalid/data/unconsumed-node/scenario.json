@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A child the schema's child rule admits, whose own fields no role or owner-field binding consumes, is rejected with the unknown-node code on the data path instead of being bound and silently dropped: note carries a text value that box's record would otherwise lose",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

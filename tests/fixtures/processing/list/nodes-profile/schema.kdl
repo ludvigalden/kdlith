@@ -1,0 +1,21 @@
+// A schema whose node declarations carry profile=: widget belongs to
+// the retail profile and crate to the wholesale profile, while gadget
+// carries no profile and binds under every one.
+schema shop version="1" {
+    types {
+        object Widget {
+            field id String
+        }
+    }
+    node widget role=record type=Widget profile=retail {
+        field id arg=0
+    }
+    node gadget role=record type=Widget {
+        field id arg=0
+    }
+    node crate role=record type=Widget profile=wholesale {
+        field id arg=0
+    }
+    profile retail
+    profile wholesale
+}

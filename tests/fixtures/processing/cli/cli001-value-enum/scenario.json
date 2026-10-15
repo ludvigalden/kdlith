@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "a value outside an option's declared set (--scope) is an invalid argument: exit 2 under KDLITH-CLI001 with the possible values listed",
+  "args": [
+    "vet",
+    "schema",
+    "--scope",
+    "wide",
+    "schema.kdl"
+  ],
+  "expect": {
+    "exit": 2,
+    "stderr-contains": [
+      "error[KDLITH-CLI001]"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "binary": "kdlith",
+  "description": "cache refresh --dialect: the dialect-generation entrypoint governs the schema load; the written entries (identity metadata included), stdout, and stderr are byte-identical to processing/cache/refresh under the bundled dialect (the goldens are that scenario's, unchanged)",
+  "args": [
+    "cache",
+    "refresh",
+    "--dialect",
+    "{fx-suite}/../../contracts/super-schemas/dialect.kdl",
+    "--state",
+    "state",
+    "--schema",
+    "{fx-suite}/processing/bind/imports.kdl",
+    "data.kdl",
+    "other.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "files": {
+      "state/ed73773e2bbc55bf.kdlith-cache": "expected/ed73773e2bbc55bf.kdlith-cache",
+      "state/fbc3953e246d3013.kdlith-cache": "expected/fbc3953e246d3013.kdlith-cache"
+    },
+    "absent": [
+      "state/.ed73773e2bbc55bf.kdlith-cache-part",
+      "state/.fbc3953e246d3013.kdlith-cache-part"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

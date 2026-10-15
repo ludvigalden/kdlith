@@ -1,0 +1,20 @@
+{
+  "binary": "kdlith",
+  "description": "A node declaration's profile= admits it under that profile only: with --profile retail the retail-owned widget and the profile-less gadget both bind as records, both under the one invocation",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/list/nodes-profile/schema.kdl",
+    "--profile",
+    "retail",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":0},\"type_name\":\"Widget\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"alpha\"},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n",
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":1},\"type_name\":\"Widget\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"beta\"},\"origin\":1}],\"origin\":1,\"validation\":\"valid\"}}\n"
+    ]
+  }
+}

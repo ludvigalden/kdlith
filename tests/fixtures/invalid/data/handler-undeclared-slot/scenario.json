@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "An installed handler whose effect sets a context slot the definition does not declare is rejected at its effect point: copy-fields sets one slot per field name, the control's field is zone, and the schema declares only locale, so the run fails closed with the handler-effect code rather than the malformed-construct code a definition fault would carry",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "--handler",
+    "copy-fields",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

@@ -1,0 +1,15 @@
+Validate dialect definitions, schemas, or data
+
+Usage: kdlith vet [OPTIONS] <COMMAND>
+
+Commands:
+  dialect  Load a dialect definition with its imports, compile, link, and check it
+  schema   Vet a schema definition under the bundled dialect, or the one `--dialect` names, itself vetted with complete checking
+  data     Bind data documents against the schema `--schema` names, under the bundled dialect or the one `--dialect` names, or against the dialect itself without `--schema`; bound items go to stdout as one JSON line each
+
+Options:
+  -v, --verbosity <N>           Stderr verbosity band, 0–10 [default: 2]
+      --debug                   Equivalent to --verbosity 10
+      --stdout-format <FORMAT>  Command response format [default: text]
+  -h, --help                    Print help
+error[KDLITH-CLI001]: a subcommand is required but one was not provided

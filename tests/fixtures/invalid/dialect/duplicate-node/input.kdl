@@ -1,0 +1,13 @@
+dialect kdlith version="0" {
+    types {
+        object Entry {
+            field id String
+        }
+    }
+    node entry role=record type=Entry {
+        field id arg=0
+    }
+    node entry role=record type=Entry {
+        field id arg=0
+    }
+}

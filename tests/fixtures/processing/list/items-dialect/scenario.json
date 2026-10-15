@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "list items --dialect: the dialect-generation entrypoint governs the schema load and the index; stdout and stderr are byte-identical to processing/list/items under the bundled dialect (the goldens are that scenario's, unchanged)",
+  "args": [
+    "list",
+    "items",
+    "--dialect",
+    "{fx-suite}/../../contracts/super-schemas/dialect.kdl",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "entry.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

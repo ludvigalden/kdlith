@@ -1,10 +1,13 @@
 {
   "binary": "kdlith",
-  "description": "The export verb without its required arguments fails closed as a usage error naming every one of them",
-  "args": ["export"],
+  "description": "The export verb without its required arguments fails closed as a usage error (exit 2, KDLITH-CLI001) naming every one of them",
+  "args": [
+    "export"
+  ],
   "expect": {
     "exit": 2,
     "stderr-contains": [
+      "error[KDLITH-CLI001]",
       "the following required arguments were not provided",
       "--schema <FILE>",
       "--emit <TYPE|roots>",

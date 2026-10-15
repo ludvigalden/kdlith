@@ -1,0 +1,24 @@
+// The required twin of the computed-default schema: retries is not
+// optional, and its only fallback is computed. The processor never
+// computes a computed default, so no value can arrive through it.
+schema demo version="1" {
+    types {
+        object Conf {
+            field name String
+            field retries Integer {
+                fallback computed=#true {
+                    dependency "config.retries"
+                }
+            }
+        }
+    }
+    node conf role=record type=Conf {
+        field name arg=0
+        field retries property=retries
+    }
+    document {
+        first {
+            exactly-one conf
+        }
+    }
+}

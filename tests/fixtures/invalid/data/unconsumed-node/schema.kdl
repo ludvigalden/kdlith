@@ -1,0 +1,16 @@
+// A node the box child rule admits whose own field no role or owner
+// field binding consumes: binding it would drop the text value.
+schema probe version="1" {
+    types {
+        object Box {
+            field id String
+        }
+    }
+    node box role=record type=Box {
+        field id arg=0
+        children note
+    }
+    node note parent=box {
+        field text String arg=0
+    }
+}

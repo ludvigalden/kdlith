@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "a --handler naming no built-in handler fails its declared form: exit 2 under KDLITH-CLI001, the catalog named in the message",
+  "args": [
+    "vet",
+    "data",
+    "--handler",
+    "nope",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 2,
+    "stderr-contains": [
+      "error[KDLITH-CLI001]"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

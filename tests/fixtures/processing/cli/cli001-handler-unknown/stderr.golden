@@ -1,0 +1,3 @@
+error[KDLITH-CLI001]: invalid value 'nope' for '--handler <NAME>': no built-in handler "nope"; the catalog carries copy-fields
+
+For more information, try '--help'.

@@ -1,0 +1,15 @@
+group "core"
+locale en-us {
+    entry "alpha" group=core
+    entry "beta"
+}
+group "extra"
+group "twice"
+group "twice"
+locale de {
+    entry "gamma" group=extra
+    entry "delta" group=late
+    entry "epsilon" group=missing
+    entry "zeta" group=twice
+}
+group "late"

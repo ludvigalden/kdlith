@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "list types --dialect: the dialect-generation entrypoint, which imports the four canonical documents, governs the schema load; stdout and stderr are byte-identical to processing/list/types under the bundled dialect (the goldens are that scenario's, unchanged)",
+  "args": [
+    "list",
+    "types",
+    "--dialect",
+    "{fx-suite}/../../contracts/super-schemas/dialect.kdl",
+    "--schema",
+    "{fx-suite}/processing/list/schema.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

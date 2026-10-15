@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "list nodes prints the profile a node declaration names through profile=, and - for a declaration that names none: widget belongs to retail, crate to wholesale, and gadget to every profile; stdout is pinned byte for byte and stderr is empty",
+  "args": [
+    "list",
+    "nodes",
+    "--schema",
+    "schema.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

@@ -11,7 +11,9 @@ are derived from the official KDL test suite.
 
 The upstream `input.kdl` files are copyright the KDL contributors and remain
 under CC BY-SA 4.0. They are redistributed unmodified. The scenario manifests
-and declared codes around them are kdlith's own.
+and declared codes around them are kdlith's own. As the license states, the
+material is provided as-is, without warranties of any kind; see the license
+text at the link above for the full disclaimer.
 
 ## Derivation
 

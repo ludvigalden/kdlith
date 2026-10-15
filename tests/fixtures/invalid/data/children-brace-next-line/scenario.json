@@ -1,0 +1,8 @@
+{
+  "binary": "kdlith",
+  "description": "KDL v2 spec Children Block example with the opening brace moved to the next line: the newline terminates parent, and a node cannot begin with a brace, so the document is rejected rather than read as parent's children",
+  "args": ["read", "file", "input.kdl"],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

@@ -1,0 +1,5 @@
+error[KDLITH-CLI001]: unrecognized subcommand 'bogus'
+
+Usage: kdlith [OPTIONS] <COMMAND>
+
+For more information, try '--help'.

@@ -1,0 +1,3 @@
+error[KDLITH-CLI001]: invalid value 'bad' for '--anchor <NAME=PATH>': anchor takes NAME=PATH, not "bad"
+
+For more information, try '--help'.

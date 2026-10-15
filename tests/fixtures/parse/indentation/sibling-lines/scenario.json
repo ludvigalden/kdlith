@@ -1,0 +1,8 @@
+{
+  "binary": "kdlith",
+  "description": "KDL v2 spec Children Block example with its braces removed: indented lines after a node are line-space before sibling nodes, which the spec grammar accepts as valid KDL",
+  "args": ["read", "file", "input.kdl"],
+  "expect": {
+    "exit": 0
+  }
+}

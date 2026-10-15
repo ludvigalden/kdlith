@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "A discovery grammar with a host anchor and admitted star pattern binds the schema root's imports: the grammar-admitted expression $root/*.kdl passes the compile-time grammar validation under local checking (expansion is host-supplied and not wired; see the declared elisions)",
+  "description": "A discovery grammar with a host anchor and admitted star pattern binds the schema root's imports: the grammar-admitted expression $root/*.kdl passes the compile-time grammar validation under local checking (local checking follows no imports, so nothing expands; complete checking expands the expression against --anchor, pinned by schemas/vet/import-anchor)",
   "args": [
     "vet",
     "schema",

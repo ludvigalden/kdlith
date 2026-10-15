@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "A required field whose only fallback is computed is missing-required when no value binds: the processor never computes the descriptor, so the computed fallback supplies nothing and the record fails closed with KDLITH-BND004 at the node, while the schema itself vets green; the optional twin is processing/bind/computed-default",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stdout-contains": [
+      "{\"item\":\"diagnostic\",\"data\":{\"code\":\"KDLITH-BND004\",\"severity\":\"error\",\"source_path\":\"data.kdl\",\"span\":{\"start\":0,\"end\":4},\"line\":1,\"col\":1,\"origin\":\"data-document\",\"labels\":[],\"related\":[],\"correction\":\"Add the required field\",\"message\":\"conf is missing required retries\"}}\n"
+    ],
+    "stderr-golden": "stderr.golden"
+  }
+}

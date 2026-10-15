@@ -1,0 +1,6 @@
+declaration Group archive imported.kdl:1:1
+declaration Group shelf entry.kdl:2:1
+record Item alpha entry.kdl:9:5
+record Item middle imported.kdl:6:5
+record Item zeta entry.kdl:8:5
+record stamp - entry.kdl:7:5

@@ -1,0 +1,12 @@
+locale en-gb
+use "part.kdl" repeated=coalesce {
+    project locale
+}
+use "./part.kdl" repeated=coalesce {
+    project locale
+}
+locale fr-fr
+use "part.kdl" repeated=coalesce {
+    project locale
+}
+stamp

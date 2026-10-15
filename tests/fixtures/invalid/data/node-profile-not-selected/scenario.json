@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A declaration another profile owns is unbound under the named profile: widget carries profile=retail, so under --profile wholesale it binds through no declaration and is rejected as an unknown node",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/list/nodes-profile/schema.kdl",
+    "--profile",
+    "wholesale",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

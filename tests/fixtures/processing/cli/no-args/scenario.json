@@ -1,9 +1,12 @@
 {
   "binary": "kdlith",
-  "description": "Running kdlith with no arguments is a usage error: clap prints the top-level help to stderr and exits 2",
+  "description": "Running kdlith with no arguments is a usage error: the top-level help goes to stderr, followed by the missing-subcommand fault line under KDLITH-CLI001, and the run exits 2",
   "args": [],
   "expect": {
     "exit": 2,
-    "stderr-contains": ["Usage: kdlith [OPTIONS] <COMMAND>"]
+    "stderr-contains": [
+      "error[KDLITH-CLI001]",
+      "Usage: kdlith [OPTIONS] <COMMAND>"
+    ]
   }
 }

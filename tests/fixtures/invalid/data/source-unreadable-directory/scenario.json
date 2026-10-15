@@ -1,0 +1,8 @@
+{
+  "binary": "kdlith",
+  "description": "A named document that is a directory cannot be read and is rejected with the source-unreadable code; the failure does not depend on permissions, so it holds for any reader",
+  "args": ["read", "file", "folder.kdl"],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

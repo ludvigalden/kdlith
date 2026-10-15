@@ -1,0 +1,25 @@
+{
+  "binary": "kdlith",
+  "description": "gen schema takes --anchor: the schema's own $root/*.kdl import expands against --anchor root=PATH, so the generated crate carries the type and node the matched documents contribute (one owned module per contributing document: types/a_kdl.rs from parts/a.kdl, bindings/b_kdl.rs and processors/b_kdl.rs from parts/b.kdl); the dry run prints the plan and writes nothing",
+  "args": [
+    "gen",
+    "schema",
+    "{fx-suite}/schemas/vet/import-anchor/schema.kdl",
+    "--anchor",
+    "root={fx-suite}/schemas/vet/import-anchor/parts",
+    "--crate",
+    "demo-proc",
+    "--out",
+    "out",
+    "--dry-run"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "plan: schema crate demo-proc -> out (14 owned files, dry run)",
+      "  src/bindings/b_kdl.rs\n",
+      "  src/processors/b_kdl.rs\n",
+      "  src/types/a_kdl.rs\n"
+    ]
+  }
+}

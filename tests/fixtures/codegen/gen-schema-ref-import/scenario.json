@@ -1,0 +1,38 @@
+{
+  "binary": "kdlith",
+  "kind": "codegen-oracle",
+  "description": "The reference-and-import generation fixture: gen schema generates the committed catalog schema, whose entry document imports a second document and whose record type holds an optional<ref<Group>> field, twice into two scratch trees the harness requires byte-identical; the generated crate (the reference field rendered as the engine's symbolic Ref<Group>, and the imported document's typeless note node as a node-local type its handler reads by the node's name) compiles inside a scratch workspace materialized from this scenario's committed template, and the compiled processor loads the committed schema through its own loader with the digest the reference CLI reports across both documents, reads a committed data document through its own typed reader, links the reading's declarations by identity, and resolves every entry's group reference against them: a reference to an earlier declaration, one to a declaration written later in the document, an absent optional reference, a reference no declaration carries, and a reference two declarations carry",
+  "form": "schema",
+  "entrypoint": "{fx-suite}/schemas/vet/catalog/schema.kdl",
+  "crate": "catalog-proc",
+  "steps": [
+    { "generate": "ws/rs/catalog-proc" },
+    { "generate": "gen-again" },
+    { "determinism": ["ws/rs/catalog-proc", "gen-again"] },
+    {
+      "compile": {
+        "workspace": "ws",
+        "copy": {
+          "crates": ["diagnostic", "engine", "model", "parse", "runtime", "superproc"],
+          "kdl": true
+        },
+        "command": ["cargo", "build", "--offline", "--manifest-path", "ws/rs/catalog-proc/Cargo.toml"]
+      }
+    },
+    {
+      "exercise": {
+        "command": ["cargo", "run", "--offline", "--quiet", "--manifest-path", "ws/rs/exercise/Cargo.toml", "--", "schemas/vet/catalog/schema.kdl", "inputs/data.kdl"],
+        "stdout-contains": [
+          "schema ok digest=ac318abdf0eeefc6 documents=2\n",
+          "read ok entries=6 declarations=5\n",
+          "entry id=alpha locale=en-us group=core->core\n",
+          "entry id=beta locale=en-us group=none\n",
+          "entry id=gamma locale=de group=extra->extra\n",
+          "entry id=delta locale=de group=late->late\n",
+          "entry id=epsilon locale=de group=missing unresolved missing\n",
+          "entry id=zeta locale=de group=twice unresolved ambiguous candidates=2\n"
+        ]
+      }
+    }
+  ]
+}

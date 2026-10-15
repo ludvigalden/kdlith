@@ -1,0 +1,47 @@
+// The import-mechanics schema with a handler-driven context control:
+// the locale control's effect is the built-in copy-fields handler, so
+// the locale slot is set by an installed handler rather than by a
+// declarative set, and an import may project that slot.
+schema imports version="1" {
+    types {
+        string Locale {
+            format kebab-case
+        }
+        object Part {
+            field id String
+        }
+        object Stamp {
+            field at Locale
+        }
+    }
+    context {
+        slot locale Locale namespace=defaults
+    }
+    node part role=record type=Part {
+        field id arg=0
+    }
+    node stamp role=record type=Stamp {
+        field at context=locale
+    }
+    node locale role=context-control {
+        field locale Locale arg=0
+        effects target=following {
+            handler copy-fields
+        }
+    }
+    node use role=source-import {
+        field path String arg=0
+        field repeated "optional<String>" property=repeated
+        field project "optional<list<String>>" {
+            from {
+                child project {
+                    args
+                }
+            }
+        }
+        children project max-occurs=1
+    }
+    document {
+        following locale part stamp use
+    }
+}

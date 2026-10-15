@@ -1,0 +1,11 @@
+schema shop version="1" {
+    types {
+        object Widget {
+            field id String
+        }
+    }
+    node widget role=record type=Widget profile=outlet {
+        field id arg=0
+    }
+    profile retail
+}

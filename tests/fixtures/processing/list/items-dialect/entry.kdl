@@ -1,0 +1,11 @@
+locale en-gb
+group shelf {
+    label a "First"
+}
+section "Main" {
+    public
+    stamp
+    item zeta kind=book
+    item alpha kind=film
+}
+use "imported.kdl"

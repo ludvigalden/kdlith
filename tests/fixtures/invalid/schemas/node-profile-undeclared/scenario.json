@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A node declaration's profile= must name a profile the schema declares: outlet is not one, so the declaration could bind under no invocation and the reference is rejected as undeclared",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

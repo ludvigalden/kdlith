@@ -1,0 +1,21 @@
+{
+  "binary": "kdlith",
+  "description": "export --dialect: the dialect-generation entrypoint governs the schema load; the exported stream and the stderr summary are byte-identical to processing/export/emit-type under the bundled dialect (the goldens are that scenario's, unchanged)",
+  "args": [
+    "export",
+    "--dialect",
+    "{fx-suite}/../../contracts/super-schemas/dialect.kdl",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "entry.kdl",
+    "--emit",
+    "Item",
+    "--format",
+    "ndjson"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

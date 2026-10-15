@@ -1,0 +1,8 @@
+{
+  "binary": "kdlith",
+  "description": "A committed document whose bytes are not valid UTF-8 (a Latin-1 encoded e-acute) is rejected with the source-not-utf8 code before any parsing runs",
+  "args": ["read", "file", "input.kdl"],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

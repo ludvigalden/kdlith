@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "an unrecognized subcommand is an argument-form fault: exit 2 under KDLITH-CLI001, clap's statement of the fault and the usage line kept as the message",
+  "args": [
+    "bogus"
+  ],
+  "expect": {
+    "exit": 2,
+    "stderr-contains": [
+      "error[KDLITH-CLI001]"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

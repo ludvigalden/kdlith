@@ -1,0 +1,10 @@
+dialect kdlith version="0" {
+    types {
+        string Extra {
+            min-length 1
+        }
+        string Extra {
+            min-length 2
+        }
+    }
+}

@@ -1,0 +1,10 @@
+[package]
+name = "catalog-exercise"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+
+[dependencies]
+catalog-proc = { path = "../catalog-proc" }
+kdlith-diagnostic = { path = "../diagnostic" }
+kdlith-engine = { path = "../engine" }

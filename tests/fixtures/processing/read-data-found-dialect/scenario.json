@@ -1,0 +1,20 @@
+{
+  "binary": "kdlith",
+  "description": "read data --dialect: the dialect-generation entrypoint governs the schema load; the same record line processing/read-data-found prints under the bundled dialect is printed",
+  "args": [
+    "read",
+    "data",
+    "--dialect",
+    "{fx-suite}/../../contracts/super-schemas/dialect.kdl",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "{fx-suite}/processing/bind/stream/input.kdl",
+    "one"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":6},\"type_name\":\"Item\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"one\"}"
+    ]
+  }
+}

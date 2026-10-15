@@ -1,0 +1,8 @@
+{
+  "binary": "kdlith",
+  "description": "A named document that does not exist cannot be read and is rejected with the source-unreadable code",
+  "args": ["read", "file", "missing.kdl"],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

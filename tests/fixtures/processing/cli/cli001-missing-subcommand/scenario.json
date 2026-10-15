@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "a verb without its required subcommand prints the verb's help to stderr, then the fault line under KDLITH-CLI001, and exits 2",
+  "args": [
+    "vet"
+  ],
+  "expect": {
+    "exit": 2,
+    "stderr-contains": [
+      "error[KDLITH-CLI001]"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

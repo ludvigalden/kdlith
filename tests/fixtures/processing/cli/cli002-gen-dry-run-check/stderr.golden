@@ -1,0 +1,5 @@
+error[KDLITH-CLI002]: the argument '--dry-run' cannot be used with '--check'
+
+Usage: kdlith gen dialect --crate <NAME> --out <DIR> --dry-run <FILES>...
+
+For more information, try '--help'.

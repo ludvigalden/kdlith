@@ -1,0 +1,22 @@
+{
+  "binary": "kdlith",
+  "description": "export --format names an unsupported encoding: exit 2 under KDLITH-CLI003, the registered template naming the one supported format; nothing is read or written",
+  "args": [
+    "export",
+    "--schema",
+    "schema.kdl",
+    "--emit",
+    "roots",
+    "--format",
+    "csv",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 2,
+    "stderr-contains": [
+      "error[KDLITH-CLI003]"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

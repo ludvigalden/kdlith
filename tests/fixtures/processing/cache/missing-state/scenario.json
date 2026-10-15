@@ -1,9 +1,15 @@
 {
   "binary": "kdlith",
-  "description": "every cache form requires an explicit --state: there is no default or environment-derived location, so cache clean without it is a usage error (exit 2) naming --state <DIR>",
-  "args": ["cache", "clean"],
+  "description": "every cache form requires an explicit --state: there is no default or environment-derived location, so cache clean without it is a usage error (exit 2, KDLITH-CLI001) naming --state <DIR>",
+  "args": [
+    "cache",
+    "clean"
+  ],
   "expect": {
     "exit": 2,
-    "stderr-contains": ["--state <DIR>"]
+    "stderr-contains": [
+      "error[KDLITH-CLI001]",
+      "--state <DIR>"
+    ]
   }
 }

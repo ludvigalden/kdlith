@@ -1,0 +1,20 @@
+{
+  "binary": "kdlith",
+  "description": "One --anchor serves the schema and its data on vet data: the schema's own $root/*.kdl import expands against --anchor root=PATH, so the data document binds the extra node the matched parts/b.kdl contributes (type Extra from parts/a.kdl) after the root's thing",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/schemas/vet/import-anchor/schema.kdl",
+    "--anchor",
+    "root={fx-suite}/schemas/vet/import-anchor/parts",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":0},\"type_name\":\"Thing\",\"fields\":[{\"name\":\"name\",\"value\":{\"kind\":\"string\",\"value\":\"first\"}",
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":1},\"type_name\":\"Extra\",\"fields\":[{\"name\":\"note\",\"value\":{\"kind\":\"string\",\"value\":\"second\"}"
+    ]
+  }
+}

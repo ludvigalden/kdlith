@@ -1,0 +1,4 @@
+error[KDLITH-CLI001]: invalid value 'wide' for '--scope <SCOPE>'
+  [possible values: local, complete]
+
+For more information, try '--help'.

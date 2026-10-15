@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "The processing/bind/expansion input with its children braces removed: per the KDL v2 grammar an indented line is a sibling, not a child, so tag lands under the document root and is rejected as unbound there rather than bound into item",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/expansion/schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

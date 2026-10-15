@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "list types --dialect is consumed, never ignored: the override adds a type the reference processor does not declare, so the processor refuses before the schema loads and nothing is listed, exported, cached, or read; the same override governs invalid/dialect/processor-mismatch",
+  "args": [
+    "list",
+    "types",
+    "--dialect",
+    "{fx-suite}/invalid/dialect/processor-mismatch/extra.kdl",
+    "--schema",
+    "{fx-suite}/processing/list/schema.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

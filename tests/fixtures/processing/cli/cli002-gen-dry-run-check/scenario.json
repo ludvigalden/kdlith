@@ -1,0 +1,23 @@
+{
+  "binary": "kdlith",
+  "description": "gen declares --dry-run and --check mutually exclusive (one prints the plan, the other compares against the destination); both together are conflicting options: exit 2 under KDLITH-CLI002, nothing generated or compared",
+  "args": [
+    "gen",
+    "dialect",
+    "dialect.kdl",
+    "--crate",
+    "demo",
+    "--out",
+    "out",
+    "--dry-run",
+    "--check"
+  ],
+  "expect": {
+    "exit": 2,
+    "stderr-contains": [
+      "error[KDLITH-CLI002]"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

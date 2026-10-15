@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A host-supplied anchor no discovery grammar of the schema declares is rejected before reading on list items, which shares the data-options path: --anchor other=parts names none of the schema's grammars. The document imports nothing, so the IMP005 is the undeclared arm alone",
+  "args": [
+    "list",
+    "items",
+    "--schema",
+    "{fx-suite}/processing/bind/import-anchor/schema.kdl",
+    "--anchor",
+    "other=parts",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

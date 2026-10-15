@@ -1,0 +1,8 @@
+{
+  "binary": "kdlith",
+  "description": "A committed schema document whose bytes are not valid UTF-8 is rejected with the source-not-utf8 code on the definition reading path",
+  "args": ["vet", "schema", "input.kdl"],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

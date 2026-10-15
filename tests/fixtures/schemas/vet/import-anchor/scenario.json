@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "A schema's own grammar-admitted import expands on the definition path: vet schema --anchor root=parts expands $root/*.kdl under the root's grammar to parts/a.kdl then parts/b.kdl (portable-path-byte order), so the schema compiles from three documents with the imported type and node; the digest equals the one schemas/vet/import-anchor-literal reports for the same documents imported by literal path",
+  "args": [
+    "vet",
+    "schema",
+    "--anchor",
+    "root=parts",
+    "schema.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "ok: schema demo version 1 scope=complete documents=3 types=2 nodes=2 slots=0 profiles=0 digest=dfbae327e81c005d"
+    ]
+  }
+}

@@ -1,0 +1,7 @@
+schema demo version="1" {
+    types {
+        object Extra {
+            field note String
+        }
+    }
+}

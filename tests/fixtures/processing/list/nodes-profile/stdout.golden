@@ -1,0 +1,3 @@
+crate parent=root role=record type=Widget profile=wholesale
+gadget parent=root role=record type=Widget profile=-
+widget parent=root role=record type=Widget profile=retail

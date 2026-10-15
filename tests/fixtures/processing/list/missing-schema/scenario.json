@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "list without its required --schema fails closed as a usage error (exit 2) naming the missing argument, for every list form",
+  "description": "list without its required --schema fails closed as a usage error (exit 2, KDLITH-CLI001) naming the missing argument, for every list form",
   "args": [
     "list",
     "types"
@@ -8,6 +8,7 @@
   "expect": {
     "exit": 2,
     "stderr-contains": [
+      "error[KDLITH-CLI001]",
       "the following required arguments were not provided",
       "--schema <FILE>",
       "Usage: kdlith list types --schema <FILE>"

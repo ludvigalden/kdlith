@@ -1,0 +1,2 @@
+error[KDLITH-BND004]: conf is missing required retries
+  --> data.kdl:1:1

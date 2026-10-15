@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "an option the verb does not declare is an argument-form fault: exit 2 under KDLITH-CLI001, nothing is read",
+  "args": [
+    "vet",
+    "schema",
+    "--bogus",
+    "schema.kdl"
+  ],
+  "expect": {
+    "exit": 2,
+    "stderr-contains": [
+      "error[KDLITH-CLI001]"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

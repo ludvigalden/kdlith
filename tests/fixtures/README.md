@@ -116,7 +116,26 @@ types/bindings mechanisms) plus `descendants/`, `sequence/`,
 schema proving one mechanism end to end. `invalid/data/` holds data
 documents bound against the shared schema, each rejected with its declared
 code; the mechanism-negative scenarios there carry the matching focused
-schema from their positive counterpart.
+schema from their positive counterpart. The source-area scenarios there
+(`source-*`) instead name one document to `kdlith read file` and pin how
+reading it fails: past a limit, missing, a directory, or not UTF-8. The
+`anchor-undeclared*` scenarios (and `invalid/export/anchor-undeclared/`)
+pass an `--anchor` no discovery grammar of the schema declares, over a
+document that imports nothing, so the rejection comes from the anchor alone;
+one scenario per data verb pins the shared rejection.
+
+`schemas/vet/import-anchor/` holds a schema whose own import is a
+grammar-admitted expression (`$root/*.kdl`) and the two documents it
+matches under `parts/`. The definition-path anchor scenarios load it with
+`--anchor root=...`: `vet schema` there, `list types`, `gen schema`, and
+`vet data` (`processing/bind/schema-import-anchor/`) name it through the
+suite placeholder, and `schemas/inspect/import-anchor/` carries its own
+copies so the shown paths stay relative. `schemas/vet/import-anchor-literal/`
+imports the same documents by literal path and reports the same digest,
+the oracle for the expansion. The negatives load it without the anchor
+(`invalid/schemas/*import-anchor-unsupplied/`), with an undeclared one
+(`invalid/schemas/anchor-undeclared/`), or declare profiles so no grammar
+is bound while loading (`invalid/schemas/import-anchor-profiled/`).
 
 `dialect/canonical-inspect/`, `dialect/entrypoint-inspect/`, and
 `schemas/inspect/` run `kdlith inspect`, which reads definitions through
@@ -128,24 +147,36 @@ declared code. `processing/inspect-accepts-*` pin the reader-path
 decision those negatives imply: each reads, through `inspect schema`,
 the same input a `vet schema` scenario rejects with a compiler-only
 code, and asserts the reading completes and accepts it.
-`schemas/inspect/include-short-form-dropped/` pins the recorded fail-open
-gap of the `include` short form: every CLI reading path goes through the
-typed reader, which drops `include` children, so the typed declaration
-shows only locally declared members — the pin asserts that current
-behavior, and [COVERAGE.md](COVERAGE.md) carries the declared elision
-row with its reopen condition.
+`invalid/schemas/include-short-form/` and
+`invalid/schemas/inspect-include-short-form/` pin the loud rejection of the
+`include` short form: every CLI reading path goes through the typed reader,
+where no role or field binding consumes an `include` child, so `vet schema`
+and `inspect schema` both reject it with `KDLITH-BND001` instead of dropping
+the included members. [COVERAGE.md](COVERAGE.md) carries the declared elision
+row for the splice itself, with its reopen condition.
 
 `processing/sch003-span-vet/` and `processing/sch003-span-inspect/` pin the
 span of one diagnostic: an overlapping binding (`KDLITH-SCH003`) is reported
 at the node declaration, at the same span on both reading paths, because the
 reader-path binder check fires first in `vet`.
 
-`processing/cli/` holds the CLI-surface contracts: the three stub verbs
-(`list`, `cache`, `changelog`) each fail closed with exit 1 and a "not
-implemented yet" message, `export` without its required arguments,
-`--version`, the `help` verb, the exit-2 rejections of a non-text
-`--stdout-format` and an out-of-band `--verbosity`, and the bare
-no-arguments invocation.
+`processing/cli/` holds the CLI-surface contracts: `export` without its
+required arguments, `--version`, the `help` verb, the exit-2 rejections of
+a non-text `--stdout-format` and an out-of-band `--verbosity`, the bare
+no-arguments invocation, and the argument-error stratum. Every argument
+rejection exits `2` under its registered code: the `cli001-*` scenarios
+pin `KDLITH-CLI001` across the argument forms, the `cli002-*` scenarios
+pin `KDLITH-CLI002` on `gen`'s exclusive `--dry-run`/`--check` pair, and
+`cli003-export-format` pins `KDLITH-CLI003`. Each of these holds its
+streams byte for byte, so a change to clap's wording or to the command
+grammar means regenerating their goldens from the binary's output.
+
+The `*-dialect` twins under `processing/list/`, `processing/cache/`,
+`processing/export/`, and `processing/read-data-found-dialect/` run a data
+verb with `--dialect` naming the dialect-generation entrypoint and reuse
+their bundled-default twin's goldens unchanged, and
+`invalid/dialect/processor-mismatch-*` prove each verb consumes the
+override.
 
 `processing/export/` holds the `export` contract scenarios: `--emit
 roots` and `--emit <TYPE>` selection over an entry document that imports
@@ -203,6 +234,12 @@ code. Each negative control keeps the upstream input byte-for-byte in
 header line alters the document. The pinned upstream commit, the derivation,
 and the declared elisions are in `parse/kdl-spec/PROVENANCE.md`.
 
+`parse/indentation/` and its `invalid/data/` negatives pin a KDL v2 rule the
+upstream suite leaves implicit: indentation carries no structure. A newline
+ends a node and children exist only inside `{ }`, so an indented line after a
+brace-less node is a sibling, not a child. Each input is a spec example with
+only the construct under test removed.
+
 ## Codegen
 
 `codegen/` holds the generation scenarios. `gen dialect` generates the
@@ -229,7 +266,11 @@ committed schema definition (no reference comparison — the reference
 processor is the dialect form's oracle), with the exercise reading a
 committed data document through the generated typed reader and
 requiring the `KDLITH-BND008` rejection a value outside the schema's
-enum type produces.
+enum type produces. `codegen/gen-schema-ref-import` runs that chain over
+the committed catalog schema itself, which imports a second document and
+holds a `ref<T>` field: its exercise reads the schema by suite path
+(`KDLITH_FX_SUITE`), never a copy, and resolves each reference against
+the reading's linked declarations.
 
 ## Scenario format v0
 

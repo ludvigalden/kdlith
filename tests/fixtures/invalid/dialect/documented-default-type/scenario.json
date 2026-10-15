@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A documented default in a dialect definition that does not decode as its field's type is rejected on the dialect reading path, even though it never fills a value",
+  "args": [
+    "vet",
+    "dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/types.kdl",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/bindings.kdl",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/context.kdl",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/documents.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}
