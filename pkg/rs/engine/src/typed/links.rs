@@ -1,0 +1,199 @@
+//! Linking typed references: a reading's declarations by identity, and
+//! a `ref<T>` value resolved against them. Binding never resolves a
+//! reference; linking is a separate step over a typed reading's items.
+
+use std::fmt;
+use std::marker::PhantomData;
+
+use kdlith_model::{Identity, Value};
+
+use crate::typed::read::TypedItem;
+use crate::typed::value::{FromValue, LogicalType, Mismatch};
+
+/// A `ref<T>` value: a symbolic reference, as bound, to a declaration
+/// whose identity domain is the logical type `T`. Reading it never
+/// resolves it; [`Links::resolve`] does.
+pub struct Ref<T> {
+    domain: String,
+    name: Vec<String>,
+    written: String,
+    target: PhantomData<fn() -> T>,
+}
+
+impl<T> Ref<T> {
+    /// The identity domain the reference looks up in.
+    pub fn domain(&self) -> &str {
+        &self.domain
+    }
+
+    /// The referenced name's segments, outermost qualifier first.
+    pub fn name(&self) -> &[String] {
+        &self.name
+    }
+
+    /// The reference as the document spelled it.
+    pub fn written(&self) -> &str {
+        &self.written
+    }
+}
+
+impl<T> Clone for Ref<T> {
+    fn clone(&self) -> Self {
+        Self {
+            domain: self.domain.clone(),
+            name: self.name.clone(),
+            written: self.written.clone(),
+            target: PhantomData,
+        }
+    }
+}
+
+impl<T> fmt::Debug for Ref<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Ref")
+            .field("domain", &self.domain)
+            .field("name", &self.name)
+            .field("written", &self.written)
+            .finish()
+    }
+}
+
+impl<T> PartialEq for Ref<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.domain == other.domain && self.name == other.name && self.written == other.written
+    }
+}
+
+impl<T> Eq for Ref<T> {}
+
+/// A bound reference whose domain is `T`'s logical type.
+impl<T: LogicalType> FromValue for Ref<T> {
+    fn from_value(value: &Value) -> Result<Self, Mismatch> {
+        let domain = T::expression();
+        match value {
+            Value::Reference(reference) if reference.domain == domain => Ok(Self {
+                domain,
+                name: reference.name.0.clone(),
+                written: reference.written.clone(),
+                target: PhantomData,
+            }),
+            other => Err(Mismatch::expected(
+                &format!("a reference to {domain}"),
+                other,
+            )),
+        }
+    }
+}
+
+impl<T: LogicalType> LogicalType for Ref<T> {
+    fn expression() -> String {
+        format!("ref<{}>", T::expression())
+    }
+}
+
+/// A reference serializes as the document spelled it.
+impl<T> serde::Serialize for Ref<T> {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(&self.written)
+    }
+}
+
+/// A processor's item type, projected onto one of its variants: what a
+/// resolved reference is read as.
+pub trait ItemVariant<D> {
+    /// The variant's value, when the item is of type `D`.
+    fn variant(&self) -> Option<&D>;
+}
+
+/// Why a reference resolves to no single declaration of its type.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum Unresolved {
+    /// No declaration in the reference's domain carries its name.
+    Missing,
+    /// More than one declaration in the domain carries its name.
+    Ambiguous { candidates: usize },
+    /// The one declaration found is not read as the referenced type.
+    NotOfType,
+}
+
+impl fmt::Display for Unresolved {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Missing => f.write_str("no declaration carries the referenced name"),
+            Self::Ambiguous { candidates } => {
+                write!(f, "{candidates} declarations carry the referenced name")
+            }
+            Self::NotOfType => f.write_str("the declaration is not of the referenced type"),
+        }
+    }
+}
+
+impl std::error::Error for Unresolved {}
+
+/// The declarations of a typed reading, by identity, in reading order:
+/// the linked graph a `ref<T>` value resolves against.
+#[derive(Clone, Debug)]
+pub struct Links<T> {
+    declarations: Vec<(Identity, T)>,
+}
+
+impl<T> Default for Links<T> {
+    fn default() -> Self {
+        Self {
+            declarations: Vec::new(),
+        }
+    }
+}
+
+impl<T> Links<T> {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Register one declaration under its identity.
+    pub fn declare(&mut self, identity: Identity, value: T) {
+        self.declarations.push((identity, value));
+    }
+
+    /// How many declarations are registered.
+    pub fn len(&self) -> usize {
+        self.declarations.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.declarations.is_empty()
+    }
+
+    /// The one declaration `reference` names, read as its type: exactly
+    /// one candidate in the reference's domain must carry its name.
+    pub fn resolve<D>(&self, reference: &Ref<D>) -> Result<&D, Unresolved>
+    where
+        T: ItemVariant<D>,
+    {
+        let mut candidates = self.declarations.iter().filter(|(identity, _)| {
+            identity.domain == reference.domain && identity.name.0 == reference.name
+        });
+        match (candidates.next(), candidates.next()) {
+            (None, _) => Err(Unresolved::Missing),
+            (Some((_, value)), None) => value.variant().ok_or(Unresolved::NotOfType),
+            (Some(_), Some(_)) => Err(Unresolved::Ambiguous {
+                candidates: 2 + candidates.count(),
+            }),
+        }
+    }
+}
+
+impl<T: Clone> Links<T> {
+    /// Register the item when it is a declaration; every other item
+    /// passes untouched, so a reading's sink can observe its whole
+    /// stream.
+    pub fn observe(&mut self, item: &TypedItem<T>) {
+        if let TypedItem::Declaration {
+            identity, value, ..
+        } = item
+        {
+            self.declare(identity.clone(), value.clone());
+        }
+    }
+}

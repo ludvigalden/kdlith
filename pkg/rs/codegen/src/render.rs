@@ -128,10 +128,18 @@ pub fn rust_type(expr: &TypeExpr, names: &Names) -> Result<String, Error> {
             rust_type(key, names)?,
             rust_type(value, names)?
         )),
+        // A reference reads as the engine's symbolic `Ref`, resolved
+        // against the reading's declarations by linking, never by
+        // reading; linking admits only a declared type name inside it.
+        TypeExpr::Ref(inner) => match inner.as_ref() {
+            TypeExpr::Named(_) => Ok(format!("Ref<{}>", rust_type(inner, names)?)),
+            _ => Err(Error::UnsupportedExpression {
+                spelling: expression_text(expr, names),
+            }),
+        },
         TypeExpr::Nullable(_)
         | TypeExpr::Map(_, _)
         | TypeExpr::Union(_)
-        | TypeExpr::Ref(_)
         | TypeExpr::Instantiation(_, _) => Err(Error::UnsupportedExpression {
             spelling: expression_text(expr, names),
         }),
@@ -140,6 +148,48 @@ pub fn rust_type(expr: &TypeExpr, names: &Names) -> Result<String, Error> {
         _ => Err(Error::UnsupportedExpression {
             spelling: expression_text(expr, names),
         }),
+    }
+}
+
+/// The engine names a type expression's Rust rendering spells, beyond
+/// the named types it references: the generic carriers the engine
+/// defines, at any depth.
+pub fn engine_names(expr: &TypeExpr, names: &Names) -> Vec<&'static str> {
+    let mut found = Vec::new();
+    collect_engine_names(expr, names, &mut found);
+    found
+}
+
+fn collect_engine_names(expr: &TypeExpr, names: &Names, found: &mut Vec<&'static str>) {
+    let push = |name: &'static str, found: &mut Vec<&'static str>| {
+        if !found.contains(&name) {
+            found.push(name);
+        }
+    };
+    match expr {
+        TypeExpr::Named(sym) if names.resolve(*sym) == "ValueExpr" => push("ValueExpr", found),
+        TypeExpr::Ref(inner) => {
+            push("Ref", found);
+            collect_engine_names(inner, names, found);
+        }
+        TypeExpr::OrderedMap(key, value) => {
+            push("OrderedMap", found);
+            collect_engine_names(key, names, found);
+            collect_engine_names(value, names, found);
+        }
+        TypeExpr::Optional(inner) | TypeExpr::List(inner) | TypeExpr::Nullable(inner) => {
+            collect_engine_names(inner, names, found);
+        }
+        TypeExpr::Map(key, value) => {
+            collect_engine_names(key, names, found);
+            collect_engine_names(value, names, found);
+        }
+        TypeExpr::Instantiation(_, arguments) | TypeExpr::Union(arguments) => {
+            for argument in arguments {
+                collect_engine_names(argument, names, found);
+            }
+        }
+        _ => {}
     }
 }
 

@@ -7,27 +7,25 @@ use std::path::{Path, PathBuf};
 
 use kdlith_diagnostic::ExitStatus;
 use kdlith_engine::{
-    CheckScope, DataReader, Definition, Extensions, index_items, list_nodes, list_profiles,
-    list_types,
+    DataReader, Definition, Extensions, index_items, list_nodes, list_profiles, list_types,
 };
-use kdlith_superproc::{load_schema, seed};
 
 use crate::report::report_all;
 use crate::vet::DataOptions;
-use crate::{ListCommand, ListItemsArgs};
+use crate::{ListCommand, ListItemsArgs, ListSchemaArgs};
 
 /// Run a parsed `list` subcommand.
 pub(crate) fn run(command: ListCommand) -> ExitStatus {
     match command {
-        ListCommand::Types(args) => match load(&args.schema, &Extensions::standard()) {
+        ListCommand::Types(args) => match load_listed(&args) {
             Ok(def) => print_lines(&list_types(&def)),
             Err(status) => status,
         },
-        ListCommand::Nodes(args) => match load(&args.schema, &Extensions::standard()) {
+        ListCommand::Nodes(args) => match load_listed(&args) {
             Ok(def) => print_lines(&list_nodes(&def)),
             Err(status) => status,
         },
-        ListCommand::Profiles(args) => match load(&args.schema, &Extensions::standard()) {
+        ListCommand::Profiles(args) => match load_listed(&args) {
             Ok(def) => print_lines(&list_profiles(&def)),
             Err(status) => status,
         },
@@ -35,11 +33,24 @@ pub(crate) fn run(command: ListCommand) -> ExitStatus {
     }
 }
 
-/// The schema loaded under the bundled dialect with complete checking;
-/// a failed load is reported and decides the exit.
-fn load(schema: &Path, extensions: &Extensions) -> Result<Definition, ExitStatus> {
-    let governing = seed(extensions).map_err(|records| report_all(&records))?;
-    load_schema(&governing, &[schema], extensions, CheckScope::Complete)
+/// The schema a declaration listing names, under the standard
+/// extensions, the governing dialect, and the anchors it supplies.
+fn load_listed(args: &ListSchemaArgs) -> Result<Definition, ExitStatus> {
+    let options =
+        DataOptions::new(args.anchors.clone(), None, Vec::new()).with_dialect(args.dialect.clone());
+    load(&args.schema, &options, &Extensions::standard())
+}
+
+/// The schema loaded under the options' governing dialect with complete
+/// checking, its import expressions expanded against the options'
+/// anchors; a failed load is reported and decides the exit.
+fn load(
+    schema: &Path,
+    options: &DataOptions,
+    extensions: &Extensions,
+) -> Result<Definition, ExitStatus> {
+    options
+        .load_schema(schema, extensions)
         .map_err(|records| report_all(&records))
 }
 
@@ -47,8 +58,9 @@ fn load(schema: &Path, extensions: &Extensions) -> Result<Definition, ExitStatus
 /// indexed item. The reading runs to its end, so a diagnostic anywhere
 /// in the documents fails the listing after the index is printed.
 fn items(args: ListItemsArgs) -> ExitStatus {
-    let options = DataOptions::new(args.anchors, args.profile, args.handlers);
-    let def = match load(&args.schema, &options.extensions()) {
+    let options =
+        DataOptions::new(args.anchors, args.profile, args.handlers).with_dialect(args.dialect);
+    let def = match load(&args.schema, &options, &options.extensions()) {
         Ok(def) => def,
         Err(status) => return status,
     };

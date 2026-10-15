@@ -3,11 +3,13 @@
 //! decoding bound values into its types, and the reader that drives it.
 
 mod conform;
+mod links;
 mod macros;
 mod read;
 mod shape;
 mod value;
 
+pub use links::{ItemVariant, Links, Ref, Unresolved};
 pub use read::{ReadError, TypedItem, TypedReader};
 pub use shape::{
     Declarations, Expression, FieldShape, Handler, NodeShape, ReadFn, Shaped, SlotShape, TypeShape,

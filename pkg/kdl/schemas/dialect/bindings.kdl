@@ -214,6 +214,7 @@ dialect kdlith version="0" {
         field role property=role
         field type property=type
         field parent property=parent
+        field profile property=profile
         field parents {
             from {
                 child parents {

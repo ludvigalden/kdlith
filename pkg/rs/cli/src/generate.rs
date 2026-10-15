@@ -19,16 +19,16 @@ pub(crate) fn run(command: GenCommand) -> ExitStatus {
         GenCommand::Dialect(args) => generate(
             GenTarget::Dialect,
             &paths(&args.files),
-            &args.crate_name,
-            &args.out,
+            (&args.crate_name, &args.out),
             mode_of(args.dry_run, args.check),
+            &[],
         ),
         GenCommand::Schema(args) => generate(
             GenTarget::Schema,
-            &paths(&args.files),
-            &args.crate_name,
-            &args.out,
-            mode_of(args.dry_run, args.check),
+            &paths(&args.form.files),
+            (&args.form.crate_name, &args.form.out),
+            mode_of(args.form.dry_run, args.form.check),
+            &args.anchors,
         ),
     }
 }
@@ -78,13 +78,15 @@ pub enum GenMode {
 /// in the check mode, compare without writing. Loading failures report
 /// their diagnostics on stderr; a write into an unowned path refuses
 /// with `KDLITH-GEN001`, and check drift reports `KDLITH-GEN002`, both
-/// through the standard diagnostic surface.
+/// through the standard diagnostic surface. A schema's own import
+/// expressions expand against `anchors`; a dialect root binds no
+/// discovery grammar, so a dialect's imports are literal and take none.
 pub fn generate(
     target: GenTarget,
     entries: &[&Path],
-    crate_name: &str,
-    out: &Path,
+    (crate_name, out): (&str, &Path),
     mode: GenMode,
+    anchors: &[(String, PathBuf)],
 ) -> ExitStatus {
     let form = match target {
         GenTarget::Dialect => "dialect",
@@ -93,7 +95,7 @@ pub fn generate(
     let extensions = Extensions::standard();
     let tree = match target {
         GenTarget::Dialect => codegen::generate_dialect(entries, &extensions, crate_name),
-        GenTarget::Schema => codegen::generate_schema(entries, &extensions, crate_name),
+        GenTarget::Schema => codegen::generate_schema(entries, &extensions, crate_name, anchors),
     };
     let tree = match tree {
         Ok(tree) => tree,

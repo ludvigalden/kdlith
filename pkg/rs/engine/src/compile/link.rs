@@ -218,6 +218,15 @@ fn node_refs(cx: &mut Cx<'_>, bindings: &BindingCatalog, symbols: &SymbolCatalog
     let object = node
         .ty
         .and_then(|ty| object_fields(cx, node.site, &label, ty));
+    // A declaration's profile= names a profile the definition declares;
+    // an unknown name would make the declaration unreachable under every
+    // invocation, so it is an undeclared reference like any other.
+    if let Some(profile) = node.profile
+        && !cx.profiles.iter().any(|declared| declared.name == profile)
+    {
+        let spelled = format!("{} of node {label}", cx.names.resolve(profile));
+        unresolved(cx, node.site, "profile", &spelled);
+    }
     if let Placement::Under(parents) = &node.placement {
         for parent in parents {
             let owned = bindings

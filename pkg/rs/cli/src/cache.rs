@@ -7,10 +7,7 @@ use std::io::Write as _;
 use std::path::{Path, PathBuf};
 
 use kdlith_diagnostic::{DiagnosticRecord, ExitStatus};
-use kdlith_engine::{
-    CacheScan, CheckScope, DataReader, clean_state, derive_state, scan_state, write_state,
-};
-use kdlith_superproc::{load_schema, seed};
+use kdlith_engine::{CacheScan, DataReader, clean_state, derive_state, scan_state, write_state};
 
 use crate::report::{report, report_all};
 use crate::vet::DataOptions;
@@ -60,18 +57,10 @@ fn refresh(args: CacheRefreshArgs) -> ExitStatus {
         );
         return combine(ExitStatus::Failure, status);
     }
-    let options = DataOptions::new(args.anchors, args.profile, args.handlers);
+    let options =
+        DataOptions::new(args.anchors, args.profile, args.handlers).with_dialect(args.dialect);
     let extensions = options.extensions();
-    let governing = match seed(&extensions) {
-        Ok(governing) => governing,
-        Err(records) => return report_all(&records),
-    };
-    let def = match load_schema(
-        &governing,
-        &[args.schema.as_path()],
-        &extensions,
-        CheckScope::Complete,
-    ) {
+    let def = match options.load_schema(&args.schema, &extensions) {
         Ok(def) => def,
         Err(records) => return report_all(&records),
     };
@@ -108,7 +97,9 @@ fn refresh(args: CacheRefreshArgs) -> ExitStatus {
 }
 
 /// Remove every owned entry; leave and report everything else. A scan
-/// that cannot cover the whole directory removes nothing.
+/// that cannot cover the whole directory removes nothing. Every owned
+/// removal is attempted; each failure is reported beside the foreign
+/// entries and fails the run.
 fn clean(state: &Path) -> ExitStatus {
     let scan = match scan_state(state) {
         Ok(scan) => scan,
@@ -121,20 +112,23 @@ fn clean(state: &Path) -> ExitStatus {
         );
         return ExitStatus::Success;
     }
-    let outcome = match clean_state(state, &scan) {
-        Ok(outcome) => outcome,
-        Err(record) => return report(&record),
-    };
+    let outcome = clean_state(state, &scan);
     let lines: Vec<String> = outcome
         .removed
         .iter()
         .map(|name| format!("removed {name}"))
         .collect();
     let printed = print_lines(&lines);
-    let foreign = foreign_only(&scan, state);
-    let status = report_all(&foreign);
+    let mut records = outcome.failures.clone();
+    records.extend(foreign_only(&scan, state));
+    let status = report_all(&records);
+    let unremoved = if outcome.is_complete() {
+        String::new()
+    } else {
+        format!("; could not remove {}", outcome.failures.len())
+    };
     eprintln!(
-        "kdlith: removed {} owned entries from {}; left {} foreign",
+        "kdlith: removed {} owned entries from {}; left {} foreign{unremoved}",
         outcome.removed.len(),
         state.display(),
         scan.foreign.len()

@@ -7,10 +7,9 @@ use std::path::Path;
 
 use kdlith_diagnostic::registry::{lookup, render};
 use kdlith_diagnostic::{DiagnosticRecord, ExitStatus};
-use kdlith_engine::{CheckScope, DataReader, record_identity};
+use kdlith_engine::{DataReader, record_identity};
 use kdlith_model::Item;
 use kdlith_parse::Parser;
-use kdlith_superproc::{load_schema, seed};
 
 use crate::ReadArgs;
 use crate::report::{report, report_all};
@@ -24,8 +23,7 @@ pub(crate) fn run(args: &ReadArgs) -> ExitStatus {
         None => match &args.file {
             Some(file) => read(file),
             None => {
-                eprintln!("kdlith: read requires a document or a subcommand");
-                ExitStatus::Usage
+                crate::usage::report_invalid_argument("read requires a document or a subcommand")
             }
         },
     }
@@ -72,9 +70,10 @@ pub(crate) fn source_error(code: &str, values: &[&str]) -> DiagnosticRecord {
 }
 
 /// Bind the data document (after the entry document, when one is
-/// given) through the schema under the bundled dialect, print the one
-/// record item whose identity was asked for as a single JSON line, and
-/// report a missing identity as a failure with a clear diagnostic. The
+/// given) through the schema under the bundled dialect or the one
+/// `--dialect` names, print the one record item whose identity was
+/// asked for as a single JSON line, and report a missing identity as a
+/// failure with a clear diagnostic. The
 /// documents' imports execute as invocations, so a record reached
 /// through an import is found like any other. The binding always runs
 /// to the end, so a diagnostic anywhere in the documents fails the read
@@ -84,18 +83,10 @@ pub(crate) fn read_data(args: &crate::ReadDataArgs) -> ExitStatus {
         args.anchors.clone(),
         args.profile.clone(),
         args.handlers.clone(),
-    );
+    )
+    .with_dialect(args.dialect.clone());
     let extensions = options.extensions();
-    let governing = match seed(&extensions) {
-        Ok(governing) => governing,
-        Err(records) => return report_all(&records),
-    };
-    let definition = match load_schema(
-        &governing,
-        &[args.schema.as_path()],
-        &extensions,
-        CheckScope::Complete,
-    ) {
+    let definition = match options.load_schema(&args.schema, &extensions) {
         Ok(definition) => definition,
         Err(records) => return report_all(&records),
     };

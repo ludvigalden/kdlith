@@ -2,7 +2,7 @@
 //! imports where written, and hands each record and declaration to the
 //! processor's handler for its role and type.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use kdlith_diagnostic::registry::{lookup, render};
 use kdlith_diagnostic::{ByteSpan, DiagnosticRecord};
@@ -12,10 +12,12 @@ use kdlith_model::{
 use kdlith_runtime::{Admission, Context, InvocationId, Invocations, SessionError, SlotId};
 use serde::Serialize;
 
+use crate::anchors::{self, Base, DeclaredGrammars};
 use crate::bind::BindingSession;
 use crate::bindings::Role;
 use crate::definition::{Definition, DefinitionKind};
 use crate::diag::{UNRESOLVED_DIALECT, UNRESOLVED_SCHEMA, record};
+use crate::discovery;
 use crate::documents::{import_failure, read_text};
 use crate::typed::conform;
 use crate::typed::shape::{Declarations, Handler};
@@ -94,6 +96,9 @@ impl std::error::Error for ReadError {}
 pub struct TypedReader<'d, T: 'static> {
     def: &'d Definition,
     declarations: &'static Declarations<T>,
+    /// The host-supplied discovery anchors the documents' own import
+    /// expressions expand against.
+    anchors: Vec<(String, PathBuf)>,
 }
 
 impl<'d, T: 'static> TypedReader<'d, T> {
@@ -104,13 +109,27 @@ impl<'d, T: 'static> TypedReader<'d, T> {
     ) -> Result<Self, Vec<DiagnosticRecord>> {
         let disagreements = conform::run(def, declarations);
         if disagreements.is_empty() {
-            return Ok(Self { def, declarations });
+            return Ok(Self {
+                def,
+                declarations,
+                anchors: Vec::new(),
+            });
         }
         let processor = format!("{} {}", declarations.kind.root_name(), declarations.name);
         Err(disagreements
             .iter()
             .map(|d| mismatch(&processor, &d.subject, &d.reason))
             .collect())
+    }
+
+    /// Supply the discovery anchors the documents' import expressions
+    /// expand against, under the grammar the documents themselves
+    /// declare. A declared anchor left unsupplied, or a supplied one no
+    /// grammar read declares, fails closed (`KDLITH-IMP005`).
+    #[must_use]
+    pub fn with_anchors(mut self, anchors: &[(String, PathBuf)]) -> Self {
+        self.anchors = anchors.to_vec();
+        self
     }
 
     /// Read every entry document and the documents they import, giving
@@ -144,11 +163,22 @@ impl<'d, T: 'static> TypedReader<'d, T> {
         let mut reading = Reading {
             reader: self,
             invocations: Invocations::new(),
+            grammars: DeclaredGrammars::compiled(self.def),
             sink,
             failed: false,
             broken: None,
             follow,
         };
+        if reading.declared() {
+            // Every entry declares its grammars before any import runs,
+            // as the compiler validates expressions against the full set.
+            reading.grammars = DeclaredGrammars::default();
+            for entry in entries {
+                if let Ok(text) = std::fs::read_to_string(entry) {
+                    reading.grammars.scan(&text);
+                }
+            }
+        }
         let layout = self.def.plan.context.layout.clone();
         for entry in entries {
             match reading
@@ -161,6 +191,12 @@ impl<'d, T: 'static> TypedReader<'d, T> {
             if let Some(error) = reading.broken {
                 return Err(error);
             }
+        }
+        let grammars = &reading.grammars;
+        for record in
+            anchors::undeclared(&self.anchors, &grammars.grammars, &grammars.names, ORIGIN)
+        {
+            reading.diagnose(record);
         }
         Ok(reading.failed)
     }
@@ -198,6 +234,8 @@ impl<'d, T: 'static> TypedReader<'d, T> {
 struct Reading<'r, 'd, T: 'static> {
     reader: &'r TypedReader<'d, T>,
     invocations: Invocations,
+    /// The discovery grammars the documents read so far declare.
+    grammars: DeclaredGrammars,
     sink: &'r mut dyn FnMut(TypedItem<T>),
     failed: bool,
     broken: Option<ReadError>,
@@ -207,6 +245,12 @@ struct Reading<'r, 'd, T: 'static> {
 }
 
 impl<T: 'static> Reading<'_, '_, T> {
+    /// Whether the documents are definitions declaring their own
+    /// grammars, rather than data documents of a compiled schema.
+    fn declared(&self) -> bool {
+        self.reader.def.kind == DefinitionKind::Dialect
+    }
+
     fn diagnose(&mut self, record: DiagnosticRecord) {
         self.failed = true;
         (self.sink)(TypedItem::Diagnostic(Box::new(record)));
@@ -219,7 +263,12 @@ impl<T: 'static> Reading<'_, '_, T> {
             let (path, shown) = (invocation.path.clone(), invocation.shown.clone());
             let context = invocation.context.project(&self.all_slots());
             match read_text(&path, &shown, "document size", ORIGIN) {
-                Ok(text) => self.bind(id, &shown, &text, context.ok()),
+                Ok(text) => {
+                    if self.declared() {
+                        self.grammars.scan(&text);
+                    }
+                    self.bind(id, &shown, &text, context.ok());
+                }
                 Err(record) => self.diagnose(*record),
             }
         }
@@ -341,9 +390,68 @@ impl<T: 'static> Reading<'_, '_, T> {
     }
 
     fn import(&mut self, request: &ImportRequest, shown: &str, context: Context) {
+        if discovery::is_expression(&request.expression) {
+            return self.import_expression(request, shown, context);
+        }
         let admitted =
             self.invocations
                 .request_projected(&request.expression, request.repeated, context);
+        self.admitted(admitted, request, shown);
+    }
+
+    /// Expand a grammar-admitted expression under the grammar the
+    /// documents declare, against the host-supplied anchors, and invoke
+    /// each match in order under the request's policy.
+    fn import_expression(&mut self, request: &ImportRequest, shown: &str, context: Context) {
+        let Some(importer) = self
+            .invocations
+            .innermost()
+            .and_then(|id| self.invocations.get(id))
+        else {
+            return;
+        };
+        let dir = importer.path.parent().unwrap_or(Path::new("")).to_owned();
+        let shown_dir = Path::new(&importer.shown)
+            .parent()
+            .unwrap_or(Path::new(""))
+            .to_owned();
+        let names = &self.grammars.names;
+        let anchors = anchors::anchor_map(&self.reader.anchors, names);
+        let base = Base {
+            dir: &dir,
+            shown: &shown_dir,
+        };
+        let grammar = self.grammars.grammar();
+        let targets = anchors::expression_targets(
+            &request.expression,
+            grammar,
+            names,
+            &anchors,
+            &base,
+            ORIGIN,
+        );
+        let targets = match targets {
+            Ok(targets) => targets,
+            Err(record) => return self.diagnose(at_request(*record, shown, request)),
+        };
+        for target in targets {
+            let admitted = self.invocations.invoke_resolved(
+                &target.resolved,
+                &target.shown,
+                request.repeated,
+                context.clone(),
+            );
+            self.admitted(admitted, request, shown);
+        }
+    }
+
+    /// Visit an admitted invocation, or report why it was refused.
+    fn admitted(
+        &mut self,
+        admitted: Result<Admission, kdlith_runtime::ImportFailure>,
+        request: &ImportRequest,
+        shown: &str,
+    ) {
         match admitted {
             Ok(Admission::Invoke(id)) => self.visit(id),
             Ok(_) => {}

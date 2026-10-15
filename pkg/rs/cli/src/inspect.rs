@@ -23,23 +23,23 @@ pub(crate) fn run(command: InspectCommand) -> ExitStatus {
             if let Some(status) = reject_view(args.view) {
                 return status;
             }
-            inspect(args.dialect.as_deref(), &paths(&args.files))
+            inspect(args.dialect.as_deref(), &paths(&args.files), &[])
         }
         InspectCommand::Schema(args) => {
             if let Some(status) = reject_view(args.view) {
                 return status;
             }
-            inspect(args.dialect.as_deref(), &paths(&args.files))
+            inspect(args.dialect.as_deref(), &paths(&args.files), &args.anchors)
         }
         InspectCommand::Data(args) => {
             if let Some(status) = reject_view(args.view) {
                 return status;
             }
             crate::vet::vet_data(
-                args.dialect.as_deref(),
                 args.schema.as_deref(),
                 &paths(&args.files),
-                &crate::vet::DataOptions::new(args.anchors, args.profile, args.handlers),
+                &crate::vet::DataOptions::new(args.anchors, args.profile, args.handlers)
+                    .with_dialect(args.dialect),
             )
         }
     }
@@ -60,15 +60,20 @@ fn reject_view(view: ViewArg) -> Option<ExitStatus> {
 
 /// Read `entries` and their imports as definition documents written in
 /// the governing dialect — the bundled one, or the single document
-/// `dialect` names.
-pub fn inspect(dialect: Option<&Path>, entries: &[&Path]) -> ExitStatus {
+/// `dialect` names — expanding the documents' import expressions
+/// against `anchors`.
+pub fn inspect(
+    dialect: Option<&Path>,
+    entries: &[&Path],
+    anchors: &[(String, PathBuf)],
+) -> ExitStatus {
     let extensions = Extensions::standard();
     let compiled = match governing_dialect(dialect, &extensions) {
         Ok(compiled) => compiled,
         Err(records) => return report_all(&records),
     };
     let reader = match reader(&compiled) {
-        Ok(reader) => reader,
+        Ok(reader) => reader.with_anchors(anchors),
         Err(records) => return report_all(&records),
     };
     let mut records: Vec<DiagnosticRecord> = Vec::new();

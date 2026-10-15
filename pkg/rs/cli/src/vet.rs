@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use kdlith_diagnostic::{DiagnosticRecord, ExitStatus};
 use kdlith_engine::{CheckScope, DataReader, Definition, Extensions, Handlers, ReadOptions};
 use kdlith_model::Item;
-use kdlith_superproc::{load_dialect, load_schema, seed};
+use kdlith_superproc::{load_dialect, load_schema_anchored, seed};
 
 use crate::handlers;
 use crate::report::report_all;
@@ -21,18 +21,19 @@ pub(crate) fn run(command: VetCommand) -> ExitStatus {
             None,
             &paths(&args.files),
             scope_of(args.scope),
+            &[],
         ),
         VetCommand::Schema(args) => vet(
             VetTarget::Schema,
             args.dialect.as_deref(),
             &paths(&args.files),
             scope_of(args.scope),
+            &args.anchors,
         ),
         VetCommand::Data(args) => vet_data(
-            args.dialect.as_deref(),
             args.schema.as_deref(),
             &paths(&args.files),
-            &DataOptions::new(args.anchors, args.profile, args.handlers),
+            &DataOptions::new(args.anchors, args.profile, args.handlers).with_dialect(args.dialect),
         ),
     }
 }
@@ -76,18 +77,21 @@ pub enum VetTarget {
 /// Vet the definition whose entry documents are `entries`. A schema is
 /// vetted under the bundled dialect, or the dialect loaded from the one
 /// document `dialect` names, which is itself vetted with complete
-/// checking first.
+/// checking first; its import expressions expand against `anchors`.
+/// A dialect root binds no discovery grammar, so its imports are
+/// literal and it takes no anchors.
 pub fn vet(
     target: VetTarget,
     dialect: Option<&Path>,
     entries: &[&Path],
     scope: CheckScope,
+    anchors: &[(String, PathBuf)],
 ) -> ExitStatus {
     let extensions = Extensions::standard();
     let loaded = match target {
         VetTarget::Dialect => load_dialect(entries, &extensions, scope),
         VetTarget::Schema => match governing_dialect(dialect, &extensions) {
-            Ok(governing) => load_schema(&governing, entries, &extensions, scope),
+            Ok(governing) => load_schema_anchored(&governing, entries, &extensions, scope, anchors),
             Err(records) => Err(records),
         },
         VetTarget::Data => {
@@ -124,14 +128,16 @@ fn summary_line(definition: &Definition) -> String {
     )
 }
 
-/// What one data reading supplies beyond its documents: the discovery
-/// anchors the host passes on the command line, the profile the
-/// invocation names, and the built-in context handlers to install. The
-/// data verbs (`vet data`, `inspect data`, `read data`, `list items`,
-/// `cache`, and `export`) share one of these, so every path observes
-/// the same execution semantics.
+/// What one data reading supplies beyond its documents: the dialect
+/// definition replacing the bundled one, the discovery anchors the host
+/// passes on the command line, the profile the invocation names, and
+/// the built-in context handlers to install. The data verbs (`vet
+/// data`, `inspect data`, `read data`, `list items`, `cache refresh`,
+/// and `export`) share one of these, so every path observes the same
+/// execution semantics.
 #[derive(Default)]
 pub struct DataOptions {
+    dialect: Option<PathBuf>,
     anchors: Vec<(String, PathBuf)>,
     profile: Option<String>,
     handlers: Vec<String>,
@@ -144,10 +150,46 @@ impl DataOptions {
         handlers: Vec<String>,
     ) -> Self {
         Self {
+            dialect: None,
             anchors,
             profile,
             handlers,
         }
+    }
+
+    /// The same options under the dialect the one document `dialect`
+    /// names, or under the bundled dialect when it is `None`.
+    #[must_use]
+    pub fn with_dialect(mut self, dialect: Option<PathBuf>) -> Self {
+        self.dialect = dialect;
+        self
+    }
+
+    /// The governing dialect: the bundled one, or the one the options
+    /// name, itself loaded with complete checking.
+    pub(crate) fn governing(
+        &self,
+        extensions: &Extensions,
+    ) -> Result<Definition, Vec<DiagnosticRecord>> {
+        governing_dialect(self.dialect.as_deref(), extensions)
+    }
+
+    /// The schema `schema` names, loaded with complete checking under
+    /// the governing dialect and these options' extensions, its import
+    /// expressions expanded against the supplied anchors.
+    pub(crate) fn load_schema(
+        &self,
+        schema: &Path,
+        extensions: &Extensions,
+    ) -> Result<Definition, Vec<DiagnosticRecord>> {
+        let governing = self.governing(extensions)?;
+        load_schema_anchored(
+            &governing,
+            &[schema],
+            extensions,
+            CheckScope::Complete,
+            &self.anchors,
+        )
     }
 
     /// The handler registry the reading installs. Names were validated
@@ -176,23 +218,19 @@ impl DataOptions {
 }
 
 /// Bind each data document against `schema` under the governing
-/// dialect — the bundled one, or the single document `dialect` names —
-/// or against the dialect itself when `schema` is absent. The documents'
+/// dialect — the bundled one, or the single document the options'
+/// dialect names — or against the dialect itself when `schema` is
+/// absent. The documents'
 /// imports execute as invocations: each document's items follow a
 /// document item, and imported records reach the stream with their own
 /// source identity. Bound items go to stdout as JSON lines; diagnostics
 /// go to stderr.
-pub fn vet_data(
-    dialect: Option<&Path>,
-    schema: Option<&Path>,
-    entries: &[&Path],
-    options: &DataOptions,
-) -> ExitStatus {
+pub fn vet_data(schema: Option<&Path>, entries: &[&Path], options: &DataOptions) -> ExitStatus {
     let extensions = options.extensions();
-    let loaded = governing_dialect(dialect, &extensions).and_then(|governing| match schema {
-        None => Ok(governing),
-        Some(file) => load_schema(&governing, &[file], &extensions, CheckScope::Complete),
-    });
+    let loaded = match schema {
+        None => options.governing(&extensions),
+        Some(file) => options.load_schema(file, &extensions),
+    };
     let definition = match loaded {
         Ok(definition) => definition,
         Err(records) => return report_all(&records),

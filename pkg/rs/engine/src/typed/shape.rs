@@ -216,6 +216,15 @@ impl<T> Handler<T> {
             read: read_as::<D, T>,
         }
     }
+
+    /// The same handler for items whose type name is `ty`: a node bound
+    /// without `type=` yields items named after the node, which its
+    /// node-local Rust type reads.
+    #[must_use]
+    pub const fn named(mut self, ty: &'static str) -> Self {
+        self.ty = ty;
+        self
+    }
 }
 
 impl<T> Clone for Handler<T> {

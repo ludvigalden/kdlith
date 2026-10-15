@@ -1,6 +1,7 @@
 //! The kdlith engine: loads and compiles definitions once into linked
 //! catalogs and a processing plan, binds documents through that plan,
 //! and reads them into a typed processor's own types.
+mod anchors;
 mod bind;
 mod bindings;
 mod cache;
@@ -85,10 +86,10 @@ pub use structure::{Occurs, OrderRule, ScopeRules, ScopeState, Violation};
 pub use symbols::{ContributionDescriptor, DeclarationDescriptor, ReferencePolicy, SymbolCatalog};
 pub use syntax::ParsedDocument;
 pub use typed::{
-    Declarations, Expression, FieldShape, Fields, FromFields, FromValue, Handler, LogicalType,
-    Mismatch, NodeShape, OrderedMap, ReadError, ReadFn, Shaped, SlotShape, TypeShape, TypedItem,
-    TypedReader, ValueExpr, VariantShape, member_value, object_value, read_fields, text_value,
-    variant_value,
+    Declarations, Expression, FieldShape, Fields, FromFields, FromValue, Handler, ItemVariant,
+    Links, LogicalType, Mismatch, NodeShape, OrderedMap, ReadError, ReadFn, Ref, Shaped, SlotShape,
+    TypeShape, TypedItem, TypedReader, Unresolved, ValueExpr, VariantShape, member_value,
+    object_value, read_fields, text_value, variant_value,
 };
 pub use types::{
     Builtin, CaptureDef, CodecDecl, Constraint, DefaultSpec, EnumMember, EnumType, FieldDef,

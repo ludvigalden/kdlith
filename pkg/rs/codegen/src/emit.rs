@@ -10,7 +10,7 @@ use crate::Error;
 use crate::catalog;
 use crate::manifest::{MANIFEST_NAME, manifest_text};
 use crate::model::{Document, Emission, kind_name};
-use crate::render::{field_name, named_references, pascal, rust_type};
+use crate::render::{engine_names, field_name, named_references, pascal, rust_type};
 
 /// Width a `use` list or other greedy-wrapped list fills to.
 const LIST_WIDTH: usize = 100;
@@ -223,9 +223,11 @@ impl Emission<'_> {
         out.blank();
         match self.kind {
             DefinitionKind::Dialect => {
-                out.line("pub use compile::{load_dialect, load_schema, seed};");
+                out.line(
+                    "pub use compile::{load_dialect, load_schema, load_schema_anchored, seed};",
+                );
             }
-            _ => out.line("pub use compile::load;"),
+            _ => out.line("pub use compile::{load, load_anchored};"),
         }
         out.line("pub use processors::{DECLARATIONS, Item, reader};");
         rust_file(&out.finish())
@@ -234,14 +236,40 @@ impl Emission<'_> {
     /// The per-document type declarations: one declaration macro per
     /// declared type, in contribution order, then the shape table.
     fn types_doc_rs(&self, doc: &Document<'_>) -> Result<String, Error> {
-        let declared: Vec<&str> = doc
+        let locals: Vec<String> = doc
+            .locals
+            .iter()
+            .map(|node| pascal(self.names.resolve(node.name)))
+            .collect();
+        let mut declared: Vec<&str> = doc
             .types
             .iter()
             .map(|decl| self.names.resolve(decl.name))
             .collect();
-        let mut engine: Vec<String> = vec!["Shaped".into(), "TypeShape".into()];
+        declared.extend(locals.iter().map(String::as_str));
+        // A document contributing only node-local item types has no
+        // shape table, so it names neither shape item.
+        let mut engine: Vec<String> = if doc.types.is_empty() {
+            Vec::new()
+        } else {
+            vec!["Shaped".into(), "TypeShape".into()]
+        };
         let mut references: Vec<String> = Vec::new();
         let mut macros: Vec<String> = Vec::new();
+        let note_ref = |expr: &TypeExpr, engine: &mut Vec<String>| {
+            if engine_names(expr, self.names).contains(&"Ref") {
+                push_unique(engine, "Ref");
+            }
+        };
+        for node in &doc.locals {
+            for field in &node.fields {
+                if let Some(ty) = &field.ty {
+                    note_ref(ty, &mut engine);
+                    references.extend(named_references(ty, self.names));
+                }
+            }
+            push_unique(&mut macros, "object_type");
+        }
         for decl in &doc.types {
             let name = self.names.resolve(decl.name);
             for expr in declaration_expressions(decl) {
@@ -250,6 +278,7 @@ impl Emission<'_> {
                 {
                     engine.push("OrderedMap".to_owned());
                 }
+                note_ref(expr, &mut engine);
                 references.extend(named_references(expr, self.names));
             }
             match &decl.kind {
@@ -284,6 +313,10 @@ impl Emission<'_> {
         let mut out = Out::new();
         match catalog::types_header(&doc.file_name) {
             Some(lines) => out.doc(lines),
+            None if doc.types.is_empty() => out.doc(&[&format!(
+                "Node-local item types contributed by `{}`.",
+                doc.file_name
+            )]),
             None => out.doc(&[&format!(
                 "Logical types contributed by `{}`.",
                 doc.file_name
@@ -299,14 +332,62 @@ impl Emission<'_> {
             out.blank();
             self.type_declaration(&mut out, decl)?;
         }
-        out.blank();
-        out.line("/// The shapes of this document's types, in declaration order.");
-        out.line("pub(crate) const TYPES: &[TypeShape] = &[");
-        for decl in &doc.types {
-            out.line(&format!("    {}::SHAPE,", self.names.resolve(decl.name)));
+        for (node, name) in doc.locals.iter().zip(&locals) {
+            out.blank();
+            self.local_declaration(&mut out, node, name)?;
         }
-        out.line("];");
+        if !doc.types.is_empty() {
+            out.blank();
+            out.line("/// The shapes of this document's types, in declaration order.");
+            out.line("pub(crate) const TYPES: &[TypeShape] = &[");
+            for decl in &doc.types {
+                out.line(&format!("    {}::SHAPE,", self.names.resolve(decl.name)));
+            }
+            out.line("];");
+        }
         Ok(rust_file(&out.finish()))
+    }
+
+    /// The node-local type an item node bound without `type=` reads as:
+    /// an object of its inline-typed fields. It is no logical type of
+    /// the definition, so it joins no shape table; its handler reads the
+    /// items named after the node.
+    fn local_declaration(
+        &self,
+        out: &mut Out,
+        node: &kdlith_engine::NodeDecl,
+        name: &str,
+    ) -> Result<(), Error> {
+        let node_name = self.names.resolve(node.name);
+        out.line("object_type! {");
+        out.line(&format!(
+            "    /// The fields of a `{node_name}` node, which declares no type=."
+        ));
+        if node.fields.is_empty() {
+            out.line(&format!("    pub struct {name} {{}}"));
+            out.line("}");
+            return Ok(());
+        }
+        out.line(&format!("    pub struct {name} {{"));
+        for field in &node.fields {
+            let key = self.names.resolve(field.name);
+            // The compiler requires an inline type on every field of a
+            // typeless node; one without fails closed.
+            let Some(ty) = &field.ty else {
+                return Err(Error::UnsupportedItem {
+                    name: node_name.to_owned(),
+                });
+            };
+            out.line(&format!(
+                "        \"{}\" => {}: {},",
+                key,
+                field_name(key),
+                rust_type(ty, self.names)?
+            ));
+        }
+        out.line("    }");
+        out.line("}");
+        Ok(())
     }
 
     /// One declared type, as its declaration macro spells it.
@@ -409,13 +490,19 @@ impl Emission<'_> {
             ]),
         }
         out.blank();
+        let mut sorted: Vec<String> = self
+            .type_documents()
+            .map(|doc| doc.module.clone())
+            .collect();
+        // Only documents declaring logical types hold a shape table; a
+        // document of node-local item types holds none.
         let modules: Vec<String> = self
             .type_documents()
+            .filter(|doc| !doc.types.is_empty())
             .map(|doc| doc.module.clone())
             .collect();
         // Module declarations and re-exports are alphabetical; the
         // shape table below stays in contribution order.
-        let mut sorted = modules.clone();
         sorted.sort();
         for module in &sorted {
             out.line(&format!("mod {module};"));
@@ -585,19 +672,16 @@ impl Emission<'_> {
         types.sort();
         types.dedup();
 
-        // A slot whose type is a plain named type spells the expression
-        // through the `LogicalType` trait, which the file must import;
-        // constructor types spell it fully qualified and need nothing.
-        let mut engine = vec!["SlotShape".to_owned()];
-        let mut short_form = false;
+        // Every slot spells its expression through the `LogicalType`
+        // trait, plainly or qualified, so the file imports it, and the
+        // engine carriers its types render through.
+        let mut engine = vec!["SlotShape".to_owned(), "LogicalType".to_owned()];
         for slot in &doc.slots {
-            if !rust_type(&slot.ty, self.names)?.contains('<') {
-                short_form = true;
+            for name in engine_names(&slot.ty, self.names) {
+                push_unique(&mut engine, name);
             }
         }
-        if short_form {
-            engine.push("LogicalType".to_owned());
-        }
+        engine.sort();
 
         let mut out = Out::new();
         out.doc(&[&format!(
@@ -737,13 +821,16 @@ impl Emission<'_> {
 
     /// One document's handlers, in node declaration order.
     fn processors_doc_rs(&self, doc: &Document<'_>) -> String {
-        let items: Vec<(&str, bool)> = self
+        let items: Vec<(&str, bool, Option<&str>)> = self
             .items
             .iter()
             .filter(|item| doc.nodes.iter().any(|node| std::ptr::eq(*node, item.node)))
-            .map(|item| (item.ty.as_str(), item.record))
+            .map(|item| {
+                let named = item.local.then_some(item.item_name.as_str());
+                (item.ty.as_str(), item.record, named)
+            })
             .collect();
-        let mut types: Vec<String> = items.iter().map(|(ty, _)| (*ty).to_owned()).collect();
+        let mut types: Vec<String> = items.iter().map(|(ty, _, _)| (*ty).to_owned()).collect();
         types.sort();
         types.dedup();
 
@@ -763,11 +850,16 @@ impl Emission<'_> {
         out.blank();
         let handlers: Vec<String> = items
             .iter()
-            .map(|(ty, record)| {
-                if *record {
+            .map(|(ty, record, named)| {
+                let handler = if *record {
                     format!("Handler::record::<{ty}>()")
                 } else {
                     format!("Handler::declaration::<{ty}>()")
+                };
+                // A typeless node's items carry the node's name.
+                match named {
+                    Some(name) => format!("{handler}.named(\"{name}\")"),
+                    None => handler,
                 }
             })
             .collect();

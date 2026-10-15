@@ -9,7 +9,7 @@ use kdlith_engine::{
 };
 
 use crate::Error;
-use crate::render::{include_path, normalize_path};
+use crate::render::{include_path, normalize_path, pascal};
 
 /// One contributing document and what it declares.
 pub(crate) struct Document<'d> {
@@ -26,16 +26,26 @@ pub(crate) struct Document<'d> {
     pub nodes: Vec<&'d NodeDecl>,
     /// The document's context slots, in contribution order.
     pub slots: Vec<&'d SlotDecl>,
+    /// The document's item nodes bound without `type=`, each read as a
+    /// node-local Rust type built from its inline field types.
+    pub locals: Vec<&'d NodeDecl>,
 }
 
 /// One item of the generated processor's `Item` enum: a node declaration
 /// with a reading role and the type it reads into.
 pub(crate) struct ItemNode<'d> {
     pub node: &'d NodeDecl,
-    /// The logical type's name.
+    /// The Rust type, and `Item` variant, the node's items read as: the
+    /// logical type's name, or a typeless node's local type.
     pub ty: String,
+    /// The type name the node's items carry: the logical type's name,
+    /// or a typeless node's own name.
+    pub item_name: String,
     /// Whether the node's role is record rather than declaration.
     pub record: bool,
+    /// Whether the node is bound without `type=`, so its Rust type is
+    /// node-local rather than a declared logical type.
+    pub local: bool,
 }
 
 /// The model every emitted file is rendered from.
@@ -172,38 +182,65 @@ impl<'d> Emission<'d> {
                 types: type_groups.remove(&at).unwrap_or_default(),
                 nodes: node_groups.remove(&at).unwrap_or_default(),
                 slots: slot_groups.remove(&at).unwrap_or_default(),
+                locals: Vec::new(),
             });
         }
 
         // The item vocabulary: every node a reading role and a type
-        // name, across contributing documents in contribution order.
+        // name, across contributing documents in contribution order. A
+        // node bound without `type=` reads as a node-local type named
+        // after it, which must not collide with a declared type.
         let names = &definition.names;
+        // Built-ins are in the type catalog too, so a local type can
+        // shadow neither a declared type nor a built-in's Rust spelling.
+        let declared: Vec<&str> = definition
+            .types
+            .iter()
+            .map(|(_, decl)| names.resolve(decl.name))
+            .chain(["Item", "Ref", "OrderedMap"])
+            .collect();
         let mut items = Vec::new();
         let mut bound: BTreeMap<String, String> = BTreeMap::new();
-        for document in &documents {
+        for document in &mut documents {
             for node in &document.nodes {
                 let role = match node.role {
                     Some(role @ (Role::Declaration | Role::Record)) => role,
                     _ => continue,
                 };
-                let Some(ty) = node.ty else {
-                    return Err(Error::UnsupportedItem {
-                        name: names.resolve(node.name).to_owned(),
-                    });
+                let node_name = names.resolve(node.name).to_owned();
+                let (ty, item_name, local) = match node.ty {
+                    Some(ty) => {
+                        let ty = names.resolve(ty).to_owned();
+                        (ty.clone(), ty, false)
+                    }
+                    None => {
+                        let ty = pascal(&node_name);
+                        if declared.contains(&ty.as_str()) {
+                            return Err(Error::LocalTypeCollision {
+                                node: node_name,
+                                ty,
+                            });
+                        }
+                        (ty, node_name.clone(), true)
+                    }
                 };
-                let ty = names.resolve(ty).to_owned();
                 if let Some(first) = bound.get(&ty) {
                     return Err(Error::DuplicateItemBinding {
                         ty: ty.clone(),
                         first: first.clone(),
-                        second: names.resolve(node.name).to_owned(),
+                        second: node_name,
                     });
                 }
-                bound.insert(ty.clone(), names.resolve(node.name).to_owned());
+                bound.insert(ty.clone(), node_name);
+                if local {
+                    document.locals.push(node);
+                }
                 items.push(ItemNode {
                     node,
                     ty,
+                    item_name,
                     record: role == Role::Record,
+                    local,
                 });
             }
         }
@@ -223,9 +260,12 @@ impl<'d> Emission<'d> {
         })
     }
 
-    /// The documents that declared types, in contribution order.
+    /// The documents that declared types or typeless item nodes, in
+    /// contribution order.
     pub(crate) fn type_documents(&self) -> impl Iterator<Item = &Document<'d>> + '_ {
-        self.documents.iter().filter(|doc| !doc.types.is_empty())
+        self.documents
+            .iter()
+            .filter(|doc| !doc.types.is_empty() || !doc.locals.is_empty())
     }
 
     /// The documents that declared nodes, in contribution order.

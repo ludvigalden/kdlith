@@ -6,8 +6,7 @@
 use std::path::{Path, PathBuf};
 
 use kdlith_diagnostic::ExitStatus;
-use kdlith_engine::{CheckScope, DataReader, Delivery, Emit, OutputPolicy, export_read};
-use kdlith_superproc::{load_schema, seed};
+use kdlith_engine::{DataReader, Delivery, Emit, OutputPolicy, export_read};
 
 use crate::report::report_all;
 use crate::vet::DataOptions;
@@ -29,7 +28,8 @@ pub(crate) fn run(args: ExportArgs) -> ExitStatus {
         SensitiveArg::Omit => OutputPolicy::Omit,
         SensitiveArg::Redact => OutputPolicy::Redact,
     });
-    let options = DataOptions::new(args.anchors, args.profile, args.handlers);
+    let options =
+        DataOptions::new(args.anchors, args.profile, args.handlers).with_dialect(args.dialect);
     export(
         &args.schema,
         &paths(&args.files),
@@ -44,9 +44,9 @@ fn paths(files: &[PathBuf]) -> Vec<&Path> {
     files.iter().map(PathBuf::as_path).collect()
 }
 
-/// Export the data documents under the schema: load the bundled dialect
-/// and the schema with complete checking under the data options'
-/// extensions, run the engine's export through a reader carrying the
+/// Export the data documents under the schema: load the governing
+/// dialect (the bundled one, or the one the data options name) and the
+/// schema with complete checking under the data options' extensions, run the engine's export through a reader carrying the
 /// options' handlers, under the options' anchors and profile, the
 /// delivery, and the explicit output policy (`None` keeps the
 /// fail-closed sensitivity defaults), and report. A failed run's
@@ -61,11 +61,7 @@ pub fn export(
     options: &DataOptions,
 ) -> ExitStatus {
     let extensions = options.extensions();
-    let governing = match seed(&extensions) {
-        Ok(governing) => governing,
-        Err(records) => return report_all(&records),
-    };
-    let definition = match load_schema(&governing, &[schema], &extensions, CheckScope::Complete) {
+    let definition = match options.load_schema(schema, &extensions) {
         Ok(definition) => definition,
         Err(records) => return report_all(&records),
     };

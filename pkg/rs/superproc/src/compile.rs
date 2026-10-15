@@ -2,7 +2,7 @@
 //! through this processor's own typed reader, and the engine compiles
 //! what the reader hands it (see docs/dialect.md for the seed cycle).
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use kdlith_diagnostic::{ByteSpan, DiagnosticRecord, Severity};
 use kdlith_engine::{
@@ -69,7 +69,7 @@ pub fn load_dialect(
     scope: CheckScope,
 ) -> Result<Definition, Vec<DiagnosticRecord>> {
     let dialect = seed(extensions)?;
-    let input = gather(&dialect, entries, scope)?;
+    let input = gather(&dialect, entries, scope, &[])?;
     compile_dialect_input(&input, extensions, scope)
 }
 
@@ -84,7 +84,20 @@ pub fn load_schema(
     extensions: &Extensions,
     scope: CheckScope,
 ) -> Result<Definition, Vec<DiagnosticRecord>> {
-    let input = gather(dialect, entries, scope)?;
+    load_schema_anchored(dialect, entries, extensions, scope, &[])
+}
+
+/// Load a schema definition as [`load_schema`] does, expanding the
+/// documents' grammar-admitted import expressions against the
+/// host-supplied `anchors`, under the grammar the schema root binds.
+pub fn load_schema_anchored(
+    dialect: &Definition,
+    entries: &[&Path],
+    extensions: &Extensions,
+    scope: CheckScope,
+    anchors: &[(String, PathBuf)],
+) -> Result<Definition, Vec<DiagnosticRecord>> {
+    let input = gather(dialect, entries, scope, anchors)?;
     compile_schema_input(dialect, &input, extensions, scope)
 }
 
@@ -95,8 +108,9 @@ fn gather(
     dialect: &Definition,
     entries: &[&Path],
     scope: CheckScope,
+    anchors: &[(String, PathBuf)],
 ) -> Result<DefinitionInput, Vec<DiagnosticRecord>> {
-    let typed = reader(dialect)?;
+    let typed = reader(dialect)?.with_anchors(anchors);
     let mut input = DefinitionInput::default();
     let mut records: Vec<DiagnosticRecord> = Vec::new();
     let mut sink = |item: TypedItem<Item>| take(item, &mut input, &mut records);

@@ -275,6 +275,17 @@ macro_rules! item_type {
             }
         })+
 
+        $(impl $crate::ItemVariant<$variant> for $name {
+            // A one-variant item type leaves the fallback arm unreachable.
+            #[allow(unreachable_patterns)]
+            fn variant(&self) -> ::core::option::Option<&$variant> {
+                match self {
+                    Self::$variant(inner) => ::core::option::Option::Some(inner),
+                    _ => ::core::option::Option::None,
+                }
+            }
+        })+
+
         impl $crate::__private::serde::Serialize for $name {
             fn serialize<S: $crate::__private::serde::Serializer>(
                 &self,

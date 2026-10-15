@@ -13,10 +13,11 @@ use kdlith_runtime::{
     SlotId, stable_hash,
 };
 
+use crate::anchors::{self, Base, Target};
 use crate::bind::BindingSession;
 use crate::definition::Definition;
 use crate::diag::{UNRESOLVED_DIALECT, UNRESOLVED_SCHEMA, record};
-use crate::discovery::{self, ExpansionError};
+use crate::discovery;
 use crate::documents::{import_failure, read_text};
 use crate::names::Sym;
 use crate::typed::ReadError;
@@ -28,7 +29,8 @@ const ORIGIN: &str = "data-document";
 /// invocation names, and the host-supplied values of the discovery
 /// anchors the active grammar declares. A grammar-declared anchor the
 /// host does not supply fails closed (`KDLITH-IMP005`), never
-/// degrading to an unanchored search.
+/// degrading to an unanchored search; so does a supplied anchor no
+/// grammar of the definition declares.
 #[derive(Clone, Debug, Default)]
 #[non_exhaustive]
 pub struct ReadOptions {
@@ -160,14 +162,20 @@ impl<'d> DataReader<'d> {
         sink: &mut dyn FnMut(Item),
         follow: bool,
     ) -> Result<(bool, Vec<BoundResult>), ReadError> {
-        let mut anchors = BTreeMap::new();
-        for (name, path) in &options.anchors {
-            // Only anchors the definition names land in the map: the
-            // grammar's own declarations decide what may resolve.
-            if let Some(sym) = self.def.names.get(name) {
-                anchors.insert(sym, path.clone());
+        // A host-supplied anchor no discovery grammar of the definition
+        // declares is rejected before anything is read, never silently
+        // ignored: the mirror of a declared anchor the host leaves
+        // unsupplied (`KDLITH-IMP005` both ways).
+        let def = self.def;
+        let undeclared =
+            anchors::undeclared(&options.anchors, &def.discoveries, &def.names, ORIGIN);
+        if !undeclared.is_empty() {
+            for record in undeclared {
+                sink(Item::Diagnostic(Box::new(record)));
             }
+            return Ok((true, Vec::new()));
         }
+        let anchors = anchors::anchor_map(&options.anchors, &def.names);
         let mut reading = Reading {
             reader: self,
             // The raw name reaches the binder, so an unknown name
@@ -483,26 +491,23 @@ impl Reading<'_, '_> {
             };
         }
         let def = self.reader.def;
-        let grammar = def.grammar_for(self.profile);
-        let expansion = discovery::parse(&request.expression, grammar, &def.names)
-            .map_err(|error| Box::new(expansion_record(&request.expression, &error, ORIGIN)))?;
-        let base = importer
+        let dir = importer
             .and_then(|id| self.invocations.get(id))
             .map(|invocation| invocation.path.parent().unwrap_or(Path::new("")).to_owned())
             .unwrap_or_default();
-        let matches = discovery::expand(&expansion, &def.names, &self.anchors, &base)
-            .map_err(|error| Box::new(expansion_record(&request.expression, &error, ORIGIN)))?;
-        if matches.is_empty() && !grammar.is_some_and(|grammar| grammar.allow_empty) {
-            return Err(Box::new(unresolvable(&request.expression)));
-        }
-        let mut targets = Vec::with_capacity(matches.len());
-        for matched in matches {
-            let shown = matched.display().to_string();
-            let resolved = std::fs::canonicalize(&matched)
-                .map_err(|error| Box::new(unresolvable_reason(&shown, &error.to_string())))?;
-            targets.push(Target { resolved, shown });
-        }
-        Ok(targets)
+        // The data path has always shown a match as it was found.
+        let base = Base {
+            dir: &dir,
+            shown: &dir,
+        };
+        anchors::expression_targets(
+            &request.expression,
+            def.grammar_for(self.profile),
+            &def.names,
+            &self.anchors,
+            &base,
+            ORIGIN,
+        )
     }
 
     /// Every slot of the definition: an invocation's own context is
@@ -512,37 +517,9 @@ impl Reading<'_, '_> {
     }
 }
 
-/// One resolved import target: the canonical path the invocation admits
-/// and the path as the reading shows it.
-struct Target {
-    resolved: PathBuf,
-    shown: String,
-}
-
 /// An import target that does not resolve (`KDLITH-IMP001`).
 fn unresolvable(target: &str) -> DiagnosticRecord {
     record(crate::diag::IMPORT_UNRESOLVED, &[target], ORIGIN)
-}
-
-/// An import target that does not resolve, with its reason.
-fn unresolvable_reason(target: &str, reason: &str) -> DiagnosticRecord {
-    record(crate::diag::IMPORT_UNRESOLVED, &[target, reason], ORIGIN)
-}
-
-/// An import-expression failure as its registered diagnostic, with the
-/// values the code's message renders — the same mapping the definition
-/// compiler reports.
-fn expansion_record(expression: &str, error: &ExpansionError, origin: &str) -> DiagnosticRecord {
-    let values = error.values();
-    let [first, second] = values;
-    match error {
-        ExpansionError::NotAdmitted { .. } => {
-            record(crate::diag::IMPORT_GRAMMAR, &[expression, &second], origin)
-        }
-        ExpansionError::Anchor { .. } | ExpansionError::Unreadable { .. } => {
-            record(crate::diag::IMPORT_ANCHOR, &[&first, &second], origin)
-        }
-    }
 }
 
 /// The revision digest a document item carries: the content hash the

@@ -10,6 +10,7 @@ mod inspect;
 mod list;
 mod read;
 mod report;
+mod usage;
 mod vet;
 
 use std::path::PathBuf;
@@ -105,7 +106,7 @@ enum GenCommand {
     Dialect(GenFormArgs),
     /// Generate the data reader a schema definition compiles to, under
     /// the canonical dialect
-    Schema(GenFormArgs),
+    Schema(GenSchemaArgs),
 }
 
 #[derive(Args)]
@@ -128,6 +129,20 @@ struct GenFormArgs {
     /// documents
     #[arg(required = true)]
     files: Vec<PathBuf>,
+}
+
+#[derive(Args)]
+struct GenSchemaArgs {
+    #[command(flatten)]
+    form: GenFormArgs,
+    /// A discovery anchor the schema documents' own import expressions
+    /// expand against, as NAME=PATH (repeatable)
+    #[arg(
+        long = "anchor",
+        value_name = "NAME=PATH",
+        value_parser = handlers::parse_anchor
+    )]
+    anchors: Vec<(String, PathBuf)>,
 }
 
 /// `kdlith vet dialect|schema|data`.
@@ -173,6 +188,14 @@ struct VetSchemaArgs {
     /// link references, and check self-description (complete)
     #[arg(long, value_enum, default_value_t = ScopeArg::Complete)]
     scope: ScopeArg,
+    /// A discovery anchor the schema documents' own import expressions
+    /// expand against, as NAME=PATH (repeatable)
+    #[arg(
+        long = "anchor",
+        value_name = "NAME=PATH",
+        value_parser = handlers::parse_anchor
+    )]
+    anchors: Vec<(String, PathBuf)>,
     /// Schema definition documents
     #[arg(required = true)]
     files: Vec<PathBuf>,
@@ -187,8 +210,8 @@ struct VetDataArgs {
     /// the dialect itself
     #[arg(long = "schema", value_name = "FILE")]
     schema: Option<PathBuf>,
-    /// A discovery anchor the data path expands import expressions
-    /// against, as NAME=PATH (repeatable)
+    /// A discovery anchor the schema's and the data documents' import
+    /// expressions expand against, as NAME=PATH (repeatable)
     #[arg(
         long = "anchor",
         value_name = "NAME=PATH",
@@ -229,7 +252,7 @@ enum InspectCommand {
     /// Read schema definition documents and their imports through the
     /// reference processor; each typed item goes to stdout as one JSON
     /// line
-    Schema(InspectDefinitionArgs),
+    Schema(InspectSchemaArgs),
     /// Bind data documents under the bundled dialect (or the one given
     /// by --dialect) and the schema given by --schema, or against the
     /// dialect itself without --schema; each bound item goes to stdout
@@ -251,6 +274,27 @@ struct InspectDefinitionArgs {
 }
 
 #[derive(Args)]
+struct InspectSchemaArgs {
+    /// A dialect definition document replacing the bundled one
+    #[arg(long = "dialect", value_name = "FILE")]
+    dialect: Option<PathBuf>,
+    /// The item view to print; only the source view exists for now
+    #[arg(long, value_enum, default_value_t = ViewArg::Source)]
+    view: ViewArg,
+    /// A discovery anchor the schema documents' own import expressions
+    /// expand against, as NAME=PATH (repeatable)
+    #[arg(
+        long = "anchor",
+        value_name = "NAME=PATH",
+        value_parser = handlers::parse_anchor
+    )]
+    anchors: Vec<(String, PathBuf)>,
+    /// Schema definition documents
+    #[arg(required = true)]
+    files: Vec<PathBuf>,
+}
+
+#[derive(Args)]
 struct InspectDataArgs {
     /// A dialect definition document replacing the bundled one
     #[arg(long = "dialect", value_name = "FILE")]
@@ -259,8 +303,8 @@ struct InspectDataArgs {
     /// the dialect itself
     #[arg(long = "schema", value_name = "FILE")]
     schema: Option<PathBuf>,
-    /// A discovery anchor the data path expands import expressions
-    /// against, as NAME=PATH (repeatable)
+    /// A discovery anchor the schema's and the data documents' import
+    /// expressions expand against, as NAME=PATH (repeatable)
     #[arg(
         long = "anchor",
         value_name = "NAME=PATH",
@@ -331,18 +375,36 @@ enum ListCommand {
 
 #[derive(Args)]
 struct ListSchemaArgs {
-    /// A schema definition document, read under the bundled dialect
+    /// A dialect definition document replacing the bundled one; it is
+    /// itself vetted with complete checking
+    #[arg(long = "dialect", value_name = "FILE")]
+    dialect: Option<PathBuf>,
+    /// A schema definition document, read under the bundled dialect or
+    /// the one `--dialect` names
     #[arg(long, value_name = "FILE", required = true)]
     schema: PathBuf,
+    /// A discovery anchor the schema documents' own import expressions
+    /// expand against, as NAME=PATH (repeatable)
+    #[arg(
+        long = "anchor",
+        value_name = "NAME=PATH",
+        value_parser = handlers::parse_anchor
+    )]
+    anchors: Vec<(String, PathBuf)>,
 }
 
 #[derive(Args)]
 struct ListItemsArgs {
-    /// A schema definition document, read under the bundled dialect
+    /// A dialect definition document replacing the bundled one; it is
+    /// itself vetted with complete checking
+    #[arg(long = "dialect", value_name = "FILE")]
+    dialect: Option<PathBuf>,
+    /// A schema definition document, read under the bundled dialect or
+    /// the one `--dialect` names
     #[arg(long, value_name = "FILE", required = true)]
     schema: PathBuf,
-    /// A discovery anchor the data path expands import expressions
-    /// against, as NAME=PATH (repeatable)
+    /// A discovery anchor the schema's and the data documents' import
+    /// expressions expand against, as NAME=PATH (repeatable)
     #[arg(
         long = "anchor",
         value_name = "NAME=PATH",
@@ -395,11 +457,16 @@ struct CacheRefreshArgs {
     /// it does not exist, its parent must
     #[arg(long, value_name = "DIR", required = true)]
     state: PathBuf,
-    /// A schema definition document, read under the bundled dialect
+    /// A dialect definition document replacing the bundled one; it is
+    /// itself vetted with complete checking
+    #[arg(long = "dialect", value_name = "FILE")]
+    dialect: Option<PathBuf>,
+    /// A schema definition document, read under the bundled dialect or
+    /// the one `--dialect` names
     #[arg(long, value_name = "FILE", required = true)]
     schema: PathBuf,
-    /// A discovery anchor the data path expands import expressions
-    /// against, as NAME=PATH (repeatable)
+    /// A discovery anchor the schema's and the data documents' import
+    /// expressions expand against, as NAME=PATH (repeatable)
     #[arg(
         long = "anchor",
         value_name = "NAME=PATH",
@@ -446,15 +513,20 @@ struct ReadFileArgs {
 
 #[derive(Args)]
 struct ReadDataArgs {
-    /// A schema definition document, read under the bundled dialect
+    /// A dialect definition document replacing the bundled one; it is
+    /// itself vetted with complete checking
+    #[arg(long = "dialect", value_name = "FILE")]
+    dialect: Option<PathBuf>,
+    /// A schema definition document, read under the bundled dialect or
+    /// the one `--dialect` names
     #[arg(long, required = true)]
     schema: PathBuf,
     /// An entry document bound before the read document, establishing
     /// its declarations and context
     #[arg(long)]
     entry: Option<PathBuf>,
-    /// A discovery anchor the data path expands import expressions
-    /// against, as NAME=PATH (repeatable)
+    /// A discovery anchor the schema's and the data documents' import
+    /// expressions expand against, as NAME=PATH (repeatable)
     #[arg(
         long = "anchor",
         value_name = "NAME=PATH",
@@ -497,7 +569,12 @@ enum SensitiveArg {
 /// `kdlith export --schema <FILE> <files...>`.
 #[derive(Args)]
 struct ExportArgs {
-    /// A schema definition document, read under the bundled dialect
+    /// A dialect definition document replacing the bundled one; it is
+    /// itself vetted with complete checking
+    #[arg(long = "dialect", value_name = "FILE")]
+    dialect: Option<PathBuf>,
+    /// A schema definition document, read under the bundled dialect or
+    /// the one `--dialect` names
     #[arg(long, value_name = "FILE", required = true)]
     schema: PathBuf,
     /// What to emit: `roots` for the entry documents' top-level nodes,
@@ -522,8 +599,8 @@ struct ExportArgs {
     /// secret is redacted and a reference emitted
     #[arg(long, value_enum, value_name = "POLICY")]
     sensitive: Option<SensitiveArg>,
-    /// A discovery anchor the data path expands import expressions
-    /// against, as NAME=PATH (repeatable)
+    /// A discovery anchor the schema's and the data documents' import
+    /// expressions expand against, as NAME=PATH (repeatable)
     #[arg(
         long = "anchor",
         value_name = "NAME=PATH",
@@ -542,19 +619,13 @@ struct ExportArgs {
 }
 
 /// Parse the process arguments, dispatch the verb, and resolve the
-/// exit stratum. Usage errors print clap's diagnostic and exit 2;
-/// `--help` and `--version` print to stdout and exit 0.
+/// exit stratum. Argument errors print their registered code
+/// (`KDLITH-CLI001`-`003`) with clap's statement of the fault and exit
+/// 2; `--help` and `--version` print to stdout and exit 0.
 pub fn run() -> ExitStatus {
     let cli = match Cli::try_parse() {
         Ok(cli) => cli,
-        Err(error) => {
-            let _ = error.print();
-            return match error.exit_code() {
-                0 => ExitStatus::Success,
-                2 => ExitStatus::Usage,
-                _ => ExitStatus::Failure,
-            };
-        }
+        Err(error) => return usage::report_parse_error(&error),
     };
     // The verbosity band is accepted and validated everywhere; --debug
     // is its top end. Per-verb output wiring consumes it later.
@@ -585,8 +656,7 @@ fn help(path: &[String]) -> ExitStatus {
         match current.find_subcommand_mut(name) {
             Some(sub) => current = sub,
             None => {
-                eprintln!("kdlith: unrecognized command {name}");
-                return ExitStatus::Usage;
+                return usage::report_invalid_argument(&format!("unrecognized command '{name}'"));
             }
         }
     }
@@ -609,27 +679,23 @@ fn parse_verbosity(value: &str) -> Result<u8, String> {
 }
 
 /// `--stdout-format` is validated up front and only `text` is
-/// supported for now; anything else is a clear rejection, never a
-/// silently ignored value.
-fn parse_stdout_format(value: &str) -> Result<String, String> {
+/// supported for now; anything else is a KDLITH-CLI003 rejection, never
+/// a silently ignored value.
+fn parse_stdout_format(value: &str) -> Result<String, usage::UnknownFormat> {
     if value == "text" {
         Ok(value.to_owned())
     } else {
-        Err(format!(
-            "only the text stdout format is supported for now, not {value}"
-        ))
+        Err(usage::UnknownFormat::new(value, "text"))
     }
 }
 
 /// `export --format` is validated up front and only `ndjson` is
-/// supported; anything else is a clear rejection, never a silently
-/// ignored value.
-fn parse_export_format(value: &str) -> Result<String, String> {
+/// supported; anything else is a KDLITH-CLI003 rejection, never a
+/// silently ignored value.
+fn parse_export_format(value: &str) -> Result<String, usage::UnknownFormat> {
     if value == "ndjson" {
         Ok(value.to_owned())
     } else {
-        Err(format!(
-            "only the ndjson export format exists for now, not {value}"
-        ))
+        Err(usage::UnknownFormat::new(value, "ndjson"))
     }
 }

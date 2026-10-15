@@ -9,9 +9,8 @@ use std::sync::Arc;
 use kdlith_engine::{HandlerCall, HandlerEffect, HandlerFn, Handlers};
 
 /// `copy-fields` sets each context slot the node's field names, from
-/// that field's value. Every field must name a declared slot; one
-/// that does not fails at the site, exactly as a declarative set
-/// naming an undeclared slot would.
+/// that field's value. A field naming no declared slot fails closed at
+/// the effect point (`KDLITH-CTX005`).
 const COPY_FIELDS: &str = "copy-fields";
 
 /// The names of the built-in catalog, in name order.

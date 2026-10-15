@@ -7,5 +7,5 @@ pub mod contexts;
 pub mod processors;
 pub mod types;
 
-pub use compile::{load_dialect, load_schema, seed};
+pub use compile::{load_dialect, load_schema, load_schema_anchored, seed};
 pub use processors::{DECLARATIONS, Item, reader};

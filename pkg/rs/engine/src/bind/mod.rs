@@ -48,6 +48,7 @@ const DUPLICATE_PROPERTY: &str = "KDLITH-SYN003";
 const CONTEXT_UNAVAILABLE: &str = "KDLITH-CTX001";
 const CONTEXT_DISAGREES: &str = "KDLITH-CTX002";
 const CONTEXT_ACCUMULATE: &str = "KDLITH-CTX003";
+const HANDLER_UNDECLARED: &str = "KDLITH-CTX005";
 const PROFILE_NOT_SELECTED: &str = "KDLITH-SCH011";
 
 const DOCUMENT_ROOT: &str = "the document root";
@@ -1113,36 +1114,27 @@ impl<'d, 's> Binder<'d, 's> {
                         slot,
                         value: SlotValue::new(value, origin).with_trace(provider.clone()),
                     })
-                    .ok_or_else(|| {
-                        format!("sets a context slot the definition does not declare: {slot}")
-                    }),
+                    .ok_or(("sets context slot", slot)),
                 HandlerEffect::Remove { slot } => self
                     .def
                     .names
                     .get(&slot)
                     .and_then(|sym| self.def.plan.context.slot(sym))
                     .map(|slot| ContextEffect::Remove { slot })
-                    .ok_or_else(|| {
-                        format!("removes a context slot the definition does not declare: {slot}")
-                    }),
+                    .ok_or(("removes context slot", slot)),
                 HandlerEffect::Clear { namespace } => self
                     .def
                     .names
                     .get(&namespace)
                     .and_then(|sym| self.def.plan.context.namespace(sym))
                     .map(|namespace| ContextEffect::Clear { namespace })
-                    .ok_or_else(|| {
-                        format!(
-                            "clears a context namespace the definition does not declare: {namespace}"
-                        )
-                    }),
+                    .ok_or(("clears context namespace", namespace)),
             };
             match resolved {
                 Ok(effect) => out.push(effect),
-                Err(reason) => {
-                    let construct = format!("handler {name}");
-                    let values = [construct.as_str(), &reason];
-                    self.diagnose(cx, MALFORMED, frame.span, &values);
+                Err((effect, target)) => {
+                    let values = [name, effect, target.as_str()];
+                    self.diagnose(cx, HANDLER_UNDECLARED, frame.span, &values);
                 }
             }
         }
@@ -1546,6 +1538,7 @@ impl<'d, 's> Binder<'d, 's> {
             return;
         };
         let Some(bind) = parent.table(&self.tables).and_then(|t| t.child(frame.name)) else {
+            self.reject_unconsumed(cx, parent, frame);
             return;
         };
         let infos = &self.tables.decls[owner.index()].fields;
@@ -1600,6 +1593,23 @@ impl<'d, 's> Binder<'d, 's> {
         }
         let span = frame.span;
         self.route(cx, parent, bind, value, span);
+    }
+
+    /// A child rule admitted the node, but neither a role nor a field of
+    /// its owner consumes it: a node binding fields is rejected rather
+    /// than dropped with its values.
+    fn reject_unconsumed(&mut self, cx: &mut Cx<'_>, parent: &BindFrame, frame: &BindFrame) {
+        // A field-less marker carries nothing; its structural rules
+        // answer for it.
+        if self.tables.decls[frame.owner.index()].fields.is_empty() {
+            return;
+        }
+        let node = self.name(frame.name);
+        let place = format!(
+            "{}, where no role or field binding consumes its value",
+            self.name(parent.name)
+        );
+        self.diagnose(cx, UNKNOWN_NODE, frame.span, &[node, &place]);
     }
 
     fn close_scalar(

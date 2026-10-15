@@ -272,27 +272,41 @@ pub fn scan_state(dir: &Path) -> Result<CacheScan, Box<DiagnosticRecord>> {
     Ok(scan)
 }
 
-/// What one cleaning removed: the owned file names, sorted.
+/// What one cleaning did: the owned file names it removed, sorted, and
+/// one `KDLITH-CAC003` per owned file it could not remove.
 #[derive(Clone, Debug, Default)]
 #[non_exhaustive]
 pub struct CleanOutcome {
     pub removed: Vec<String>,
+    pub failures: Vec<DiagnosticRecord>,
+}
+
+impl CleanOutcome {
+    /// Whether every owned entry the scan found was removed.
+    pub fn is_complete(&self) -> bool {
+        self.failures.is_empty()
+    }
 }
 
 /// Remove every owned entry the scan found — intact or corrupt — and
-/// nothing else. Foreign entries stay where they are. A failed removal
-/// stops the cleaning with `KDLITH-CAC003`, naming what was removed so
-/// far in the returned error's message.
-pub fn clean_state(dir: &Path, scan: &CacheScan) -> Result<CleanOutcome, Box<DiagnosticRecord>> {
+/// nothing else. Foreign entries stay where they are. Every removal is
+/// attempted: a failed one is recorded as `KDLITH-CAC003` and the
+/// cleaning goes on, so the outcome names every failure, never only
+/// the first.
+pub fn clean_state(dir: &Path, scan: &CacheScan) -> CleanOutcome {
     let mut outcome = CleanOutcome::default();
     for name in scan.owned() {
         let path = dir.join(&name);
-        fs::remove_file(&path).map_err(|error| {
-            inaccessible("remove", &path.display().to_string(), &error.to_string())
-        })?;
-        outcome.removed.push(name);
+        match fs::remove_file(&path) {
+            Ok(()) => outcome.removed.push(name),
+            Err(error) => outcome.failures.push(*inaccessible(
+                "remove",
+                &path.display().to_string(),
+                &error.to_string(),
+            )),
+        }
     }
-    Ok(outcome)
+    outcome
 }
 
 /// What one write changed: the keys written, and the owned files the

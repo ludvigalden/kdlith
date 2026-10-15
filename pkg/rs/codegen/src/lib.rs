@@ -28,7 +28,7 @@ pub const COMMENT_MARKER: &str = concat!(
     "; do not edit."
 );
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use kdlith_diagnostic::DiagnosticRecord;
 use kdlith_engine::{CheckScope, Definition, Extensions};
@@ -66,6 +66,9 @@ pub enum Error {
     /// The item type `{ty}` has no compile glue; only the canonical
     /// definition vocabulary generates a definition loader.
     UnsupportedItem { name: String },
+    /// A node bound without `type=` reads as a node-local type whose
+    /// name a declared logical type already takes.
+    LocalTypeCollision { node: String, ty: String },
     /// The item type `{ty}` is bound by more than one reading node.
     DuplicateItemBinding {
         ty: String,
@@ -123,6 +126,11 @@ impl std::fmt::Display for Error {
                 "the item type `{name}` has no compile glue; only the canonical \
                  definition vocabulary generates a loader"
             ),
+            Self::LocalTypeCollision { node, ty } => write!(
+                f,
+                "the node `{node}` declares no type=, and its local type `{ty}` \
+                 collides with a declared type"
+            ),
             Self::DuplicateItemBinding { ty, first, second } => write!(
                 f,
                 "the item type `{ty}` is bound by both `{first}` and `{second}`"
@@ -166,16 +174,19 @@ pub fn generate_dialect(
 }
 
 /// Compile the schema named by `entries`, under the canonical dialect,
-/// and generate its data-document processor crate.
+/// and generate its data-document processor crate. The documents' own
+/// import expressions expand against the host-supplied `anchors`.
 pub fn generate_schema(
     entries: &[&Path],
     extensions: &Extensions,
     crate_name: &str,
+    anchors: &[(String, PathBuf)],
 ) -> Result<GeneratedTree, Error> {
     let dialect = kdlith_superproc::seed(extensions)
         .map_err(|records| Error::DefinitionRejected { records })?;
+    let scope = CheckScope::Complete;
     let definition =
-        kdlith_superproc::load_schema(&dialect, entries, extensions, CheckScope::Complete)
+        kdlith_superproc::load_schema_anchored(&dialect, entries, extensions, scope, anchors)
             .map_err(|records| Error::DefinitionRejected { records })?;
     generate(&definition, crate_name)
 }
