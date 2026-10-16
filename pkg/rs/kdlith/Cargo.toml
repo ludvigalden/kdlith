@@ -1,9 +1,0 @@
-[package]
-name = "kdlith"
-version.workspace = true
-edition.workspace = true
-rust-version.workspace = true
-autotests = false
-
-[lints]
-workspace = true

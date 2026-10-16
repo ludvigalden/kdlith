@@ -11,14 +11,12 @@ Rust processor for them.
 > Status: early development, pre-release. Every `kdlith` command (`gen`,
 > `vet`, `export`, `inspect`, `list`, `read`, `cache`, `changelog`) is
 > implemented, and `gen` generates compilable processor crates from dialect
-> and schema definitions. Interfaces may still change between releases; the
-> `kdlith` facade crate does not yet re-export the library crates.
+> and schema definitions. Interfaces may still change between releases.
 
 ## Workspace layout
 
 | Path                          | Package             | Role                                                               |
 | ----------------------------- | ------------------- | ------------------------------------------------------------------ |
-| `pkg/rs/kdlith`               | `kdlith`            | Public facade over the library crates                              |
 | `pkg/rs/parse`                | `kdlith-parse`      | Streaming KDL v2 pull parser and source coordinates                |
 | `pkg/rs/model`                | `kdlith-model`      | Identities, origins, bound values, and processing items            |
 | `pkg/rs/runtime`              | `kdlith-runtime`    | Binding frames, context operations, sessions, processor interfaces |
