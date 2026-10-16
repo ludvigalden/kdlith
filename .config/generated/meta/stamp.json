@@ -2,7 +2,7 @@
   "version": 2,
   "generator_set": "94040050be17ea382b1311b166153f59cb4484c768fc5e2b9b7bf43b0770bc32",
   "inputs": {
-    "git.toml": "8e96016edffd2ff5cbc8169400cc003d289ab96281427cc3d3c95b0ed4fcb4ab",
+    "git.toml": "87b9e24cd5ea9799da2a8404477e5a7f13fef123e3c9f2f96528a04f39a662a8",
     "lint.toml": "96df1d7eaa18fb64d1b6a5d5e613092482b0f8dc2984099eb2d2c3319492e8dd",
     "project.toml": "d616000791c5211cd555f9905ec03653d98f7926d6ea952f02600d61657dfe2e"
   },
@@ -12,7 +12,7 @@
       "origin": "generated"
     },
     ".config/generated/scripts/ci/.stamp": {
-      "sha256": "002c8cddae64614a1c673c04b16019383978afcb361f639b0c36a1bdb56cef80",
+      "sha256": "1d10800da14cc55ceb1ae5622ea7cc34f308bda1ee94c1914cb8ab67115f38de",
       "origin": "generated"
     },
     ".config/generated/scripts/ci/_lib.sh": {

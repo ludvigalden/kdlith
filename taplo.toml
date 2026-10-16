@@ -1,0 +1,7 @@
+# The root workspace manifest keeps cargo's four-space array indent;
+# every other TOML file formats on taplo defaults.
+[[rule]]
+include = ["Cargo.toml"]
+
+[rule.formatting]
+indent_string = "    "

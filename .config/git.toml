@@ -7,7 +7,8 @@ schema_version = 1
 # its fixture suite (tests/), the canonical KDL dialect definitions and
 # authored schemas (pkg/kdl/), the dialect-generation fixture
 # entrypoints (contracts/), the design records (docs/), the Cargo
-# manifests, README.md, and the LICENSE. The repository configuration
+# manifests, the root TOML formatter config (taplo.toml), README.md,
+# and the LICENSE. The repository configuration
 # (.config/) is committed too: its TOML files are hand-authored inputs
 # (project.toml's [environments] block excepted -- sync refreshes it),
 # so the managed-goes-gitignored rule never bites and the directory
@@ -41,6 +42,7 @@ patterns = [
   "tests/tools/*/build.rs",
   "tests/tools/*/testtool.flexbin.yaml",
   "tests/fixtures/**",
+  "taplo.toml",
   "README.md",
   "LICENSE",
 ]
