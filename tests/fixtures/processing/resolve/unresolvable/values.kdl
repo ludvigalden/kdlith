@@ -1,0 +1,2 @@
+// Holds no "replicas" value: the zone's absent replicas cannot resolve.
+value "region" "eu-north"

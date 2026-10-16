@@ -1,0 +1,2 @@
+zone "north"
+service "api" region="eu-west"

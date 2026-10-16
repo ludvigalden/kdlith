@@ -1,0 +1,2 @@
+error[KDLITH-BND009]: zone.replicas of zone could not be resolved: values.kdl holds no value "replicas"
+  --> data.kdl:1:1

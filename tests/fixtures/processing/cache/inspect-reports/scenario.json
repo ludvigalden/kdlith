@@ -6,7 +6,7 @@
     "exit": 1,
     "files": {
       "state/0000000000000000.kdlith-cache": "state/0000000000000000.kdlith-cache",
-      "state/b992d53eac9e24d0.kdlith-cache": "state/b992d53eac9e24d0.kdlith-cache",
+      "state/6a04fc03b2b2d0f9.kdlith-cache": "state/6a04fc03b2b2d0f9.kdlith-cache",
       "state/notes.txt": "state/notes.txt"
     },
     "stdout-golden": "stdout.golden",

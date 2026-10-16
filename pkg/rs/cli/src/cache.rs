@@ -7,7 +7,7 @@ use std::io::Write as _;
 use std::path::{Path, PathBuf};
 
 use kdlith_diagnostic::{DiagnosticRecord, ExitStatus};
-use kdlith_engine::{CacheScan, DataReader, clean_state, derive_state, scan_state, write_state};
+use kdlith_engine::{CacheScan, clean_state, derive_state, scan_state, write_state};
 
 use crate::report::{report, report_all};
 use crate::{CacheCommand, CacheRefreshArgs};
@@ -66,7 +66,7 @@ fn refresh(args: CacheRefreshArgs) -> ExitStatus {
         Err(records) => return report_all(&records),
     };
     let entries: Vec<&Path> = args.files.iter().map(PathBuf::as_path).collect();
-    let reader = DataReader::with_handlers(&def, options.registry());
+    let reader = options.reader(&def);
     let derived = match derive_state(&reader, &entries, &options.read_options()) {
         Ok(derived) => derived,
         Err(error) => {

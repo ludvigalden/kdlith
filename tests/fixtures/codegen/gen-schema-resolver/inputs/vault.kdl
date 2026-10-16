@@ -1,0 +1,41 @@
+schema vault version="1" {
+    types {
+        object Stage {
+            field name String
+        }
+        object Service {
+            field name String
+            field region String {
+                fallback computed=#true {
+                    dependency "env.region"
+                }
+            }
+            field token String sensitivity=secret {
+                fallback computed=#true {
+                    dependency "vault"
+                }
+            }
+        }
+    }
+    context {
+        slot stage String namespace=env
+    }
+    node stage role=context-control type=Stage {
+        field name arg=0
+        effects target=following {
+            set stage field=name
+        }
+    }
+    node service role=record type=Service {
+        field name arg=0
+        field region property=region
+        field token property=token
+    }
+    provider vault ttl=300 "sh" "-c" "touch provider-executed"
+    document {
+        first {
+            exactly-one stage
+        }
+        following service
+    }
+}

@@ -1,4 +1,4 @@
-1fb86e9d2ba614f1 revision=fnv1a64:eb591ae7d7f555e5 schema=fnv1a64:c3e4b32ef08677af context=fnv1a64:9997e70adc235eeb profiles=fnv1a64:8365def15d97f091 policy=reject items=2
+2c9f94eb29b3e0ce revision=fnv1a64:eb591ae7d7f555e5 schema=fnv1a64:c3e4b32ef08677af context=fnv1a64:9997e70adc235eeb profiles=fnv1a64:8365def15d97f091 resolved=fnv1a64:7c4cd565807bb610 policy=reject items=2
   derived entry=plain.kdl source=plain.kdl caller=-
-5387b732add6db19 revision=fnv1a64:eb591ae7d7f555e5 schema=fnv1a64:c3e4b32ef08677af context=fnv1a64:9997e70adc235eeb profiles=fnv1a64:4bb1db6ee8157a42 policy=reject items=2
+52db412dcd119e26 revision=fnv1a64:eb591ae7d7f555e5 schema=fnv1a64:c3e4b32ef08677af context=fnv1a64:9997e70adc235eeb profiles=fnv1a64:4bb1db6ee8157a42 resolved=fnv1a64:7c4cd565807bb610 policy=reject items=2
   derived entry=retail.kdl source=retail.kdl caller=-

@@ -1,0 +1,4 @@
+// Value set A.
+value "region" "eu-north"
+value "replicas" 3
+value "vault" "s3cr3t-token-A"

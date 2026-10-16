@@ -1,0 +1,13 @@
+{
+  "binary": "kdlith",
+  "description": "A secret field the --resolve-from file cannot resolve is rejected as KDLITH-BND009, never left silently absent or replaced by a fallback",
+  "args": [
+    "vet", "data",
+    "--schema", "{fx-suite}/processing/resolve/schema.kdl",
+    "--resolve-from", "values.kdl",
+    "data.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

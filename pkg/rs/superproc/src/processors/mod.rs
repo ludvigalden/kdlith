@@ -8,7 +8,9 @@ mod documents_kdl;
 mod types_kdl;
 
 use kdlith_diagnostic::DiagnosticRecord;
-use kdlith_engine::{Declarations, Definition, DefinitionKind, Handler, TypedReader, item_type};
+use kdlith_engine::{
+    Declarations, Definition, DefinitionKind, Handler, SharedResolver, TypedReader, item_type,
+};
 
 use crate::types::{
     CodecType, DiscoveryDef, DocumentRule, EnumType, MapType, NodeDef, ObjectType, ProfileDef,
@@ -57,4 +59,15 @@ pub static DECLARATIONS: Declarations<Item> =
 /// A reader of definitions written in the compiled dialect `dialect`.
 pub fn reader(dialect: &Definition) -> Result<TypedReader<'_, Item>, Vec<DiagnosticRecord>> {
     TypedReader::new(dialect, &DECLARATIONS)
+}
+
+/// A reader of definitions written in the compiled dialect `dialect`
+/// whose computed defaults resolve through the consuming program's
+/// value resolver `resolver`, which receives the declared descriptors
+/// as data.
+pub fn reader_with_resolver(
+    dialect: &Definition,
+    resolver: SharedResolver,
+) -> Result<TypedReader<'_, Item>, Vec<DiagnosticRecord>> {
+    reader(dialect).map(|typed| typed.with_resolver(resolver))
 }

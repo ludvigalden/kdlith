@@ -22,6 +22,7 @@ use crate::documents::{import_failure, read_text};
 use crate::typed::conform;
 use crate::typed::shape::{Declarations, Handler};
 use crate::typed::value::Fields;
+use crate::value_resolver::SharedResolver;
 
 const MISMATCH: &str = "KDLITH-GEN003";
 const ORIGIN: &str = "data-document";
@@ -99,6 +100,9 @@ pub struct TypedReader<'d, T: 'static> {
     /// The host-supplied discovery anchors the documents' own import
     /// expressions expand against.
     anchors: Vec<(String, PathBuf)>,
+    /// The value resolver the consuming program registered: an absent
+    /// field whose declared fallback is computed resolves through it.
+    resolver: Option<SharedResolver>,
 }
 
 impl<'d, T: 'static> TypedReader<'d, T> {
@@ -113,6 +117,7 @@ impl<'d, T: 'static> TypedReader<'d, T> {
                 def,
                 declarations,
                 anchors: Vec::new(),
+                resolver: None,
             });
         }
         let processor = format!("{} {}", declarations.kind.root_name(), declarations.name);
@@ -129,6 +134,17 @@ impl<'d, T: 'static> TypedReader<'d, T> {
     #[must_use]
     pub fn with_anchors(mut self, anchors: &[(String, PathBuf)]) -> Self {
         self.anchors = anchors.to_vec();
+        self
+    }
+
+    /// Register the consuming program's value resolver: the static hook
+    /// through which secret values and context variables a schema
+    /// declares as computed defaults are resolved. The resolver receives
+    /// the call's context information and the declared descriptors as
+    /// data; a value it declines fails its node (`KDLITH-BND009`).
+    #[must_use]
+    pub fn with_resolver(mut self, resolver: SharedResolver) -> Self {
+        self.resolver = Some(resolver);
         self
     }
 
@@ -293,7 +309,8 @@ impl<T: 'static> Reading<'_, '_, T> {
         });
         let selection = self.selection.clone();
         let mut session =
-            BindingSession::with_selection(def, source, shown, text, context, selection);
+            BindingSession::with_selection(def, source, shown, text, context, selection)
+                .with_resolver(self.reader.resolver.clone());
         while self.broken.is_none() {
             match session.next_item() {
                 Ok(Some(item)) => {

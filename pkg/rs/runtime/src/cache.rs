@@ -24,7 +24,7 @@ use crate::imports::InvocationIdentity;
 const SUFFIX: &str = ".kdlith-cache";
 
 /// The entry format version this build reads and writes.
-pub const CACHE_FORMAT: u32 = 2;
+pub const CACHE_FORMAT: u32 = 3;
 /// The item canonicalization version: how bound items are serialized
 /// into an entry. A change to the serialized item shape takes a new
 /// number, so an entry written under another one is never misread.
@@ -80,12 +80,13 @@ impl fmt::Display for CacheEntry {
         let id = &self.identity;
         write!(
             f,
-            "{} revision={} schema={} context={} profiles={} policy={} items={}",
+            "{} revision={} schema={} context={} profiles={} resolved={} policy={} items={}",
             self.key,
             digest(id.revision),
             digest(id.schema),
             digest(id.context),
             digest(id.profiles),
+            digest(id.resolved),
             policy_name(id.policy),
             self.items
         )?;
@@ -186,7 +187,7 @@ pub struct EncodedEntry {
     bytes: Vec<u8>,
 }
 
-/// The key of an invocation identity: a stable FNV-1a hash of its five
+/// The key of an invocation identity: a stable FNV-1a hash of its six
 /// components, as 16 lowercase hex digits.
 pub fn cache_key(identity: &InvocationIdentity) -> String {
     let mut hash = stable_hash(b"kdlith-cache-key");
@@ -194,6 +195,7 @@ pub fn cache_key(identity: &InvocationIdentity) -> String {
     hash = stable_hash_step(hash, &identity.schema.to_le_bytes());
     hash = stable_hash_step(hash, &identity.context.to_le_bytes());
     hash = stable_hash_step(hash, &identity.profiles.to_le_bytes());
+    hash = stable_hash_step(hash, &identity.resolved.to_le_bytes());
     hash = stable_hash_step(hash, policy_name(identity.policy).as_bytes());
     format!("{hash:016x}")
 }
@@ -508,6 +510,7 @@ struct IdentityRecord {
     schema: String,
     context: String,
     profiles: String,
+    resolved: String,
     policy: Repeated,
 }
 
@@ -518,6 +521,7 @@ impl From<InvocationIdentity> for IdentityRecord {
             schema: digest(identity.schema),
             context: digest(identity.context),
             profiles: digest(identity.profiles),
+            resolved: digest(identity.resolved),
             policy: identity.policy,
         }
     }
@@ -530,6 +534,7 @@ impl IdentityRecord {
             schema: undigest(&self.schema)?,
             context: undigest(&self.context)?,
             profiles: undigest(&self.profiles)?,
+            resolved: undigest(&self.resolved)?,
             policy: self.policy,
         })
     }

@@ -28,6 +28,7 @@ mod syntax;
 mod type_expr;
 mod typed;
 mod types;
+mod value_resolver;
 
 pub use bind::{BindFrame, Binder, BindingSession, EntryValue, NodeStart, ParseEvents};
 pub use bindings::{
@@ -98,6 +99,8 @@ pub use types::{
     FormatRule, MapType, ObjectType, OutputPolicy, Sensitivity, StringFormat, StringType,
     TypeCatalog, TypeDecl, TypeExpr, TypeId, TypeKind, UnionType, ValidatorUse, Variant,
 };
+
+pub use value_resolver::{ResolutionCall, SharedResolver, Unresolvable, ValueResolver};
 
 /// Paths the declaration macros expand to; not part of the API.
 #[doc(hidden)]

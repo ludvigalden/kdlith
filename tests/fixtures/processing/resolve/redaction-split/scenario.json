@@ -1,0 +1,31 @@
+{
+  "binary": "kdlith",
+  "description": "--resolve-from resolves secrets and non-secret context variables through one file: the zone's absent region and replicas resolve to their values and are exported unredacted (Integer decoded from the file's number), while the service's absent secret token resolves but is redacted under the default output policy, its provenance origin `resolved` naming the declared vault provider; the region the document writes wins over the file. Both lines are pinned byte for byte, so the secret's clear text appears nowhere on stdout; the declared provider command, which would create provider-executed, is never run",
+  "args": [
+    "export",
+    "--schema",
+    "{fx-suite}/processing/resolve/schema.kdl",
+    "--resolve-from",
+    "values.kdl",
+    "--emit",
+    "roots",
+    "--format",
+    "ndjson",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"name\":\"region\",\"value\":{\"kind\":\"string\",\"value\":\"eu-north\"}",
+      "{\"name\":\"replicas\",\"value\":{\"kind\":\"number\",\"value\":\"3\"}",
+      "{\"name\":\"token\",\"value\":{\"kind\":\"string\",\"value\":\"[redacted]\"}",
+      "\"kind\":\"resolved\"",
+      "\"providers\":[\"vault\"]"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden",
+    "absent": [
+      "provider-executed"
+    ]
+  }
+}

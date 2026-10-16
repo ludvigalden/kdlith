@@ -1,2 +1,2 @@
-error[KDLITH-CAC002]: cache entry state/0000000000000000.kdlith-cache is unusable: written as "kdlith-cache format=9 canonicalization=1", not this version's "kdlith-cache format=2 canonicalization=1"
+error[KDLITH-CAC002]: cache entry state/0000000000000000.kdlith-cache is unusable: written as "kdlith-cache format=9 canonicalization=1", not this version's "kdlith-cache format=3 canonicalization=1"
 error[KDLITH-CAC001]: state/notes.txt is not a cache-owned entry; it was left in place

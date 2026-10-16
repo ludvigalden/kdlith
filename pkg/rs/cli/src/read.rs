@@ -7,7 +7,7 @@ use std::path::Path;
 
 use kdlith_diagnostic::registry::{lookup, render};
 use kdlith_diagnostic::{DiagnosticRecord, ExitStatus};
-use kdlith_engine::{DataReader, record_identity};
+use kdlith_engine::record_identity;
 use kdlith_model::Item;
 use kdlith_parse::Parser;
 
@@ -107,7 +107,7 @@ pub(crate) fn read_data(args: &crate::ReadDataArgs) -> ExitStatus {
             found = Some(item);
         }
     };
-    let reader = DataReader::with_handlers(&definition, options.registry());
+    let reader = options.reader(&definition);
     let read = reader.read(&documents, &options.read_options(), &mut sink);
     if let Err(error) = read {
         report_all(&records);

@@ -6,9 +6,7 @@ use std::io::Write as _;
 use std::path::{Path, PathBuf};
 
 use kdlith_diagnostic::ExitStatus;
-use kdlith_engine::{
-    DataReader, Definition, Extensions, index_items, list_nodes, list_profiles, list_types,
-};
+use kdlith_engine::{Definition, Extensions, index_items, list_nodes, list_profiles, list_types};
 
 use crate::report::report_all;
 use crate::vet::DataOptions;
@@ -67,7 +65,7 @@ fn items(args: ListItemsArgs) -> ExitStatus {
         Err(status) => return status,
     };
     let entries: Vec<&Path> = args.files.iter().map(PathBuf::as_path).collect();
-    let reader = DataReader::with_handlers(&def, options.registry());
+    let reader = options.reader(&def);
     match index_items(&reader, &entries, &options.read_options()) {
         Ok(index) => {
             let printed = print_lines(&index.entries);

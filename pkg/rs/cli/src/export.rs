@@ -6,7 +6,7 @@
 use std::path::{Path, PathBuf};
 
 use kdlith_diagnostic::ExitStatus;
-use kdlith_engine::{DataReader, Delivery, Emit, OutputPolicy, export_read};
+use kdlith_engine::{Delivery, Emit, OutputPolicy, export_read};
 
 use crate::report::report_all;
 use crate::vet::DataOptions;
@@ -71,7 +71,7 @@ pub fn export(
     if let Some(policy) = policy {
         read_options = read_options.with_output_policy(policy);
     }
-    let reader = DataReader::with_handlers(&definition, options.registry());
+    let reader = options.reader(&definition);
     let outcome = export_read(&reader, entries, emit, delivery, output, &read_options);
     let status = report_all(&outcome.records);
     if outcome.rejected.is_some() {

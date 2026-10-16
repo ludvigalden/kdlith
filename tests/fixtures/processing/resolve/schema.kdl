@@ -1,0 +1,45 @@
+// The schema the --resolve-from scenarios share. Every computed default
+// names one dependency, the key its value is resolved by. A zone holds
+// non-secret values only; a service adds a secret token whose declared
+// provider is descriptor data the CLI never executes.
+schema deploy version="1" {
+    types {
+        object Zone {
+            field name String
+            field region String {
+                fallback computed=#true {
+                    dependency "region"
+                }
+            }
+            field replicas Integer {
+                fallback computed=#true {
+                    dependency "replicas"
+                }
+            }
+        }
+        object Service {
+            field name String
+            field region String {
+                fallback computed=#true {
+                    dependency "region"
+                }
+            }
+            field token String sensitivity=secret {
+                fallback computed=#true {
+                    dependency "vault"
+                }
+            }
+        }
+    }
+    node zone role=record type=Zone {
+        field name arg=0
+        field region property=region
+        field replicas property=replicas
+    }
+    node service role=record type=Service {
+        field name arg=0
+        field region property=region
+        field token property=token
+    }
+    provider vault ttl=300 "sh" "-c" "touch provider-executed"
+}

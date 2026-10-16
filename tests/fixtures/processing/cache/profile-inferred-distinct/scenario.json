@@ -9,8 +9,8 @@
   "expect": {
     "exit": 0,
     "files": {
-      "state/1fb86e9d2ba614f1.kdlith-cache": "expected/1fb86e9d2ba614f1.kdlith-cache",
-      "state/5387b732add6db19.kdlith-cache": "expected/5387b732add6db19.kdlith-cache"
+      "state/2c9f94eb29b3e0ce.kdlith-cache": "expected/2c9f94eb29b3e0ce.kdlith-cache",
+      "state/52db412dcd119e26.kdlith-cache": "expected/52db412dcd119e26.kdlith-cache"
     },
     "stdout-golden": "stdout.golden",
     "stderr-golden": "stderr.golden"

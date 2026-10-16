@@ -30,7 +30,8 @@ pub enum Derivation {
 }
 
 /// Where a value came from: written literally at a location, derived by
-/// an operation from earlier origins, or supplied by a named provider.
+/// an operation from earlier origins, supplied by a named provider, or
+/// resolved at a location through the registered value-resolution hook.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "kebab-case")]
 #[non_exhaustive]
@@ -46,13 +47,25 @@ pub enum Origin {
     Provided {
         provider: String,
     },
+    /// A computed default the registered value resolver supplied at
+    /// `location`, the node it completed.
+    ///
+    /// `providers` names the declared secret providers the call carried,
+    /// in dependency order; empty when no provider backs the value.
+    Resolved {
+        location: Location,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        providers: Vec<String>,
+    },
 }
 
 impl Origin {
     /// Where the origin was recorded; a provided value has no location.
     pub fn location(&self) -> Option<&Location> {
         match self {
-            Origin::Literal { location } | Origin::Derived { location, .. } => Some(location),
+            Origin::Literal { location }
+            | Origin::Derived { location, .. }
+            | Origin::Resolved { location, .. } => Some(location),
             Origin::Provided { .. } => None,
         }
     }
@@ -75,6 +88,15 @@ impl Trace {
     pub fn provided(provider: impl Into<String>) -> Self {
         Self(vec![Origin::Provided {
             provider: provider.into(),
+        }])
+    }
+
+    /// A value the registered value resolver supplied at `location`,
+    /// drawing on the declared secret providers `providers` names.
+    pub fn resolved(location: Location, providers: Vec<String>) -> Self {
+        Self(vec![Origin::Resolved {
+            location,
+            providers,
         }])
     }
 
@@ -118,7 +140,9 @@ impl Trace {
     pub fn relocate(&mut self, from: SourceId, to: SourceId) {
         for origin in &mut self.0 {
             match origin {
-                Origin::Literal { location } | Origin::Derived { location, .. } => {
+                Origin::Literal { location }
+                | Origin::Derived { location, .. }
+                | Origin::Resolved { location, .. } => {
                     location.relocate(from, to);
                 }
                 Origin::Provided { .. } => {}

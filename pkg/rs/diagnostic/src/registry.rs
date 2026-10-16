@@ -577,6 +577,16 @@ pub const CODES: &[CodeDefinition] = &[
         correction: "Use one of the enum's members",
         retired: false,
     },
+    CodeDefinition {
+        code: "KDLITH-BND009",
+        label: "unresolved-value",
+        severity: Severity::Error,
+        exit_class: 1,
+        trigger: "a bound node's field is absent, its declared fallback is computed, and the value resolver the consuming program registered declines to resolve it; a resolved value that fails the field's type is KDLITH-BND003",
+        message_template: "<field> of <node> could not be resolved: <reason>",
+        correction: "Supply the value through the registered resolver's source, or write it in the document",
+        retired: false,
+    },
     // CTX
     CodeDefinition {
         code: "KDLITH-CTX001",

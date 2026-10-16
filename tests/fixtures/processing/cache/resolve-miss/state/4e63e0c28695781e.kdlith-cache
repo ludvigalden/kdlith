@@ -1,0 +1,5 @@
+kdlith-cache format=3 canonicalization=1
+{"key":"4e63e0c28695781e","identity":{"revision":"fnv1a64:f8434168a4535f2a","schema":"fnv1a64:30b9b6c4684df2a5","context":"fnv1a64:9997e70adc235eeb","profiles":"fnv1a64:e1b51df36e161fca","resolved":"fnv1a64:9f798e2825dd772d","policy":"reject"},"derivations":[{"entry":"zones.kdl","source":"zones.kdl","caller":null}],"items":3,"digest":"fnv1a64:d2be0694ca905a19"}
+{"item":"record","data":{"node":{"source":0,"index":0},"type_name":"Zone","fields":[{"name":"name","value":{"kind":"string","value":"north"},"origin":0},{"name":"region","value":{"kind":"string","value":"eu-north"},"origin":0},{"name":"replicas","value":{"kind":"number","value":"3"},"origin":0}],"origin":0,"validation":"valid"}}
+{"item":"record","data":{"node":{"source":0,"index":1},"type_name":"Zone","fields":[{"name":"name","value":{"kind":"string","value":"south"},"origin":1},{"name":"region","value":{"kind":"string","value":"eu-north"},"origin":1},{"name":"replicas","value":{"kind":"number","value":"5"},"origin":1}],"origin":1,"validation":"valid"}}
+{"item":"scope-complete","data":{"source":0,"scope":null}}

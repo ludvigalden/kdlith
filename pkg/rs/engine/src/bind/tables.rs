@@ -13,7 +13,7 @@ use crate::bindings::{
 use crate::definition::Definition;
 use crate::names::Sym;
 use crate::plan::DeferredBinding;
-use crate::types::{Sensitivity, TypeExpr, TypeKind};
+use crate::types::{DefaultSpec, Sensitivity, TypeExpr, TypeKind};
 
 /// How a supply lands in its field.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -57,6 +57,10 @@ pub(crate) struct FieldInfo {
     pub(crate) required: bool,
     pub(crate) collect: Collect,
     pub(crate) fallback: Option<Value>,
+    /// A computed fallback's declared dependencies: the descriptor the
+    /// registered value resolver receives when the field is absent.
+    /// The engine never computes it.
+    pub(crate) computed: Option<Vec<String>>,
     pub(crate) context: Option<ContextBind>,
     /// The sensitivity the field's declaration tags it with, enforced
     /// by the output policy.
@@ -303,6 +307,10 @@ fn decl_info(def: &Definition, id: NodeDeclId, decl: &NodeDecl) -> DeclInfo {
                 // computed default is a descriptor the engine never
                 // computes.
                 fallback: field.fallback.as_ref().and_then(|d| d.literal().cloned()),
+                computed: match &field.fallback {
+                    Some(DefaultSpec::Computed { dependencies }) => Some(dependencies.clone()),
+                    _ => None,
+                },
                 context: None,
                 sensitivity: field.sensitivity,
                 expand: Vec::new(),
@@ -317,6 +325,7 @@ fn decl_info(def: &Definition, id: NodeDeclId, decl: &NodeDecl) -> DeclInfo {
                 required: binding.ty.as_ref().is_some_and(|ty| !optional(ty)),
                 collect: Collect::No,
                 fallback: None,
+                computed: None,
                 context: None,
                 sensitivity: None,
                 expand: Vec::new(),

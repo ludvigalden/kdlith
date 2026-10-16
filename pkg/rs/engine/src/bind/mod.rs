@@ -19,14 +19,15 @@ use kdlith_model::{
 use kdlith_parse::{Locator, Parser};
 use kdlith_runtime::{
     Completion, Context, ContextEffect, ContextTarget, Cx, Disposition, FollowingEffects,
-    HandlerCall, HandlerEffect, Handlers, HeaderEffects, Processor, Session, SessionError, SlotId,
-    SlotValue,
+    HandlerCall, HandlerEffect, Handlers, HeaderEffects, Processor, ResolvedStream, Session,
+    SessionError, SlotId, SlotValue,
 };
 
 use crate::bindings::{BindingCodec, ChildPlan, ContextPolicy, NodeDeclId, Role, SetFrom};
 use crate::decode::{self, Decoder, Mismatch};
 use crate::definition::{
-    AccumulateOp, Definition, DefinitionKind, MergeDuplicates, ProfileSelection, SlotDuplicates,
+    AccumulateOp, Definition, DefinitionKind, MergeDuplicates, ProfileSelection, ProviderDecl,
+    SlotDuplicates,
 };
 use crate::diag::{
     CONFLICTING_BINDING, DUPLICATE_KEY, MALFORMED, MISSING_FIELD, NOT_INSTALLED, TYPE_EXPRESSION,
@@ -38,12 +39,13 @@ use crate::plan::EffectStep;
 use crate::structure::{ScopeRules, ScopeState, Violation};
 use crate::summary;
 use crate::types::{OutputPolicy, Sensitivity, TypeExpr, TypeKind, Variant};
+use crate::value_resolver::{ResolutionCall, SharedResolver};
 
 pub use frame::BindFrame;
 pub use source::ParseEvents;
 
 use frame::{Kind, Opened, Supplied};
-use tables::{Bind, Collect, Mode, SlotInfo, Tables};
+use tables::{Bind, Collect, FieldInfo, Mode, SlotInfo, Tables};
 
 const COLLISION: &str = "KDLITH-BND007";
 const DUPLICATE_PROPERTY: &str = "KDLITH-SYN003";
@@ -52,6 +54,7 @@ const CONTEXT_DISAGREES: &str = "KDLITH-CTX002";
 const SLOT_DUPLICATE: &str = "KDLITH-CTX006";
 const HANDLER_UNDECLARED: &str = "KDLITH-CTX005";
 const PROFILE_NOT_SELECTED: &str = "KDLITH-SCH011";
+const UNRESOLVED_VALUE: &str = "KDLITH-BND009";
 
 const DOCUMENT_ROOT: &str = "the document root";
 
@@ -171,6 +174,19 @@ pub struct Binder<'d, 's> {
     /// effect executes through this registry at its declared timing,
     /// and one it lacks fails at its site.
     handlers: Handlers,
+    /// The value resolver the consuming program registered: a field
+    /// whose declared fallback is computed and that nothing else
+    /// supplies is resolved through it. Without one, such a field stays
+    /// absent, as the descriptor-only contract has it.
+    resolver: Option<SharedResolver>,
+    /// Whether any field was put to the resolver, resolved or not.
+    consulted: bool,
+    /// The non-secret values the resolver supplied, folded in
+    /// resolution order: part of the result's cache identity.
+    resolved: ResolvedStream,
+    /// Whether the resolver supplied a value for a `secret` field; such
+    /// a result is never cached.
+    resolved_secret: bool,
     errors: u64,
 }
 
@@ -266,6 +282,10 @@ impl<'d, 's> Binder<'d, 's> {
             root_name: None,
             aliases: Vec::new(),
             handlers: Handlers::new(),
+            resolver: None,
+            consulted: false,
+            resolved: ResolvedStream::new(),
+            resolved_secret: false,
             errors: 0,
         }
     }
@@ -681,13 +701,29 @@ impl<'d, 's> Binder<'d, 's> {
                 (None, None) => (None, Trace::default()),
             };
             let defaulted = value.is_none();
-            let value = value.or(info.fallback).or(match info.collect {
+            let mut resolved = None;
+            let value = match value.or(info.fallback.clone()) {
+                Some(value) => Some(value),
+                None => match self.resolve_value(cx, frame, at, &info) {
+                    Resolution::Resolved(value, origin) => {
+                        resolved = Some(origin);
+                        Some(value)
+                    }
+                    Resolution::Failed => {
+                        frame.rejected.push(at);
+                        None
+                    }
+                    Resolution::NotAsked => None,
+                },
+            };
+            let value = value.or(match info.collect {
                 Collect::List => Some(Value::List(Vec::new())),
                 Collect::Map => Some(Value::Map(Vec::new())),
                 Collect::No => None,
             });
             if defaulted && value.is_some() {
-                trace = Trace::derived(Derivation::Default, site, Vec::new());
+                trace = resolved
+                    .unwrap_or_else(|| Trace::derived(Derivation::Default, site, Vec::new()));
             }
             let expands = !self.tables.decls[owner.index()].fields[at]
                 .expand
@@ -726,6 +762,81 @@ impl<'d, 's> Binder<'d, 's> {
         }
         frame.traces = traces;
         values
+    }
+
+    /// Resolve an absent computed-default field through the registered
+    /// value resolver, descriptors passed as data only. A decline is
+    /// `KDLITH-BND009`, a mistyped value `KDLITH-BND003`.
+    fn resolve_value(
+        &mut self,
+        cx: &mut Cx<'_>,
+        frame: &BindFrame,
+        at: usize,
+        info: &FieldInfo,
+    ) -> Resolution {
+        let (Some(dependencies), Some(resolver)) = (&info.computed, self.resolver.clone()) else {
+            return Resolution::NotAsked;
+        };
+        self.consulted = true;
+        let def = self.def;
+        let providers: Vec<&ProviderDecl> = dependencies
+            .iter()
+            .filter_map(|dep| def.providers.iter().find(|provider| provider.id == *dep))
+            .collect();
+        let mut context = BTreeMap::new();
+        for (slot, slot_info) in cx.context().layout().slots().zip(self.tables.slots.iter()) {
+            if let Some(held) = cx.context().get(slot) {
+                context.insert(self.name(slot_info.name).to_owned(), held.value.clone());
+            }
+        }
+        let ty = info
+            .ty
+            .as_ref()
+            .map(|ty| summary::expr(&def.names, ty))
+            .unwrap_or_default();
+        let site = self.location(frame.span);
+        let outcome = {
+            let call = ResolutionCall {
+                source: &self.path,
+                site,
+                node: self.name(frame.name),
+                field: self.name(info.name),
+                ty: &ty,
+                sensitivity: info.sensitivity,
+                dependencies,
+                providers: &providers,
+                context: &context,
+            };
+            resolver.resolve(&call)
+        };
+        let label = self.field_label(frame.owner, at);
+        match outcome {
+            Ok(value) => {
+                let conceal = self.conceals(frame.owner, at);
+                let checked =
+                    self.check_as(cx, info.ty.clone(), &label, value, frame.span, conceal);
+                match checked {
+                    Some(value) => {
+                        if info.sensitivity == Some(Sensitivity::Secret) {
+                            self.resolved_secret = true;
+                        } else {
+                            let span = (frame.span.start, frame.span.end);
+                            let field = self.name(info.name);
+                            self.resolved.push(span, field, &value);
+                        }
+                        let named = providers.iter().map(|p| p.id.clone()).collect();
+                        Resolution::Resolved(value, Trace::resolved(site, named))
+                    }
+                    None => Resolution::Failed,
+                }
+            }
+            Err(unresolvable) => {
+                let node = self.name(frame.name);
+                let values = [label.as_str(), node, unresolvable.reason()];
+                self.diagnose(cx, UNRESOLVED_VALUE, frame.span, &values);
+                Resolution::Failed
+            }
+        }
     }
 
     /// How an explicitly supplied value came to be: written literally
@@ -2133,6 +2244,19 @@ fn active_profiles(def: &Definition, members: &[Sym]) -> (Vec<Sym>, Option<Vec<S
     (chain, roots)
 }
 
+/// What asking the value resolver for one absent field came to.
+enum Resolution {
+    /// No resolver is registered, or the field's fallback is not
+    /// computed: the field stays absent.
+    NotAsked,
+    /// The resolver supplied a value that decoded as the field's type,
+    /// with the origin it records.
+    Resolved(Value, Trace),
+    /// The resolver declined, or its value failed the field's type; the
+    /// failure is reported already.
+    Failed,
+}
+
 /// The knobs a binding session applies beyond its definition: the
 /// profile the invocation named, one explicit output policy, and the
 /// installed context handlers.
@@ -2345,6 +2469,15 @@ impl<'d, 's> BindingSession<'d, 's> {
         self
     }
 
+    /// The session resolving absent computed-default fields through the
+    /// value resolver the consuming program registered; `None` leaves
+    /// them absent. Set before the first item is taken.
+    #[must_use]
+    pub fn with_resolver(mut self, resolver: Option<SharedResolver>) -> Self {
+        self.session.processor_mut().resolver = resolver;
+        self
+    }
+
     /// The context as the latest item left it: at an import request, the
     /// context of the import site.
     pub fn context(&self) -> &Context {
@@ -2388,6 +2521,22 @@ impl<'d, 's> BindingSession<'d, 's> {
     /// The name of the document's first root node, once it has opened.
     pub fn root_name(&self) -> Option<&str> {
         self.session.processor().root_name()
+    }
+
+    /// Whether binding put any field to the registered value resolver,
+    /// whether or not it resolved: such a result depends on values
+    /// outside the document, its context, and its schema.
+    pub fn consulted_resolver(&self) -> bool {
+        self.session.processor().consulted
+    }
+
+    /// The fingerprint of the non-secret values the resolver supplied,
+    /// in resolution order, or `None` when it supplied a value for a
+    /// `secret` field: a result carrying a resolved secret has no
+    /// cacheable identity.
+    pub fn resolved_fingerprint(&self) -> Option<u64> {
+        let binder = self.session.processor();
+        (!binder.resolved_secret).then(|| binder.resolved.fingerprint())
     }
 
     /// Whether the document failed: an error diagnostic was emitted, or

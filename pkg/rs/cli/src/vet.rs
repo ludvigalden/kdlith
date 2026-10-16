@@ -5,7 +5,9 @@
 use std::path::{Path, PathBuf};
 
 use kdlith_diagnostic::{DiagnosticRecord, ExitStatus};
-use kdlith_engine::{CheckScope, DataReader, Definition, Extensions, Handlers, ReadOptions};
+use kdlith_engine::{
+    CheckScope, DataReader, Definition, Extensions, Handlers, ReadOptions, SharedResolver,
+};
 use kdlith_model::Item;
 use kdlith_superproc::{load_dialect, load_schema_anchored, seed};
 
@@ -134,7 +136,8 @@ fn summary_line(definition: &Definition) -> String {
 /// What one data reading supplies beyond its documents: the dialect
 /// definition replacing the bundled one, the discovery anchors the host
 /// passes on the command line, the profile or profile set the
-/// invocation names, and the built-in context handlers to install. The data verbs (`vet
+/// invocation names, the built-in context handlers to install, and the
+/// value resolver `--resolve-from` loaded. The data verbs (`vet
 /// data`, `inspect data`, `read data`, `list items`, `cache refresh`,
 /// and `export`) share one of these, so every path observes the same
 /// execution semantics.
@@ -145,6 +148,7 @@ pub struct DataOptions {
     profile: Option<String>,
     profiles: Vec<String>,
     handlers: Vec<String>,
+    resolver: Option<SharedResolver>,
 }
 
 impl DataOptions {
@@ -159,7 +163,16 @@ impl DataOptions {
             profile,
             profiles: Vec::new(),
             handlers,
+            resolver: None,
         }
+    }
+
+    /// The same options resolving computed defaults through `resolver`,
+    /// or leaving them unresolved when it is `None`.
+    #[must_use]
+    pub fn with_resolver(mut self, resolver: Option<SharedResolver>) -> Self {
+        self.resolver = resolver;
+        self
     }
 
     /// The same options admitting the listed profile set, in listed
@@ -212,6 +225,16 @@ impl DataOptions {
         handlers::registry(&self.handlers)
     }
 
+    /// The data reader over `definition` with the installed handlers and,
+    /// when one was loaded, the value resolver.
+    pub(crate) fn reader<'d>(&self, definition: &'d Definition) -> DataReader<'d> {
+        let reader = DataReader::with_handlers(definition, self.registry());
+        match &self.resolver {
+            Some(resolver) => reader.with_resolver(resolver.clone()),
+            None => reader,
+        }
+    }
+
     /// The extensions a definition loads under so the compile-time
     /// installed-name check and the runtime registry admit one surface.
     pub(crate) fn extensions(&self) -> Extensions {
@@ -250,7 +273,7 @@ pub fn vet_data(schema: Option<&Path>, entries: &[&Path], options: &DataOptions)
         Ok(definition) => definition,
         Err(records) => return report_all(&records),
     };
-    let reader = DataReader::with_handlers(&definition, options.registry());
+    let reader = options.reader(&definition);
     let mut records: Vec<DiagnosticRecord> = Vec::new();
     let mut out = std::io::stdout().lock();
     let mut written = true;

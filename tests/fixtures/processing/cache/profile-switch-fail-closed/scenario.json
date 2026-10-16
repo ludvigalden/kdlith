@@ -10,7 +10,7 @@
   "expect": {
     "exit": 1,
     "files": {
-      "state/e33c929203751731.kdlith-cache": "state/e33c929203751731.kdlith-cache"
+      "state/15e2e788571ecd8e.kdlith-cache": "state/15e2e788571ecd8e.kdlith-cache"
     },
     "stdout-golden": "stdout.golden",
     "stderr-golden": "stderr.golden"

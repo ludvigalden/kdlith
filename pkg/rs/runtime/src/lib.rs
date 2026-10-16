@@ -24,7 +24,7 @@ pub use export::{Delivery, ExportWriter, write_ndjson};
 pub use handlers::{HandlerCall, HandlerEffect, HandlerFn, Handlers};
 pub use imports::{
     Admission, ImportFailure, Invocation, InvocationId, InvocationIdentity, Invocations,
-    MAX_IMPORT_DEPTH, MAX_INVOCATIONS, Repeated,
+    MAX_IMPORT_DEPTH, MAX_INVOCATIONS, Repeated, ResolvedStream,
 };
 pub use processor::{Completion, Cx, Disposition, Processor};
 pub use provenance::{FieldProvenance, Provenance, SourceRevision, SourceRevisions, export_line};

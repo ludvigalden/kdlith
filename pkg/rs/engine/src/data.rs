@@ -22,6 +22,7 @@ use crate::documents::{import_failure, read_text};
 use crate::names::Sym;
 use crate::typed::ReadError;
 use crate::types::OutputPolicy;
+use crate::value_resolver::SharedResolver;
 
 const ORIGIN: &str = "data-document";
 
@@ -115,6 +116,10 @@ pub struct DataReader<'d> {
     /// document executes against that invocation's own projected
     /// context, never the caller's.
     handlers: Handlers,
+    /// The value resolver the consuming program registered, carried
+    /// into every invocation: an absent field whose declared fallback is
+    /// computed resolves through it.
+    resolver: Option<SharedResolver>,
 }
 
 impl<'d> DataReader<'d> {
@@ -122,6 +127,7 @@ impl<'d> DataReader<'d> {
         Self {
             def,
             handlers: Handlers::new(),
+            resolver: None,
         }
     }
 
@@ -130,7 +136,20 @@ impl<'d> DataReader<'d> {
     /// names, or each missing handler fails at its effect site.
     #[must_use]
     pub fn with_handlers(def: &'d Definition, handlers: Handlers) -> Self {
-        Self { def, handlers }
+        Self {
+            def,
+            handlers,
+            resolver: None,
+        }
+    }
+
+    /// The reader resolving every absent computed-default field through
+    /// `resolver`, the consuming program's static value-resolution hook.
+    /// A value it declines fails its node loudly (`KDLITH-BND009`).
+    #[must_use]
+    pub fn with_resolver(mut self, resolver: SharedResolver) -> Self {
+        self.resolver = Some(resolver);
+        self
     }
 
     /// The definition the reader binds under.
@@ -367,7 +386,8 @@ impl Reading<'_, '_> {
             self.selection.clone(),
             self.handlers.clone(),
         )
-        .under_policy(self.output_policy);
+        .under_policy(self.output_policy)
+        .with_resolver(self.reader.resolver.clone());
         let mut own: Vec<Item> = Vec::new();
         let mut cacheable = true;
         while self.broken.is_none() {
@@ -401,18 +421,35 @@ impl Reading<'_, '_> {
         }
         let failed = self.failed || session.failed();
         self.failed = failed;
+        // Resolved values join the identity, so a changed one misses. A
+        // result holding a resolved secret has no cacheable identity:
+        // even a fingerprint of a secret on disk is a guessing oracle.
+        let identity = match identity {
+            Some(identity) if session.consulted_resolver() => session
+                .resolved_fingerprint()
+                .map(|resolved| identity.with_resolved(resolved)),
+            other => other,
+        };
         if cacheable && identity.is_some() && self.broken.is_none() {
             if let Some(identity) = identity.filter(|_| !failed) {
                 let derivation = self.derivation(id);
                 let active = self.selection.members().to_vec();
-                self.result_of
-                    .insert((identity, active.clone()), self.results.len());
+                let key = (identity, active);
+                // A result the session lookup could not find before
+                // binding (its resolved values were not yet known) may
+                // equal one already cached: it is one result, derived
+                // twice.
+                if let Some(&at) = self.result_of.get(&key) {
+                    self.results[at].derivations.push(derivation);
+                    return;
+                }
+                self.result_of.insert(key.clone(), self.results.len());
                 self.results.push(BoundResult {
                     identity,
                     derivations: vec![derivation],
                     items: own.iter().map(|item| remap(item, SourceId(0))).collect(),
                 });
-                self.bound.insert((identity, active), Rc::new(own));
+                self.bound.insert(key, Rc::new(own));
             }
         }
     }

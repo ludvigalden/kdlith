@@ -10,11 +10,11 @@
   "expect": {
     "exit": 0,
     "files": {
-      "state/35491cfff081ac02.kdlith-cache": "expected/35491cfff081ac02.kdlith-cache"
+      "state/625c0289740193a1.kdlith-cache": "expected/625c0289740193a1.kdlith-cache"
     },
     "absent": [
-      "state/e33c929203751731.kdlith-cache",
-      "state/.35491cfff081ac02.kdlith-cache-part"
+      "state/15e2e788571ecd8e.kdlith-cache",
+      "state/.625c0289740193a1.kdlith-cache-part"
     ],
     "stdout-golden": "stdout.golden",
     "stderr-golden": "stderr.golden"

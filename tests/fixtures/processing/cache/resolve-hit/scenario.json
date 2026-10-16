@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "Non-secret resolved values are part of the invocation identity, so an unchanged value set hits its own entry: a state holding the entry derived under value set A is refreshed with --resolve-from A again; the key and every identity component (the resolved-values fingerprint of A among them) are unchanged, the entry is rewritten byte-identical with the resolved values in it unredacted, nothing is removed as stale, and stdout and stderr are pinned byte for byte",
+  "args": [
+    "cache", "refresh", "--state", "state",
+    "--schema", "{fx-suite}/processing/resolve/schema.kdl",
+    "--resolve-from", "values-a.kdl",
+    "zones.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "files": {
+      "state/4e63e0c28695781e.kdlith-cache": "state/4e63e0c28695781e.kdlith-cache"
+    },
+    "absent": ["state/.4e63e0c28695781e.kdlith-cache-part"],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

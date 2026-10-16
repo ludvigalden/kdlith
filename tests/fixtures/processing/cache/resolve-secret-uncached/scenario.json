@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "A result for which a secret was resolved is never cached: refreshing with --resolve-from A over a zone document (non-secret values only) and a service document (a resolved secret token) writes exactly the zone entry; the service's bound result gets no entry at all, so no key, fingerprint, or clear text of the secret reaches the state directory, which holds only the zone entry, pinned byte for byte",
+  "args": [
+    "cache", "refresh", "--state", "state",
+    "--schema", "{fx-suite}/processing/resolve/schema.kdl",
+    "--resolve-from", "values-a.kdl",
+    "zones.kdl", "services.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "files": {
+      "state/4e63e0c28695781e.kdlith-cache": "expected/4e63e0c28695781e.kdlith-cache"
+    },
+    "absent": ["state/.4e63e0c28695781e.kdlith-cache-part", "provider-executed"],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

@@ -1,0 +1,1 @@
+error[KDLITH-CLI001]: invalid value "values.kdl" for --resolve-from: line 2: the key "region" is repeated

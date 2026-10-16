@@ -211,6 +211,16 @@ identity. The data verbs take host inputs the fixtures exercise:
 context handler (`processing/bind/handler-effect`), and `--profile NAME`
 names the invocation's profile (`processing/bind/profile-bind`).
 
+`processing/resolve/` holds the `--resolve-from FILE` scenarios over
+the shared `processing/resolve/schema.kdl`, whose computed defaults each
+name one dependency, the key a committed `values.kdl` resolves them by:
+non-secret values resolve unredacted while a resolved secret is redacted
+unless `--sensitive emit` says otherwise, and a missing key fails with
+`KDLITH-BND009`. The `processing/cache/resolve-*` scenarios pin the
+resolved values' place in the cache identity: an unchanged value set
+hits, a changed one misses and re-binds, and a document for which a
+secret was resolved is never cached.
+
 `schemas/vet/import-repeat-coalesce/` and
 `schemas/vet/import-repeat-instantiate/` pin the two non-default
 repeated-import policies on the schema path;
@@ -277,7 +287,13 @@ enum type produces. `codegen/gen-schema-ref-import` runs that chain over
 the committed catalog schema itself, which imports a second document and
 holds a `ref<T>` field: its exercise reads the schema by suite path
 (`KDLITH_FX_SUITE`), never a copy, and resolves each reference against
-the reading's linked declarations.
+the reading's linked declarations. `codegen/gen-schema-resolver` runs it
+over a schema with computed defaults and a secret provider: its consumer
+crate registers a resolver reading a committed values file through the
+generated `reader_with_resolver`, and the exercise pins the resolved
+records, the context each call receives, the provider's command list
+arriving as unexecuted data, and the `KDLITH-BND009` rejection of a
+value the file does not hold.
 
 ## Scenario format v0
 

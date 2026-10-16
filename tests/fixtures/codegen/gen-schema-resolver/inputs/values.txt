@@ -1,0 +1,5 @@
+# Values the exercise's fixture-file resolver supplies, keyed by the
+# incoming stage slot and the computed default's dependency.
+prod/env.region=us-east
+prod/vault=token-prod-1
+staging/vault=token-staging-1

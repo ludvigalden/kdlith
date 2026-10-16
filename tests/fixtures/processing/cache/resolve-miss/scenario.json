@@ -1,0 +1,23 @@
+{
+  "binary": "kdlith",
+  "description": "A changed resolved value misses the cache: a state holding the entry derived under value set A is refreshed with --resolve-from B, which changes only region; the document's revision, the schema, the context, and the profiles are unchanged, but the resolved-values fingerprint differs, so the reading gets its own key and re-binds, its entry holding B's region is written byte for byte, and A's entry is removed as stale rather than replayed",
+  "args": [
+    "cache", "refresh", "--state", "state",
+    "--schema", "{fx-suite}/processing/resolve/schema.kdl",
+    "--resolve-from", "values-b.kdl",
+    "zones.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": ["resolved=fnv1a64:994b075642266925"],
+    "files": {
+      "state/4dd1a42050fc2bff.kdlith-cache": "expected/4dd1a42050fc2bff.kdlith-cache"
+    },
+    "absent": [
+      "state/4e63e0c28695781e.kdlith-cache",
+      "state/.4dd1a42050fc2bff.kdlith-cache-part"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

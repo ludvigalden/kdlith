@@ -5,8 +5,9 @@
 use std::path::{Path, PathBuf};
 
 pub use kdlith_model::Repeated;
+use kdlith_model::Value;
 
-use crate::context::{Context, ContextError, SlotId};
+use crate::context::{Context, ContextError, SlotId, stable_hash, stable_hash_step};
 
 /// Imports nest at most this deep; deeper chains fail closed.
 pub const MAX_IMPORT_DEPTH: usize = 64;
@@ -27,8 +28,9 @@ impl InvocationId {
 
 /// The semantics one invocation binds under: which revision of its
 /// source, which schema, which inherited context, which profile
-/// selection, under which repeat policy. Two invocations with one
-/// identity produce one bound result.
+/// selection, which values a registered value resolver supplied, under
+/// which repeat policy. Two invocations with one identity produce one
+/// bound result.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub struct InvocationIdentity {
@@ -42,18 +44,136 @@ pub struct InvocationIdentity {
     /// binds under: a result bound under one selection is never the
     /// result of another.
     pub profiles: u64,
+    /// A fingerprint of the non-secret values the value resolver
+    /// supplied while binding (see [`ResolvedStream`]); the empty
+    /// stream's fingerprint when it supplied none.
+    pub resolved: u64,
     /// The repeat policy the request carried.
     pub policy: Repeated,
 }
 
 impl InvocationIdentity {
-    pub fn new(revision: u64, schema: u64, context: u64, profiles: u64, policy: Repeated) -> Self {
+    pub fn new(
+        revision: u64,
+        schema: u64,
+        context: u64,
+        profiles: u64,
+        resolved: u64,
+        policy: Repeated,
+    ) -> Self {
         Self {
             revision,
             schema,
             context,
             profiles,
+            resolved,
             policy,
+        }
+    }
+
+    /// The same identity with the resolved-values component a binding
+    /// produced: known only once the invocation has bound.
+    #[must_use]
+    pub fn with_resolved(mut self, resolved: u64) -> Self {
+        self.resolved = resolved;
+        self
+    }
+}
+
+/// The resolved-values component of an invocation identity: a
+/// domain-separated fingerprint of the length-prefixed stream of each
+/// resolution's site, field, and value, in resolution order.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ResolvedStream(u64);
+
+impl Default for ResolvedStream {
+    fn default() -> Self {
+        Self(stable_hash(b"kdlith-resolved"))
+    }
+}
+
+impl ResolvedStream {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Fold one resolution in: the node site's byte span (positional
+    /// within the document, so equal under every invocation of it), the
+    /// field name, and the value.
+    pub fn push(&mut self, (start, end): (u32, u32), field: &str, value: &Value) {
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(&start.to_le_bytes());
+        bytes.extend_from_slice(&end.to_le_bytes());
+        prefixed(&mut bytes, field.as_bytes());
+        let mut encoded = Vec::new();
+        encode_value(&mut encoded, value);
+        prefixed(&mut bytes, &encoded);
+        let mut record = Vec::with_capacity(bytes.len() + 8);
+        prefixed(&mut record, &bytes);
+        self.0 = stable_hash_step(self.0, &record);
+    }
+
+    pub fn fingerprint(self) -> u64 {
+        self.0
+    }
+}
+
+/// Append `bytes` preceded by their length.
+fn prefixed(out: &mut Vec<u8>, bytes: &[u8]) {
+    out.extend_from_slice(&(bytes.len() as u64).to_le_bytes());
+    out.extend_from_slice(bytes);
+}
+
+/// A canonical, unambiguous encoding of a value: a tag byte, then
+/// length-prefixed parts. A reference's source site is positional, not
+/// semantic, so it takes no part.
+fn encode_value(out: &mut Vec<u8>, value: &Value) {
+    match value {
+        Value::Null => out.push(0),
+        Value::Bool(held) => out.extend_from_slice(&[1, u8::from(*held)]),
+        Value::Number(text) => {
+            out.push(2);
+            prefixed(out, text.as_bytes());
+        }
+        Value::String(text) => {
+            out.push(3);
+            prefixed(out, text.as_bytes());
+        }
+        Value::List(items) => {
+            out.push(4);
+            out.extend_from_slice(&(items.len() as u64).to_le_bytes());
+            for item in items {
+                encode_value(out, item);
+            }
+        }
+        Value::Map(entries) => {
+            out.push(5);
+            out.extend_from_slice(&(entries.len() as u64).to_le_bytes());
+            for entry in entries {
+                prefixed(out, entry.key.as_bytes());
+                encode_value(out, &entry.value);
+            }
+        }
+        Value::Reference(reference) => {
+            out.push(6);
+            prefixed(out, reference.domain.as_bytes());
+            out.extend_from_slice(&(reference.name.0.len() as u64).to_le_bytes());
+            for segment in &reference.name.0 {
+                prefixed(out, segment.as_bytes());
+            }
+            out.extend_from_slice(&(reference.qualifiers.len() as u64).to_le_bytes());
+            for (key, held) in &reference.qualifiers {
+                prefixed(out, key.as_bytes());
+                prefixed(out, held.as_bytes());
+            }
+            prefixed(out, reference.written.as_bytes());
+        }
+        // A value variant this version does not know still encodes
+        // deterministically within the running build, so the
+        // fingerprint never silently ignores a resolved value.
+        other => {
+            out.push(0xff);
+            prefixed(out, format!("{other:?}").as_bytes());
         }
     }
 }
@@ -87,12 +207,15 @@ pub struct Invocation {
 
 impl Invocation {
     /// The invocation's identity: complete once its revision is known.
+    /// Its resolved-values component is the empty stream's until a
+    /// binding that consulted a value resolver supplies its own.
     pub fn identity(&self) -> Option<InvocationIdentity> {
         Some(InvocationIdentity {
             revision: self.revision?,
             schema: self.schema,
             context: self.context_fingerprint,
             profiles: self.profiles,
+            resolved: ResolvedStream::new().fingerprint(),
             policy: self.policy,
         })
     }

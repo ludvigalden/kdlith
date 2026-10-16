@@ -1,0 +1,74 @@
+{
+  "binary": "kdlith",
+  "kind": "codegen-oracle",
+  "description": "The value-resolution hook fixture: gen schema generates a committed schema whose required fields fall back to computed defaults, one naming a declared secret provider, twice into scratch trees the harness requires byte-identical; the generated crate compiles inside a scratch workspace materialized from this scenario's committed template beside a consumer crate whose resolver, a static trait impl reading a committed key-value file, it registers through the generated reader_with_resolver. The exercise pins that resolved values land in typed records, that each call carries its source, site, node, field, type, sensitivity, incoming context slot, and dependency list, that the provider's command list arrives as argument-boundary-preserving data nothing executes, and that a value the file cannot supply fails the reading loudly with the unresolved-value code",
+  "form": "schema",
+  "entrypoint": "inputs/vault.kdl",
+  "crate": "vault-proc",
+  "steps": [
+    {
+      "generate": "ws/rs/vault-proc"
+    },
+    {
+      "generate": "gen-again"
+    },
+    {
+      "determinism": [
+        "ws/rs/vault-proc",
+        "gen-again"
+      ]
+    },
+    {
+      "compile": {
+        "workspace": "ws",
+        "copy": {
+          "crates": [
+            "diagnostic",
+            "engine",
+            "model",
+            "parse",
+            "runtime",
+            "superproc"
+          ],
+          "kdl": true
+        },
+        "command": [
+          "cargo",
+          "build",
+          "--offline",
+          "--manifest-path",
+          "ws/rs/vault-proc/Cargo.toml"
+        ]
+      }
+    },
+    {
+      "exercise": {
+        "command": [
+          "cargo",
+          "run",
+          "--offline",
+          "--quiet",
+          "--manifest-path",
+          "ws/rs/exercise/Cargo.toml",
+          "--",
+          "inputs/vault.kdl",
+          "inputs/values.txt",
+          "inputs/data.kdl",
+          "inputs/bad-data.kdl"
+        ],
+        "stdout-contains": [
+          "schema ok digest=f973d76f518b7240\n",
+          "read ok services=2 calls=3\n",
+          "call source=inputs/data.kdl site=2:1 node=service field=region type=String secret=false stage=prod dependencies=[\"env.region\"] providers=[]\n",
+          "call source=inputs/data.kdl site=2:1 node=service field=token type=String secret=true stage=prod dependencies=[\"vault\"] providers=[\"vault ttl=300 argc=3 argv=[\\\"sh\\\", \\\"-c\\\", \\\"touch provider-executed\\\"]\"]\n",
+          "call source=inputs/data.kdl site=3:1 node=service field=token type=String secret=true stage=prod dependencies=[\"vault\"] providers=[\"vault ttl=300 argc=3 argv=[\\\"sh\\\", \\\"-c\\\", \\\"touch provider-executed\\\"]\"]\n",
+          "service name=api region=us-east token=[redacted]\n",
+          "service name=web region=eu-north token=[redacted]\n",
+          "call source=inputs/bad-data.kdl site=2:1 node=service field=region type=String secret=false stage=staging dependencies=[\"env.region\"] providers=[]\n",
+          "rejected KDLITH-BND009 records=0 message=service.region of service could not be resolved: no fixture value for staging/env.region\n",
+          "provider command not executed\n"
+        ]
+      }
+    }
+  ]
+}

@@ -10,6 +10,7 @@ mod inspect;
 mod list;
 mod read;
 mod report;
+mod resolve;
 mod usage;
 mod vet;
 
@@ -228,8 +229,9 @@ struct VetDataArgs {
     files: Vec<PathBuf>,
 }
 
-/// The profile selection every data verb shares: one explicit profile,
-/// or a listed profile set. The two exclude each other.
+/// The profile selection and value resolution every data verb shares:
+/// one explicit profile, or a listed profile set (the two exclude each
+/// other), and the one file computed defaults resolve from.
 #[derive(Args, Clone)]
 struct ProfileArgs {
     /// The profile the invocation binds; excludes --profiles
@@ -241,13 +243,17 @@ struct ProfileArgs {
     /// --profile
     #[arg(long, value_name = "NAMES", value_parser = handlers::parse_profiles)]
     profiles: Option<handlers::ProfileSet>,
+    /// A values file computed defaults resolve from: secrets and
+    /// non-secret context variables alike, keyed by the computed
+    /// default's one dependency. No other source is ever read
+    #[arg(long, value_name = "FILE")]
+    resolve_from: Option<PathBuf>,
 }
 
 impl ProfileArgs {
-    /// The data options these profile flags and the verb's anchors and
-    /// handlers make. `--profile` and `--profiles` together are an
-    /// argument-form fault (`KDLITH-CLI001`, exit 2): the invocation
-    /// names one profile or one set, never both.
+    /// The data options these flags and the verb's anchors and handlers
+    /// make. `--profile` with `--profiles` is `KDLITH-CLI001` (exit 2),
+    /// and a `--resolve-from` file loads here, before any definition.
     fn data_options(
         self,
         anchors: Vec<(String, PathBuf)>,
@@ -262,7 +268,13 @@ impl ProfileArgs {
             (_, Some(handlers::ProfileSet(names))) => names,
             (_, None) => Vec::new(),
         };
-        Ok(DataOptions::new(anchors, self.profile, handlers).with_profiles(set))
+        let resolver = match &self.resolve_from {
+            Some(path) => Some(resolve::load(path)?),
+            None => None,
+        };
+        Ok(DataOptions::new(anchors, self.profile, handlers)
+            .with_profiles(set)
+            .with_resolver(resolver))
     }
 }
 
@@ -536,7 +548,7 @@ enum ReadCommand {
     /// Parse one document to its clean end
     File(ReadFileArgs),
     /// Read one indexed data record by its identity through a schema
-    Data(ReadDataArgs),
+    Data(Box<ReadDataArgs>),
 }
 
 #[derive(Args)]

@@ -229,7 +229,10 @@ impl Emission<'_> {
             }
             _ => out.line("pub use compile::{load, load_anchored};"),
         }
-        out.line("pub use processors::{DECLARATIONS, Item, reader};");
+        out.line(
+            "pub use kdlith_engine::{ResolutionCall, SharedResolver, Unresolvable, ValueResolver};",
+        );
+        out.line("pub use processors::{DECLARATIONS, Item, reader, reader_with_resolver};");
         rust_file(&out.finish())
     }
 
@@ -758,9 +761,11 @@ impl Emission<'_> {
         }
         out.blank();
         out.line("use kdlith_diagnostic::DiagnosticRecord;");
+        out.line("use kdlith_engine::{");
         out.line(
-            "use kdlith_engine::{Declarations, Definition, DefinitionKind, Handler, TypedReader, item_type};",
+            "    Declarations, Definition, DefinitionKind, Handler, SharedResolver, TypedReader, item_type,",
         );
+        out.line("};");
         out.blank();
         out.use_list("crate::types", &sorted);
         out.line("use crate::{bindings, contexts, types};");
@@ -803,18 +808,28 @@ impl Emission<'_> {
         out.line("        .slots(contexts::SLOTS)");
         out.line("        .handlers(HANDLERS);");
         out.blank();
-        match self.kind {
-            DefinitionKind::Dialect => {
-                out.line("/// A reader of definitions written in the compiled dialect `dialect`.");
-                out.line("pub fn reader(dialect: &Definition) -> Result<TypedReader<'_, Item>, Vec<DiagnosticRecord>> {");
-                out.line("    TypedReader::new(dialect, &DECLARATIONS)");
-            }
-            _ => {
-                out.line("/// A reader of documents written under the compiled schema `schema`.");
-                out.line("pub fn reader(schema: &Definition) -> Result<TypedReader<'_, Item>, Vec<DiagnosticRecord>> {");
-                out.line("    TypedReader::new(schema, &DECLARATIONS)");
-            }
-        }
+        let (param, reads) = match self.kind {
+            DefinitionKind::Dialect => ("dialect", "definitions written in the compiled dialect"),
+            _ => ("schema", "documents written under the compiled schema"),
+        };
+        out.line(&format!("/// A reader of {reads} `{param}`."));
+        out.line(&format!(
+            "pub fn reader({param}: &Definition) -> Result<TypedReader<'_, Item>, Vec<DiagnosticRecord>> {{"
+        ));
+        out.line(&format!("    TypedReader::new({param}, &DECLARATIONS)"));
+        out.line("}");
+        out.blank();
+        out.line(&format!("/// A reader of {reads} `{param}`"));
+        out.line("/// whose computed defaults resolve through the consuming program's");
+        out.line("/// value resolver `resolver`, which receives the declared descriptors");
+        out.line("/// as data.");
+        out.line("pub fn reader_with_resolver(");
+        out.line(&format!("    {param}: &Definition,"));
+        out.line("    resolver: SharedResolver,");
+        out.line(") -> Result<TypedReader<'_, Item>, Vec<DiagnosticRecord>> {");
+        out.line(&format!(
+            "    reader({param}).map(|typed| typed.with_resolver(resolver))"
+        ));
         out.line("}");
         Ok(rust_file(&out.finish()))
     }

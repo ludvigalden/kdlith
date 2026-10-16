@@ -1,0 +1,2 @@
+zone "north"
+zone "south" replicas=5

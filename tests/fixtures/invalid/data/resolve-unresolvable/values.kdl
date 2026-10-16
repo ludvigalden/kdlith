@@ -1,0 +1,3 @@
+// Holds no "vault" value: the service's absent secret token cannot
+// resolve.
+value "region" "eu-north"

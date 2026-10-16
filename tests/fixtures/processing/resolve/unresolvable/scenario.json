@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "An unresolvable reference fails loudly: the values file holds region but no replicas, so the zone's region resolves while its absent replicas is declined with KDLITH-BND009 naming the field, the node, and the file; the node fails, no record is yielded, the missing-required code is not reported a second time, and the run exits 1. Both streams are pinned byte for byte",
+  "args": [
+    "vet", "data",
+    "--schema", "{fx-suite}/processing/resolve/schema.kdl",
+    "--resolve-from", "values.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": [
+      "error[KDLITH-BND009]: zone.replicas of zone could not be resolved: values.kdl holds no value \"replicas\""
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

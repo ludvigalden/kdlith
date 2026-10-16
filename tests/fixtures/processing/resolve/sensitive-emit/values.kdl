@@ -1,0 +1,5 @@
+// The values the --resolve-from scenarios resolve, one `value` node per
+// key: the computed default's one dependency, then the value.
+value "region" "eu-north"
+value "replicas" 3
+value "vault" "s3cr3t-token-A"

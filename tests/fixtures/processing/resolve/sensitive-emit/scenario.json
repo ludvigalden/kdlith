@@ -1,0 +1,30 @@
+{
+  "binary": "kdlith",
+  "description": "The redaction twin of resolve/redaction-split: under an explicit --sensitive emit the resolved secret is written as the file holds it, proving the redacted value was resolved rather than absent; non-secret values are unchanged. Pinned byte for byte; the declared provider command, which would create provider-executed, is never run",
+  "args": [
+    "export",
+    "--schema",
+    "{fx-suite}/processing/resolve/schema.kdl",
+    "--resolve-from",
+    "values.kdl",
+    "--sensitive",
+    "emit",
+    "--emit",
+    "roots",
+    "--format",
+    "ndjson",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"name\":\"token\",\"value\":{\"kind\":\"string\",\"value\":\"s3cr3t-token-A\"}",
+      "{\"name\":\"region\",\"value\":{\"kind\":\"string\",\"value\":\"eu-north\"}"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden",
+    "absent": [
+      "provider-executed"
+    ]
+  }
+}

@@ -1,0 +1,4 @@
+// Value set B: only region differs from A.
+value "region" "us-east"
+value "replicas" 3
+value "vault" "s3cr3t-token-A"
