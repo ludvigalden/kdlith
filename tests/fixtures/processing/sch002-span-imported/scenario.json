@@ -1,0 +1,9 @@
+{
+  "binary": "kdlith",
+  "description": "Pinned property: a duplicate type across an import is reported in the document that wrote each declaration; the importing document's second declaration at main.kdl line 4, column 9, with the imported document's earlier one as the note",
+  "args": ["vet", "schema", "main.kdl"],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": ["KDLITH-SCH002", "  --> main.kdl:4:9", "first declared here (part.kdl)"]
+  }
+}

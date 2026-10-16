@@ -1,0 +1,9 @@
+{
+  "binary": "kdlith",
+  "description": "Pinned property: a compile diagnostic for a construct in an importing schema is reported in the document that wrote it; the resolution node of the imported-shape negative is at schema.kdl line 6, column 5, after the imported document's constructs",
+  "args": ["vet", "schema", "{fx-suite}/invalid/schemas/resolver-not-installed-imported-shape/schema.kdl"],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": ["KDLITH-DLC006", "resolver-not-installed-imported-shape/schema.kdl:6:5"]
+  }
+}

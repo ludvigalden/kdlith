@@ -111,7 +111,7 @@ fn gather(
     anchors: &[(String, PathBuf)],
 ) -> Result<DefinitionInput, Vec<DiagnosticRecord>> {
     let typed = reader(dialect)?.with_anchors(anchors);
-    let mut input = DefinitionInput::default();
+    let mut input = Gathering::default();
     let mut records: Vec<DiagnosticRecord> = Vec::new();
     let mut sink = |item: TypedItem<Item>| take(item, &mut input, &mut records);
     let read = match scope {
@@ -135,14 +135,25 @@ fn gather(
         records.push(broken_contract(&error.to_string()));
         return Err(records);
     }
-    Ok(input)
+    Ok(input.definition)
+}
+
+/// The compiler input being gathered, with the documents still open: an
+/// imported document's items interrupt its importer's, which resume once
+/// the imported document completes.
+#[derive(Default)]
+struct Gathering {
+    definition: DefinitionInput,
+    open: Vec<usize>,
+    position: usize,
 }
 
 /// One item of the stream, into compiler input.
-fn take(item: TypedItem<Item>, input: &mut DefinitionInput, records: &mut Vec<DiagnosticRecord>) {
+fn take(item: TypedItem<Item>, input: &mut Gathering, records: &mut Vec<DiagnosticRecord>) {
     match item {
         TypedItem::Document { path, text, .. } => {
-            input.documents.push(DocumentInput {
+            input.open.push(input.definition.documents.len());
+            input.definition.documents.push(DocumentInput {
                 path,
                 text,
                 constructs: Vec::new(),
@@ -217,8 +228,13 @@ fn take(item: TypedItem<Item>, input: &mut DefinitionInput, records: &mut Vec<Di
             );
         }
         TypedItem::Diagnostic(record) => records.push(*record),
-        // A scope's completion carries no construct of its own.
-        TypedItem::ScopeComplete(_) => {}
+        // A document's completion closes it; a node scope's carries
+        // nothing.
+        TypedItem::ScopeComplete(completion) => {
+            if completion.scope.is_none() {
+                input.open.pop();
+            }
+        }
         // A definition vocabulary declares no contribution nodes; a
         // reader that yields one here has broken its contract.
         TypedItem::Contribution(_) => {
@@ -234,22 +250,25 @@ fn take(item: TypedItem<Item>, input: &mut DefinitionInput, records: &mut Vec<Di
     }
 }
 
-/// Append one located construct to the document being read.
+/// Append one located construct to the innermost open document.
 fn push(
-    input: &mut DefinitionInput,
+    input: &mut Gathering,
     records: &mut Vec<DiagnosticRecord>,
     construct: Option<Construct>,
     span: ByteSpan,
 ) {
     let Some(construct) = construct else { return };
-    let Some(document) = input.documents.last_mut() else {
+    let open = input.open.last().copied();
+    let Some(document) = open.and_then(|doc| input.definition.documents.get_mut(doc)) else {
         records.push(broken_contract("a construct arrived before its document"));
         return;
     };
     document.constructs.push(Located {
         item: construct,
         span,
+        position: input.position,
     });
+    input.position += 1;
 }
 
 /// The record for a reader contract this loader cannot proceed past.

@@ -416,11 +416,15 @@ Loading a definition is reading it: `vet` and `inspect` both hand their
 entry documents to the reference processor's typed reader, and the
 engine compiles what the reader gives it — one construct per
 declaration, already validated by binding, with the span it was written
-at. The reader binds dialect documents against the canonical dialect
-(the definition language every dialect is written in) and schema
-documents against their governing dialect, so a construct the governing
-dialect does not admit is rejected with the binding code any processor
-binding it reports.
+at. Each construct stays with the document that wrote it, so a compile
+diagnostic names that document — imported or importing — while the
+compiler still takes constructs in reading order, an imported
+document's between its import and the importer's next construct. The
+reader binds dialect documents against the canonical dialect (the
+definition language every dialect is written in) and schema documents
+against their governing dialect, so a construct the governing dialect
+does not admit is rejected with the binding code any processor binding
+it reports.
 
 One cycle cannot close: a reader needs a compiled dialect before it can
 read one, so the canonical dialect's own compilation cannot flow through

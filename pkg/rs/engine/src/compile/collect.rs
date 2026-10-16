@@ -14,9 +14,9 @@ use crate::compile::Cx;
 use crate::compile::input::{
     ChildRuleInput, ConstraintInput, Construct, DefaultInput, DefinitionInput, DependentInput,
     DiscoveryInput, DocumentRuleInput, EffectGroupInput, EffectInput, FieldBindingInput,
-    FieldInput, ImportInput, MatchRuleInput, MemberInput, NodeInput, ProfileInput, ProviderInput,
-    ReferenceInput, ResolutionInput, SequenceInput, SlotInput, SourceContextInput, SourceInput,
-    TypeInput,
+    FieldInput, ImportInput, Located, MatchRuleInput, MemberInput, NodeInput, ProfileInput,
+    ProviderInput, ReferenceInput, ResolutionInput, SequenceInput, SlotInput, SourceContextInput,
+    SourceInput, TypeInput,
 };
 use crate::compile::types::{declare, field_name, format_rule, validator_use};
 use crate::decode::found;
@@ -41,36 +41,52 @@ use crate::types::{
 /// Read every construct of every document: the grammar-affecting
 /// declarations first (profiles, discovery grammars, reference policies),
 /// so import expressions validate against the full grammar set, then
-/// everything else in stream order.
+/// everything else in stream order. Each construct is sited in the
+/// document that holds it.
 pub(crate) fn all(cx: &mut Cx<'_>, input: &DefinitionInput) {
-    for (doc, document) in input.documents.iter().enumerate() {
-        for located in &document.constructs {
-            let site = Site::new(doc, located.span);
-            match &located.item {
-                Construct::Profile(input) => profile(cx, site, input),
-                Construct::Discovery(input) => discovery_decl(cx, site, input),
-                Construct::Reference(input) => reference(cx, site, input),
-                _ => continue,
-            }
+    let stream = stream(input);
+    for (site, located) in &stream {
+        let site = *site;
+        match &located.item {
+            Construct::Profile(input) => profile(cx, site, input),
+            Construct::Discovery(input) => discovery_decl(cx, site, input),
+            Construct::Reference(input) => reference(cx, site, input),
+            _ => continue,
         }
     }
-    for (doc, document) in input.documents.iter().enumerate() {
-        for located in &document.constructs {
-            let site = Site::new(doc, located.span);
-            match &located.item {
-                Construct::Type(ty) => type_decl(cx, site, ty),
-                Construct::Node(input) => node(cx, site, input),
-                Construct::Slot(input) => slot(cx, site, input),
-                Construct::Rule(input) => rule(cx, site, input),
-                Construct::Import(input) => import(cx, site, input),
-                Construct::Resolution(input) => resolution(cx, site, input),
-                Construct::Provider(input) => provider(cx, site, input),
-                Construct::SourceContext(input) => source_context(cx, site, input),
-                // Collected by the grammar-affecting first pass above.
-                Construct::Profile(_) | Construct::Discovery(_) | Construct::Reference(_) => {}
-            }
+    for (site, located) in &stream {
+        let site = *site;
+        match &located.item {
+            Construct::Type(ty) => type_decl(cx, site, ty),
+            Construct::Node(input) => node(cx, site, input),
+            Construct::Slot(input) => slot(cx, site, input),
+            Construct::Rule(input) => rule(cx, site, input),
+            Construct::Import(input) => import(cx, site, input),
+            Construct::Resolution(input) => resolution(cx, site, input),
+            Construct::Provider(input) => provider(cx, site, input),
+            Construct::SourceContext(input) => source_context(cx, site, input),
+            // Collected by the grammar-affecting first pass above.
+            Construct::Profile(_) | Construct::Discovery(_) | Construct::Reference(_) => {}
         }
     }
+}
+
+/// Every construct with its site, in stream order. The sort is stable,
+/// so constructs sharing a position keep document order.
+fn stream(input: &DefinitionInput) -> Vec<(Site, &Located<Construct>)> {
+    let mut stream: Vec<(Site, &Located<Construct>)> = input
+        .documents
+        .iter()
+        .enumerate()
+        .flat_map(|(doc, document)| {
+            document
+                .constructs
+                .iter()
+                .map(move |located| (Site::new(doc, located.span), located))
+        })
+        .collect();
+    stream.sort_by_key(|(_, located)| located.position);
+    stream
 }
 
 fn type_decl(cx: &mut Cx<'_>, site: Site, ty: &TypeInput) {

@@ -1,0 +1,7 @@
+schema demo version="1" {
+    import "part.kdl"
+    node root role=container {
+        children extra
+    }
+    resolution resolver=bogus
+}

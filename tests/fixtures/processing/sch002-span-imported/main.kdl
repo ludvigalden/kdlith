@@ -1,0 +1,11 @@
+schema demo version="1" {
+    import "part.kdl"
+    types {
+        object Extra {
+            field id String
+        }
+    }
+    node root role=container {
+        children extra
+    }
+}

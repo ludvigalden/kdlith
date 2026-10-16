@@ -1,0 +1,8 @@
+{
+  "binary": "kdlith",
+  "description": "A schema importing a second document and naming a resolver no processor installs fails closed as KDLITH-DLC006; the diagnostic names the importing schema, not the imported document",
+  "args": ["vet", "schema", "schema.kdl"],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

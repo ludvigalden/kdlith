@@ -20,11 +20,15 @@ pub struct DocumentInput {
     pub constructs: Vec<Located<Construct>>,
 }
 
-/// One construct with the span of the node that declared it.
+/// One construct with the span of the node that declared it and its
+/// position in the reading: an imported document's constructs stream
+/// between the import and the importer's next construct, and the
+/// compiler takes constructs in that order whichever document holds them.
 #[derive(Clone, Debug)]
 pub struct Located<T> {
     pub item: T,
     pub span: ByteSpan,
+    pub position: usize,
 }
 
 /// One declaration or request a definition document makes.
