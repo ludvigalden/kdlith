@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "Layered replace is independent of document order: the base record written first still loses to the user record, giving the same winning value and layers as processing/resolution/replace",
+  "args": [
+    "read",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/resolution/replace.kdl",
+    "data.kdl",
+    "mode"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

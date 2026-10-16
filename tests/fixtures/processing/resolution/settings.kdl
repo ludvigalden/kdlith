@@ -1,0 +1,31 @@
+// The declarations every resolution scenario shares: an option
+// declaration (the targets contributions name) and a setting
+// contribution whose target is a reference to an option, whose layer
+// is bound from the `layer` property, and whose optional `follows`
+// field references another option (the missing-target arm reads it).
+// Each policy schema beside this file imports it and declares one
+// resolution policy naming the shipped `layered` resolver.
+schema settings version="1" {
+    types {
+        object Option {
+            field name String
+        }
+        object Setting {
+            field target "ref<Option>"
+            field value String
+            field note "optional<String>"
+            field follows "optional<ref<Option>>"
+            field layer "optional<String>"
+        }
+    }
+    node option role=declaration type=Option {
+        field name arg=0
+    }
+    node setting role=contribution type=Setting {
+        field target arg=0
+        field value arg=1
+        field note property=note
+        field follows property=follows
+        field layer property=layer
+    }
+}

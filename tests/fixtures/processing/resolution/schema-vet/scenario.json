@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "vet schema loads a schema whose policy names the shipped layered resolver under the same extensions the data verbs install, so it passes complete checking; the summary line is pinned byte for byte",
+  "args": [
+    "vet",
+    "schema",
+    "{fx-suite}/processing/resolution/replace.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

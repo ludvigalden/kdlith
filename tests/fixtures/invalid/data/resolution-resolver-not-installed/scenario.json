@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "A data verb against a schema whose policy names a resolver no processor installs fails closed at the schema load as KDLITH-DLC006; only the shipped layered resolver is installed",
+  "args": [
+    "read",
+    "data",
+    "--schema",
+    "{fx-suite}/invalid/data/resolution-resolver-not-installed/schema.kdl",
+    "data.kdl",
+    "mode"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

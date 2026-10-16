@@ -330,9 +330,9 @@ pub const CODES: &[CodeDefinition] = &[
         label: "extension-not-installed",
         severity: Severity::Error,
         exit_class: 1,
-        trigger: "a definition names a validator or context handler the processor does not install",
+        trigger: "a definition names a validator, context handler, or contribution resolver the processor does not install, or contribution records are routed to a resolver the schema's policy does not name",
         message_template: "<kind> <name> is not installed",
-        correction: "Install the validator or handler, or stop referencing it",
+        correction: "Install the validator, handler, or resolver, or stop referencing it",
         retired: false,
     },
     CodeDefinition {
@@ -363,6 +363,16 @@ pub const CODES: &[CodeDefinition] = &[
         trigger: "a literal in a dialect definition (a fallback, a documented default, or a set value) does not decode as its declared type",
         message_template: "<owner>: literal <literal> does not decode as <type>",
         correction: "Write a literal of the declared type, or change the type",
+        retired: false,
+    },
+    CodeDefinition {
+        code: "KDLITH-DLC010",
+        label: "resolution-failed",
+        severity: Severity::Error,
+        exit_class: 1,
+        trigger: "the registered contribution resolver refuses the records a reading preserved under the schema's declared policy: a target contributed twice in one layer under duplicates reject, a referenced target no record contributes under missing reject, or a record in a layer the policy does not declare",
+        message_template: "contribution resolution failed: <reason>",
+        correction: "Contribute each target once per layer, contribute every referenced target, and use only declared layers; or relax the policy",
         retired: false,
     },
     // SCH

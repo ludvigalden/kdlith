@@ -221,6 +221,22 @@ resolved values' place in the cache identity: an unchanged value set
 hits, a changed one misses and re-binds, and a document for which a
 secret was resolved is never cached.
 
+`processing/resolution/` holds the contribution-resolution scenarios.
+`settings.kdl` declares an option declaration and a setting contribution
+whose target is a `ref<Option>`, whose layer is bound from the `layer`
+property, and whose `follows` field references another option; each
+policy schema beside it (`replace.kdl`, `union.kdl`, `last-wins.kdl`,
+`missing-allow.kdl`, `no-layers.kdl`) imports it and declares one
+resolution policy naming the shipped `layered` resolver. Each arm
+scenario runs `read data` on its own data document and pins the target's
+`resolution` item byte for byte; `order` and `order-shuffled` run `vet
+data` over the same contributions in different orders and pin the whole
+stream, whose resolution items follow in sorted target order.
+`schema-vet`, `schema-list-types`, and `schema-inspect` pin that the
+schema verbs load a schema naming `layered`. The `invalid/data/resolution-*`
+negatives pin the resolver's refusals (`KDLITH-DLC010`) and a policy
+naming a resolver no processor installs (`KDLITH-DLC006`).
+
 `schemas/vet/import-repeat-coalesce/` and
 `schemas/vet/import-repeat-instantiate/` pin the two non-default
 repeated-import policies on the schema path;

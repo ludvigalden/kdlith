@@ -1,0 +1,3 @@
+option mode
+option font
+setting mode dark follows=font layer=user

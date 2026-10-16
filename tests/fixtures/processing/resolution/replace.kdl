@@ -1,0 +1,8 @@
+// Two declared layers, user over base, under the default arms:
+// replace selection, reject duplicates, reject missing targets.
+schema settings version="1" {
+    import "settings.kdl"
+    resolution resolver=layered {
+        layers user base
+    }
+}

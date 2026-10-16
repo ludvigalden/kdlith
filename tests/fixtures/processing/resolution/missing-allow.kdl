@@ -1,0 +1,8 @@
+// Two declared layers, user over base; a referenced target no record
+// contributes resolves to nothing instead of failing the reading.
+schema settings version="1" {
+    import "settings.kdl"
+    resolution resolver=layered missing=allow {
+        layers user base
+    }
+}

@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "The ordering witness with declarations and contributions shuffled: the resolution items still follow in sorted target order (font, mode, size) with the same winning values and layers as processing/resolution/order; only reading positions differ",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/resolution/replace.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

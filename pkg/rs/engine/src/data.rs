@@ -9,8 +9,8 @@ use std::rc::Rc;
 use kdlith_diagnostic::DiagnosticRecord;
 use kdlith_model::{ImportRequest, Item, SourceDocument, SourceId};
 use kdlith_runtime::{
-    Admission, Context, Derivation, Handlers, InvocationId, InvocationIdentity, Invocations,
-    SlotId, stable_hash, stable_hash_step,
+    Admission, Context, ContributionRecord, Derivation, Handlers, InvocationId, InvocationIdentity,
+    Invocations, SlotId, stable_hash, stable_hash_step,
 };
 
 use crate::anchors::{self, Base, Target};
@@ -20,6 +20,7 @@ use crate::diag::{UNRESOLVED_DIALECT, UNRESOLVED_SCHEMA, record};
 use crate::discovery;
 use crate::documents::{import_failure, read_text};
 use crate::names::Sym;
+use crate::resolution::{ResolutionError, SharedContributionResolver, resolve};
 use crate::typed::ReadError;
 use crate::types::OutputPolicy;
 use crate::value_resolver::SharedResolver;
@@ -120,15 +121,15 @@ pub struct DataReader<'d> {
     /// into every invocation: an absent field whose declared fallback is
     /// computed resolves through it.
     resolver: Option<SharedResolver>,
+    /// The contribution resolver the processor registered: the reading
+    /// routes every preserved contribution record to it under the
+    /// schema's declared policy.
+    contributions: Option<SharedContributionResolver>,
 }
 
 impl<'d> DataReader<'d> {
     pub fn new(def: &'d Definition) -> Self {
-        Self {
-            def,
-            handlers: Handlers::new(),
-            resolver: None,
-        }
+        Self::with_handlers(def, Handlers::new())
     }
 
     /// A reader whose context handlers are the ones the processor
@@ -140,6 +141,7 @@ impl<'d> DataReader<'d> {
             def,
             handlers,
             resolver: None,
+            contributions: None,
         }
     }
 
@@ -149,6 +151,17 @@ impl<'d> DataReader<'d> {
     #[must_use]
     pub fn with_resolver(mut self, resolver: SharedResolver) -> Self {
         self.resolver = Some(resolver);
+        self
+    }
+
+    /// The reader routing the reading's contribution records to
+    /// `resolver` once its documents are read, when the schema declares
+    /// a resolution policy. Each target it settles follows the
+    /// documents' items as a resolution item; a refusal fails the
+    /// reading (`KDLITH-DLC010`).
+    #[must_use]
+    pub fn with_contribution_resolver(mut self, resolver: SharedContributionResolver) -> Self {
+        self.contributions = Some(resolver);
         self
     }
 
@@ -216,6 +229,21 @@ impl<'d> DataReader<'d> {
             return Ok((true, Vec::new()));
         }
         let anchors = anchors::anchor_map(&options.anchors, &def.names);
+        // A local reading leaves imports unfollowed, so its records are
+        // never the whole picture a resolver must see.
+        let resolver = self
+            .contributions
+            .as_ref()
+            .filter(|_| follow && def.resolution.is_some());
+        let mut records: Vec<ContributionRecord> = Vec::new();
+        let mut tap = |item: Item| {
+            if resolver.is_some()
+                && let Item::Contribution(contribution) = &item
+            {
+                records.push(ContributionRecord::from_bound(contribution));
+            }
+            sink(item);
+        };
         let mut reading = Reading {
             reader: self,
             selection: ProfileSelection::Unprofiled,
@@ -227,7 +255,7 @@ impl<'d> DataReader<'d> {
             result_of: HashMap::new(),
             handlers: self.handlers.clone(),
             output_policy: options.output_policy,
-            sink,
+            sink: &mut tap,
             failed: false,
             broken: None,
             follow,
@@ -256,7 +284,21 @@ impl<'d> DataReader<'d> {
                 return Err(error);
             }
         }
-        Ok((reading.failed, reading.results))
+        let (mut failed, results) = (reading.failed, reading.results);
+        // A failed reading's records are incomplete; resolving them
+        // would report on a partial picture.
+        if let Some(resolver) = resolver.filter(|_| !failed && !records.is_empty()) {
+            match resolve(def, resolver.as_ref(), &records) {
+                Ok(resolved) => resolved
+                    .into_iter()
+                    .for_each(|resolved| sink(Item::Resolution(resolved))),
+                Err(error) => {
+                    failed = true;
+                    sink(Item::Diagnostic(Box::new(resolution_failure(&error))));
+                }
+            }
+        }
+        Ok((failed, results))
     }
 
     /// The fingerprint of the definition every invocation binds under.
@@ -582,6 +624,22 @@ impl Reading<'_, '_> {
     /// already its caller's projection.
     fn all_slots(&self) -> Vec<SlotId> {
         self.reader.def.plan.context.layout.slots().collect()
+    }
+}
+
+/// The diagnostic a resolution run that could not complete reports.
+fn resolution_failure(error: &ResolutionError) -> DiagnosticRecord {
+    match error {
+        ResolutionError::Failed(reason) => record(error.code(), &[reason], ORIGIN),
+        ResolutionError::ResolverMismatch { declared, .. } => {
+            record(error.code(), &["resolver", declared], ORIGIN)
+        }
+        _ => record(
+            error.code(),
+            &["resolution policy", "of the schema"],
+            ORIGIN,
+        )
+        .with_message(error.message()),
     }
 }
 

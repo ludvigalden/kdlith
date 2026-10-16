@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "Layered replace: two records target one option in the declared layers user over base, and the user record's value replaces the base record's; the resolution item names only the winning layer",
+  "args": [
+    "read",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/resolution/replace.kdl",
+    "data.kdl",
+    "mode"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

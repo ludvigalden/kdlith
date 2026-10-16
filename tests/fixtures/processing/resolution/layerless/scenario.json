@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "A contribution without a layer ranks below every declared layer: written after the base record, it still never displaces it, and the resolution item names the base layer",
+  "args": [
+    "read",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/resolution/replace.kdl",
+    "data.kdl",
+    "mode"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

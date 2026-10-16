@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "Missing allow: the record's follows field references the declared option font, which no record contributes; the reading succeeds and the target resolves with the reference kept as a link",
+  "args": [
+    "read",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/resolution/missing-allow.kdl",
+    "data.kdl",
+    "mode"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

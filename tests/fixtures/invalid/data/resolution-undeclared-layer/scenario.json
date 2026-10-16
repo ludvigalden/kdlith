@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "A contribution in a layer the policy's layers do not list is refused rather than ranked: KDLITH-DLC010 names the undeclared layer",
+  "args": [
+    "read",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/resolution/replace.kdl",
+    "data.kdl",
+    "mode"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "Duplicates under reject: one target contributed twice in the user layer is refused by the shipped layered resolver, failing the reading as KDLITH-DLC010 (a resolver refusal, distinct from DLC006's not-installed resolver)",
+  "args": [
+    "read",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/resolution/replace.kdl",
+    "data.kdl",
+    "mode"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

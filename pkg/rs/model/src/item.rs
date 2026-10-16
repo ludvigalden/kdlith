@@ -83,6 +83,28 @@ pub struct BoundContribution {
     pub members: Vec<Field>,
 }
 
+/// One contribution target as the registered resolver settled it: the
+/// target, its resolved value, and the layers whose records reached the
+/// value, highest precedence first. Derived from preserved records after
+/// a reading; never bound from a node of its own.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[non_exhaustive]
+pub struct ResolvedContribution {
+    pub target: Reference,
+    pub value: Value,
+    pub layers: Vec<String>,
+}
+
+impl ResolvedContribution {
+    pub fn new(target: Reference, value: Value, layers: Vec<String>) -> Self {
+        Self {
+            target,
+            value,
+            layers,
+        }
+    }
+}
+
 /// A request to invoke another source: the original expression, any
 /// alias it binds, the caller's slots it projects, its repeat policy, and
 /// the import site. Scheduling is not done here.
@@ -332,6 +354,9 @@ pub enum Item {
     Expansion(ExpansionRequest),
     Diagnostic(Box<DiagnosticRecord>),
     ScopeComplete(ScopeCompletion),
+    /// A contribution target the registered resolver settled, after the
+    /// reading's documents.
+    Resolution(ResolvedContribution),
 }
 
 /// One item of a schema-bound session: the role vocabulary a binder

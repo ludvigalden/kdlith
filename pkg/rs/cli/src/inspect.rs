@@ -5,13 +5,13 @@
 use std::path::{Path, PathBuf};
 
 use kdlith_diagnostic::{DiagnosticRecord, ExitStatus};
-use kdlith_engine::{Extensions, TypedItem};
+use kdlith_engine::TypedItem;
 use kdlith_superproc::{Item, reader};
 
 use crate::InspectCommand;
 use crate::ViewArg;
 use crate::report::report_all;
-use crate::vet::governing_dialect;
+use crate::vet::{definition_extensions, governing_dialect};
 
 /// Run a parsed `inspect` subcommand. Every target shares the reading
 /// surface; the target name records what kind of document the entries
@@ -69,7 +69,7 @@ pub fn inspect(
     entries: &[&Path],
     anchors: &[(String, PathBuf)],
 ) -> ExitStatus {
-    let extensions = Extensions::standard();
+    let extensions = definition_extensions();
     let compiled = match governing_dialect(dialect, &extensions) {
         Ok(compiled) => compiled,
         Err(records) => return report_all(&records),

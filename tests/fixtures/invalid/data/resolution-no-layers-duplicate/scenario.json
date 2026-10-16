@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "A policy without layers ranks every record equally, so two records for one target in different written layers are duplicates the reject default refuses as KDLITH-DLC010",
+  "args": [
+    "read",
+    "data",
+    "--schema",
+    "{fx-suite}/invalid/data/resolution-no-layers-duplicate/schema.kdl",
+    "data.kdl",
+    "mode"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

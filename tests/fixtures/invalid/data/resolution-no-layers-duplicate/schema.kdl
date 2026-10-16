@@ -1,0 +1,7 @@
+// No declared layers under the reject default: every record shares one
+// rank, so two records for one target are duplicates whatever layer
+// each one names.
+schema settings version="1" {
+    import "../../../processing/resolution/settings.kdl"
+    resolution resolver=layered
+}

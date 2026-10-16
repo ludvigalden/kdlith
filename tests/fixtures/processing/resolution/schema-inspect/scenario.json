@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "inspect schema reads a schema whose policy names the shipped layered resolver: the resolution declaration item carries the resolver, its layers in precedence order, and the declared selection, duplicates, and missing arms",
+  "args": [
+    "inspect",
+    "schema",
+    "{fx-suite}/processing/resolution/last-wins.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":2},\"identity\":{\"domain\":\"ResolutionPolicyDef\",\"name\":[]},\"type\":\"ResolutionPolicyDef\",\"value\":{\"resolver\":\"layered\",\"layers\":[\"user\",\"base\"],\"selection\":\"replace\",\"duplicates\":\"last-wins\",\"missing\":\"reject\"}}}\n"
+    ]
+  }
+}

@@ -5,8 +5,11 @@
 use std::path::{Path, PathBuf};
 
 use kdlith_diagnostic::{DiagnosticRecord, ExitStatus};
+use std::sync::Arc;
+
 use kdlith_engine::{
-    CheckScope, DataReader, Definition, Extensions, Handlers, ReadOptions, SharedResolver,
+    CheckScope, DataReader, Definition, Extensions, Handlers, LAYERED, Layered, ReadOptions,
+    SharedResolver,
 };
 use kdlith_model::Item;
 use kdlith_superproc::{load_dialect, load_schema_anchored, seed};
@@ -92,7 +95,7 @@ pub fn vet(
     scope: CheckScope,
     anchors: &[(String, PathBuf)],
 ) -> ExitStatus {
-    let extensions = Extensions::standard();
+    let extensions = definition_extensions();
     let loaded = match target {
         VetTarget::Dialect => load_dialect(entries, &extensions, scope),
         VetTarget::Schema => match governing_dialect(dialect, &extensions) {
@@ -111,6 +114,14 @@ pub fn vet(
         }
         Err(records) => report_all(&records),
     }
+}
+
+/// The extensions a schema loads under on every verb that reads a
+/// definition: the standard set plus the shipped contribution resolver,
+/// so a schema naming `layered` loads alike on the schema and data
+/// verbs while any other resolver name still fails closed.
+pub(crate) fn definition_extensions() -> Extensions {
+    Extensions::standard().with_resolver(LAYERED)
 }
 
 fn summary_line(definition: &Definition) -> String {
@@ -225,10 +236,12 @@ impl DataOptions {
         handlers::registry(&self.handlers)
     }
 
-    /// The data reader over `definition` with the installed handlers and,
-    /// when one was loaded, the value resolver.
+    /// The data reader over `definition` with the installed handlers,
+    /// the shipped contribution resolver, and, when one was loaded, the
+    /// value resolver.
     pub(crate) fn reader<'d>(&self, definition: &'d Definition) -> DataReader<'d> {
-        let reader = DataReader::with_handlers(definition, self.registry());
+        let reader = DataReader::with_handlers(definition, self.registry())
+            .with_contribution_resolver(Arc::new(Layered));
         match &self.resolver {
             Some(resolver) => reader.with_resolver(resolver.clone()),
             None => reader,
@@ -236,9 +249,10 @@ impl DataOptions {
     }
 
     /// The extensions a definition loads under so the compile-time
-    /// installed-name check and the runtime registry admit one surface.
+    /// installed-name check and the runtime registry admit one surface:
+    /// the installed handlers and the shipped contribution resolver.
     pub(crate) fn extensions(&self) -> Extensions {
-        Extensions::standard().with_installed_handlers(&self.registry())
+        definition_extensions().with_installed_handlers(&self.registry())
     }
 
     /// The reader options: the named profile or profile set and the

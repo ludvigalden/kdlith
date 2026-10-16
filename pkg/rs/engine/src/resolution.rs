@@ -2,13 +2,19 @@
 //! and the routing surface that hands them to the registered resolver.
 //! The engine never resolves contributions itself.
 
-use kdlith_model::{BoundContribution, OriginId, Reference, Value};
+use std::sync::Arc;
+
+use kdlith_model::ResolvedContribution;
+use kdlith_runtime::{ContributionPolicy, ContributionRecord, ContributionResolver};
 
 use crate::definition::{Definition, ResolutionPolicyDecl};
 
-/// Why a resolution run could not proceed. Both failures are loud: an
+/// A registered contribution resolver, shared cheaply across readings.
+pub type SharedContributionResolver = Arc<dyn ContributionResolver>;
+
+/// Why a resolution run could not proceed. Every failure is loud: an
 /// uninstalled resolver is rejected at compile time already, and a
-/// resolver that fails reports its own reason.
+/// resolver that refuses its records reports its own reason.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum ResolutionError {
@@ -26,7 +32,7 @@ impl ResolutionError {
     pub fn code(&self) -> &'static str {
         match self {
             ResolutionError::NoPolicy | ResolutionError::ResolverMismatch { .. } => "KDLITH-DLC006",
-            ResolutionError::Failed(_) => "KDLITH-DLC006",
+            ResolutionError::Failed(_) => "KDLITH-DLC010",
         }
     }
 
@@ -40,60 +46,6 @@ impl ResolutionError {
             ResolutionError::Failed(reason) => reason.clone(),
         }
     }
-}
-
-/// One preserved contribution record, as the resolver receives it:
-/// target, value, layer, application scope, and source origin. Records
-/// stay unresolved — layer precedence and merge policy belong to the
-/// resolver, never to the engine.
-#[derive(Clone, Debug, PartialEq, Eq)]
-#[non_exhaustive]
-pub struct ContributionRecord {
-    pub target: Reference,
-    pub value: Value,
-    pub layer: Option<String>,
-    pub scope: Option<String>,
-    pub origin: OriginId,
-}
-
-impl ContributionRecord {
-    /// The record a bound contribution item preserves.
-    pub fn from_bound(contribution: &BoundContribution) -> Self {
-        Self {
-            target: contribution.target.clone(),
-            value: contribution.value.clone(),
-            layer: contribution.layer.clone(),
-            scope: contribution.scope.clone(),
-            origin: contribution.origin,
-        }
-    }
-}
-
-/// One resolved contribution, as a resolver reports it.
-#[derive(Clone, Debug, PartialEq, Eq)]
-#[non_exhaustive]
-pub struct ResolvedContribution {
-    pub target: Reference,
-    pub value: Value,
-    /// The layers that contributed, in the policy's precedence order.
-    pub layers: Vec<String>,
-}
-
-/// The configuration resolver a processor registers: the one place
-/// contribution resolution happens. The engine routes records and policy
-/// here; it never implements this trait itself.
-pub trait ContributionResolver {
-    /// The resolver's registered name; it must match the policy's.
-    fn name(&self) -> &str;
-
-    /// Resolve `records` under `policy`. The descriptors the policy
-    /// carries — layer precedence, selection, duplicate treatment,
-    /// missing-value requirement — are the resolver's contract.
-    fn resolve(
-        &self,
-        policy: &ResolutionPolicyDecl,
-        records: &[ContributionRecord],
-    ) -> Result<Vec<ResolvedContribution>, String>;
 }
 
 /// Route `records` to `resolver` under the definition's declared
@@ -117,6 +69,16 @@ pub fn resolve(
         });
     }
     resolver
-        .resolve(policy, records)
+        .resolve(&policy_of(policy), records)
         .map_err(ResolutionError::Failed)
+}
+
+/// The descriptors a resolver receives for a compiled policy.
+fn policy_of(policy: &ResolutionPolicyDecl) -> ContributionPolicy {
+    ContributionPolicy::new(
+        policy.layers.clone(),
+        policy.selection,
+        policy.duplicates,
+        policy.missing,
+    )
 }

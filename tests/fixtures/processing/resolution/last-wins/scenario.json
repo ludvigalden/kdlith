@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "Last-wins duplicates: a target contributed twice in the user layer keeps the later record, which still outranks the base layer's record",
+  "args": [
+    "read",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/resolution/last-wins.kdl",
+    "data.kdl",
+    "mode"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

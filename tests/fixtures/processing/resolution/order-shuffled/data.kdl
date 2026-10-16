@@ -1,0 +1,8 @@
+option size
+option mode
+option font
+setting font sans layer=base
+setting mode dark layer=user
+setting font serif layer=user
+setting size large layer=base
+setting mode light layer=base

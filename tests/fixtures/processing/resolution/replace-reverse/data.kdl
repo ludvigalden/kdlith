@@ -1,0 +1,3 @@
+option mode
+setting mode light layer=base
+setting mode dark layer=user

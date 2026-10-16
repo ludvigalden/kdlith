@@ -63,9 +63,13 @@ pub use export::{Emit, ExportOutcome, export, export_read, export_under};
 pub use extensions::{
     Extensions, PATH_STEM_SOURCE, TYPE_EXPRESSION_VALIDATOR, TYPE_EXPRESSION_VERSION,
 };
+pub use kdlith_model::ResolvedContribution;
 pub use kdlith_runtime::{
     CacheEntry, CacheScan, CleanOutcome, Derivation, EncodedEntry, EntryFault, WriteOutcome,
     cache_key, clean_state, scan_state, write_state,
+};
+pub use kdlith_runtime::{
+    ContributionPolicy, ContributionRecord, ContributionResolver, LAYERED, Layered,
 };
 pub use kdlith_runtime::{
     Delivery, FieldProvenance, HandlerCall, HandlerEffect, HandlerFn, Handlers, Provenance,
@@ -77,9 +81,7 @@ pub use list::{
 };
 pub use names::{Names, Sym};
 pub use plan::{ContextPlan, ContextRead, DeferredBinding, EffectStep, NodePlan, ProcessingPlan};
-pub use resolution::{
-    ContributionRecord, ContributionResolver, ResolutionError, ResolvedContribution, resolve,
-};
+pub use resolution::{ResolutionError, SharedContributionResolver, resolve};
 pub use snapshots::{
     ContextSnapshot, SNAPSHOT_MISMATCH, SnapshotError, SnapshotIndex, SnapshotIndexEntry,
     ValidationStatus as SnapshotValidation,

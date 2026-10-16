@@ -1,0 +1,7 @@
+// Two declared layers, user over base, merging value maps per target.
+schema settings version="1" {
+    import "settings.kdl"
+    resolution resolver=layered selection=union {
+        layers user base
+    }
+}

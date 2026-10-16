@@ -1,0 +1,8 @@
+// Two declared layers, user over base; a target repeated within one
+// layer keeps its later record.
+schema settings version="1" {
+    import "settings.kdl"
+    resolution resolver=layered duplicates=last-wins {
+        layers user base
+    }
+}

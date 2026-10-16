@@ -1,0 +1,13 @@
+{
+  "binary": "kdlith",
+  "description": "list types loads its schema under the same extensions as the data verbs: a policy naming a resolver no processor installs still fails closed as KDLITH-DLC006",
+  "args": [
+    "list",
+    "types",
+    "--schema",
+    "{fx-suite}/invalid/data/resolution-resolver-not-installed/schema.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

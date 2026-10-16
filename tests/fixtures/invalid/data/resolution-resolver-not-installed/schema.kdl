@@ -1,0 +1,26 @@
+// A contribution schema whose policy names a resolver no processor
+// installs: the data verb's schema load fails closed before any
+// document binds.
+schema settings version="1" {
+    types {
+        object Option {
+            field name String
+        }
+        object Setting {
+            field target "ref<Option>"
+            field value String
+            field layer "optional<String>"
+        }
+    }
+    node option role=declaration type=Option {
+        field name arg=0
+    }
+    node setting role=contribution type=Setting {
+        field target arg=0
+        field value arg=1
+        field layer property=layer
+    }
+    resolution resolver=std-layered {
+        layers user base
+    }
+}

@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "Union: one target's records merge from lowest rank to highest, so the user layer's value key overwrites the base layer's while the base-only note key survives; the resolution item lists both layers, highest first",
+  "args": [
+    "read",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/resolution/union.kdl",
+    "data.kdl",
+    "mode"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

@@ -9,7 +9,7 @@ use kdlith_diagnostic::ExitStatus;
 use kdlith_engine::{Definition, Extensions, index_items, list_nodes, list_profiles, list_types};
 
 use crate::report::report_all;
-use crate::vet::DataOptions;
+use crate::vet::{DataOptions, definition_extensions};
 use crate::{ListCommand, ListItemsArgs, ListSchemaArgs};
 
 /// Run a parsed `list` subcommand.
@@ -31,12 +31,12 @@ pub(crate) fn run(command: ListCommand) -> ExitStatus {
     }
 }
 
-/// The schema a declaration listing names, under the standard
+/// The schema a declaration listing names, under the definition
 /// extensions, the governing dialect, and the anchors it supplies.
 fn load_listed(args: &ListSchemaArgs) -> Result<Definition, ExitStatus> {
     let options =
         DataOptions::new(args.anchors.clone(), None, Vec::new()).with_dialect(args.dialect.clone());
-    load(&args.schema, &options, &Extensions::standard())
+    load(&args.schema, &options, &definition_extensions())
 }
 
 /// The schema loaded under the options' governing dialect with complete

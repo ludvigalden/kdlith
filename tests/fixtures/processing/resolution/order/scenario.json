@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "Deterministic ordering: three targets contributed in mixed order resolve after the documents, one resolution item per target in sorted target order (font, mode, size), each settled by the declared layer order; the whole stream is pinned byte for byte",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/resolution/replace.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

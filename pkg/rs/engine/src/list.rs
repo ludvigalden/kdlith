@@ -176,10 +176,13 @@ pub fn list_profiles(def: &Definition) -> Vec<ProfileEntry> {
 
 /// The lookup identity of a record item: the string value of its bound
 /// `id` field, the identity a data lookup finds the record by. Records
-/// carry no registered identity of their own.
+/// carry no registered identity of their own. A resolution item is
+/// found by its target as the contributions wrote it.
 pub fn record_identity(item: &Item) -> Option<&str> {
-    let Item::Record(record) = item else {
-        return None;
+    let record = match item {
+        Item::Record(record) => record,
+        Item::Resolution(resolved) => return Some(resolved.target.written.as_str()),
+        _ => return None,
     };
     record
         .fields

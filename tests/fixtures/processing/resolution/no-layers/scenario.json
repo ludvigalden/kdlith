@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "A policy without layers ranks every record equally: the written user layer grants no precedence, last-wins keeps the later base record, and the resolution item names the layer that record carries",
+  "args": [
+    "read",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/resolution/no-layers.kdl",
+    "data.kdl",
+    "mode"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

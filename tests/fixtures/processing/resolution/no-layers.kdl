@@ -1,0 +1,6 @@
+// No declared layers: every record shares one rank, so a written layer
+// grants no precedence and the later of two records for a target wins.
+schema settings version="1" {
+    import "settings.kdl"
+    resolution resolver=layered duplicates=last-wins
+}

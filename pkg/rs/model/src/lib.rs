@@ -4,14 +4,17 @@
 mod identity;
 mod item;
 mod origin;
+mod resolution;
 mod source;
 mod value;
 
 pub use identity::{Identity, NodeId, QualifiedName, Reference};
 pub use item::{
     BoundContribution, BoundDeclaration, BoundItem, BoundRecord, ExpansionRequest, ImportRequest,
-    Item, PendingBinding, Repeated, ScopeCompletion, SourceDocument, ValidationState,
+    Item, PendingBinding, Repeated, ResolvedContribution, ScopeCompletion, SourceDocument,
+    ValidationState,
 };
 pub use origin::{Derivation, Origin, OriginId, Trace};
+pub use resolution::{DuplicateTreatment, MissingRequirement, ResolutionSelection};
 pub use source::{DocumentRole, Location, Position, SourceDescriptor, SourceId, Span};
 pub use value::{Entry, Field, Value};
