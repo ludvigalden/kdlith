@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "gen schema fails closed when a declared type takes a name the generated crate spells unqualified (object Option beside an optional<String> field, which renders as Rust's Option): the schema itself vets green, generation exits 1 naming the type and the reason, and the scratch check proves nothing was written into the output directory",
+  "args": ["gen", "schema", "schema.kdl", "--crate", "shadow-proc", "--out", "out"],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": [
+      "kdlith: gen schema: the type `Option` of `schema.kdl` has no Rust spelling in a generated crate: it shadows a name the generated crate spells unqualified"
+    ],
+    "scratch-check": {
+      "plant": [{ "path": "planted-foreign.txt", "kind": "file" }]
+    }
+  }
+}

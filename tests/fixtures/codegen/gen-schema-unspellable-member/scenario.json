@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "gen schema fails closed when two members of one enum spell the same Rust variant (on and On both render as On): the schema itself vets green because the members are distinct strings, generation exits 1 naming the member, its enum, and the reason, and the scratch check proves nothing was written into the output directory",
+  "args": ["gen", "schema", "schema.kdl", "--crate", "modes-proc", "--out", "out"],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": [
+      "kdlith: gen schema: the member `On` of `Mode` has no Rust spelling in a generated crate: another one in the same declaration spells the same identifier"
+    ],
+    "scratch-check": {
+      "plant": [{ "path": "planted-foreign.txt", "kind": "file" }]
+    }
+  }
+}

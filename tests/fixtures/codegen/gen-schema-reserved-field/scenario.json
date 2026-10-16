@@ -1,0 +1,23 @@
+{
+  "binary": "kdlith",
+  "kind": "codegen-oracle",
+  "description": "gen schema spells field names that are Rust keywords as identifiers the generated crate compiles under: a committed schema whose object type has a field named gen (reserved in the 2024 edition) and one named type generates twice into scratch trees the harness requires byte-identical, and the generated crate compiles inside a scratch workspace materialized from this scenario's committed template",
+  "form": "schema",
+  "entrypoint": "inputs/jobs.kdl",
+  "crate": "jobs-proc",
+  "steps": [
+    { "generate": "ws/rs/jobs-proc" },
+    { "generate": "gen-again" },
+    { "determinism": ["ws/rs/jobs-proc", "gen-again"] },
+    {
+      "compile": {
+        "workspace": "ws",
+        "copy": {
+          "crates": ["diagnostic", "engine", "model", "parse", "runtime", "superproc"],
+          "kdl": true
+        },
+        "command": ["cargo", "build", "--offline", "--manifest-path", "ws/rs/jobs-proc/Cargo.toml"]
+      }
+    }
+  ]
+}

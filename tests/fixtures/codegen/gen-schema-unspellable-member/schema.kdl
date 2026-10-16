@@ -1,0 +1,14 @@
+schema modes version="1" {
+    types {
+        enum Mode {
+            member on
+            member On
+        }
+        object Entry {
+            field mode Mode
+        }
+    }
+    node entry role=record type=Entry {
+        field mode arg=0
+    }
+}

@@ -9,7 +9,7 @@ use kdlith_engine::{
 };
 
 use crate::Error;
-use crate::render::{include_path, normalize_path, pascal};
+use crate::render::{field_name, include_path, is_identifier, normalize_path, pascal};
 
 /// One contributing document and what it declares.
 pub(crate) struct Document<'d> {
@@ -221,6 +221,14 @@ impl<'d> Emission<'d> {
                                 ty,
                             });
                         }
+                        if UNQUALIFIED.contains(&ty.as_str()) {
+                            return Err(Error::UnspellableName {
+                                what: "node-local type",
+                                owner: node_name,
+                                name: ty,
+                                reason: SHADOWS,
+                            });
+                        }
                         (ty, node_name.clone(), true)
                     }
                 };
@@ -249,7 +257,7 @@ impl<'d> Emission<'d> {
             return Err(Error::NoItems);
         }
 
-        Ok(Self {
+        let emission = Self {
             names,
             crate_name: crate_name.to_owned(),
             kind: definition.kind,
@@ -257,7 +265,61 @@ impl<'d> Emission<'d> {
             version,
             documents,
             items,
-        })
+        };
+        emission.check_spellings()?;
+        Ok(emission)
+    }
+
+    /// Every name the crate spells as a Rust identifier must have one:
+    /// the compiler admits names Rust cannot spell, and a crate that
+    /// cannot compile must fail generation, not the consumer's build.
+    fn check_spellings(&self) -> Result<(), Error> {
+        let unspellable = |what, owner: &str, name: &str, reason| Error::UnspellableName {
+            what,
+            owner: owner.to_owned(),
+            name: name.to_owned(),
+            reason,
+        };
+        for doc in &self.documents {
+            if !is_identifier(&doc.module) {
+                return Err(unspellable(
+                    "module",
+                    &doc.path,
+                    &doc.module,
+                    "it is no Rust identifier",
+                ));
+            }
+            for decl in &doc.types {
+                let name = self.names.resolve(decl.name);
+                if UNQUALIFIED.contains(&name) {
+                    return Err(unspellable("type", &doc.file_name, name, SHADOWS));
+                }
+                match &decl.kind {
+                    TypeKind::Enum(enumeration) => {
+                        let members = enumeration.members.iter().map(|m| m.name.as_str());
+                        variants("member", name, members, pascal)?;
+                    }
+                    TypeKind::Union(union) => {
+                        let discriminators = union
+                            .variants
+                            .iter()
+                            .map(|variant| self.names.resolve(variant.discriminator));
+                        variants("variant", name, discriminators, pascal)?;
+                    }
+                    TypeKind::Object(object) => {
+                        let keys = object.fields.iter().map(|f| self.names.resolve(f.name));
+                        variants("field", name, keys, field_name)?;
+                    }
+                    _ => {}
+                }
+            }
+            for node in &doc.locals {
+                let name = self.names.resolve(node.name);
+                let keys = node.fields.iter().map(|f| self.names.resolve(f.name));
+                variants("field", name, keys, field_name)?;
+            }
+        }
+        Ok(())
     }
 
     /// The documents that declared types or typeless item nodes, in
@@ -313,4 +375,69 @@ pub(crate) fn kind_name(kind: &TypeKind) -> &'static str {
         TypeKind::Codec(_) => "codec",
         _ => "declared",
     }
+}
+
+/// The names a generated crate spells unqualified beside the declared
+/// types: the Rust prelude items its renderings use, `Self`, and the
+/// engine items its modules import. A declared or node-local type
+/// taking one would shadow it, so the crate would not compile.
+const UNQUALIFIED: [&str; 24] = [
+    "Declarations",
+    "Definition",
+    "DefinitionKind",
+    "DiagnosticRecord",
+    "Err",
+    "Handler",
+    "Item",
+    "LogicalType",
+    "NodeShape",
+    "None",
+    "Ok",
+    "Option",
+    "OrderedMap",
+    "Ref",
+    "Result",
+    "Self",
+    "Shaped",
+    "SharedContributionResolver",
+    "SharedResolver",
+    "SlotShape",
+    "Some",
+    "TypeShape",
+    "TypedReader",
+    "Vec",
+];
+
+const SHADOWS: &str = "it shadows a name the generated crate spells unqualified";
+
+/// Check that each of `owner`'s `what`s spells as a distinct Rust
+/// identifier under `spell`.
+fn variants<'n>(
+    what: &'static str,
+    owner: &str,
+    names: impl Iterator<Item = &'n str>,
+    spell: fn(&str) -> String,
+) -> Result<(), Error> {
+    let mut spelled: BTreeMap<String, &str> = BTreeMap::new();
+    for name in names {
+        let rust = spell(name);
+        let bare = rust.strip_prefix("r#").unwrap_or(&rust);
+        let raw_forbidden = matches!(bare, "Self" | "crate" | "self" | "super");
+        let reason = if !is_identifier(bare) || raw_forbidden {
+            Some("it is no Rust identifier")
+        } else if spelled.insert(rust.clone(), name).is_some() {
+            Some("another one in the same declaration spells the same identifier")
+        } else {
+            None
+        };
+        if let Some(reason) = reason {
+            return Err(Error::UnspellableName {
+                what,
+                owner: owner.to_owned(),
+                name: name.to_owned(),
+                reason,
+            });
+        }
+    }
+    Ok(())
 }

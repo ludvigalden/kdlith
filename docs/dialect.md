@@ -695,6 +695,21 @@ this dialect:
    from the defined generated-marker header. It is reviewed by hand and
    never overwritten by the generator.
 
+### Generated crates
+
+`gen` renders every name a definition declares as a Rust identifier:
+types and enum members or union variants in Pascal case, field keys in
+snake case (a Rust keyword as a raw identifier, `type` as `ty`), and each
+contributing document as a module named after its file stem. The dialect
+admits names Rust cannot spell, so generation checks them before writing
+anything and fails closed, naming the name and the reason, when a member,
+variant, or field key is no Rust identifier, two of one declaration's
+spell the same identifier, a document's module name is no identifier, or
+a declared or node-local type takes a name the generated crate spells
+unqualified (`Option`, `Item`, `Ref`, and the engine items its modules
+import). Such a definition still vets: the limit is the generated
+crate's, not the dialect's.
+
 ## Changing the dialect
 
 Change the canonical files first, then this record. A mechanism moves

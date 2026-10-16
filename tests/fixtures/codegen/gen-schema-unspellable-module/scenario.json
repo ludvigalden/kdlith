@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "gen schema fails closed when a contributing document's file name yields a per-document module name that is no Rust identifier (my-schema.kdl would generate the module my-schema_kdl): the schema itself vets green, generation exits 1 naming the module and the reason, and the scratch check proves nothing was written into the output directory",
+  "args": ["gen", "schema", "my-schema.kdl", "--crate", "dashed-proc", "--out", "out"],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": [
+      "has no Rust spelling in a generated crate: it is no Rust identifier",
+      "the module `my-schema_kdl` of `"
+    ],
+    "scratch-check": {
+      "plant": [{ "path": "planted-foreign.txt", "kind": "file" }]
+    }
+  }
+}

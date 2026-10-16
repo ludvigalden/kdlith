@@ -69,6 +69,15 @@ pub enum Error {
     /// A node bound without `type=` reads as a node-local type whose
     /// name a declared logical type already takes.
     LocalTypeCollision { node: String, ty: String },
+    /// A name the definition admits has no spelling in the generated
+    /// crate: it is no Rust identifier, it shadows a name the crate
+    /// spells unqualified, or it maps onto a sibling's spelling.
+    UnspellableName {
+        what: &'static str,
+        owner: String,
+        name: String,
+        reason: &'static str,
+    },
     /// The item type `{ty}` is bound by more than one reading node.
     DuplicateItemBinding {
         ty: String,
@@ -130,6 +139,15 @@ impl std::fmt::Display for Error {
                 f,
                 "the node `{node}` declares no type=, and its local type `{ty}` \
                  collides with a declared type"
+            ),
+            Self::UnspellableName {
+                what,
+                owner,
+                name,
+                reason,
+            } => write!(
+                f,
+                "the {what} `{name}` of `{owner}` has no Rust spelling in a generated crate: {reason}"
             ),
             Self::DuplicateItemBinding { ty, first, second } => write!(
                 f,

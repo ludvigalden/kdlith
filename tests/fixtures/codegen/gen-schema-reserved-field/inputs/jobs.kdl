@@ -1,0 +1,15 @@
+// A schema whose field names are Rust keywords: `gen` is reserved in
+// the 2024 edition and `type` is strict, so the generated crate spells
+// them as `r#gen` and `ty`.
+schema jobs version="1" {
+    types {
+        object Job {
+            field gen String
+            field type String
+        }
+    }
+    node job role=record type=Job {
+        field gen arg=0
+        field type property=type
+    }
+}

@@ -1,0 +1,16 @@
+schema shadow version="1" {
+    types {
+        object Option {
+            field name String
+        }
+        object Entry {
+            field pick "optional<String>"
+        }
+    }
+    node option role=declaration type=Option {
+        field name arg=0
+    }
+    node entry role=record type=Entry {
+        field pick property=pick
+    }
+}

@@ -75,7 +75,31 @@ fn is_keyword(word: &str) -> bool {
             | "where"
             | "while"
             | "yield"
+            | "abstract"
+            | "become"
+            | "box"
+            | "do"
+            | "final"
+            | "gen"
+            | "macro"
+            | "override"
+            | "priv"
+            | "try"
+            | "typeof"
+            | "unsized"
+            | "virtual"
     )
+}
+
+/// Whether `word` is a plain ASCII Rust identifier: a letter or
+/// underscore, then letters, digits, or underscores, and not `_` alone.
+pub fn is_identifier(word: &str) -> bool {
+    let mut characters = word.chars();
+    match characters.next() {
+        Some(first) if first.is_ascii_alphabetic() || first == '_' => {}
+        _ => return false,
+    }
+    word != "_" && characters.all(|c| c.is_ascii_alphanumeric() || c == '_')
 }
 
 /// Every named type a type expression references, spelled as declared.
