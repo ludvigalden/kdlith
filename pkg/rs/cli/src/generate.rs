@@ -8,10 +8,10 @@ use std::path::{Path, PathBuf};
 use kdlith_codegen as codegen;
 use kdlith_codegen::WriteError;
 use kdlith_diagnostic::ExitStatus;
-use kdlith_engine::Extensions;
 
 use crate::GenCommand;
 use crate::report::report_all;
+use crate::vet::definition_extensions;
 
 /// Run a parsed `gen` subcommand.
 pub(crate) fn run(command: GenCommand) -> ExitStatus {
@@ -92,7 +92,7 @@ pub fn generate(
         GenTarget::Dialect => "dialect",
         GenTarget::Schema => "schema",
     };
-    let extensions = Extensions::standard();
+    let extensions = definition_extensions();
     let tree = match target {
         GenTarget::Dialect => codegen::generate_dialect(entries, &extensions, crate_name),
         GenTarget::Schema => codegen::generate_schema(entries, &extensions, crate_name, anchors),

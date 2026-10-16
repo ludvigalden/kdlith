@@ -8,5 +8,10 @@ pub mod processors;
 pub mod types;
 
 pub use compile::{load_dialect, load_schema, load_schema_anchored, seed};
-pub use kdlith_engine::{ResolutionCall, SharedResolver, Unresolvable, ValueResolver};
-pub use processors::{DECLARATIONS, Item, reader, reader_with_resolver};
+pub use kdlith_engine::{
+    ContributionResolver, LAYERED, Layered, ResolutionCall, SharedContributionResolver,
+    SharedResolver, Unresolvable, ValueResolver,
+};
+pub use processors::{
+    DECLARATIONS, Item, reader, reader_with_contribution_resolver, reader_with_resolver,
+};

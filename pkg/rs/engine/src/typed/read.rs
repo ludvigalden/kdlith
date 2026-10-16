@@ -7,9 +7,12 @@ use std::path::{Path, PathBuf};
 use kdlith_diagnostic::registry::{lookup, render};
 use kdlith_diagnostic::{ByteSpan, DiagnosticRecord};
 use kdlith_model::{
-    BoundContribution, BoundItem, Field, Identity, ImportRequest, NodeId, ScopeCompletion, SourceId,
+    BoundContribution, BoundItem, Field, Identity, ImportRequest, NodeId, ResolvedContribution,
+    ScopeCompletion, SourceId,
 };
-use kdlith_runtime::{Admission, Context, InvocationId, Invocations, SessionError, SlotId};
+use kdlith_runtime::{
+    Admission, Context, ContributionRecord, InvocationId, Invocations, SessionError, SlotId,
+};
 use serde::Serialize;
 
 use crate::anchors::{self, Base, DeclaredGrammars};
@@ -19,6 +22,7 @@ use crate::definition::{Definition, DefinitionKind, ProfileSelection};
 use crate::diag::{UNRESOLVED_DIALECT, UNRESOLVED_SCHEMA, record};
 use crate::discovery;
 use crate::documents::{import_failure, read_text};
+use crate::resolution::{SharedContributionResolver, failure_record, resolve};
 use crate::typed::conform;
 use crate::typed::shape::{Declarations, Handler};
 use crate::typed::value::Fields;
@@ -69,6 +73,9 @@ pub enum TypedItem<T> {
     Import(ImportRequest),
     Diagnostic(Box<DiagnosticRecord>),
     ScopeComplete(ScopeCompletion),
+    /// A contribution target the registered contribution resolver
+    /// settled, after the reading's documents.
+    Resolution(ResolvedContribution),
 }
 
 /// Why a reading stopped short: never a document error, which is an
@@ -103,6 +110,10 @@ pub struct TypedReader<'d, T: 'static> {
     /// The value resolver the consuming program registered: an absent
     /// field whose declared fallback is computed resolves through it.
     resolver: Option<SharedResolver>,
+    /// The contribution resolver the program registered: a full reading
+    /// routes every contribution record to it under the schema's
+    /// declared policy.
+    contributions: Option<SharedContributionResolver>,
 }
 
 impl<'d, T: 'static> TypedReader<'d, T> {
@@ -118,6 +129,7 @@ impl<'d, T: 'static> TypedReader<'d, T> {
                 declarations,
                 anchors: Vec::new(),
                 resolver: None,
+                contributions: None,
             });
         }
         let processor = format!("{} {}", declarations.kind.root_name(), declarations.name);
@@ -145,6 +157,18 @@ impl<'d, T: 'static> TypedReader<'d, T> {
     #[must_use]
     pub fn with_resolver(mut self, resolver: SharedResolver) -> Self {
         self.resolver = Some(resolver);
+        self
+    }
+
+    /// Register the program's contribution resolver: once a full
+    /// reading's documents are read without error, and the schema
+    /// declares a resolution policy, every contribution record is
+    /// routed to it and each target it settles follows the documents'
+    /// items as a resolution item. A policy naming another resolver, or
+    /// a refusal, fails the reading (`KDLITH-DLC006`, `KDLITH-DLC010`).
+    #[must_use]
+    pub fn with_contribution_resolver(mut self, resolver: SharedContributionResolver) -> Self {
+        self.contributions = Some(resolver);
         self
     }
 
@@ -176,12 +200,27 @@ impl<'d, T: 'static> TypedReader<'d, T> {
         sink: &mut dyn FnMut(TypedItem<T>),
         follow: bool,
     ) -> Result<bool, ReadError> {
+        // A local reading leaves imports unfollowed, so its records are
+        // never the whole picture a resolver must see.
+        let resolver = self
+            .contributions
+            .as_ref()
+            .filter(|_| follow && self.def.resolution.is_some());
+        let mut records: Vec<ContributionRecord> = Vec::new();
+        let mut tap = |item: TypedItem<T>| {
+            if resolver.is_some()
+                && let TypedItem::Contribution(contribution) = &item
+            {
+                records.push(ContributionRecord::from_bound(contribution));
+            }
+            sink(item);
+        };
         let mut reading = Reading {
             reader: self,
             invocations: Invocations::new(),
             grammars: DeclaredGrammars::compiled(self.def),
             selection: ProfileSelection::Unprofiled,
-            sink,
+            sink: &mut tap,
             failed: false,
             broken: None,
             follow,
@@ -219,7 +258,22 @@ impl<'d, T: 'static> TypedReader<'d, T> {
         {
             reading.diagnose(record);
         }
-        Ok(reading.failed)
+        let mut failed = reading.failed;
+        // A failed reading's records are incomplete; resolving them
+        // would report on a partial picture.
+        if let Some(resolver) = resolver.filter(|_| !failed && !records.is_empty()) {
+            match resolve(self.def, resolver.as_ref(), &records) {
+                Ok(resolved) => resolved
+                    .into_iter()
+                    .for_each(|resolved| sink(TypedItem::Resolution(resolved))),
+                Err(error) => {
+                    failed = true;
+                    let record = failure_record(&error, ORIGIN);
+                    sink(TypedItem::Diagnostic(Box::new(record)));
+                }
+            }
+        }
+        Ok(failed)
     }
 
     fn handler(&self, role: Role, type_name: &str) -> Option<&'static Handler<T>> {

@@ -20,7 +20,7 @@ use crate::diag::{UNRESOLVED_DIALECT, UNRESOLVED_SCHEMA, record};
 use crate::discovery;
 use crate::documents::{import_failure, read_text};
 use crate::names::Sym;
-use crate::resolution::{ResolutionError, SharedContributionResolver, resolve};
+use crate::resolution::{SharedContributionResolver, failure_record, resolve};
 use crate::typed::ReadError;
 use crate::types::OutputPolicy;
 use crate::value_resolver::SharedResolver;
@@ -294,7 +294,7 @@ impl<'d> DataReader<'d> {
                     .for_each(|resolved| sink(Item::Resolution(resolved))),
                 Err(error) => {
                     failed = true;
-                    sink(Item::Diagnostic(Box::new(resolution_failure(&error))));
+                    sink(Item::Diagnostic(Box::new(failure_record(&error, ORIGIN))));
                 }
             }
         }
@@ -624,22 +624,6 @@ impl Reading<'_, '_> {
     /// already its caller's projection.
     fn all_slots(&self) -> Vec<SlotId> {
         self.reader.def.plan.context.layout.slots().collect()
-    }
-}
-
-/// The diagnostic a resolution run that could not complete reports.
-fn resolution_failure(error: &ResolutionError) -> DiagnosticRecord {
-    match error {
-        ResolutionError::Failed(reason) => record(error.code(), &[reason], ORIGIN),
-        ResolutionError::ResolverMismatch { declared, .. } => {
-            record(error.code(), &["resolver", declared], ORIGIN)
-        }
-        _ => record(
-            error.code(),
-            &["resolution policy", "of the schema"],
-            ORIGIN,
-        )
-        .with_message(error.message()),
     }
 }
 

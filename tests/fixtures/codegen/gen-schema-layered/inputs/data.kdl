@@ -1,0 +1,5 @@
+option mode
+option size
+setting mode light layer=base
+setting mode dark layer=user
+setting size large layer=base

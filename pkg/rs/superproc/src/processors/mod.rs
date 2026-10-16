@@ -9,7 +9,8 @@ mod types_kdl;
 
 use kdlith_diagnostic::DiagnosticRecord;
 use kdlith_engine::{
-    Declarations, Definition, DefinitionKind, Handler, SharedResolver, TypedReader, item_type,
+    Declarations, Definition, DefinitionKind, Handler, SharedContributionResolver, SharedResolver,
+    TypedReader, item_type,
 };
 
 use crate::types::{
@@ -70,4 +71,14 @@ pub fn reader_with_resolver(
     resolver: SharedResolver,
 ) -> Result<TypedReader<'_, Item>, Vec<DiagnosticRecord>> {
     reader(dialect).map(|typed| typed.with_resolver(resolver))
+}
+
+/// A reader of definitions written in the compiled dialect `dialect`
+/// whose contributions resolve through the processor's contribution
+/// resolver `resolver` under the declared resolution policy.
+pub fn reader_with_contribution_resolver(
+    dialect: &Definition,
+    resolver: SharedContributionResolver,
+) -> Result<TypedReader<'_, Item>, Vec<DiagnosticRecord>> {
+    reader(dialect).map(|typed| typed.with_contribution_resolver(resolver))
 }

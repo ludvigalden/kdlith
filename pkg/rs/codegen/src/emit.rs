@@ -229,10 +229,13 @@ impl Emission<'_> {
             }
             _ => out.line("pub use compile::{load, load_anchored};"),
         }
-        out.line(
-            "pub use kdlith_engine::{ResolutionCall, SharedResolver, Unresolvable, ValueResolver};",
-        );
-        out.line("pub use processors::{DECLARATIONS, Item, reader, reader_with_resolver};");
+        out.line("pub use kdlith_engine::{");
+        out.line("    ContributionResolver, LAYERED, Layered, ResolutionCall, SharedContributionResolver,");
+        out.line("    SharedResolver, Unresolvable, ValueResolver,");
+        out.line("};");
+        out.line("pub use processors::{");
+        out.line("    DECLARATIONS, Item, reader, reader_with_contribution_resolver, reader_with_resolver,");
+        out.line("};");
         rust_file(&out.finish())
     }
 
@@ -763,8 +766,9 @@ impl Emission<'_> {
         out.line("use kdlith_diagnostic::DiagnosticRecord;");
         out.line("use kdlith_engine::{");
         out.line(
-            "    Declarations, Definition, DefinitionKind, Handler, SharedResolver, TypedReader, item_type,",
+            "    Declarations, Definition, DefinitionKind, Handler, SharedContributionResolver, SharedResolver,",
         );
+        out.line("    TypedReader, item_type,");
         out.line("};");
         out.blank();
         out.use_list("crate::types", &sorted);
@@ -829,6 +833,18 @@ impl Emission<'_> {
         out.line(") -> Result<TypedReader<'_, Item>, Vec<DiagnosticRecord>> {");
         out.line(&format!(
             "    reader({param}).map(|typed| typed.with_resolver(resolver))"
+        ));
+        out.line("}");
+        out.blank();
+        out.line(&format!("/// A reader of {reads} `{param}`"));
+        out.line("/// whose contributions resolve through the processor's contribution");
+        out.line("/// resolver `resolver` under the declared resolution policy.");
+        out.line("pub fn reader_with_contribution_resolver(");
+        out.line(&format!("    {param}: &Definition,"));
+        out.line("    resolver: SharedContributionResolver,");
+        out.line(") -> Result<TypedReader<'_, Item>, Vec<DiagnosticRecord>> {");
+        out.line(&format!(
+            "    reader({param}).map(|typed| typed.with_contribution_resolver(resolver))"
         ));
         out.line("}");
         Ok(rust_file(&out.finish()))

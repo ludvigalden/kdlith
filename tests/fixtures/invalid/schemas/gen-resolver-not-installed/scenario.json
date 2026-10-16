@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "gen schema loads its schema under the same extensions as every other definition verb: the shipped layered resolver is admitted, but a policy naming any other resolver still fails closed as KDLITH-DLC006 before anything is generated",
+  "args": [
+    "gen",
+    "schema",
+    "{fx-suite}/invalid/schemas/resolver-not-installed/schema.kdl",
+    "--crate",
+    "demo-proc",
+    "--out",
+    "out"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

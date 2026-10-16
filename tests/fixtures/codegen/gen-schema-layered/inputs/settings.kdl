@@ -1,0 +1,30 @@
+// A self-contained schema naming the shipped `layered` resolver: option
+// declarations are the targets setting contributions name, each setting
+// binds its layer from the `layer` property, and the policy ranks user
+// over base under the default arms (replace, reject duplicates, reject
+// missing targets).
+schema settings version="1" {
+    types {
+        object Choice {
+            field name String
+        }
+        object Setting {
+            field target "ref<Choice>"
+            field value String
+            field follows "optional<ref<Choice>>"
+            field layer "optional<String>"
+        }
+    }
+    node option role=declaration type=Choice {
+        field name arg=0
+    }
+    node setting role=contribution type=Setting {
+        field target arg=0
+        field value arg=1
+        field follows property=follows
+        field layer property=layer
+    }
+    resolution resolver=layered {
+        layers user base
+    }
+}

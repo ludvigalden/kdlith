@@ -4,10 +4,12 @@
 
 use std::sync::Arc;
 
+use kdlith_diagnostic::DiagnosticRecord;
 use kdlith_model::ResolvedContribution;
 use kdlith_runtime::{ContributionPolicy, ContributionRecord, ContributionResolver};
 
 use crate::definition::{Definition, ResolutionPolicyDecl};
+use crate::diag::record;
 
 /// A registered contribution resolver, shared cheaply across readings.
 pub type SharedContributionResolver = Arc<dyn ContributionResolver>;
@@ -81,4 +83,20 @@ fn policy_of(policy: &ResolutionPolicyDecl) -> ContributionPolicy {
         policy.duplicates,
         policy.missing,
     )
+}
+
+/// The diagnostic a resolution run that could not complete reports.
+pub(crate) fn failure_record(error: &ResolutionError, origin: &str) -> DiagnosticRecord {
+    match error {
+        ResolutionError::Failed(reason) => record(error.code(), &[reason], origin),
+        ResolutionError::ResolverMismatch { declared, .. } => {
+            record(error.code(), &["resolver", declared], origin)
+        }
+        _ => record(
+            error.code(),
+            &["resolution policy", "of the schema"],
+            origin,
+        )
+        .with_message(error.message()),
+    }
 }

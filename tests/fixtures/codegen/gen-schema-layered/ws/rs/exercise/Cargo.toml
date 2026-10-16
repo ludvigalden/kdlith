@@ -1,0 +1,11 @@
+[package]
+name = "layered-exercise"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+
+[dependencies]
+kdlith-diagnostic = { path = "../diagnostic" }
+kdlith-engine = { path = "../engine" }
+kdlith-model = { path = "../model" }
+settings-proc = { path = "../settings-proc" }

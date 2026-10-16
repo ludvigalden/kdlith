@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "Inspect runs the reader path, so a resolution policy naming a resolver nothing installs is accepted: the same schema vet, list, and gen reject with KDLITH-DLC006 reads through to completion, and the policy's declaration carries the resolver name as written",
+  "args": [
+    "inspect",
+    "schema",
+    "{fx-suite}/invalid/schemas/resolver-not-installed/schema.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"value\":{\"resolver\":\"std-layered\",",
+      "{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":null}"
+    ]
+  }
+}
