@@ -162,8 +162,7 @@ The `processing/inspect-rejects-view-*` scenarios are the exception: they
 run a stream view of `inspect data` over an erroring read, which still
 prints its items before failing. The `processing/inspect-view-*`
 scenarios pin each `inspect --view` per target: the implemented views'
-output, the inapplicable pairs, the unimplemented `references` view, and
-the failure interactions.
+output, the inapplicable pairs, and the failure interactions.
 `schemas/vet/include-short-form/` and `schemas/inspect/include-short-form/`
 pin the `include` short form splicing on the reader path: the typed reader
 streams each `include` child as an `expansion` item at its position, and
@@ -262,6 +261,10 @@ under the default complete scope (exit 0); `alias-gated` pins the
 unresolved message naming the alias namespace; and the `scope-*` and
 `inspect-scope-*` pairs run one failing input under both scopes, pinning
 that `--scope local` changes only the exit, never the output. The
+`references-*` scenarios pin the `references` view's link report: each
+outcome on its own, a gated alias namespace, a contribution's target, and
+a duplicate declaration, while `references-scope-local` shows the view
+linking under local scope too. The
 `invalid/data/reference-*` negatives pin `KDLITH-REF001` through
 `KDLITH-REF004` with no `--scope` flag, so they prove the default.
 
