@@ -798,15 +798,18 @@ Each sample below is one line copied from the committed fixture
 goldens under `tests/fixtures/processing/inspect-view-*`.
 
 **`bound`** (`inspect data`) writes the stream's `record`,
-`declaration`, and `contribution` items unchanged. Document, import,
-scope, resolution, and diagnostic items are dropped.
+`declaration`, `contribution`, and `pending-binding` items unchanged; a
+pending typed binding follows the contribution or record holding its
+reference. Document, import, scope, resolution, and diagnostic items
+are dropped.
 
 ```text
 {"item":"declaration","data":{"node":{"source":1,"index":1},"identity":{"domain":"Group","name":["imported"]},"type_name":"Group","fields":[{"name":"name","value":{"kind":"string","value":"imported"},"origin":1},{"name":"labels","value":{"kind":"map","value":[{"key":"i","value":{"kind":"map","value":[{"key":"text","value":{"kind":"string","value":"Imported"}}]}}]},"origin":1}],"origin":1,"validation":"valid"}}
 ```
 
 **`origins`** (`inspect data`) writes one `origins` line for each record,
-declaration, and contribution. Its `data` is exactly the provenance
+declaration, and contribution, and none for a pending typed binding,
+which carries no provenance of its own. Its `data` is exactly the provenance
 envelope `export` writes beside that item: `node` (the item's
 location), `sources` (the source revisions its locations name),
 `origins` (the shared origin table, whose entries are `literal`,

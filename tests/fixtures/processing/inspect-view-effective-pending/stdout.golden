@@ -1,0 +1,1 @@
+{"item":"declaration","data":{"node":{"source":0,"index":0},"identity":{"domain":"Target","name":["t1"]},"type_name":"Target","fields":[{"name":"name","value":{"kind":"string","value":"t1"},"origin":0},{"name":"tail","value":{"kind":"list","value":[{"kind":"string","value":"x"},{"kind":"string","value":"y"}]},"origin":0}],"origin":0,"validation":"valid"}}

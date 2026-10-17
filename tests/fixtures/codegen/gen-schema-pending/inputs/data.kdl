@@ -1,0 +1,3 @@
+tgt "t1" "x" "y"
+dep "t1" "a" "b"
+dep "t1" "c"

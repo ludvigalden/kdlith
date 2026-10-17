@@ -142,7 +142,15 @@ fn render_data(
 ) -> std::io::Result<()> {
     use kdlith_model::Item as Data;
     match (view, item) {
-        (ViewArg::Bound, Data::Record(_) | Data::Declaration(_) | Data::Contribution(_))
+        // A pending binding is neither a declaration nor a resolution and
+        // has no provenance of its own, so only bound shows it.
+        (
+            ViewArg::Bound,
+            Data::Record(_)
+            | Data::Declaration(_)
+            | Data::Contribution(_)
+            | Data::PendingBinding(_),
+        )
         | (ViewArg::Effective, Data::Declaration(_) | Data::Resolution(_))
         | (ViewArg::Source, _) => crate::vet::write_item(out, item),
         (ViewArg::Origins, _) => match revisions.provenance(item) {

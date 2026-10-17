@@ -1,0 +1,21 @@
+{
+  "binary": "kdlith",
+  "description": "The bound view admits the pending typed-binding item: over a dependent value binding whose codec the reference processor does not install, it prints the declaration, then each contribution followed by the pending item the binder emitted for it, in stream order, with the raw payload a list for several values and the single value alone",
+  "args": [
+    "inspect",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/pending-binding/schema.kdl",
+    "--view",
+    "bound",
+    "{fx-suite}/processing/bind/pending-binding/input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"pending-binding\",\"data\":{\"node\":{\"source\":0,\"index\":2},"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

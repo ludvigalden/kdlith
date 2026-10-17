@@ -1,0 +1,11 @@
+[package]
+name = "pending-exercise"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+
+[dependencies]
+deps-proc = { path = "../deps-proc" }
+kdlith-diagnostic = { path = "../diagnostic" }
+kdlith-engine = { path = "../engine" }
+serde_json = { workspace = true }

@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "The origins view stays closed to the pending typed-binding item: over a stream carrying two pending items it prints one origins line for the declaration and one for each contribution, and none for a pending binding, which carries no provenance of its own; input.kdl is a byte copy of processing/bind/pending-binding/input.kdl so the source path is scenario-relative",
+  "args": [
+    "inspect",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/pending-binding/schema.kdl",
+    "--view",
+    "origins",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

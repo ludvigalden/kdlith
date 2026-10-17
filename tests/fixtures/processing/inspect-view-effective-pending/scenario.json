@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "The effective view stays closed to the pending typed-binding item: over a stream carrying two pending items it prints the declaration alone, since a pending binding is neither a declaration nor a resolution",
+  "args": [
+    "inspect",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/pending-binding/schema.kdl",
+    "--view",
+    "effective",
+    "{fx-suite}/processing/bind/pending-binding/input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

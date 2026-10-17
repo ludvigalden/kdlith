@@ -1,0 +1,26 @@
+// A self-contained schema with a dependent value binding: each dep
+// contribution's trailing arguments are typed by the referenced target's
+// tail member, under fixture-value, a known binding codec no reading
+// processor installs, so the binder defers every payload.
+schema deps version="1" {
+    types {
+        object Target {
+            field name String
+            field tail "list<String>"
+        }
+    }
+    node tgt role=declaration type=Target {
+        field name arg=0
+        field tail {
+            from {
+                args
+            }
+        }
+    }
+    node dep role=contribution {
+        field target "ref<Target>" arg=0
+        value codec=fixture-value {
+            against target=target member=tail
+        }
+    }
+}

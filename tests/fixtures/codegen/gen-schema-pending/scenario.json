@@ -1,0 +1,35 @@
+{
+  "binary": "kdlith",
+  "kind": "codegen-oracle",
+  "description": "A pending typed binding through a generated crate: gen schema generates a committed self-contained schema whose dependent value binding names fixture-value, a known binding codec no processor installs, twice into scratch trees the harness requires byte-identical; the generated crate compiles inside a scratch workspace materialized from this scenario's committed template beside a consumer crate. The exercise pins that the schema loads under the standard extensions, that the generated reader's reading succeeds, and that each deferred payload streams as a typed pending-binding item right after the contribution holding its reference, carrying the bound target field, the reference, and the raw payload, a list for several values and the single value alone",
+  "form": "schema",
+  "entrypoint": "inputs/deps.kdl",
+  "crate": "deps-proc",
+  "steps": [
+    { "generate": "ws/rs/deps-proc" },
+    { "generate": "gen-again" },
+    { "determinism": ["ws/rs/deps-proc", "gen-again"] },
+    {
+      "compile": {
+        "workspace": "ws",
+        "copy": {
+          "crates": ["diagnostic", "engine", "model", "parse", "runtime", "superproc"],
+          "kdl": true
+        },
+        "command": ["cargo", "build", "--offline", "--manifest-path", "ws/rs/deps-proc/Cargo.toml"]
+      }
+    },
+    {
+      "exercise": {
+        "command": ["cargo", "run", "--offline", "--quiet", "--manifest-path", "ws/rs/exercise/Cargo.toml", "--", "inputs/deps.kdl", "inputs/data.kdl"],
+        "stdout-contains": [
+          "schema ok digest=fa48ab92bbabe1d7\n",
+          "read failed=false pending=2\n",
+          "order declaration,contribution,pending,contribution,pending\n",
+          "{\"item\":\"pending-binding\",\"data\":{\"node\":{\"source\":0,\"index\":1},\"field\":\"target\",\"against\":{\"domain\":\"Target\",\"name\":[\"t1\"],\"qualifiers\":[],\"written\":\"t1\",\"site\":{\"source\":0,\"span\":{\"start\":{\"offset\":21,\"line\":2,\"column\":5},\"end\":{\"offset\":26,\"line\":2,\"column\":10}}}},\"raw\":{\"kind\":\"list\",\"value\":[{\"kind\":\"string\",\"value\":\"a\"},{\"kind\":\"string\",\"value\":\"b\"}]},\"origin\":1}}\n",
+          "{\"item\":\"pending-binding\",\"data\":{\"node\":{\"source\":0,\"index\":2},\"field\":\"target\",\"against\":{\"domain\":\"Target\",\"name\":[\"t1\"],\"qualifiers\":[],\"written\":\"t1\",\"site\":{\"source\":0,\"span\":{\"start\":{\"offset\":38,\"line\":3,\"column\":5},\"end\":{\"offset\":43,\"line\":3,\"column\":10}}}},\"raw\":{\"kind\":\"string\",\"value\":\"c\"},\"origin\":2}}\n"
+        ]
+      }
+    }
+  ]
+}

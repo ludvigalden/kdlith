@@ -7,8 +7,8 @@ use std::path::{Path, PathBuf};
 use kdlith_diagnostic::registry::{lookup, render};
 use kdlith_diagnostic::{ByteSpan, DiagnosticRecord};
 use kdlith_model::{
-    BoundContribution, BoundItem, Field, Identity, ImportRequest, NodeId, ResolvedContribution,
-    ScopeCompletion, SourceId,
+    BoundContribution, BoundItem, Field, Identity, ImportRequest, NodeId, PendingBinding,
+    ResolvedContribution, ScopeCompletion, SourceId,
 };
 use kdlith_runtime::{
     Admission, Context, ContributionRecord, InvocationId, Invocations, SessionError, SlotId,
@@ -69,6 +69,9 @@ pub enum TypedItem<T> {
         span: ByteSpan,
     },
     Contribution(Box<BoundContribution>),
+    /// A dependent value kept raw until its referenced declaration is
+    /// known; never a validated value.
+    PendingBinding(PendingBinding),
     /// An import as written; the imported document's items follow it.
     Import(ImportRequest),
     Diagnostic(Box<DiagnosticRecord>),
@@ -425,6 +428,7 @@ impl<T: 'static> Reading<'_, '_, T> {
             }
             BoundItem::Contribution(contribution) => TypedItem::Contribution(contribution),
             BoundItem::Import(request) => TypedItem::Import(request),
+            BoundItem::PendingBinding(pending) => TypedItem::PendingBinding(pending),
             BoundItem::Diagnostic(record) => {
                 self.failed = true;
                 TypedItem::Diagnostic(record)
