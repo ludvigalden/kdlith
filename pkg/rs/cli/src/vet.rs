@@ -2,6 +2,7 @@
 //! bind data documents against one; diagnostics go to stderr. `vet data`
 //! streams bound items to stdout as one JSON object per line.
 
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use kdlith_diagnostic::{DiagnosticRecord, ExitStatus};
@@ -9,10 +10,10 @@ use std::sync::Arc;
 
 use kdlith_engine::{
     CheckScope, DataReader, Definition, EntryContext, Extensions, Handlers, LAYERED, Layered,
-    LinkInputs, ReadOptions, SharedResolver, bind_references, derive_candidates, index_identities,
-    link,
+    LinkInputs, LinkReport, ReadOptions, SharedResolver, bind_references, derive_candidates,
+    index_identities, link,
 };
-use kdlith_model::Item;
+use kdlith_model::{Item, SourceId};
 use kdlith_superproc::{load_dialect, load_schema_anchored, seed};
 
 use crate::handlers;
@@ -306,21 +307,43 @@ pub(crate) fn stream_data(
     options: &DataOptions,
     render: impl FnMut(&mut std::io::StdoutLock<'static>, &Item) -> std::io::Result<()>,
 ) -> ExitStatus {
-    stream_data_then(schema, entries, options, render, |_, _, status| status)
+    stream_data_then(
+        schema,
+        entries,
+        options,
+        false,
+        render,
+        |_, _, _, status| status,
+    )
+}
+
+/// One reading's link report, with each document's path as the reading
+/// shows it.
+pub(crate) struct Linked<'a> {
+    pub(crate) report: &'a LinkReport,
+    pub(crate) documents: &'a BTreeMap<SourceId, String>,
 }
 
 /// [`stream_data`], then `finish` with the definition the data bound
 /// under, or `None` when it did not load, the context each entry
-/// document's root invocation left, in entry order, and the exit
-/// decided so far. Under complete scope a reading that completed is
-/// linked first, and its link diagnostics decide the exit with the
-/// binding diagnostics; they reach stderr only, after every item.
+/// document's root invocation left, in entry order, the reading's link
+/// report when it was linked, and the exit decided so far. A reading
+/// that completed is linked under complete scope, or under any scope
+/// when `report_links` asks for the report itself; its link diagnostics
+/// reach stderr only, after every item, and decide the exit with the
+/// binding diagnostics under complete scope alone.
 pub(crate) fn stream_data_then(
     schema: Option<&Path>,
     entries: &[&Path],
     options: &DataOptions,
+    report_links: bool,
     mut render: impl FnMut(&mut std::io::StdoutLock<'static>, &Item) -> std::io::Result<()>,
-    finish: impl FnOnce(Option<&Definition>, &[EntryContext], ExitStatus) -> ExitStatus,
+    finish: impl FnOnce(
+        Option<&Definition>,
+        &[EntryContext],
+        Option<Linked<'_>>,
+        ExitStatus,
+    ) -> ExitStatus,
 ) -> ExitStatus {
     let extensions = options.extensions();
     let loaded = match schema {
@@ -329,13 +352,14 @@ pub(crate) fn stream_data_then(
     };
     let definition = match loaded {
         Ok(definition) => definition,
-        Err(records) => return finish(None, &[], report_all(&records)),
+        Err(records) => return finish(None, &[], None, report_all(&records)),
     };
     let reader = options.reader(&definition);
     let mut records: Vec<DiagnosticRecord> = Vec::new();
     let mut out = std::io::stdout().lock();
     let mut written = true;
-    let linking = options.scope == CheckScope::Complete;
+    let gating = options.scope == CheckScope::Complete;
+    let linking = gating || report_links;
     let mut inputs = LinkInputs::new();
     let mut sink = |item: Item| {
         if let Item::Diagnostic(record) = &item {
@@ -348,11 +372,21 @@ pub(crate) fn stream_data_then(
     };
     let read = reader.read_entry_contexts(entries, &options.read_options(), &mut sink);
     drop(out);
-    if linking && read.is_ok() {
-        records.extend(link_reading(&definition, &inputs));
+    let report = (linking && read.is_ok()).then(|| link_reading(&definition, &inputs));
+    let mut ungated: &[DiagnosticRecord] = &[];
+    if let Some(report) = &report {
+        if gating {
+            records.extend(report.diagnostics.iter().cloned());
+        } else {
+            ungated = &report.diagnostics;
+        }
     }
     let (status, contexts) = match read {
-        Ok((_, contexts)) if written => (report_all(&records), contexts),
+        Ok((_, contexts)) if written => {
+            let status = report_all(&records);
+            report_all(ungated);
+            (status, contexts)
+        }
         Ok((_, contexts)) => (ExitStatus::Failure, contexts),
         Err(error) => {
             report_all(&records);
@@ -360,17 +394,21 @@ pub(crate) fn stream_data_then(
             (ExitStatus::Failure, Vec::new())
         }
     };
-    finish(Some(&definition), &contexts, status)
+    let linked = report.as_ref().map(|report| Linked {
+        report,
+        documents: &inputs.documents,
+    });
+    finish(Some(&definition), &contexts, linked, status)
 }
 
-/// The diagnostics of linking one reading: its identity index, its
-/// references bound to their declared reference types, the candidates
-/// each one's lookup policy derives, and the linked outcomes.
-fn link_reading(definition: &Definition, inputs: &LinkInputs) -> Vec<DiagnosticRecord> {
+/// Link one reading: its identity index, its references bound to their
+/// declared reference types, the candidates each one's lookup policy
+/// derives, and the linked outcomes with their diagnostics.
+fn link_reading(definition: &Definition, inputs: &LinkInputs) -> LinkReport {
     let index = index_identities(definition, &inputs.items, &inputs.aliases);
     let bound = bind_references(definition, &inputs.items);
     let lookups = derive_candidates(&index, &bound);
-    link(definition, &index, lookups, &inputs.documents).diagnostics
+    link(definition, &index, lookups, &inputs.documents)
 }
 
 pub(crate) fn write_item(out: &mut impl std::io::Write, item: &Item) -> std::io::Result<()> {

@@ -1,0 +1,6 @@
+error[KDLITH-REF003]: reference region in config-vars is ambiguous between stock.region, plan.region
+  --> data.kdl:1:5
+error[KDLITH-REF004]: reference stock/query@v1 in tools does not meet the required qualifier contract: the reference spells v1, the target declares v2
+  --> data.kdl:10:9
+error[KDLITH-REF001]: reference shared in input-sets (declared only under the alias namespace common) does not resolve
+  --> data.kdl:12:7

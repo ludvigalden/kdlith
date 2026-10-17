@@ -1,1 +1,1 @@
-kdlith: the references view is not implemented yet
+error[KDLITH-CLI004]: the references view does not apply to a schema target

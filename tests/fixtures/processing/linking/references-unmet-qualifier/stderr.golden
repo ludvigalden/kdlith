@@ -1,0 +1,4 @@
+error[KDLITH-REF004]: reference stock/query@v1 in tools does not meet the required qualifier contract: the reference spells v1, the target declares v2
+  --> data.kdl:2:9
+error[KDLITH-REF004]: reference stock/query in tools does not meet the required qualifier contract: the reference does not supply it
+  --> data.kdl:3:9

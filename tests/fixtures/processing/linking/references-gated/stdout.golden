@@ -1,0 +1,4 @@
+{"item":"references","data":{"name":"ConfigVarRef","domain":"config-vars","qualification":"explicit-or-context","links":[]}}
+{"item":"references","data":{"name":"ConfigPathRef","domain":"config-vars","qualification":"explicit","links":[]}}
+{"item":"references","data":{"name":"ToolRef","domain":"tools","qualification":"explicit","links":[]}}
+{"item":"references","data":{"name":"InputSetRef","domain":"input-sets","qualification":"imported-or-context","links":[{"written":"lookup","domain":"input-sets","name":["lookup"],"qualifiers":[],"context":null,"field":"target","site":{"source":"data.kdl","span":{"start":{"offset":51,"line":3,"column":7},"end":{"offset":59,"line":3,"column":15}}},"candidates":[{"identity":{"domain":"input-sets","name":["lookup"]},"alias":null,"labels":["name"],"site":{"source":"data.kdl","span":{"start":{"offset":28,"line":2,"column":1},"end":{"offset":37,"line":2,"column":10}}}}],"gated":["common"],"outcome":"resolved"}]}}

@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "The references view renders a resolved link: the explicit reference spelling every segment has its one declaration as the sole candidate, held by the record's target field; reference types no reference names render with no links, and the run exits 0",
+  "args": [
+    "inspect",
+    "data",
+    "--view",
+    "references",
+    "--schema",
+    "{fx-suite}/processing/linking/schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

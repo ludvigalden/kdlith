@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "A duplicate declaration is a stderr diagnostic only: the references view renders the link to the first declaration, which stays indexed, and the run fails KDLITH-REF002 after the view has printed",
+  "args": [
+    "inspect",
+    "data",
+    "--view",
+    "references",
+    "--schema",
+    "{fx-suite}/processing/linking/schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

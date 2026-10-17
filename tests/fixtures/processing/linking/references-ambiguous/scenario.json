@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "The references view renders an ambiguous link: an explicit-or-context reference bound with no namespace context derives a candidate in each namespace declaring its local name, both listed, and the run fails KDLITH-REF003 after the view has printed",
+  "args": [
+    "inspect",
+    "data",
+    "--view",
+    "references",
+    "--schema",
+    "{fx-suite}/processing/linking/schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

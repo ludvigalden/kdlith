@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "The references view renders unmet-qualifier links with their reasons: a required qualifier spelled with another value than the target declares, and one not spelled at all (null), each failing KDLITH-REF004 after the view has printed",
+  "args": [
+    "inspect",
+    "data",
+    "--view",
+    "references",
+    "--schema",
+    "{fx-suite}/processing/linking/schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

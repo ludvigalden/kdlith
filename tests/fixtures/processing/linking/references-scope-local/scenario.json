@@ -1,0 +1,20 @@
+{
+  "binary": "kdlith",
+  "description": "The references view links under --scope local too, since its output is the link report: standard output and standard error match the complete-scope run of the same input, and only the exit differs, 0, because local scope does not let link failures decide it",
+  "args": [
+    "inspect",
+    "data",
+    "--view",
+    "references",
+    "--scope",
+    "local",
+    "--schema",
+    "{fx-suite}/processing/linking/schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

@@ -1,0 +1,4 @@
+{"item":"references","data":{"name":"ConfigVarRef","domain":"config-vars","qualification":"explicit-or-context","links":[]}}
+{"item":"references","data":{"name":"ConfigPathRef","domain":"config-vars","qualification":"explicit","links":[]}}
+{"item":"references","data":{"name":"ToolRef","domain":"tools","qualification":"explicit","links":[]}}
+{"item":"references","data":{"name":"InputSetRef","domain":"input-sets","qualification":"imported-or-context","links":[{"written":"lookup","domain":"input-sets","name":["lookup"],"qualifiers":[],"context":null,"field":"target","site":{"source":"data.kdl","span":{"start":{"offset":34,"line":2,"column":7},"end":{"offset":42,"line":2,"column":15}}},"candidates":[],"gated":["common"],"outcome":"unresolved"}]}}

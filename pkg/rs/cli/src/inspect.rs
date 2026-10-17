@@ -8,19 +8,19 @@ use std::path::{Path, PathBuf};
 use kdlith_diagnostic::{DiagnosticRecord, ExitStatus, Severity};
 use kdlith_engine::{
     AccumulateOp, CheckScope, ContextPolicy, DeferredBinding, Definition, EffectStep, EntryContext,
-    Extensions, ImportDecl, Names, Role, ScopeId, ScopeRules, SetFrom, SlotDecl, SourceRevisions,
-    Sym, TypeExpr, TypedItem, list_nodes, list_profiles, list_types,
+    Extensions, ImportDecl, LinkOutcome, Names, Role, ScopeId, ScopeRules, SetFrom, SlotDecl,
+    SourceRevisions, Sym, TypeExpr, TypedItem, list_nodes, list_profiles, list_types,
 };
+use kdlith_model::Location;
 use kdlith_superproc::{Item, load_dialect, load_schema_anchored, reader};
 
 use crate::InspectCommand;
 use crate::ViewArg;
 use crate::report::report_all;
-use crate::vet::{VetTarget, definition_extensions, governing_dialect};
+use crate::vet::{Linked, VetTarget, definition_extensions, governing_dialect};
 
 /// Run a parsed `inspect` subcommand. The view matrix is decided before
-/// any document is read; a view not implemented yet fails closed rather
-/// than printing a poorer stand-in.
+/// any document is read.
 pub(crate) fn run(command: InspectCommand) -> ExitStatus {
     match command {
         InspectCommand::Dialect(args) => match dispatch(args.view, VetTarget::Dialect) {
@@ -58,12 +58,20 @@ pub(crate) fn run(command: InspectCommand) -> ExitStatus {
                     &options
                         .with_dialect(args.dialect)
                         .with_scope(crate::vet::scope_of(args.scope)),
+                    rendering == Rendering::References,
                     |out, item| {
                         revisions.observe(item);
                         render_data(args.view, &revisions, out, item)
                     },
-                    |definition, contexts, status| match (rendering, definition) {
+                    |definition, contexts, linked, status| match (rendering, definition) {
                         (Rendering::Stream, _) => status,
+                        (Rendering::References, _) => match linked {
+                            Some(linked) => match write_lines(&reference_lines(&linked)) {
+                                ExitStatus::Success => status,
+                                failed => failed,
+                            },
+                            None => status,
+                        },
                         (Rendering::Entries, Some(definition)) => {
                             match write_lines(&context_lines(definition, contexts)) {
                                 ExitStatus::Success => status,
@@ -91,13 +99,15 @@ fn paths(files: &[PathBuf]) -> Vec<&Path> {
 }
 
 /// How a view renders: by reframing the item stream as it is read,
-/// from the compiled definition once checking is done, or from the
-/// contexts the entry documents left once the data is read.
+/// from the compiled definition once checking is done, from the
+/// contexts the entry documents left once the data is read, or from the
+/// reading's link report.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Rendering {
     Stream,
     Definition,
     Entries,
+    References,
 }
 
 impl Rendering {
@@ -107,27 +117,27 @@ impl Rendering {
                 Rendering::Definition
             }
             (ViewArg::Context, _) => Rendering::Entries,
+            (ViewArg::References, _) => Rendering::References,
             _ => Rendering::Stream,
         }
     }
 }
 
 /// The per-target view matrix, applied before any document is read.
-/// bound, context and origins describe data binding, so on a definition
-/// target they are an argument fault.
+/// bound, context, origins and references describe data binding and
+/// linking, so on a definition target they are an argument fault.
 fn dispatch(view: ViewArg, target: VetTarget) -> Result<Rendering, ExitStatus> {
     let definition_target = matches!(target, VetTarget::Dialect | VetTarget::Schema);
     match view {
-        ViewArg::Source => Ok(Rendering::of(view, target)),
-        ViewArg::Bound | ViewArg::Context | ViewArg::Origins if definition_target => Err(
-            crate::usage::report_inapplicable_view(view.name(), target_name(target)),
-        ),
-        ViewArg::Bound
-        | ViewArg::Context
-        | ViewArg::Origins
-        | ViewArg::Effective
-        | ViewArg::Plan => Ok(Rendering::of(view, target)),
-        _ => Err(not_implemented(view)),
+        ViewArg::Bound | ViewArg::Context | ViewArg::Origins | ViewArg::References
+            if definition_target =>
+        {
+            Err(crate::usage::report_inapplicable_view(
+                view.name(),
+                target_name(target),
+            ))
+        }
+        _ => Ok(Rendering::of(view, target)),
     }
 }
 
@@ -252,8 +262,9 @@ fn inspect_view(
             }
             let status = report_all(&records);
             match (rendering, definition) {
-                // The matrix admits the entries rendering on data only.
-                (Rendering::Stream | Rendering::Entries, _) => status,
+                // The matrix admits the entries and references renderings
+                // on data only.
+                (Rendering::Stream | Rendering::Entries | Rendering::References, _) => status,
                 (Rendering::Definition, Some(definition)) => render_definition(view, &definition),
                 (Rendering::Definition, None) => uncompiled(view),
             }
@@ -408,6 +419,84 @@ fn context_lines(def: &Definition, contexts: &[EntryContext]) -> Vec<serde_json:
             json!({"item": "context", "data": {"entry": context.entry, "slots": slots}})
         })
         .collect()
+}
+
+/// The references view: one line per declared reference type in
+/// declaration order, each with its links in stream order. A type no
+/// reference names still renders, with no links.
+fn reference_lines(linked: &Linked<'_>) -> Vec<serde_json::Value> {
+    use serde_json::json;
+    let site = |site: &Location| {
+        json!({
+            "source": linked.documents.get(&site.source),
+            "span": site.span,
+        })
+    };
+    linked
+        .report
+        .types
+        .iter()
+        .map(|declared| {
+            let links: Vec<_> = declared
+                .links
+                .iter()
+                .map(|link| {
+                    let reference = &link.reference;
+                    let mut line = json!({
+                        "written": reference.written,
+                        "domain": reference.domain,
+                        "name": reference.name.0,
+                        "qualifiers": reference.qualifiers.iter().map(|(name, value)| {
+                            json!({"name": name, "value": value})
+                        }).collect::<Vec<_>>(),
+                        "context": reference.context,
+                        "field": link.field,
+                        "site": site(&reference.site),
+                        "candidates": link.candidates.iter().map(|candidate| json!({
+                            "identity": {
+                                "domain": candidate.identity.domain,
+                                "name": candidate.identity.name.0,
+                            },
+                            "alias": candidate.alias,
+                            "labels": candidate.labels,
+                            "site": candidate.site.as_ref().map(site),
+                        })).collect::<Vec<_>>(),
+                        "gated": link.gated,
+                        "outcome": outcome_name(&link.outcome),
+                    });
+                    if let LinkOutcome::UnmetQualifier(reasons) = &link.outcome {
+                        line["reasons"] = reasons
+                            .iter()
+                            .map(|reason| {
+                                json!({
+                                    "qualifier": reason.qualifier,
+                                    "spelled": reason.spelled,
+                                    "declared": reason.declared,
+                                })
+                            })
+                            .collect();
+                    }
+                    line
+                })
+                .collect();
+            json!({"item": "references", "data": {
+                "name": declared.name,
+                "domain": declared.domain,
+                "qualification": declared.qualification.name(),
+                "links": links,
+            }})
+        })
+        .collect()
+}
+
+fn outcome_name(outcome: &LinkOutcome) -> &'static str {
+    match outcome {
+        LinkOutcome::Resolved => "resolved",
+        LinkOutcome::Unresolved => "unresolved",
+        LinkOutcome::Ambiguous => "ambiguous",
+        LinkOutcome::UnmetQualifier(_) => "unmet-qualifier",
+        _ => "unknown",
+    }
 }
 
 /// Names indexed by a dense runtime id; an id the plan never assigned

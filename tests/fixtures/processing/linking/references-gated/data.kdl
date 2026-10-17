@@ -1,0 +1,3 @@
+import "part.kdl" as=common
+input-set lookup
+takes "lookup"

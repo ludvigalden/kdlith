@@ -1,8 +1,8 @@
 // The linking schema the linking scenarios share: configuration
 // variables declared under a namespace context and looked up by an
 // explicit and a context-qualified reference type, tools carrying a
-// contract their reference requires, and input sets an aliased import
-// can contribute.
+// contract their reference requires, input sets an aliased import
+// can contribute, and overlays contributed onto an input set.
 schema linking version="1" {
     types {
         object ConfigVarDef {
@@ -28,6 +28,10 @@ schema linking version="1" {
         }
         object Takes {
             field target InputSetRef
+        }
+        object Overlay {
+            field target InputSetRef
+            field value String
         }
         codec DottedName output=String {
             match #"(?:(?<namespace>[a-z]+)\.)?(?<local>[a-z-]+)"#
@@ -85,6 +89,10 @@ schema linking version="1" {
     }
     node takes role=record type=Takes {
         field target arg=0
+    }
+    node overlay role=contribution type=Overlay {
+        field target arg=0
+        field value arg=1
     }
     node import role=source-import {
         field path String arg=0

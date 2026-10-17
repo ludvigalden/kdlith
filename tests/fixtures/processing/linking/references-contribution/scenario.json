@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "The references view renders a contribution's target with a null holding field: the target is no record or declaration field, and it links like any other reference of its declared reference type",
+  "args": [
+    "inspect",
+    "data",
+    "--view",
+    "references",
+    "--schema",
+    "{fx-suite}/processing/linking/schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

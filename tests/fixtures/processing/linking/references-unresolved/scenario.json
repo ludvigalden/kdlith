@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "The references view renders an unresolved link whose only match an aliased import gated: no candidate, the alias namespace listed as gated, and the run fails KDLITH-REF001 naming that namespace after the view has printed",
+  "args": [
+    "inspect",
+    "data",
+    "--view",
+    "references",
+    "--schema",
+    "{fx-suite}/processing/linking/schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

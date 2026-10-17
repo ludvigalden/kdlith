@@ -1,0 +1,2 @@
+error[KDLITH-REF003]: reference region in config-vars is ambiguous between stock.region, plan.region
+  --> data.kdl:1:5

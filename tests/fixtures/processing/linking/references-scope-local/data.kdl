@@ -1,0 +1,14 @@
+use "region"
+import "part.kdl" as=common
+namespace stock
+config-var region
+namespace plan
+config-var region
+input-set lookup
+tool query program=stock contract=v2
+pin "plan.region"
+depends "stock/query@v1"
+takes "lookup"
+takes "shared"
+takes "common.shared"
+overlay "lookup" "wide"

@@ -320,8 +320,8 @@ struct InspectDefinitionArgs {
     dialect: Option<PathBuf>,
     /// The item view to print: source (every item), effective (the
     /// compiled definition by section) or plan (its processing plan);
-    /// bound, context and origins apply only to inspect data
-    /// (KDLITH-CLI004, exit 2); references fails closed
+    /// bound, context, origins and references apply only to inspect
+    /// data (KDLITH-CLI004, exit 2)
     #[arg(long, value_enum, default_value_t = ViewArg::Source)]
     view: ViewArg,
     /// Definition documents
@@ -336,8 +336,8 @@ struct InspectSchemaArgs {
     dialect: Option<PathBuf>,
     /// The item view to print: source (every item), effective (the
     /// compiled definition by section) or plan (its processing plan);
-    /// bound, context and origins apply only to inspect data
-    /// (KDLITH-CLI004, exit 2); references fails closed
+    /// bound, context, origins and references apply only to inspect
+    /// data (KDLITH-CLI004, exit 2)
     #[arg(long, value_enum, default_value_t = ViewArg::Source)]
     view: ViewArg,
     /// A discovery anchor the schema documents' own import expressions
@@ -376,14 +376,15 @@ struct InspectDataArgs {
     #[arg(long = "handler", value_name = "NAME", value_parser = handlers::parse_handler)]
     handlers: Vec<String>,
     /// The item view: source, bound (records, declarations,
-    /// contributions, pending bindings), context (entry contexts),
-    /// effective (declarations, resolutions), origins or plan (the
-    /// definition's plan); references fails closed
+    /// contributions, pending bindings), context, effective
+    /// (declarations, resolutions), origins, plan or references (how
+    /// each reference linked, by declared reference type)
     #[arg(long, value_enum, default_value_t = ViewArg::Source)]
     view: ViewArg,
     /// Bind the documents alone (local) or also link every reference a
     /// declared reference type looks up (complete); a link failure
-    /// fails the run after the view has printed
+    /// fails the run after the view has printed (references links
+    /// under both, failing the run under complete only)
     #[arg(long, value_enum, default_value_t = ScopeArg::Complete)]
     scope: ScopeArg,
     /// Data documents

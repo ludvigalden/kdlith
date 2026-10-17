@@ -757,10 +757,12 @@ crate's, not the dialect's.
 ## Linking data
 
 `vet data` and `inspect data` take `--scope local|complete`, defaulting
-to `complete`. Local scope binds the documents and stops. Complete scope
-then links the reading: every reference held by a field typed with a
-declared reference type is looked up among the reading's declarations
-under that reference type's qualification policy. Plain `ref<T>` values
+to `complete`. Local scope binds the documents and stops, except under
+the `references` view of `inspect data`, whose report is the link
+stage's output. Complete scope then links the reading: every reference
+held by a field typed with a declared reference type is looked up among
+the reading's declarations under that reference type's qualification
+policy. Plain `ref<T>` values
 are not linked here; they keep their own mechanisms.
 
 | Code            | Linking failure                                                                                                    |
@@ -773,7 +775,10 @@ are not linked here; they keep their own mechanisms.
 Linking runs after the whole reading has streamed, so every item, and on
 `inspect data` every view, prints first; the link diagnostics go to
 standard error and decide the exit with the binding diagnostics. The
-scope never changes standard output, only the exit.
+scope never changes standard output, only the exit: under local scope
+the `references` view still links and prints the same report, and its
+link diagnostics still reach standard error, but they do not decide
+the exit.
 
 ## Inspect views
 
@@ -796,21 +801,18 @@ The view names follow the design drafts' inspection command (F §8).
 | `effective`  | compiled entries  | compiled entries | declarations and resolutions |
 | `origins`    | `KDLITH-CLI004`   | `KDLITH-CLI004`  | provenance envelopes         |
 | `plan`       | processing plan   | processing plan  | the bound definition's plan  |
-| `references` | not implemented   | not implemented  | not implemented              |
+| `references` | `KDLITH-CLI004`   | `KDLITH-CLI004`  | linked references            |
 
-`bound`, `context`, and `origins` describe how data binds, and a
-definition target binds no data. Asking for one of them on `inspect
-dialect` or `inspect schema` is an argument fault, reported before any
-document is read and exiting 2:
+`bound`, `context`, `origins`, and `references` describe how data binds
+and links, and a definition target binds no data. Asking for one of
+them on `inspect dialect` or `inspect schema` is an argument fault,
+reported before any document is read and exiting 2:
 
 ```text
 error[KDLITH-CLI004]: the bound view does not apply to a dialect target
 ```
 
-`references` is not implemented yet: on every target it fails closed
-before any document is read, with
-`kdlith: the references view is not implemented yet` and exit 1, so no
-view prints a poorer stand-in. A `--view` value that names no view is
+A `--view` value that names no view is
 a usage error from the argument parser (`KDLITH-CLI001`, exit 2), which
 lists the seven names.
 
@@ -945,6 +947,28 @@ schema compilation has no flag. `record-buffering`,
 `imported-schema-metadata`, and `registered-domain-handlers` appear only
 in the `plan` view's list.
 
+**`references`** (`inspect data`) writes the reading's link report
+once every item has bound: one `references` line per declared reference
+type, in declaration order, with `name`, `domain`, `qualification`
+(`explicit`, `explicit-or-context`, or `imported-or-context`), and
+`links`. A type no reference names still writes its line, with
+`"links":[]`. Each link, in stream order, carries `written`, `domain`,
+`name` (the segments, outermost first), `qualifiers` (`name` and
+`value`, as written), `context` (the namespace context it bound under,
+or null), `field` (the record or declaration field holding it, or null
+for a contribution's target), `site` (`source`, the document's path as
+the reading shows it, and `span`), `candidates` (each with its
+`identity`, the `alias` namespace it registers under or null, the
+identity field behind each segment as `labels`, and its `site`),
+`gated` (the alias namespaces that hid a candidate), and `outcome`:
+`resolved`, `unresolved`, `ambiguous`, or `unmet-qualifier`, which adds
+`reasons` (`qualifier`, `spelled`, `declared`, null where a value is
+absent). A duplicate declaration is reported only on standard error.
+
+```text
+{"item":"references","data":{"name":"ToolRef","domain":"tools","qualification":"explicit","links":[{"written":"stock/query@v1","domain":"tools","name":["stock","query"],"qualifiers":[{"name":"contract","value":"v1"}],"context":null,"field":"target","site":{"source":"data.kdl","span":{"start":{"offset":188,"line":10,"column":9},"end":{"offset":204,"line":10,"column":25}}},"candidates":[{"identity":{"domain":"tools","name":["stock","query"]},"alias":null,"labels":["program","tool"],"site":{"source":"data.kdl","span":{"start":{"offset":125,"line":8,"column":1},"end":{"offset":129,"line":8,"column":5}}}}],"gated":[],"outcome":"unmet-qualifier","reasons":[{"qualifier":"contract","spelled":"v1","declared":"v2"}]}]}}
+```
+
 ### Ordering
 
 Every view's output order is chosen, never the iteration order of a
@@ -964,6 +988,8 @@ hash map:
 5. **Plan order** (`plan-node` lines): declaration order, with the nodes
    of an imported document where its import merged them.
 6. **`requires` order**: the fixed order of the table above.
+7. **Reference-type order** (`references` lines): the order the
+   reference types are declared; within a line, links in stream order.
 
 ### When reading or compiling fails
 
@@ -990,9 +1016,13 @@ What there is to show depends on the view.
 
 - `plan` on data whose schema compiled but whose read failed still
   writes the whole plan; the read's exit 1 governs.
+- `references` writes the report of a reading that completed, even one
+  that reported binding errors, then exits 1 on those errors or, under
+  complete scope, on its link diagnostics. A read that stopped writes
+  no report.
 - When the `--schema` schema of `inspect data` does not compile, there
-  is no stream either: the stream views and `context` write nothing and
-  exit 1.
+  is no stream either: the stream views, `context`, and `references`
+  write nothing and exit 1.
 
 ## Changing the dialect
 
