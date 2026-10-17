@@ -494,11 +494,17 @@ impl Reading<'_, '_> {
                             // result: the imports' revisions are outside
                             // this invocation's identity.
                             cacheable = false;
-                            let request = request.clone();
+                            let mut request = request.clone();
                             let projected = self.projection(&session, &request, shown);
+                            let resolved =
+                                projected.map(|context| (context, self.targets(&request)));
+                            if let Some((_, Ok(targets))) = &resolved {
+                                request.targets =
+                                    targets.iter().map(|target| target.shown.clone()).collect();
+                            }
                             self.emit(Item::Import(request.clone()));
-                            if let Some(context) = projected {
-                                self.import(&request, shown, context);
+                            if let Some((context, targets)) = resolved {
+                                self.import(&request, shown, context, targets);
                             }
                             continue;
                         }
@@ -609,10 +615,15 @@ impl Reading<'_, '_> {
         session.context().project(&slots).ok()
     }
 
-    /// Execute one import request: resolve its target or targets, then
+    /// Execute one import request over the targets it resolved to:
     /// invoke each under the request's policy.
-    fn import(&mut self, request: &ImportRequest, shown: &str, context: Context) {
-        let targets = self.targets(request);
+    fn import(
+        &mut self,
+        request: &ImportRequest,
+        shown: &str,
+        context: Context,
+        targets: Result<Vec<Target>, Box<DiagnosticRecord>>,
+    ) {
         let targets = match targets {
             Ok(targets) => targets,
             Err(record) => {

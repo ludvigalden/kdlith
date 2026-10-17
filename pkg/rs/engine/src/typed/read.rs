@@ -15,11 +15,11 @@ use kdlith_runtime::{
 };
 use serde::Serialize;
 
-use crate::anchors::{self, Base, DeclaredGrammars};
+use crate::anchors::{self, Base, DeclaredGrammars, Target};
 use crate::bind::BindingSession;
 use crate::bindings::Role;
 use crate::definition::{Definition, DefinitionKind, ProfileSelection};
-use crate::diag::{UNRESOLVED_DIALECT, UNRESOLVED_SCHEMA, record};
+use crate::diag::{IMPORT_UNRESOLVED, UNRESOLVED_DIALECT, UNRESOLVED_SCHEMA, record};
 use crate::discovery;
 use crate::documents::{import_failure, read_text};
 use crate::resolution::{SharedContributionResolver, failure_record, resolve};
@@ -370,10 +370,17 @@ impl<T: 'static> Reading<'_, '_, T> {
                 Ok(Some(item)) => {
                     if let BoundItem::Import(request) = &item {
                         if self.follow {
-                            let projected = self.projection(&session, request, shown);
+                            let mut request = request.clone();
+                            let projected = self.projection(&session, &request, shown);
+                            let resolved =
+                                projected.map(|context| (context, self.targets(&request)));
+                            if let Some((_, Ok(targets))) = &resolved {
+                                request.targets =
+                                    targets.iter().map(|target| target.shown.clone()).collect();
+                            }
                             (self.sink)(TypedItem::Import(request.clone()));
-                            if let Some(context) = projected {
-                                self.import(request, shown, context);
+                            if let Some((context, targets)) = resolved {
+                                self.import(&request, shown, context, targets);
                             }
                             continue;
                         }
@@ -469,47 +476,14 @@ impl<T: 'static> Reading<'_, '_, T> {
         session.context().project(&slots).ok()
     }
 
-    fn import(&mut self, request: &ImportRequest, shown: &str, context: Context) {
-        if discovery::is_expression(&request.expression) {
-            return self.import_expression(request, shown, context);
-        }
-        let admitted =
-            self.invocations
-                .request_projected(&request.expression, request.repeated, context);
-        self.admitted(admitted, request, shown);
-    }
-
-    /// Expand a grammar-admitted expression under the grammar the
-    /// documents declare, against the host-supplied anchors, and invoke
-    /// each match in order under the request's policy.
-    fn import_expression(&mut self, request: &ImportRequest, shown: &str, context: Context) {
-        let Some(importer) = self
-            .invocations
-            .innermost()
-            .and_then(|id| self.invocations.get(id))
-        else {
-            return;
-        };
-        let dir = importer.path.parent().unwrap_or(Path::new("")).to_owned();
-        let shown_dir = Path::new(&importer.shown)
-            .parent()
-            .unwrap_or(Path::new(""))
-            .to_owned();
-        let names = &self.grammars.names;
-        let anchors = anchors::anchor_map(&self.reader.anchors, names);
-        let base = Base {
-            dir: &dir,
-            shown: &shown_dir,
-        };
-        let grammar = self.grammars.grammar();
-        let targets = anchors::expression_targets(
-            &request.expression,
-            grammar,
-            names,
-            &anchors,
-            &base,
-            ORIGIN,
-        );
+    /// Invoke each target a request resolved to under its policy.
+    fn import(
+        &mut self,
+        request: &ImportRequest,
+        shown: &str,
+        context: Context,
+        targets: Result<Vec<Target>, Box<DiagnosticRecord>>,
+    ) {
         let targets = match targets {
             Ok(targets) => targets,
             Err(record) => return self.diagnose(at_request(*record, shown, request)),
@@ -523,6 +497,58 @@ impl<T: 'static> Reading<'_, '_, T> {
             );
             self.admitted(admitted, request, shown);
         }
+    }
+
+    /// The targets a request resolves to: the literal path relative to
+    /// its importer, or the matches of a grammar-admitted expression
+    /// under the grammar the documents declare, against the
+    /// host-supplied anchors, in order.
+    fn targets(&self, request: &ImportRequest) -> Result<Vec<Target>, Box<DiagnosticRecord>> {
+        let importer = self
+            .invocations
+            .innermost()
+            .and_then(|id| self.invocations.get(id));
+        if !discovery::is_expression(&request.expression) {
+            let Some(importer) = importer else {
+                return Err(Box::new(unresolvable(&request.expression)));
+            };
+            let shown = Path::new(&importer.shown)
+                .parent()
+                .unwrap_or(Path::new(""))
+                .join(&request.expression)
+                .display()
+                .to_string();
+            let base = importer.path.parent().unwrap_or(Path::new(""));
+            let resolved = std::fs::canonicalize(base.join(&request.expression))
+                .ok()
+                .filter(|resolved| resolved.is_file());
+            return match resolved {
+                Some(resolved) => Ok(vec![Target { resolved, shown }]),
+                None => Err(Box::new(unresolvable(&shown))),
+            };
+        }
+        let Some(importer) = importer else {
+            return Ok(Vec::new());
+        };
+        let dir = importer.path.parent().unwrap_or(Path::new("")).to_owned();
+        let shown_dir = Path::new(&importer.shown)
+            .parent()
+            .unwrap_or(Path::new(""))
+            .to_owned();
+        let names = &self.grammars.names;
+        let anchors = anchors::anchor_map(&self.reader.anchors, names);
+        let base = Base {
+            dir: &dir,
+            shown: &shown_dir,
+        };
+        anchors::expression_targets(
+            &request.expression,
+            self.grammars.grammar(),
+            names,
+            &anchors,
+            &base,
+            ORIGIN,
+        )
     }
 
     /// Visit an admitted invocation, or report why it was refused.
@@ -569,4 +595,9 @@ fn mismatch(processor: &str, subject: &str, reason: &str) -> DiagnosticRecord {
         None => record,
     };
     record.with_origin("processor")
+}
+
+/// An import target that does not resolve (`KDLITH-IMP001`).
+fn unresolvable(target: &str) -> DiagnosticRecord {
+    record(IMPORT_UNRESOLVED, &[target], ORIGIN)
 }

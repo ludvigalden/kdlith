@@ -11,7 +11,7 @@
   "expect": {
     "exit": 0,
     "stdout-contains": [
-      "{\"item\":\"import\",\"data\":{\"node\":{\"source\":0,\"index\":1},\"expression\":\"part.kdl\",\"alias\":null,\"project\":[],\"repeated\":\"reject\"",
+      "{\"item\":\"import\",\"data\":{\"node\":{\"source\":0,\"index\":1},\"expression\":\"part.kdl\",\"targets\":[\"part.kdl\"],\"alias\":null,\"project\":[],\"repeated\":\"reject\"",
       "{\"item\":\"document\",\"data\":{\"source\":1,\"path\":\"part.kdl\"}}\n",
       "{\"item\":\"record\",\"data\":{\"node\":{\"source\":1,\"index\":0},\"type_name\":\"Part\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"alpha\"},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n{\"item\":\"scope-complete\",\"data\":{\"source\":1,\"scope\":null}}\n",
       "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":2},\"type_name\":\"Stamp\",\"fields\":[{\"name\":\"at\",\"value\":{\"kind\":\"string\",\"value\":\"en-gb\"},\"origin\":2}],\"origin\":2,\"validation\":\"valid\"}}\n{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":null}}\n"

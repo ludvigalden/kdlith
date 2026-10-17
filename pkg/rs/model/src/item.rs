@@ -113,6 +113,10 @@ impl ResolvedContribution {
 pub struct ImportRequest {
     pub node: NodeId,
     pub expression: String,
+    /// The paths the expression resolved to, as the reading shows them,
+    /// in resolution order; empty when it did not resolve.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub targets: Vec<String>,
     pub alias: Option<String>,
     /// The caller's context slots the imported source receives, by name.
     pub project: Vec<String>,
@@ -316,6 +320,7 @@ impl ImportRequest {
         Self {
             node,
             expression: expression.into(),
+            targets: Vec::new(),
             alias: None,
             project: Vec::new(),
             repeated: Repeated::default(),
