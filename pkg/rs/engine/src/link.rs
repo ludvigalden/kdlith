@@ -179,6 +179,9 @@ pub fn index_identities(
 #[non_exhaustive]
 pub struct BoundReference {
     pub reference: Reference,
+    /// The record or declaration field holding the reference; `None`
+    /// for a contribution's target.
+    pub field: Option<String>,
     /// The declared reference type whose lookup domain the reference
     /// names.
     pub declared: ReferenceDecl,
@@ -204,6 +207,7 @@ pub fn bind_references(definition: &Definition, items: &[Item]) -> Vec<BoundRefe
             if let Some(decl) = named.or_else(|| domain_reference_type(definition, reference)) {
                 bound.push(BoundReference {
                     reference: reference.clone(),
+                    field: field.map(str::to_owned),
                     declared: decl.clone(),
                 });
             }
@@ -370,6 +374,9 @@ impl LinkOutcome {
 #[non_exhaustive]
 pub struct Link {
     pub reference: Reference,
+    /// The record or declaration field holding the reference; `None`
+    /// for a contribution's target.
+    pub field: Option<String>,
     pub candidates: Vec<IndexedDeclaration>,
     pub gated: Vec<String>,
     pub outcome: LinkOutcome,
@@ -450,6 +457,7 @@ pub fn link(
         };
         let link = Link {
             reference: bound.reference,
+            field: bound.field,
             candidates,
             gated,
             outcome,
