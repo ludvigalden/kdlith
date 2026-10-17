@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "Inspect shows, then fails: every item of a schema whose only fault is a compiler-only check streams to stdout, then the compile stage rejects it with KDLITH-DLC005 (a malformed construct) as vet does, and the run exits 1",
+  "args": [
+    "inspect",
+    "schema",
+    "{fx-suite}/invalid/schemas/pattern-invalid/input.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stdout-contains": [
+      "{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":null}"
+    ],
+    "stderr-contains": [
+      "error[KDLITH-DLC005]"
+    ]
+  }
+}

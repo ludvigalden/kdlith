@@ -146,14 +146,18 @@ is bound while loading (`invalid/schemas/import-anchor-profiled/`).
 
 `dialect/canonical-inspect/`, `dialect/entrypoint-inspect/`, and
 `schemas/inspect/` run `kdlith inspect`, which reads definitions through
-the reference processor and prints each typed item as one JSON line.
-Each scenario asserts ordered runs of the expected declaration items and
-scope completions. `invalid/schemas/inspect-*` hold schema definitions
-the reference processor rejects while binding them, each with its
-declared code. `processing/inspect-accepts-*` pin the reader-path
-decision those negatives imply: each reads, through `inspect schema`,
-the same input a `vet schema` scenario rejects with a compiler-only
-code, and asserts the reading completes and accepts it.
+the reference processor, prints each typed item as one JSON line, and then
+checks the definition as `vet` does. Each scenario asserts ordered runs of
+the expected declaration items and scope completions. The four single-file
+`dialect/canonical-inspect/` scenarios show one canonical contributing
+document's items and then exit 1, because a contributing document alone
+does not link; `dialect/canonical-inspect/merged` reads all four and exits
+0. `invalid/schemas/inspect-*` hold schema definitions the reference
+processor rejects while binding them, each with its declared code; when
+the reader rejects an input, the compile stage does not run.
+`processing/inspect-rejects-*` each inspect, through `inspect schema`, the
+same input a `vet schema` scenario rejects with a compiler-only code:
+the items still stream to stdout, and the run then fails with that code.
 `invalid/schemas/include-short-form/` and
 `invalid/schemas/inspect-include-short-form/` pin the loud rejection of the
 `include` short form: every CLI reading path goes through the typed reader,

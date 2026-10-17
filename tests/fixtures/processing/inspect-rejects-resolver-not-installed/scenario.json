@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "Inspect shows, then fails: every item of a schema whose resolution policy names a resolver nothing installs streams to stdout, the policy's declaration carrying the resolver name as written, then the compile stage rejects it with KDLITH-DLC006 as vet, list, and gen do, and the run exits 1",
+  "args": [
+    "inspect",
+    "schema",
+    "{fx-suite}/invalid/schemas/resolver-not-installed/schema.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stdout-contains": [
+      "\"value\":{\"resolver\":\"std-layered\",",
+      "{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":null}"
+    ],
+    "stderr-contains": [
+      "error[KDLITH-DLC006]"
+    ]
+  }
+}

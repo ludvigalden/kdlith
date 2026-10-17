@@ -1,13 +1,13 @@
 {
   "binary": "kdlith",
-  "description": "documents.kdl reads end to end through the reference processor: the document types (imports now carrying their alias), the profile, discovery, reference, resolution, and provider declarations the expansion defines, the import node declaration, and the document rule as a typed record",
+  "description": "Inspect shows, then fails: documents.kdl alone streams every item through the reference processor — the document types (imports now carrying their alias), the profile, discovery, reference, resolution, and provider declarations the expansion defines, the import node declaration, and the document rule as a typed record — then the compile stage rejects the lone contributing document with KDLITH-SCH005, because its children rules name nodes declared in the sibling contributing documents, as vet dialect does, and the run exits 1; merged reads all four and exits 0",
   "args": [
     "inspect",
     "dialect",
     "{fx-suite}/../../pkg/kdl/schemas/dialect/documents.kdl"
   ],
   "expect": {
-    "exit": 0,
+    "exit": 1,
     "stdout-contains": [
       "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":40},\"identity\":{\"domain\":\"ObjectType\",\"name\":[\"ImportRequest\"]},\"type\":\"ObjectType\",\"value\":{\"name\":\"ImportRequest\",\"fields\":{\"path\":{\"type\":\"String\"},\"project\":{\"type\":\"optional<list<SlotName>>\"},\"repeated\":{\"type\":\"RepeatedImport\",\"fallback\":{\"literal\":{\"value\":{\"kind\":\"string\",\"value\":\"reject\"}}}},\"alias\":{\"type\":\"optional<AliasName>\"}},\"constraints\":[]}}}\n",
       "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":200},\"identity\":{\"domain\":\"NodeDef\",\"name\":[\"import\"]},\"type\":\"NodeDef\",\"value\":{\"name\":\"import\",\"role\":\"source-import\",\"type\":\"ImportRequest\",\"parents\":[\"dialect\",\"schema\"],\"fields\":{\"path\":{\"arg\":0,\"sources\":[]},\"project\":{\"sources\":[{\"child\":{\"name\":\"project\",\"sources\":[{\"args\":{}}]}}]},\"repeated\":{\"property\":\"repeated\",\"sources\":[]},\"alias\":{\"property\":\"as\",\"sources\":[]}},\"children\":{\"project\":{\"max-occurs\":1}},\"effects\":[],\"groups\":[],\"descendants\":[]}}}\n",
@@ -18,6 +18,9 @@
       "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":308},\"identity\":{\"domain\":\"NodeDef\",\"name\":[\"provider\"]},\"type\":\"NodeDef\",\"value\":{\"name\":\"provider\",\"role\":\"declaration\",\"type\":\"SecretProvider\",\"parent\":\"schema\",\"fields\":{\"id\":{\"arg\":0,\"sources\":[]},\"ttl\":{\"property\":\"ttl\",\"sources\":[]},\"command\":{\"sources\":[{\"args\":{}}]}},\"children\":{},\"effects\":[],\"groups\":[],\"descendants\":[]}}}\n",
       "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":314},\"type\":\"DocumentRule\",\"value\":{\"first\":{\"exactly-one\":[\"dialect\",\"schema\"]},\"following\":[]}}}\n",
       "{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":{\"source\":0,\"index\":0}}}\n{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":null}}\n"
+    ],
+    "stderr-contains": [
+      "error[KDLITH-SCH005]"
     ]
   }
 }

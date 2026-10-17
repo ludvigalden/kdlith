@@ -294,18 +294,18 @@ struct InspectArgs {
 
 #[derive(Subcommand)]
 enum InspectCommand {
-    /// Read dialect definition documents and their imports through the
-    /// reference processor; each typed item goes to stdout as one JSON
-    /// line
+    /// Show dialect definition documents and their imports as typed
+    /// items, one JSON line each on stdout, then check the dialect as
+    /// `vet dialect` does; any error exits nonzero after the items
     Dialect(InspectDefinitionArgs),
-    /// Read schema definition documents and their imports through the
-    /// reference processor; each typed item goes to stdout as one JSON
-    /// line
+    /// Show schema definition documents and their imports as typed
+    /// items, one JSON line each on stdout, then check the schema as
+    /// `vet schema` does; any error exits nonzero after the items
     Schema(InspectSchemaArgs),
-    /// Bind data documents under the bundled dialect (or the one given
-    /// by --dialect) and the schema given by --schema, or against the
-    /// dialect itself without --schema; each bound item goes to stdout
-    /// as one JSON line
+    /// Bind data documents exactly as `vet data` does: under the bundled
+    /// dialect (or --dialect) and the --schema schema, checked first, or
+    /// the dialect itself without --schema; each bound item goes to
+    /// stdout as one JSON line
     Data(InspectDataArgs),
 }
 

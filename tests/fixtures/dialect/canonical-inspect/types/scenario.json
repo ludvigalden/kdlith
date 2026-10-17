@@ -1,18 +1,21 @@
 {
   "binary": "kdlith",
-  "description": "types.kdl reads end to end through the reference processor: its logical types (now including sensitivity, codecs, generic parameters, and the literal-or-computed fallback union), the node declarations that spell them, and the codec, include, and fallback declarations arrive as typed declarations",
+  "description": "Inspect shows, then fails: types.kdl alone streams every item through the reference processor — its logical types (now including sensitivity, codecs, generic parameters, and the literal-or-computed fallback union), the node declarations that spell them, and the codec, include, and fallback declarations arrive as typed declarations — then the compile stage rejects the lone contributing document with KDLITH-DLC008, because the types it references are declared in the sibling contributing documents, as vet dialect does, and the run exits 1; merged reads all four and exits 0",
   "args": [
     "inspect",
     "dialect",
     "{fx-suite}/../../pkg/kdl/schemas/dialect/types.kdl"
   ],
   "expect": {
-    "exit": 0,
+    "exit": 1,
     "stdout-contains": [
       "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":39},\"identity\":{\"domain\":\"UnionType\",\"name\":[\"TypeDef\"]},\"type\":\"UnionType\",\"value\":{\"name\":\"TypeDef\",\"variants\":{\"string\":{\"type\":\"StringType\"},\"enum\":{\"type\":\"EnumType\"},\"object\":{\"type\":\"ObjectType\"},\"union\":{\"type\":\"UnionType\"},\"map\":{\"type\":\"MapType\"},\"codec\":{\"type\":\"CodecType\"}}}}}\n",
       "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":103},\"identity\":{\"domain\":\"NodeDef\",\"name\":[\"string\"]},\"type\":\"NodeDef\",\"value\":{\"name\":\"string\",\"role\":\"declaration\",\"type\":\"StringType\",\"parent\":\"types\",\"fields\":{\"name\":{\"arg\":0,\"sources\":[]},\"parameters\":{\"sources\":[{\"children\":{\"name\":\"parameter\",\"sources\":[]}}]},\"format\":{\"sources\":[{\"child\":{\"name\":\"format\",\"sources\":[{\"argument\":{\"index\":0}}]}}]},\"width\":{\"sources\":[{\"child\":{\"name\":\"format\",\"sources\":[{\"property\":{\"name\":\"width\"}}]}}]},\"pattern\":{\"child\":\"pattern\",\"sources\":[]},\"validator\":{\"sources\":[{\"child\":{\"name\":\"validator\",\"sources\":[{\"argument\":{\"index\":0}}]}}]},\"validator-version\":{\"sources\":[{\"child\":{\"name\":\"validator\",\"sources\":[{\"property\":{\"name\":\"version\"}}]}}]},\"min-length\":{\"child\":\"min-length\",\"sources\":[]}},\"children\":{\"format\":{\"max-occurs\":1},\"pattern\":{\"max-occurs\":1},\"validator\":{\"max-occurs\":1},\"min-length\":{\"max-occurs\":1},\"parameter\":{}},\"effects\":[],\"groups\":[],\"descendants\":[]}}}\n",
       "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":217},\"identity\":{\"domain\":\"NodeDef\",\"name\":[\"codec\"]},\"type\":\"NodeDef\",\"value\":{\"name\":\"codec\",\"role\":\"declaration\",\"type\":\"CodecType\",\"parent\":\"types\",\"fields\":{\"name\":{\"arg\":0,\"sources\":[]},\"output\":{\"property\":\"output\",\"sources\":[]},\"parameters\":{\"sources\":[{\"children\":{\"name\":\"parameter\",\"sources\":[]}}]},\"match\":{\"child\":\"match\",\"sources\":[]},\"captures\":{\"sources\":[{\"entries\":{\"node\":\"capture\",\"key\":\"arg(0)\",\"value\":\"Capture\"}}],\"duplicate-keys\":\"reject\"},\"namespace\":{\"child\":\"namespace\",\"sources\":[]}},\"children\":{\"match\":{\"min-occurs\":1,\"max-occurs\":1},\"capture\":{},\"namespace\":{\"max-occurs\":1},\"include\":{},\"parameter\":{}},\"effects\":[],\"groups\":[],\"descendants\":[]}}}\n",
       "{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":{\"source\":0,\"index\":0}}}\n{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":null}}\n"
+    ],
+    "stderr-contains": [
+      "error[KDLITH-DLC008]"
     ]
   }
 }
