@@ -14,6 +14,7 @@ mod discovery;
 mod documents;
 mod export;
 mod extensions;
+mod link;
 mod list;
 mod names;
 mod overlap;
@@ -74,6 +75,11 @@ pub use kdlith_runtime::{
 pub use kdlith_runtime::{
     Delivery, FieldProvenance, HandlerCall, HandlerEffect, HandlerFn, Handlers, Provenance,
     SourceRevision, SourceRevisions, export_line,
+};
+pub use link::{
+    BoundReference, DuplicateDeclaration, IdentityIndex, IndexedDeclaration, Link, LinkInputs,
+    LinkOutcome, LinkReport, Lookup, ReferenceLinks, UnmetQualifier, bind_references,
+    derive_candidates, index_identities, link,
 };
 pub use list::{
     IndexEntry, IndexKind, ItemIndex, NodeEntry, ProfileEntry, TypeEntry, index_items, list_nodes,

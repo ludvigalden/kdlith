@@ -689,6 +689,26 @@ pub const CODES: &[CodeDefinition] = &[
         correction: "Rename or remove one declaration",
         retired: false,
     },
+    CodeDefinition {
+        code: "KDLITH-REF003",
+        label: "ambiguous-reference",
+        severity: Severity::Error,
+        exit_class: 1,
+        trigger: "a reference's qualification and lookup policy derive more than one candidate declaration",
+        message_template: "reference <name> is ambiguous between <candidates>",
+        correction: "Qualify the reference so its lookup policy derives exactly one declaration",
+        retired: false,
+    },
+    CodeDefinition {
+        code: "KDLITH-REF004",
+        label: "unmet-qualifier",
+        severity: Severity::Error,
+        exit_class: 1,
+        trigger: "a reference resolves to one declaration that fails a required qualifier its reference type declares",
+        message_template: "reference <name> does not meet the required qualifier <qualifier>: <reason>",
+        correction: "Spell the required qualifier with the value its target declares, or reference a declaration that carries it",
+        retired: false,
+    },
     // GEN
     CodeDefinition {
         code: "KDLITH-GEN001",
