@@ -1,0 +1,26 @@
+{
+  "binary": "kdlith",
+  "description": "cache refresh writes an entry document's context snapshot beside its bound result: entry.kdl sets the layered locale slot (base layer) and the plain region slot, so the state gains the cache entry and one <key>.kdlith-snapshot entry whose header (kdlith-snapshot format=1 canonicalization=1), metadata line (key, entry as spelled, revision, schema fingerprint, profile selection, lineage [entry.kdl], slot count, layout and body digests), and one tagged slot line per slot with its layer are pinned byte for byte; no part file remains",
+  "args": [
+    "cache",
+    "refresh",
+    "--state",
+    "state",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "entry.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "files": {
+      "state/18f93b1853515e00.kdlith-snapshot": "expected/18f93b1853515e00.kdlith-snapshot",
+      "state/087115ac0fd96e64.kdlith-cache": "expected/087115ac0fd96e64.kdlith-cache"
+    },
+    "absent": [
+      "state/.18f93b1853515e00.kdlith-snapshot-part",
+      "state/.087115ac0fd96e64.kdlith-cache-part"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

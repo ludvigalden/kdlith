@@ -1,0 +1,26 @@
+{
+  "binary": "kdlith",
+  "description": "a file named like a snapshot entry whose first line is not the snapshot ownership header is foreign — here the first two lines of a real cache entry, a cache header under a snapshot name: cache refresh refuses the state directory before reading anything, KDLITH-CAC001 names the look-alike, exit 1, the look-alike is left byte-identical, and neither the cache entry nor the snapshot entry the reading would derive is written (the processing/cache/refresh-foreign shape)",
+  "args": [
+    "cache",
+    "refresh",
+    "--state",
+    "state",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "entry.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "files": {
+      "state/18f93b1853515e00.kdlith-snapshot": "expected/18f93b1853515e00.kdlith-snapshot"
+    },
+    "absent": [
+      "state/087115ac0fd96e64.kdlith-cache",
+      "state/.18f93b1853515e00.kdlith-snapshot-part",
+      "state/.087115ac0fd96e64.kdlith-cache-part"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

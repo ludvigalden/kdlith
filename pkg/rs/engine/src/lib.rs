@@ -20,6 +20,7 @@ mod names;
 mod overlap;
 mod plan;
 mod resolution;
+mod snapshot_store;
 mod snapshots;
 mod source_context;
 mod structure;
@@ -66,8 +67,9 @@ pub use extensions::{
 };
 pub use kdlith_model::ResolvedContribution;
 pub use kdlith_runtime::{
-    CacheEntry, CacheScan, CleanOutcome, Derivation, EncodedEntry, EntryFault, WriteOutcome,
-    cache_key, clean_state, scan_state, write_state,
+    CacheEntry, CacheScan, CleanOutcome, Derivation, EncodedEntry, EntryClass, EntryFault,
+    OwnedEntry, SnapshotEntry, SnapshotMeta, WriteOutcome, cache_key, clean_state, scan_state,
+    snapshot_key, write_state,
 };
 pub use kdlith_runtime::{
     ContributionPolicy, ContributionRecord, ContributionResolver, LAYERED, Layered,
@@ -88,9 +90,11 @@ pub use list::{
 pub use names::{Names, Sym};
 pub use plan::{ContextPlan, ContextRead, DeferredBinding, EffectStep, NodePlan, ProcessingPlan};
 pub use resolution::{ResolutionError, SharedContributionResolver, resolve};
+pub use snapshot_store::{SnapshotLoad, encode_snapshot_entry, load_snapshot};
 pub use snapshots::{
     ContextSnapshot, SNAPSHOT_MISMATCH, SnapshotError, SnapshotIndex, SnapshotIndexEntry,
-    ValidationStatus as SnapshotValidation,
+    ValidationStatus as SnapshotValidation, definition_layout_digest, snapshot_fingerprint,
+    snapshot_payload,
 };
 pub use source_context::{AppliedSourceValue, apply as apply_source_context};
 pub use structure::{Occurs, OrderRule, ScopeRules, ScopeState, Violation};

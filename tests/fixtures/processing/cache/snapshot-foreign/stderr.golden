@@ -1,0 +1,2 @@
+error[KDLITH-CAC001]: state/18f93b1853515e00.kdlith-snapshot is not a cache-owned entry; it was left in place
+kdlith: refusing to write state: it holds entries the cache does not own

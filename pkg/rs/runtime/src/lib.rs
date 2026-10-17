@@ -14,8 +14,10 @@ mod source;
 
 pub use cache::{
     CACHE_CANONICALIZATION, CACHE_FORMAT, CacheEntry, CacheScan, CleanOutcome, Derivation,
-    EncodedEntry, EntryFault, MAX_ENTRY_BYTES, WriteOutcome, cache_key, clean_state, encode_entry,
-    scan_state, write_state,
+    EncodedEntry, EntryClass, EntryFault, MAX_ENTRY_BYTES, OwnedEntry, SNAPSHOT_CANONICALIZATION,
+    SNAPSHOT_FORMAT, SnapshotEntry, SnapshotLookup, SnapshotMeta, WriteOutcome, cache_key,
+    clean_state, encode_entry, encode_slot_lines, encode_snapshot, read_snapshot, scan_state,
+    slot_layout_digest, snapshot_key, write_state,
 };
 pub use context::{
     Context, ContextEffect, ContextError, ContextLayout, ContextTarget, FollowingEffects,

@@ -1,0 +1,3 @@
+cache 087115ac0fd96e64 revision=fnv1a64:ea4340603997dce6 schema=fnv1a64:dc7d34668e3669fe context=fnv1a64:ccaeb7d93dac757a profiles=fnv1a64:e1b51df36e161fca resolved=fnv1a64:7c4cd565807bb610 policy=reject items=1
+  derived entry=entry.kdl source=entry.kdl caller=-
+snapshot 18f93b1853515e00 entry=entry.kdl revision=fnv1a64:ea4340603997dce6 schema=fnv1a64:dc7d34668e3669fe profiles=fnv1a64:e1b51df36e161fca lineage=[entry.kdl] slots=2 layout=fnv1a64:d3616258da16a477

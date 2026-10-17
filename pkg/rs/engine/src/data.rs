@@ -10,7 +10,7 @@ use kdlith_diagnostic::DiagnosticRecord;
 use kdlith_model::{ImportRequest, Item, SourceDocument, SourceId};
 use kdlith_runtime::{
     Admission, Context, ContributionRecord, Derivation, Handlers, InvocationId, InvocationIdentity,
-    Invocations, SlotId, SlotValue, stable_hash, stable_hash_step,
+    Invocations, SlotId, SlotValue, snapshot_key, stable_hash, stable_hash_step,
 };
 
 use crate::anchors::{self, Base, Target};
@@ -21,6 +21,7 @@ use crate::discovery;
 use crate::documents::{import_failure, read_text};
 use crate::names::Sym;
 use crate::resolution::{SharedContributionResolver, failure_record, resolve};
+use crate::snapshots::{ContextSnapshot, snapshot_fingerprint};
 use crate::typed::ReadError;
 use crate::types::OutputPolicy;
 use crate::value_resolver::SharedResolver;
@@ -118,6 +119,13 @@ pub struct EntryContext {
     /// The entry document's path as the reading showed it.
     pub entry: String,
     pub values: Vec<Option<SlotValue>>,
+    /// The entry document's source revision.
+    pub revision: u64,
+    /// The fingerprint of the profile selection it was read under.
+    pub profiles: u64,
+    /// Whether its binding consulted the value resolver: such a
+    /// context may hold a resolved secret and is never persisted.
+    pub consulted_resolver: bool,
 }
 
 /// A reader of data documents over one compiled definition: the entry
@@ -219,6 +227,48 @@ impl<'d> DataReader<'d> {
     ) -> Result<(bool, Vec<EntryContext>), ReadError> {
         self.read_scoped(entries, options, sink, true)
             .map(|outcome| (outcome.failed, outcome.contexts))
+    }
+
+    /// Read as [`DataReader::read_results`] does, and also return the
+    /// context each entry document's root invocation left.
+    pub(crate) fn read_state(
+        &self,
+        entries: &[&Path],
+        options: &ReadOptions,
+        sink: &mut dyn FnMut(Item),
+    ) -> Result<(bool, Vec<BoundResult>, Vec<EntryContext>), ReadError> {
+        self.read_scoped(entries, options, sink, true)
+            .map(|outcome| (outcome.failed, outcome.results, outcome.contexts))
+    }
+
+    /// A checkpoint of each entry context under this reader's
+    /// definition, keyed by the entry as its invocation spelled it, its
+    /// revision, and its profile selection. The lineage is the entry's
+    /// shown path alone, so a later invocation spelling the entry the
+    /// same way reproduces it. An entry whose binding consulted the
+    /// value resolver gets none: its context may hold a resolved secret.
+    pub fn entry_snapshots(
+        &self,
+        contexts: Vec<EntryContext>,
+    ) -> Vec<(EntryContext, Option<ContextSnapshot>)> {
+        let layout = &self.def.plan.context.layout;
+        let fingerprint = snapshot_fingerprint(self.def);
+        contexts
+            .into_iter()
+            .map(|entry| {
+                // The values were left by a context over this very layout,
+                // so rebuilding the context cannot mismatch it.
+                let snapshot = (!entry.consulted_resolver)
+                    .then(|| Context::from_values(layout.clone(), entry.values.clone()).ok())
+                    .flatten()
+                    .map(|context| {
+                        let id = snapshot_key(&entry.entry, entry.revision, entry.profiles);
+                        let lineage = vec![entry.entry.clone()];
+                        ContextSnapshot::checkpoint(id, &context, fingerprint.clone(), lineage)
+                    });
+                (entry, snapshot)
+            })
+            .collect()
     }
 
     /// Read the named entry documents only, giving each import request
@@ -350,6 +400,10 @@ struct Outcome {
     contexts: Vec<EntryContext>,
 }
 
+/// A cached result's key: its invocation identity and the active
+/// profiles it bound under.
+type ResultKey = (InvocationIdentity, Vec<Sym>);
+
 /// One reading in progress: the invocation stack, the caches, and the
 /// sink.
 struct Reading<'r, 'd> {
@@ -372,9 +426,10 @@ struct Reading<'r, 'd> {
     results: Vec<BoundResult>,
     /// The position of each cached identity's result in `results`.
     result_of: HashMap<(InvocationIdentity, Vec<Sym>), usize>,
-    /// The context each cached result's binding left, so an entry
-    /// document replayed from the cache still reports its context.
-    left: HashMap<(InvocationIdentity, Vec<Sym>), Vec<Option<SlotValue>>>,
+    /// The context each cached result's binding left, and whether that
+    /// binding consulted the value resolver, so an entry document
+    /// replayed from the cache still reports its context.
+    left: HashMap<ResultKey, (Vec<Option<SlotValue>>, bool)>,
     /// The context each entry document's root invocation left, in
     /// entry order.
     contexts: Vec<EntryContext>,
@@ -427,9 +482,11 @@ impl Reading<'_, '_> {
                     {
                         let cached = cached.clone();
                         let key = identity.map(|k| (k, active));
-                        if let Some(values) = key.as_ref().and_then(|key| self.left.get(key)) {
-                            let values = values.clone();
-                            self.capture(id, &shown, values);
+                        if let Some((values, consulted)) =
+                            key.as_ref().and_then(|key| self.left.get(key))
+                        {
+                            let (values, consulted) = (values.clone(), *consulted);
+                            self.capture(id, &shown, values, consulted);
                         }
                         if let Some(at) = key.and_then(|key| self.result_of.get(&key).copied()) {
                             let derivation = self.derivation(id);
@@ -522,12 +579,13 @@ impl Reading<'_, '_> {
         let failed = self.failed || session.failed();
         self.failed = failed;
         let left = session.left_context();
-        self.capture(id, shown, left.clone());
+        let consulted = session.consulted_resolver();
+        self.capture(id, shown, left.clone(), consulted);
         // Resolved values join the identity, so a changed one misses. A
         // result holding a resolved secret has no cacheable identity:
         // even a fingerprint of a secret on disk is a guessing oracle.
         let identity = match identity {
-            Some(identity) if session.consulted_resolver() => session
+            Some(identity) if consulted => session
                 .resolved_fingerprint()
                 .map(|resolved| identity.with_resolved(resolved)),
             other => other,
@@ -546,7 +604,7 @@ impl Reading<'_, '_> {
                     return;
                 }
                 self.result_of.insert(key.clone(), self.results.len());
-                self.left.insert(key.clone(), left);
+                self.left.insert(key.clone(), (left, consulted));
                 self.results.push(BoundResult {
                     identity,
                     derivations: vec![derivation],
@@ -559,11 +617,20 @@ impl Reading<'_, '_> {
 
     /// Keep the context an entry document's root invocation left; an
     /// imported invocation's context stays its own.
-    fn capture(&mut self, id: InvocationId, shown: &str, values: Vec<Option<SlotValue>>) {
-        if self.invocations.get(id).is_some_and(|i| i.caller.is_none()) {
+    fn capture(
+        &mut self,
+        id: InvocationId,
+        shown: &str,
+        values: Vec<Option<SlotValue>>,
+        consulted_resolver: bool,
+    ) {
+        if let Some(invocation) = self.invocations.get(id).filter(|i| i.caller.is_none()) {
             self.contexts.push(EntryContext {
                 entry: shown.to_owned(),
                 values,
+                revision: invocation.revision.unwrap_or_default(),
+                profiles: invocation.profiles,
+                consulted_resolver,
             });
         }
     }

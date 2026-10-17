@@ -1,0 +1,32 @@
+{
+  "binary": "kdlith",
+  "description": "never-cache-secrets extends to snapshots: one refresh with --resolve-from over secret.kdl (its credential leaves the secret token absent, so the value resolver supplies it from the vault key and the following set copies it into the token slot) and plain.kdl (its credential writes the token, so nothing is resolved). The companion plain.kdl writes its cache entry and its snapshot entry, both pinned byte for byte, which proves the writer ran; secret.kdl gets neither — its snapshot key (recomputed outside the binary from the documented key construction) is pinned absent, and the stdout golden, one line per written entry, lists no snapshot for it. Writing the snapshot regardless puts the clear-text secret into a slot line, which these pins reject; the provider is never executed",
+  "args": [
+    "cache",
+    "refresh",
+    "--state",
+    "state",
+    "--schema",
+    "schema.kdl",
+    "--resolve-from",
+    "values.kdl",
+    "secret.kdl",
+    "plain.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "files": {
+      "state/75225ee5c89ca6ac.kdlith-cache": "expected/75225ee5c89ca6ac.kdlith-cache",
+      "state/593152c2df0677cb.kdlith-snapshot": "expected/593152c2df0677cb.kdlith-snapshot"
+    },
+    "absent": [
+      "state/6cb9bcc2e712ef28.kdlith-snapshot",
+      "state/.6cb9bcc2e712ef28.kdlith-snapshot-part",
+      "state/.593152c2df0677cb.kdlith-snapshot-part",
+      "state/.75225ee5c89ca6ac.kdlith-cache-part",
+      "provider-executed"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

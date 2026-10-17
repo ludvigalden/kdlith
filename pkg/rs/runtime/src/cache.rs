@@ -1,6 +1,7 @@
 //! The persistent derived-state store behind `kdlith cache`: one
-//! versioned, owned entry file per cached bound result, in a state
-//! directory every operation names explicitly.
+//! versioned, owned entry file per cached bound result and per entry
+//! context snapshot, in a state directory every operation names
+//! explicitly.
 
 use std::collections::BTreeSet;
 use std::fmt;
@@ -10,18 +11,21 @@ use std::path::Path;
 
 use kdlith_diagnostic::DiagnosticRecord;
 use kdlith_diagnostic::registry::{lookup, render};
-use kdlith_model::Repeated;
+use kdlith_model::{OriginId, Repeated, Value};
 use serde::{Deserialize, Serialize};
 
-use crate::context::{stable_hash, stable_hash_step};
+use crate::context::{SlotValue, stable_hash, stable_hash_step};
 use crate::export::write_ndjson;
 use crate::imports::InvocationIdentity;
 
-/// An entry is owned when it is a regular file named
-/// `<key>.kdlith-cache` whose first line is the ownership header;
-/// anything else in the directory is foreign — reported, never read
-/// further, never removed.
-const SUFFIX: &str = ".kdlith-cache";
+/// The owned entry classes: a file is owned when it is a regular file
+/// named `<key><suffix>` whose first line starts with its class's
+/// marker; anything else in the directory is foreign — reported, never
+/// read further, never removed.
+const CLASSES: [(EntryClass, &str, &str); 2] = [
+    (EntryClass::Cache, ".kdlith-cache", "kdlith-cache "),
+    (EntryClass::Snapshot, ".kdlith-snapshot", "kdlith-snapshot "),
+];
 
 /// The entry format version this build reads and writes.
 pub const CACHE_FORMAT: u32 = 3;
@@ -29,14 +33,68 @@ pub const CACHE_FORMAT: u32 = 3;
 /// into an entry. A change to the serialized item shape takes a new
 /// number, so an entry written under another one is never misread.
 pub const CACHE_CANONICALIZATION: u32 = 1;
+/// The snapshot entry format version this build reads and writes.
+pub const SNAPSHOT_FORMAT: u32 = 1;
+/// How slot values are serialized into a snapshot entry's payload.
+pub const SNAPSHOT_CANONICALIZATION: u32 = 1;
 /// The largest entry file the store reads; a larger one is corrupt.
 pub const MAX_ENTRY_BYTES: u64 = 64 * 1024 * 1024;
 
 const FOREIGN: &str = "KDLITH-CAC001";
 const CORRUPT: &str = "KDLITH-CAC002";
 const INACCESSIBLE: &str = "KDLITH-CAC003";
-const MAGIC: &str = "kdlith-cache ";
-const PART_SUFFIX: &str = ".kdlith-cache-part";
+
+/// The kind of owned entry a file is.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[non_exhaustive]
+pub enum EntryClass {
+    /// One cached bound result.
+    Cache,
+    /// One entry document's context snapshot.
+    Snapshot,
+}
+
+impl EntryClass {
+    /// The file name an entry of this class holding `key` has.
+    pub fn file_name(self, key: &str) -> String {
+        format!("{key}{}", self.suffix())
+    }
+
+    /// Whether `bytes` begin with this class's ownership marker.
+    pub fn marks(self, bytes: &[u8]) -> bool {
+        bytes.starts_with(self.magic().as_bytes())
+    }
+
+    /// The ownership header this build writes for the class.
+    pub fn header(self) -> String {
+        let (format, canonicalization) = match self {
+            EntryClass::Cache => (CACHE_FORMAT, CACHE_CANONICALIZATION),
+            EntryClass::Snapshot => (SNAPSHOT_FORMAT, SNAPSHOT_CANONICALIZATION),
+        };
+        format!(
+            "{}format={format} canonicalization={canonicalization}\n",
+            self.magic()
+        )
+    }
+
+    fn suffix(self) -> &'static str {
+        CLASSES
+            .iter()
+            .find(|(class, _, _)| *class == self)
+            .map_or("", |(_, suffix, _)| suffix)
+    }
+
+    fn magic(self) -> &'static str {
+        CLASSES
+            .iter()
+            .find(|(class, _, _)| *class == self)
+            .map_or("", |(_, _, magic)| magic)
+    }
+
+    fn part_name(self, key: &str) -> String {
+        format!(".{key}{}-part", self.suffix())
+    }
+}
 
 /// Why an entry holds what it holds: the entrypoint whose reading
 /// derived it, the document it binds, and the document that imported
@@ -80,7 +138,7 @@ impl fmt::Display for CacheEntry {
         let id = &self.identity;
         write!(
             f,
-            "{} revision={} schema={} context={} profiles={} resolved={} policy={} items={}",
+            "cache {} revision={} schema={} context={} profiles={} resolved={} policy={} items={}",
             self.key,
             digest(id.revision),
             digest(id.schema),
@@ -103,14 +161,128 @@ impl fmt::Display for CacheEntry {
     }
 }
 
+/// One owned, intact snapshot entry: its key, the entry document it
+/// captures, and the stamps its metadata line carries.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct SnapshotEntry {
+    pub key: String,
+    pub meta: SnapshotMeta,
+}
+
+impl fmt::Display for SnapshotEntry {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let meta = &self.meta;
+        write!(
+            f,
+            "snapshot {} entry={} revision={} schema={} profiles={} lineage=[{}] slots={} layout={}",
+            self.key,
+            meta.entry,
+            meta.revision,
+            meta.schema,
+            meta.profiles,
+            meta.lineage.join(","),
+            meta.slots,
+            meta.layout
+        )
+    }
+}
+
+/// The metadata line of a snapshot entry: the lookup key's inputs (the
+/// entry document as its invocation spelled it, its source revision,
+/// the profile selection), the schema fingerprint and lineage a restore
+/// checks, and the payload's slot count, slot-layout digest, and body
+/// digest. Every fingerprint is a stamped digest.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+#[non_exhaustive]
+pub struct SnapshotMeta {
+    pub key: String,
+    pub entry: String,
+    pub revision: String,
+    pub schema: String,
+    pub profiles: String,
+    pub lineage: Vec<String>,
+    pub slots: usize,
+    pub layout: String,
+    pub digest: String,
+}
+
+impl SnapshotMeta {
+    /// The metadata of a snapshot of `entry` at `revision` under the
+    /// profile selection `profiles`; the key and the body digest are
+    /// derived, never supplied.
+    pub fn new(
+        entry: impl Into<String>,
+        revision: u64,
+        profiles: u64,
+        schema: impl Into<String>,
+        lineage: Vec<String>,
+        layout: impl Into<String>,
+    ) -> Self {
+        let entry = entry.into();
+        Self {
+            key: snapshot_key(&entry, revision, profiles),
+            entry,
+            revision: digest(revision),
+            schema: schema.into(),
+            profiles: digest(profiles),
+            lineage,
+            slots: 0,
+            layout: layout.into(),
+            digest: String::new(),
+        }
+    }
+}
+
+/// One owned, intact entry of either class.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum OwnedEntry {
+    Cache(CacheEntry),
+    Snapshot(SnapshotEntry),
+}
+
+impl OwnedEntry {
+    pub fn class(&self) -> EntryClass {
+        match self {
+            OwnedEntry::Cache(_) => EntryClass::Cache,
+            OwnedEntry::Snapshot(_) => EntryClass::Snapshot,
+        }
+    }
+
+    pub fn key(&self) -> &str {
+        match self {
+            OwnedEntry::Cache(entry) => &entry.key,
+            OwnedEntry::Snapshot(entry) => &entry.key,
+        }
+    }
+
+    /// The entry's file name in the state directory.
+    pub fn file_name(&self) -> String {
+        self.class().file_name(self.key())
+    }
+}
+
+impl fmt::Display for OwnedEntry {
+    /// The entry's line, led by its class label.
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            OwnedEntry::Cache(entry) => entry.fmt(f),
+            OwnedEntry::Snapshot(entry) => entry.fmt(f),
+        }
+    }
+}
+
 /// Why an owned file is not an intact entry. A version mismatch is its
 /// own outcome, distinct from damage, so a newer or older store's entry
 /// is never misread as this one's.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum EntryFault {
-    /// The ownership header names another format or canonicalization.
-    Version { header: String },
+    /// The ownership header names another format or canonicalization
+    /// than `current`, the one this build reads for the entry's class.
+    Version { header: String, current: String },
     /// A write was interrupted and left its hidden part file.
     Interrupted,
     /// The entry fails a structural check.
@@ -120,11 +292,9 @@ pub enum EntryFault {
 impl fmt::Display for EntryFault {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            EntryFault::Version { header } => write!(
-                f,
-                "written as {header:?}, not this version's {:?}",
-                header_line().trim_end()
-            ),
+            EntryFault::Version { header, current } => {
+                write!(f, "written as {header:?}, not this version's {current:?}")
+            }
             EntryFault::Interrupted => f.write_str("an interrupted write left this partial entry"),
             EntryFault::Damaged(reason) => f.write_str(reason),
         }
@@ -138,8 +308,8 @@ impl fmt::Display for EntryFault {
 pub struct CacheScan {
     /// `false` when the state directory does not exist.
     pub present: bool,
-    /// Intact entries, sorted by key.
-    pub entries: Vec<CacheEntry>,
+    /// Intact entries, cache entries first, each class sorted by key.
+    pub entries: Vec<OwnedEntry>,
     /// Owned files that fail their envelope check, by file name, with
     /// the reason; sorted by file name.
     pub corrupt: Vec<(String, EntryFault)>,
@@ -173,17 +343,17 @@ impl CacheScan {
     fn owned(&self) -> BTreeSet<String> {
         self.entries
             .iter()
-            .map(|entry| file_name(&entry.key))
+            .map(OwnedEntry::file_name)
             .chain(self.corrupt.iter().map(|(name, _)| name.clone()))
             .collect()
     }
 }
 
-/// One entry ready to write: its key and its encoded bytes.
+/// One entry ready to write: what it is and its encoded bytes.
 #[derive(Clone, Debug)]
 #[non_exhaustive]
 pub struct EncodedEntry {
-    pub entry: CacheEntry,
+    pub entry: OwnedEntry,
     bytes: Vec<u8>,
 }
 
@@ -198,6 +368,155 @@ pub fn cache_key(identity: &InvocationIdentity) -> String {
     hash = stable_hash_step(hash, &identity.resolved.to_le_bytes());
     hash = stable_hash_step(hash, policy_name(identity.policy).as_bytes());
     format!("{hash:016x}")
+}
+
+/// The key of a snapshot: a stable FNV-1a hash of the entry document as
+/// its invocation spelled it (length-prefixed), its source revision, and
+/// its profile-selection fingerprint. The schema fingerprint and the
+/// lineage are deliberately not part of it: they travel in the entry and
+/// are checked by the restore, so a mismatch is reported, never a miss.
+pub fn snapshot_key(entry: &str, revision: u64, profiles: u64) -> String {
+    let mut hash = stable_hash(b"kdlith-snapshot-key");
+    hash = stable_hash_step(hash, &(entry.len() as u64).to_le_bytes());
+    hash = stable_hash_step(hash, entry.as_bytes());
+    hash = stable_hash_step(hash, &revision.to_le_bytes());
+    hash = stable_hash_step(hash, &profiles.to_le_bytes());
+    format!("{hash:016x}")
+}
+
+/// Encode one snapshot entry: the ownership header, the metadata line
+/// with its body digest and slot count stamped from `payload`, then the
+/// payload — one line per slot, each closed by a newline.
+pub fn encode_snapshot(mut meta: SnapshotMeta, payload: &str) -> io::Result<EncodedEntry> {
+    meta.slots = payload.split_terminator('\n').count();
+    meta.digest = snapshot_digest(payload.as_bytes());
+    let mut bytes = EntryClass::Snapshot.header().into_bytes();
+    write_ndjson(&mut bytes, &meta)?;
+    bytes.extend_from_slice(payload.as_bytes());
+    Ok(EncodedEntry {
+        entry: OwnedEntry::Snapshot(SnapshotEntry {
+            key: meta.key.clone(),
+            meta,
+        }),
+        bytes,
+    })
+}
+
+/// A snapshot payload: one line per slot, in slot-id order, each
+/// `{"name","value","layer"}` with the value in its tagged form; an
+/// unset slot's value and layer are null. `names` names the slots.
+pub fn encode_slot_lines(names: &[String], values: &[Option<SlotValue>]) -> String {
+    let mut out = Vec::new();
+    for (at, held) in values.iter().enumerate() {
+        let line = SlotLine {
+            name: names.get(at).cloned().unwrap_or_default(),
+            value: held.as_ref().map(|held| held.value.clone()),
+            layer: held.as_ref().and_then(|held| held.layer.clone()),
+        };
+        // A slot line holds strings and tagged values only; writing it
+        // into memory cannot fail.
+        let _ = write_ndjson(&mut out, &line);
+    }
+    String::from_utf8(out).unwrap_or_default()
+}
+
+/// The slot names and values of a payload, in slot-id order. Values
+/// come back untraced, with the layer they were captured under.
+fn decode_slot_lines(payload: &str) -> Result<SlotLines, String> {
+    let mut slots = Vec::new();
+    for line in payload.split_terminator('\n') {
+        let line: SlotLine =
+            serde_json::from_str(line).map_err(|error| format!("unreadable slot line: {error}"))?;
+        let value = match (line.value, line.layer) {
+            (Some(value), layer) => {
+                Some(SlotValue::new(value, OriginId::SOURCE_METADATA).with_layer(layer))
+            }
+            (None, None) => None,
+            (None, Some(_)) => {
+                return Err(format!("unset slot {:?} carries a layer", line.name));
+            }
+        };
+        slots.push((line.name, value));
+    }
+    Ok(slots)
+}
+
+/// A stamped digest of a slot layout: each slot's name in slot-id
+/// order, length-prefixed, under its own hash domain.
+pub fn slot_layout_digest<'a>(names: impl IntoIterator<Item = &'a str>) -> String {
+    let mut hash = stable_hash(b"kdlith-slot-layout");
+    for name in names {
+        hash = stable_hash_step(hash, &(name.len() as u64).to_le_bytes());
+        hash = stable_hash_step(hash, name.as_bytes());
+    }
+    digest(hash)
+}
+
+/// A payload's slots: each slot's name and value, in slot-id order.
+type SlotLines = Vec<(String, Option<SlotValue>)>;
+
+/// One slot line of a snapshot payload.
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct SlotLine {
+    name: String,
+    value: Option<Value>,
+    layer: Option<String>,
+}
+
+/// What looking a snapshot up by key found.
+#[derive(Clone, Debug)]
+#[non_exhaustive]
+pub enum SnapshotLookup {
+    /// No owned snapshot entry with the key exists.
+    Miss,
+    /// An intact entry: its metadata and its slot values in slot-id
+    /// order, untraced, each with the layer it was captured under.
+    Hit(Box<SnapshotEntry>, Vec<Option<SlotValue>>),
+    /// An owned entry that cannot be used: another version, an
+    /// interrupted write, or damage — reported as `KDLITH-CAC002`, never
+    /// read as this version's.
+    Unusable(Box<DiagnosticRecord>),
+}
+
+/// Look up the snapshot entry `key` in `dir`. A missing directory or
+/// file is a miss; a file under the entry's name that is not
+/// snapshot-owned is a miss too, since the store never reads a foreign
+/// file further. A read failure is `KDLITH-CAC003`.
+pub fn read_snapshot(dir: &Path, key: &str) -> Result<SnapshotLookup, Box<DiagnosticRecord>> {
+    if !is_key(key) {
+        return Ok(SnapshotLookup::Miss);
+    }
+    let name = EntryClass::Snapshot.file_name(key);
+    let path = dir.join(&name);
+    match fs::symlink_metadata(&path) {
+        Ok(meta) if meta.is_file() => {}
+        Ok(_) => return Ok(SnapshotLookup::Miss),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {
+            return Ok(SnapshotLookup::Miss);
+        }
+        Err(error) => {
+            return Err(inaccessible(
+                "read",
+                &path.display().to_string(),
+                &error.to_string(),
+            ));
+        }
+    }
+    let bytes = read_capped(&path)?;
+    if !EntryClass::Snapshot.marks(&bytes) {
+        return Ok(SnapshotLookup::Miss);
+    }
+    Ok(match decode_snapshot(key, &bytes) {
+        Ok((entry, slots)) => {
+            let values = slots.into_iter().map(|(_, value)| value).collect();
+            SnapshotLookup::Hit(Box::new(entry), values)
+        }
+        Err(fault) => {
+            let shown = path.display().to_string();
+            SnapshotLookup::Unusable(Box::new(coded(CORRUPT, &[&shown, &fault.to_string()])))
+        }
+    })
 }
 
 /// Encode one entry: the ownership header, one metadata line, then one
@@ -225,16 +544,16 @@ pub fn encode_entry<T: Serialize>(
         items: items.len(),
         digest: items_digest(&body),
     };
-    let mut bytes = header_line().into_bytes();
+    let mut bytes = EntryClass::Cache.header().into_bytes();
     write_ndjson(&mut bytes, &meta)?;
     bytes.extend_from_slice(&body);
     Ok(EncodedEntry {
-        entry: CacheEntry {
+        entry: OwnedEntry::Cache(CacheEntry {
             key,
             identity,
             derivations,
             items: items.len(),
-        },
+        }),
         bytes,
     })
 }
@@ -270,7 +589,8 @@ pub fn scan_state(dir: &Path) -> Result<CacheScan, Box<DiagnosticRecord>> {
             Class::Foreign => scan.foreign.push(name),
         }
     }
-    scan.entries.sort_by(|a, b| a.key.cmp(&b.key));
+    scan.entries
+        .sort_by(|a, b| (a.class(), a.key()).cmp(&(b.class(), b.key())));
     scan.corrupt.sort_by(|a, b| a.0.cmp(&b.0));
     scan.foreign.sort();
     Ok(scan)
@@ -313,8 +633,8 @@ pub fn clean_state(dir: &Path, scan: &CacheScan) -> CleanOutcome {
     outcome
 }
 
-/// What one write changed: the keys written, and the owned files the
-/// new state no longer holds and that were therefore removed.
+/// What one write changed: the entry file names written, and the owned
+/// files the new state no longer holds and that were therefore removed.
 #[derive(Clone, Debug, Default)]
 #[non_exhaustive]
 pub struct WriteOutcome {
@@ -348,8 +668,9 @@ pub fn write_state(
     let mut outcome = WriteOutcome::default();
     let mut kept = BTreeSet::new();
     for encoded in entries {
-        let name = file_name(&encoded.entry.key);
-        let part = dir.join(format!(".{}{PART_SUFFIX}", encoded.entry.key));
+        let (class, key) = (encoded.entry.class(), encoded.entry.key());
+        let name = class.file_name(key);
+        let part = dir.join(class.part_name(key));
         let dest = dir.join(&name);
         let label = dest.display().to_string();
         let staged = fs::File::create(&part).and_then(|mut file| {
@@ -360,7 +681,7 @@ pub fn write_state(
             let _ = fs::remove_file(&part);
             return Err(inaccessible("write", &label, &error.to_string()));
         }
-        outcome.written.push(encoded.entry.key.clone());
+        outcome.written.push(name.clone());
         kept.insert(name);
     }
     for name in scan.owned() {
@@ -378,7 +699,7 @@ pub fn write_state(
 
 /// The classification of one directory entry.
 enum Class {
-    Entry(CacheEntry),
+    Entry(OwnedEntry),
     Corrupt(EntryFault),
     Foreign,
 }
@@ -390,25 +711,30 @@ fn classify(path: &Path, name: &str, regular: bool) -> Result<Class, Box<Diagnos
     if !regular {
         return Ok(Class::Foreign);
     }
-    let part = part_key(name);
-    let key = match (entry_key(name), part) {
-        (Some(key), _) => key,
-        (None, Some(_)) => {
-            let bytes = read_capped(path)?;
-            let prefix = bytes.len().min(MAGIC.len());
-            return Ok(if bytes[..prefix] == MAGIC.as_bytes()[..prefix] {
-                Class::Corrupt(EntryFault::Interrupted)
-            } else {
-                Class::Foreign
-            });
-        }
-        (None, None) => return Ok(Class::Foreign),
+    if let Some(class) = part_class(name) {
+        let bytes = read_capped(path)?;
+        let magic = class.magic().as_bytes();
+        let prefix = bytes.len().min(magic.len());
+        return Ok(if bytes[..prefix] == magic[..prefix] {
+            Class::Corrupt(EntryFault::Interrupted)
+        } else {
+            Class::Foreign
+        });
+    }
+    let Some((class, key)) = entry_key(name) else {
+        return Ok(Class::Foreign);
     };
     let bytes = read_capped(path)?;
-    if !bytes.starts_with(MAGIC.as_bytes()) {
+    if !class.marks(&bytes) {
         return Ok(Class::Foreign);
     }
-    Ok(match decode(key, &bytes) {
+    let decoded = match class {
+        EntryClass::Cache => decode(key, &bytes).map(OwnedEntry::Cache),
+        EntryClass::Snapshot => {
+            decode_snapshot(key, &bytes).map(|(entry, _)| OwnedEntry::Snapshot(entry))
+        }
+    };
+    Ok(match decoded {
         Ok(entry) => Class::Entry(entry),
         Err(fault) => Class::Corrupt(fault),
     })
@@ -437,21 +763,7 @@ fn read_capped(path: &Path) -> Result<Vec<u8>, Box<DiagnosticRecord>> {
 /// and item lines, each verified before anything is trusted.
 fn decode(key: &str, bytes: &[u8]) -> Result<CacheEntry, EntryFault> {
     let damaged = |reason: String| EntryFault::Damaged(reason);
-    if bytes.len() as u64 > MAX_ENTRY_BYTES {
-        return Err(damaged(format!("larger than {MAX_ENTRY_BYTES} bytes")));
-    }
-    let text = std::str::from_utf8(bytes).map_err(|_| damaged("not UTF-8".to_owned()))?;
-    let (head, rest) = text
-        .split_once('\n')
-        .ok_or_else(|| damaged("no metadata line".to_owned()))?;
-    if format!("{head}\n") != header_line() {
-        return Err(EntryFault::Version {
-            header: head.to_owned(),
-        });
-    }
-    let (meta, body) = rest
-        .split_once('\n')
-        .ok_or_else(|| damaged("no metadata line".to_owned()))?;
+    let (meta, body) = envelope(EntryClass::Cache, bytes)?;
     let meta: Meta = serde_json::from_str(meta)
         .map_err(|error| damaged(format!("unreadable metadata: {error}")))?;
     let identity = meta.identity.parse().map_err(damaged)?;
@@ -488,6 +800,73 @@ fn decode(key: &str, bytes: &[u8]) -> Result<CacheEntry, EntryFault> {
         derivations: meta.derivations,
         items,
     })
+}
+
+/// Checked access to one snapshot entry: header, metadata, key, body
+/// digest, slot lines, and layout digest, each verified before anything
+/// is trusted.
+fn decode_snapshot(key: &str, bytes: &[u8]) -> Result<(SnapshotEntry, SlotLines), EntryFault> {
+    let damaged = |reason: String| EntryFault::Damaged(reason);
+    let (meta, body) = envelope(EntryClass::Snapshot, bytes)?;
+    let meta: SnapshotMeta = serde_json::from_str(meta)
+        .map_err(|error| damaged(format!("unreadable metadata: {error}")))?;
+    let recomputed = match (undigest(&meta.revision), undigest(&meta.profiles)) {
+        (Ok(revision), Ok(profiles)) => snapshot_key(&meta.entry, revision, profiles),
+        (Err(reason), _) | (_, Err(reason)) => return Err(damaged(reason)),
+    };
+    if meta.key != key || recomputed != key {
+        return Err(damaged(
+            "its key does not match its file name and identity".to_owned(),
+        ));
+    }
+    undigest(&meta.schema).map_err(damaged)?;
+    if snapshot_digest(body.as_bytes()) != meta.digest {
+        return Err(damaged("its payload does not match its digest".to_owned()));
+    }
+    let slots = decode_slot_lines(body).map_err(damaged)?;
+    if slots.len() != meta.slots || !(body.is_empty() || body.ends_with('\n')) {
+        return Err(damaged(
+            "its slot count does not match its slot lines".to_owned(),
+        ));
+    }
+    if slot_layout_digest(slots.iter().map(|(name, _)| name.as_str())) != meta.layout {
+        return Err(damaged(
+            "its slot names do not match its layout digest".to_owned(),
+        ));
+    }
+    Ok((
+        SnapshotEntry {
+            key: key.to_owned(),
+            meta,
+        },
+        slots,
+    ))
+}
+
+/// The metadata line and body of an owned entry of `class`, once its
+/// size, encoding, and ownership header are checked. A header naming
+/// another format or canonicalization is a version outcome, never read
+/// further.
+fn envelope(class: EntryClass, bytes: &[u8]) -> Result<(&str, &str), EntryFault> {
+    let damaged = |reason: &str| EntryFault::Damaged(reason.to_owned());
+    if bytes.len() as u64 > MAX_ENTRY_BYTES {
+        return Err(EntryFault::Damaged(format!(
+            "larger than {MAX_ENTRY_BYTES} bytes"
+        )));
+    }
+    let text = std::str::from_utf8(bytes).map_err(|_| damaged("not UTF-8"))?;
+    let (head, rest) = text
+        .split_once('\n')
+        .ok_or_else(|| damaged("no metadata line"))?;
+    let current = class.header();
+    if format!("{head}\n") != current {
+        return Err(EntryFault::Version {
+            header: head.to_owned(),
+            current: current.trim_end().to_owned(),
+        });
+    }
+    rest.split_once('\n')
+        .ok_or_else(|| damaged("no metadata line"))
 }
 
 /// The metadata line of an entry.
@@ -540,31 +919,34 @@ impl IdentityRecord {
     }
 }
 
-/// The ownership header: the marker, the format, and the
-/// canonicalization the items were written under.
-fn header_line() -> String {
-    format!("{MAGIC}format={CACHE_FORMAT} canonicalization={CACHE_CANONICALIZATION}\n")
-}
-
 /// The digest of an entry's item lines, under its own hash domain.
 fn items_digest(body: &[u8]) -> String {
     digest(stable_hash_step(stable_hash(b"kdlith-cache-items"), body))
 }
 
-fn file_name(key: &str) -> String {
-    format!("{key}{SUFFIX}")
+/// The digest of a snapshot entry's payload, under its own hash domain.
+fn snapshot_digest(body: &[u8]) -> String {
+    digest(stable_hash_step(stable_hash(b"kdlith-snapshot-body"), body))
 }
 
-/// The key of an entry file name, when the name is one.
-fn entry_key(name: &str) -> Option<&str> {
-    name.strip_suffix(SUFFIX).filter(|key| is_key(key))
+/// The class and key of an entry file name, when the name is one.
+fn entry_key(name: &str) -> Option<(EntryClass, &str)> {
+    CLASSES.iter().find_map(|(class, suffix, _)| {
+        name.strip_suffix(suffix)
+            .filter(|key| is_key(key))
+            .map(|key| (*class, key))
+    })
 }
 
-/// The key of a part file name, when the name is one.
-fn part_key(name: &str) -> Option<&str> {
-    name.strip_prefix('.')
-        .and_then(|rest| rest.strip_suffix(PART_SUFFIX))
-        .filter(|key| is_key(key))
+/// The class of a part file name, when the name is one.
+fn part_class(name: &str) -> Option<EntryClass> {
+    let rest = name.strip_prefix('.')?;
+    CLASSES.iter().find_map(|(class, suffix, _)| {
+        rest.strip_suffix("-part")
+            .and_then(|entry| entry.strip_suffix(suffix))
+            .filter(|key| is_key(key))
+            .map(|_| *class)
+    })
 }
 
 fn is_key(key: &str) -> bool {

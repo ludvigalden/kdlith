@@ -1,0 +1,30 @@
+// A context slot set from a field whose computed default is a resolved
+// secret: an entry that leaves the token absent consults the resolver,
+// an entry that writes it does not.
+schema vault version="1" {
+    types {
+        object Credential {
+            field token String sensitivity=secret {
+                fallback computed=#true {
+                    dependency "vault"
+                }
+            }
+        }
+        object Note {
+            field text String
+        }
+    }
+    context {
+        slot token String
+    }
+    node credential role=context-control type=Credential {
+        field token property=token
+        effects target=following {
+            set token field=token
+        }
+    }
+    node note role=record type=Note {
+        field text arg=0
+    }
+    provider vault ttl=300 "sh" "-c" "touch provider-executed"
+}

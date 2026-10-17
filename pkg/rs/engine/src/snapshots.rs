@@ -3,7 +3,12 @@
 //! without replaying any preceding control.
 
 use kdlith_diagnostic::DiagnosticRecord;
-use kdlith_runtime::{Context, ContextError, ContextLayout, SlotId, SlotValue};
+use kdlith_runtime::{
+    Context, ContextError, ContextLayout, SlotId, SlotValue, encode_slot_lines, slot_layout_digest,
+    stable_hash,
+};
+
+use crate::definition::Definition;
 
 /// The code a rejected restore reports under.
 pub const SNAPSHOT_MISMATCH: &str = "KDLITH-CTX004";
@@ -98,6 +103,25 @@ impl ContextSnapshot {
             base: None,
             delta: Vec::new(),
             values: context.snapshot_values(),
+        }
+    }
+
+    /// A full checkpoint of persisted values, as a snapshot entry holds
+    /// them. Nothing is checked here: [`ContextSnapshot::restore`] still
+    /// checks the fingerprint, then the lineage, then the slot count.
+    pub fn persisted(
+        id: impl Into<String>,
+        values: Vec<Option<SlotValue>>,
+        fingerprint: impl Into<String>,
+        lineage: Vec<String>,
+    ) -> Self {
+        Self {
+            id: id.into(),
+            fingerprint: fingerprint.into(),
+            lineage,
+            base: None,
+            delta: Vec::new(),
+            values,
         }
     }
 
@@ -271,4 +295,38 @@ impl SnapshotIndex {
     pub fn by_snapshot(&self, snapshot: &str) -> Option<&SnapshotIndexEntry> {
         self.entries.iter().find(|e| e.snapshot == snapshot)
     }
+}
+
+/// The payload of a persisted snapshot: one line per slot in slot-id
+/// order, each naming its slot, with the value in its tagged form and
+/// its layer — the context view's slot form. Provenance is not
+/// persisted: a trace locates nodes of one reading and is not semantics.
+pub fn snapshot_payload(def: &Definition, values: &[Option<SlotValue>]) -> String {
+    encode_slot_lines(&slot_names(def), values)
+}
+
+/// The stamped digest of `def`'s slot layout: its slot names in slot-id
+/// order.
+pub fn definition_layout_digest(def: &Definition) -> String {
+    slot_layout_digest(slot_names(def).iter().map(String::as_str))
+}
+
+/// The schema fingerprint a snapshot is captured and restored under:
+/// the definition's digest as every invocation identity folds it,
+/// stamped.
+pub fn snapshot_fingerprint(def: &Definition) -> String {
+    format!("fnv1a64:{:016x}", stable_hash(def.digest().as_bytes()))
+}
+
+/// Each slot's name, in slot-id order.
+fn slot_names(def: &Definition) -> Vec<String> {
+    let mut names = vec![String::new(); def.plan.context.layout.slot_count()];
+    for slot in &def.slots {
+        if let Some(id) = def.plan.context.slot(slot.name)
+            && let Some(at) = names.get_mut(id.index())
+        {
+            def.names.resolve(slot.name).clone_into(at);
+        }
+    }
+    names
 }

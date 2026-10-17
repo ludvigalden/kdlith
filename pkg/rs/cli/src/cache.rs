@@ -21,8 +21,9 @@ pub(crate) fn run(command: CacheCommand) -> ExitStatus {
     }
 }
 
-/// One line per intact entry, then each corrupt or foreign entry
-/// reported. A missing state directory is empty, not an error.
+/// One line per intact entry, led by its class (`cache` or `snapshot`),
+/// then each corrupt or foreign entry reported. A missing state
+/// directory is empty, not an error.
 fn inspect(state: &Path) -> ExitStatus {
     let scan = match scan_state(state) {
         Ok(scan) => scan,
@@ -39,9 +40,10 @@ fn inspect(state: &Path) -> ExitStatus {
     combine(printed, report_all(&scan.records(state)))
 }
 
-/// Derive the state the data reading caches and replace the owned
-/// entries with it. Nothing is written when the reading reports an
-/// error or the directory holds a foreign entry.
+/// Derive the state the data reading caches — bound results and entry
+/// context snapshots — and replace the owned entries with it. Nothing
+/// is written when the reading fails or the directory holds a foreign
+/// entry.
 fn refresh(args: CacheRefreshArgs) -> ExitStatus {
     let scan = match scan_state(&args.state) {
         Ok(scan) => scan,
@@ -97,10 +99,10 @@ fn refresh(args: CacheRefreshArgs) -> ExitStatus {
     combine(printed, status)
 }
 
-/// Remove every owned entry; leave and report everything else. A scan
-/// that cannot cover the whole directory removes nothing. Every owned
-/// removal is attempted; each failure is reported beside the foreign
-/// entries and fails the run.
+/// Remove every owned entry of either class; leave and report the rest.
+/// A scan that cannot cover the whole directory removes nothing. Every
+/// owned removal is attempted; each failure is reported and fails the
+/// run.
 fn clean(state: &Path) -> ExitStatus {
     let scan = match scan_state(state) {
         Ok(scan) => scan,

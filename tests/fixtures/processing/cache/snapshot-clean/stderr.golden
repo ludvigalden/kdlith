@@ -1,0 +1,2 @@
+error[KDLITH-CAC001]: state/2222222222222222.kdlith-snapshot is not a cache-owned entry; it was left in place
+kdlith: removed 3 owned entries from state; left 1 foreign
