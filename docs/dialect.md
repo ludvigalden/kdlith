@@ -576,8 +576,9 @@ the field it fills is declared `sensitivity=secret`.
 
 A definition document is a data document of its dialect. A construct
 the dialect's declarations reject therefore gets one diagnostic code on
-every reading path: when the engine compiles the definition (`vet`) and
-when a processor such as superproc binds it (`inspect`).
+every reading path: when a processor such as superproc binds it (the
+item stream `inspect` shows) and when the engine compiles it (`vet`, and
+`inspect` after its item stream).
 
 | Rejected construct                                                                                  | Code            |
 | --------------------------------------------------------------------------------------------------- | --------------- |
@@ -606,6 +607,15 @@ match no case of its `cases` block and that has no `otherwise` is
 unbound (`KDLITH-BND001`). Every definition root — dialect or schema —
 states its `version` property; a root without one is a missing required field,
 rejected with `KDLITH-BND004` on both reading paths.
+
+An unbound node (`KDLITH-BND001`) carries a note when it looks like a
+child written without braces: its immediately preceding sibling in the
+same scope was bound, that sibling's binding admits the unbound node's
+name as a child, and the unbound node starts at a strictly greater
+column. KDL indentation is not structure, so such a line is a sibling,
+and the note, placed at the sibling's line, asks whether it was meant
+to nest there. Both reading paths attach it, and it renders as an
+indented `note:` line ending in the sibling's `(path:line:column)`.
 
 The expanded surface adds `KDLITH-SCH011` to this table and retires
 `KDLITH-DLC003` together with the deferral marker
@@ -660,20 +670,29 @@ The remaining definition codes (`KDLITH-SCH001`, `KDLITH-SCH002`,
 `KDLITH-SCH004`, `KDLITH-SCH005`, `KDLITH-SCH007`, `KDLITH-SCH008`,
 `KDLITH-DLC005`, `KDLITH-DLC006`, and the symbol-catalog linking codes
 `KDLITH-REF001` and `KDLITH-REF002`) come from linking, plan building,
-and extension checks that only the compiler runs. `inspect schema`
-therefore accepts a resolution policy naming a resolver nothing
-installs, where `vet schema`, `list`, and `gen schema` reject it as
-`KDLITH-DLC006`; inspecting reports what the documents declare, and
-installation is a property of the processor that loads them. That split is a
-deliberate product decision, not an accident: `inspect` runs the reader
-path and performs only the checks the dialect's declarations own, so it
-accepts an input whose only faults are compiler-only checks, while
-`vet` hands the same reading to the compiler and adds them. Fixture
-scenarios pin that acceptance, so it is committed behavior rather than
-an accident. A node-level check such as an overlapping binding sits at the same
-span on both reading paths: the reader-path binder check reports it at
-the node declaration, and it fires first in `vet`, so the compiler's
-field-span report of the same fault is not reached.
+and extension checks that only the compiler runs. `inspect dialect` and
+`inspect schema` run that compiler too: they first stream every item the
+reader yields to standard output, then hand the same documents to the
+compiler exactly as `vet dialect` and `vet schema` do, under complete
+checking, and render the reader's diagnostics followed by the
+compiler's on standard error. Any error exits nonzero after the items
+have been shown; warnings alone exit 0. Show, then fail: the items
+explain what the documents declare as written, and the diagnostics say
+why the definition does not compile. A resolution policy naming a
+resolver nothing installs is therefore `KDLITH-DLC006` under `inspect
+schema` as under `vet schema`, `list`, and `gen schema`, and a single
+contributing document of a multi-document dialect, inspected alone,
+streams its items and then fails linking (`KDLITH-DLC008`, or
+`KDLITH-SCH005` for an unmet document rule) because the types it refers
+to are declared in its siblings. When the reader itself reports an
+error, the compile stage does not run, since the compiler would re-read
+the same documents and stop on the same errors; such a run reports only
+the reader's diagnostics. `inspect data` binds exactly as `vet data`
+does, compiling the schema first. A node-level check such as an
+overlapping binding sits at the same span on both reading paths: the
+reader-path binder check reports it at the node declaration, and it
+fires first, so the compiler's field-span report of the same fault is
+not reached.
 
 ### superproc
 
