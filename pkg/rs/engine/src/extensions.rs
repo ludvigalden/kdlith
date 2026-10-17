@@ -1,5 +1,7 @@
-//! The validators and context handlers a processor installs. A definition
-//! naming one that is not installed fails to compile.
+//! The validators, handlers, binding codecs, resolvers, and source
+//! providers a processor installs. Unknown names fail closed; a known
+//! codec the processor lacks compiles, yielding pending typed-binding
+//! items.
 
 use std::collections::BTreeSet;
 
