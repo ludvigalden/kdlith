@@ -338,6 +338,24 @@ impl ImportRequest {
     }
 }
 
+impl PendingBinding {
+    pub fn new(
+        node: NodeId,
+        field: impl Into<String>,
+        against: Reference,
+        raw: Value,
+        origin: OriginId,
+    ) -> Self {
+        Self {
+            node,
+            field: field.into(),
+            against,
+            raw,
+            origin,
+        }
+    }
+}
+
 impl ScopeCompletion {
     pub fn new(source: SourceId, scope: Option<NodeId>) -> Self {
         Self { source, scope }
@@ -374,6 +392,7 @@ pub enum BoundItem {
     Declaration(BoundDeclaration),
     Contribution(Box<BoundContribution>),
     Import(ImportRequest),
+    PendingBinding(PendingBinding),
     Diagnostic(Box<DiagnosticRecord>),
     ScopeComplete(ScopeCompletion),
 }
@@ -385,14 +404,15 @@ impl From<BoundItem> for Item {
             BoundItem::Declaration(declaration) => Item::Declaration(declaration),
             BoundItem::Contribution(contribution) => Item::Contribution(*contribution),
             BoundItem::Import(request) => Item::Import(request),
+            BoundItem::PendingBinding(pending) => Item::PendingBinding(pending),
             BoundItem::Diagnostic(record) => Item::Diagnostic(record),
             BoundItem::ScopeComplete(completion) => Item::ScopeComplete(completion),
         }
     }
 }
 
-/// An item outside the bound vocabulary (documents, pending bindings,
-/// expansions) is handed back unchanged.
+/// An item outside the bound vocabulary (documents, expansions,
+/// resolutions) is handed back unchanged.
 impl TryFrom<Item> for BoundItem {
     type Error = Item;
 
@@ -402,6 +422,7 @@ impl TryFrom<Item> for BoundItem {
             Item::Declaration(declaration) => BoundItem::Declaration(declaration),
             Item::Contribution(contribution) => BoundItem::Contribution(Box::new(contribution)),
             Item::Import(request) => BoundItem::Import(request),
+            Item::PendingBinding(pending) => BoundItem::PendingBinding(pending),
             Item::Diagnostic(record) => BoundItem::Diagnostic(record),
             Item::ScopeComplete(completion) => BoundItem::ScopeComplete(completion),
             other => return Err(other),

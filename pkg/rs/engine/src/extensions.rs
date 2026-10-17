@@ -11,9 +11,9 @@ pub const TYPE_EXPRESSION_VALIDATOR: &str = "type-expression";
 /// The required version of [`TYPE_EXPRESSION_VALIDATOR`].
 pub const TYPE_EXPRESSION_VERSION: &str = "0";
 
-/// The binding codecs the engine itself implements, registered like
-/// validators and handlers so naming one that is not installed fails
-/// closed.
+/// The binding codec the engine itself implements. A definition naming
+/// a known codec the reading does not install still compiles; the binder
+/// emits that payload as a pending typed-binding item.
 pub const ARGUMENT_TAIL_CODEC: &str = "argument-tail";
 
 /// The source-metadata provider the engine itself implements: the file
@@ -42,8 +42,9 @@ impl Extensions {
     /// providers: the `type-expression` validator version `0`, the
     /// `argument-tail` binding codec, and the `path-stem` source. The
     /// `fixture-value` codec is registered by the processor that
-    /// implements it; contribution resolvers are domain process business
-    /// and are never installed here.
+    /// implements it, and is deferred as a pending binding where none
+    /// does; contribution resolvers are domain process business and are
+    /// never installed here.
     pub fn standard() -> Self {
         Self::new()
             .with_validator(TYPE_EXPRESSION_VALIDATOR, TYPE_EXPRESSION_VERSION)

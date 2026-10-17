@@ -70,9 +70,10 @@ dialect kdlith version="0" {
             field member FieldName
         }
 
-        // The registered binding codecs a dependent value may name. They
-        // are registered by the processor like validators and handlers;
-        // naming one that is not installed fails closed.
+        // The registered binding codecs a dependent value may name. An
+        // unknown codec fails closed; a known codec the reading processor
+        // does not install compiles, and the binder emits a pending
+        // typed-binding item.
         enum BindingCodec {
             member argument-tail description="The remaining arguments, typed per expected type, no scalar-to-list promotion"
             member fixture-value description="The type-directed recursive form"

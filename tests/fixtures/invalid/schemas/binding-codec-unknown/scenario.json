@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A dependent value binding naming a codec outside the registered binding codecs still fails closed when the definition compiles; only a known codec the processor does not install is deferred to a pending binding",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

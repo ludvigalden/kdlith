@@ -1,0 +1,22 @@
+schema deps version="1" {
+    types {
+        object Target {
+            field name String
+            field tail "list<String>"
+        }
+    }
+    node tgt role=declaration type=Target {
+        field name arg=0
+        field tail {
+            from {
+                args
+            }
+        }
+    }
+    node dep role=contribution {
+        field target "ref<Target>" arg=0
+        value codec=fixture-value {
+            against target=target member=tail
+        }
+    }
+}

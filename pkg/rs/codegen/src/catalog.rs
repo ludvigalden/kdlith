@@ -26,8 +26,9 @@ pub(crate) fn type_doc(name: &str) -> Option<&'static [&'static str]> {
             "the referenced declaration's type holding the expected payload type.",
         ],
         "BindingCodec" => &[
-            "The registered binding codecs a dependent value may name; naming",
-            "one that is not installed fails closed.",
+            "The registered binding codecs a dependent value may name; an unknown",
+            "codec fails closed, and a known one the reading processor does not",
+            "install compiles and binds as a pending typed-binding item.",
         ],
         "CaseDispatch" => &[
             "A case dispatch: the logical type a node binds as, selected by",

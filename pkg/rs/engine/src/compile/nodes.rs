@@ -525,20 +525,14 @@ fn value_block(
     let mut part = Construct::new(cx, doc, node);
     let codec = part.string_prop(cx, "codec");
     part.finish(cx);
+    // Only an unknown codec fails here: a known one the reading
+    // processor does not install defers its payload at bind time.
     let codec = codec.and_then(|name| match BindingCodec::from_name(&name) {
         Some(parsed) => Some(parsed),
         None => {
             cx.not_member(site, "value.codec", "BindingCodec", &name);
             None
         }
-    });
-    let codec = codec.filter(|codec| {
-        if cx.extensions.has_binding_codec(codec.name()) {
-            return true;
-        }
-        cx.diags
-            .error(NOT_INSTALLED, site, &["binding codec", codec.name()]);
-        false
     });
     let mut against: Option<(String, String)> = None;
     let mut seen = None;

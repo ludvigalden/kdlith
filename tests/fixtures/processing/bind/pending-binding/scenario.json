@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A dependent value binding naming fixture-value, a known binding codec the reference processor does not install, compiles, and the binder defers each payload: right after the contribution holding the reference it streams a pending typed-binding item carrying the bound target field, the reference, and the raw payload, a list for several values and the single value alone, never validated against the member type",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

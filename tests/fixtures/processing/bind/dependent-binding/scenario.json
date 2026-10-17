@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "A contribution node with a dependent value binding validates its argument-tail payload against the referenced declaration's member: the tail (list<String>) binds from the declaration and the contribution is emitted provisional with no diagnostic. The payload itself is validated inline (the BND003 mismatch is pinned by invalid/data/dependent-payload-type); no pending typed-binding item exists yet",
+  "description": "A contribution node with a dependent value binding validates its argument-tail payload against the referenced declaration's member: the tail (list<String>) binds from the declaration and the contribution is emitted provisional with no diagnostic. The payload itself is validated inline (the BND003 mismatch is pinned by invalid/data/dependent-payload-type), so no pending typed-binding item follows; an uninstalled codec defers instead (processing/bind/pending-binding)",
   "args": [
     "vet",
     "data",

@@ -60,8 +60,9 @@ object_type! {
 }
 
 enum_type! {
-    /// The registered binding codecs a dependent value may name; naming
-    /// one that is not installed fails closed.
+    /// The registered binding codecs a dependent value may name; an unknown
+    /// codec fails closed, and a known one the reading processor does not
+    /// install compiles and binds as a pending typed-binding item.
     pub enum BindingCodec {
         "argument-tail" => ArgumentTail,
         "fixture-value" => FixtureValue,

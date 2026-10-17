@@ -591,8 +591,9 @@ fn sequence_decl(
     Some(SequenceDecl { steps, site })
 }
 
-/// A node declaration's dependent payload binding, with its codec
-/// checked for installation.
+/// A node declaration's dependent payload binding. An unknown codec
+/// fails closed; a known one the reading processor does not install
+/// compiles, and the binder defers its payload as a pending binding.
 fn dependent(cx: &mut Cx<'_>, site: Site, input: &DependentInput) -> Option<DependentBinding> {
     let codec = match BindingCodec::from_name(&input.codec) {
         Some(parsed) => parsed,
@@ -601,11 +602,6 @@ fn dependent(cx: &mut Cx<'_>, site: Site, input: &DependentInput) -> Option<Depe
             return None;
         }
     };
-    if !cx.extensions.has_binding_codec(codec.name()) {
-        cx.diags
-            .error(NOT_INSTALLED, site, &["binding codec", codec.name()]);
-        return None;
-    }
     for (spelled, what) in [
         (&input.target, "target field"),
         (&input.member, "member field"),

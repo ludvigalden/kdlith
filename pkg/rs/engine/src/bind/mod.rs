@@ -13,8 +13,8 @@ use kdlith_diagnostic::registry::{lookup, render};
 use kdlith_diagnostic::{ByteSpan, DiagnosticRecord, Label};
 use kdlith_model::{
     BoundContribution, BoundDeclaration, BoundItem, BoundRecord, Derivation, Entry, Field,
-    Identity, ImportRequest, Location, Origin, OriginId, QualifiedName, Reference, Repeated,
-    ScopeCompletion, SourceId, Trace, ValidationState, Value,
+    Identity, ImportRequest, Location, Origin, OriginId, PendingBinding, QualifiedName, Reference,
+    Repeated, ScopeCompletion, SourceId, Trace, ValidationState, Value,
 };
 use kdlith_parse::{Locator, Parser};
 use kdlith_runtime::{
@@ -23,7 +23,9 @@ use kdlith_runtime::{
     SessionError, SlotId, SlotValue,
 };
 
-use crate::bindings::{BindingCodec, ChildPlan, ContextPolicy, NodeDeclId, Role, SetFrom};
+use crate::bindings::{
+    BindingCodec, ChildPlan, ContextPolicy, DependentBinding, NodeDeclId, Role, SetFrom,
+};
 use crate::decode::{self, Decoder, Mismatch};
 use crate::definition::{
     AccumulateOp, Definition, DefinitionKind, MergeDuplicates, ProfileSelection, ProviderDecl,
@@ -1101,30 +1103,26 @@ impl<'d, 's> Binder<'d, 's> {
     }
 
     /// Validate a node's dependent payload against the member type its
-    /// `against` target references: the remaining arguments, typed per
-    /// the expected type, with no scalar-to-list promotion.
+    /// `against` target references, with no scalar-to-list promotion. A
+    /// payload whose codec is not installed, or whose target type this
+    /// reading does not define, is kept as a pending typed binding.
     fn dependent_payload(
         &mut self,
         cx: &mut Cx<'_>,
         frame: &mut BindFrame,
         values: &[Option<Value>],
-    ) {
-        let Some(dep) = self.tables.decls[frame.owner.index()].dependent.clone() else {
-            return;
-        };
+    ) -> Option<PendingBinding> {
+        let dep = self.tables.decls[frame.owner.index()].dependent.clone()?;
         let infos = &self.tables.decls[frame.owner.index()];
-        let Some(at) = infos
+        let at = infos
             .fields
             .iter()
-            .position(|field| field.name == dep.target)
-        else {
-            return;
-        };
+            .position(|field| field.name == dep.target)?;
         let Some(Some(Value::Reference(reference))) = values.get(at) else {
-            return;
+            return None;
         };
         let Some(domain) = self.def.names.get(&reference.domain) else {
-            return;
+            return Some(self.pending(cx, frame, &dep, reference));
         };
         let Some(TypeKind::Object(object)) = self
             .def
@@ -1133,20 +1131,18 @@ impl<'d, 's> Binder<'d, 's> {
             .and_then(|id| self.def.types.get(id))
             .map(|decl| &decl.kind)
         else {
-            return;
+            return None;
         };
-        let Some(field) = object.fields.iter().find(|field| field.name == dep.member) else {
-            return;
-        };
+        let field = object
+            .fields
+            .iter()
+            .find(|field| field.name == dep.member)?;
         let expected = field.ty.clone();
+        if dep.codec != BindingCodec::ArgumentTail {
+            return Some(self.pending(cx, frame, &dep, reference));
+        }
         let node = self.name(frame.name);
         let payload = std::mem::take(&mut frame.payload);
-        if dep.codec != BindingCodec::ArgumentTail {
-            // A processor-registered codec the binder does not install;
-            // compilation checked its installation against the
-            // processor that reads this definition.
-            return;
-        }
         let what = format!("the payload of {node}");
         match &expected {
             TypeExpr::List(inner) => {
@@ -1176,6 +1172,30 @@ impl<'d, 's> Binder<'d, 's> {
                 }
             },
         }
+        None
+    }
+
+    /// The node's payload kept raw against its bound reference: the one
+    /// value it holds, or a list of every value, with the node and its
+    /// origin as the source locator.
+    fn pending(
+        &self,
+        cx: &Cx<'_>,
+        frame: &mut BindFrame,
+        dep: &DependentBinding,
+        against: &Reference,
+    ) -> PendingBinding {
+        let mut payload: Vec<Value> = std::mem::take(&mut frame.payload)
+            .into_iter()
+            .map(|(value, _)| value)
+            .collect();
+        let raw = match payload.len() {
+            1 => payload.remove(0),
+            _ => Value::List(payload),
+        };
+        let node = cx.node();
+        let field = self.name(dep.target);
+        PendingBinding::new(node, field, against.clone(), raw, OriginId(node.index))
     }
 
     /// Resolve effect steps into runtime effects, in declared order:
@@ -1928,7 +1948,7 @@ impl<'d, 's> Binder<'d, 's> {
         };
         let role = def.bindings.get(owner).and_then(|decl| decl.role);
         if let Some(role) = role {
-            self.dependent_payload(cx, frame, &values);
+            let pending = self.dependent_payload(cx, frame, &values);
             if let Some(plan) = def.plan.node(owner) {
                 let effects = self.effects(
                     cx,
@@ -1941,7 +1961,13 @@ impl<'d, 's> Binder<'d, 's> {
                     following.push(effect);
                 }
             }
+            let errors = self.errors;
             self.emit(cx, frame, role, values, typed_as);
+            // The pending binding follows the item holding its reference;
+            // a node rejected while emitting leaves nothing to defer.
+            if let Some(pending) = pending.filter(|_| self.errors == errors) {
+                cx.emit(BoundItem::PendingBinding(pending));
+            }
             return;
         }
         let Some(parent) = parent else {
