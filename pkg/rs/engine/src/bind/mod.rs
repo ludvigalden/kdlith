@@ -189,6 +189,9 @@ pub struct Binder<'d, 's> {
     /// Whether the resolver supplied a value for a `secret` field; such
     /// a result is never cached.
     resolved_secret: bool,
+    /// The context the document's root level left, captured as the
+    /// stream ends and before its scope restores the entry context.
+    left: Option<Vec<Option<SlotValue>>>,
     errors: u64,
 }
 
@@ -288,6 +291,7 @@ impl<'d, 's> Binder<'d, 's> {
             resolver: None,
             consulted: false,
             resolved: ResolvedStream::new(),
+            left: None,
             resolved_secret: false,
             errors: 0,
         }
@@ -2268,6 +2272,7 @@ impl<'s> Processor for Binder<'_, 's> {
     }
 
     fn finish(&mut self, cx: &mut Cx<'_>) {
+        self.left = Some(cx.context().snapshot_values());
         let def = self.def;
         if let Some(scope) = def.bindings.scope(def.bindings.root_scope()) {
             let span = cx.span();
@@ -2608,5 +2613,15 @@ impl<'d, 's> BindingSession<'d, 's> {
     /// the stream stopped early.
     pub fn failed(&self) -> bool {
         self.stopped || !self.pending.is_empty() || self.session.processor().errors() > 0
+    }
+
+    /// The context the document's root level left once its stream ended;
+    /// for a stream that stopped early, the context as it stopped.
+    pub(crate) fn left_context(&self) -> Vec<Option<SlotValue>> {
+        self.session
+            .processor()
+            .left
+            .clone()
+            .unwrap_or_else(|| self.context().snapshot_values())
     }
 }

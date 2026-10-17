@@ -10,7 +10,7 @@ use kdlith_diagnostic::DiagnosticRecord;
 use kdlith_model::{ImportRequest, Item, SourceDocument, SourceId};
 use kdlith_runtime::{
     Admission, Context, ContributionRecord, Derivation, Handlers, InvocationId, InvocationIdentity,
-    Invocations, SlotId, stable_hash, stable_hash_step,
+    Invocations, SlotId, SlotValue, stable_hash, stable_hash_step,
 };
 
 use crate::anchors::{self, Base, Target};
@@ -108,6 +108,18 @@ pub struct BoundResult {
     pub items: Vec<Item>,
 }
 
+/// The context an entry document's root invocation left once its
+/// document was read: every slot's value in slot-id order, `None` where
+/// the slot is unset. Imported documents run under projections of their
+/// importer's context and leave nothing here.
+#[derive(Clone, Debug)]
+#[non_exhaustive]
+pub struct EntryContext {
+    /// The entry document's path as the reading showed it.
+    pub entry: String,
+    pub values: Vec<Option<SlotValue>>,
+}
+
 /// A reader of data documents over one compiled definition: the entry
 /// documents, and the documents they import, as one item stream.
 pub struct DataReader<'d> {
@@ -181,7 +193,7 @@ impl<'d> DataReader<'d> {
         sink: &mut dyn FnMut(Item),
     ) -> Result<bool, ReadError> {
         self.read_scoped(entries, options, sink, true)
-            .map(|(failed, _)| failed)
+            .map(|outcome| outcome.failed)
     }
 
     /// Read as [`DataReader::read`] does, and also return every bound
@@ -193,6 +205,20 @@ impl<'d> DataReader<'d> {
         sink: &mut dyn FnMut(Item),
     ) -> Result<(bool, Vec<BoundResult>), ReadError> {
         self.read_scoped(entries, options, sink, true)
+            .map(|outcome| (outcome.failed, outcome.results))
+    }
+
+    /// Read as [`DataReader::read`] does, and also return the context
+    /// each entry document's root invocation left, in entry order. An
+    /// entry whose document could not be read has none.
+    pub fn read_entry_contexts(
+        &self,
+        entries: &[&Path],
+        options: &ReadOptions,
+        sink: &mut dyn FnMut(Item),
+    ) -> Result<(bool, Vec<EntryContext>), ReadError> {
+        self.read_scoped(entries, options, sink, true)
+            .map(|outcome| (outcome.failed, outcome.contexts))
     }
 
     /// Read the named entry documents only, giving each import request
@@ -205,7 +231,7 @@ impl<'d> DataReader<'d> {
         sink: &mut dyn FnMut(Item),
     ) -> Result<bool, ReadError> {
         self.read_scoped(entries, options, sink, false)
-            .map(|(failed, _)| failed)
+            .map(|outcome| outcome.failed)
     }
 
     fn read_scoped(
@@ -214,7 +240,7 @@ impl<'d> DataReader<'d> {
         options: &ReadOptions,
         sink: &mut dyn FnMut(Item),
         follow: bool,
-    ) -> Result<(bool, Vec<BoundResult>), ReadError> {
+    ) -> Result<Outcome, ReadError> {
         // A host-supplied anchor no discovery grammar of the definition
         // declares is rejected before anything is read, never silently
         // ignored: the mirror of a declared anchor the host leaves
@@ -226,7 +252,11 @@ impl<'d> DataReader<'d> {
             for record in undeclared {
                 sink(Item::Diagnostic(Box::new(record)));
             }
-            return Ok((true, Vec::new()));
+            return Ok(Outcome {
+                failed: true,
+                results: Vec::new(),
+                contexts: Vec::new(),
+            });
         }
         let anchors = anchors::anchor_map(&options.anchors, &def.names);
         // A local reading leaves imports unfollowed, so its records are
@@ -253,6 +283,8 @@ impl<'d> DataReader<'d> {
             bound: HashMap::new(),
             results: Vec::new(),
             result_of: HashMap::new(),
+            left: HashMap::new(),
+            contexts: Vec::new(),
             handlers: self.handlers.clone(),
             output_policy: options.output_policy,
             sink: &mut tap,
@@ -284,7 +316,7 @@ impl<'d> DataReader<'d> {
                 return Err(error);
             }
         }
-        let (mut failed, results) = (reading.failed, reading.results);
+        let (mut failed, results, contexts) = (reading.failed, reading.results, reading.contexts);
         // A failed reading's records are incomplete; resolving them
         // would report on a partial picture.
         if let Some(resolver) = resolver.filter(|_| !failed && !records.is_empty()) {
@@ -298,13 +330,24 @@ impl<'d> DataReader<'d> {
                 }
             }
         }
-        Ok((failed, results))
+        Ok(Outcome {
+            failed,
+            results,
+            contexts,
+        })
     }
 
     /// The fingerprint of the definition every invocation binds under.
     fn schema_fingerprint(&self) -> u64 {
         stable_hash(self.def.digest().as_bytes())
     }
+}
+
+/// What a finished reading returns beyond its item stream.
+struct Outcome {
+    failed: bool,
+    results: Vec<BoundResult>,
+    contexts: Vec<EntryContext>,
 }
 
 /// One reading in progress: the invocation stack, the caches, and the
@@ -329,6 +372,12 @@ struct Reading<'r, 'd> {
     results: Vec<BoundResult>,
     /// The position of each cached identity's result in `results`.
     result_of: HashMap<(InvocationIdentity, Vec<Sym>), usize>,
+    /// The context each cached result's binding left, so an entry
+    /// document replayed from the cache still reports its context.
+    left: HashMap<(InvocationIdentity, Vec<Sym>), Vec<Option<SlotValue>>>,
+    /// The context each entry document's root invocation left, in
+    /// entry order.
+    contexts: Vec<EntryContext>,
     /// The context handlers the reading installed, passed into every
     /// invocation's binding session.
     handlers: Handlers,
@@ -377,9 +426,12 @@ impl Reading<'_, '_> {
                         identity.and_then(|k| self.bound.get(&(k, active.clone())))
                     {
                         let cached = cached.clone();
-                        if let Some(at) =
-                            identity.and_then(|k| self.result_of.get(&(k, active)).copied())
-                        {
+                        let key = identity.map(|k| (k, active));
+                        if let Some(values) = key.as_ref().and_then(|key| self.left.get(key)) {
+                            let values = values.clone();
+                            self.capture(id, &shown, values);
+                        }
+                        if let Some(at) = key.and_then(|key| self.result_of.get(&key).copied()) {
                             let derivation = self.derivation(id);
                             self.results[at].derivations.push(derivation);
                         }
@@ -463,6 +515,8 @@ impl Reading<'_, '_> {
         }
         let failed = self.failed || session.failed();
         self.failed = failed;
+        let left = session.left_context();
+        self.capture(id, shown, left.clone());
         // Resolved values join the identity, so a changed one misses. A
         // result holding a resolved secret has no cacheable identity:
         // even a fingerprint of a secret on disk is a guessing oracle.
@@ -486,6 +540,7 @@ impl Reading<'_, '_> {
                     return;
                 }
                 self.result_of.insert(key.clone(), self.results.len());
+                self.left.insert(key.clone(), left);
                 self.results.push(BoundResult {
                     identity,
                     derivations: vec![derivation],
@@ -493,6 +548,17 @@ impl Reading<'_, '_> {
                 });
                 self.bound.insert(key, Rc::new(own));
             }
+        }
+    }
+
+    /// Keep the context an entry document's root invocation left; an
+    /// imported invocation's context stays its own.
+    fn capture(&mut self, id: InvocationId, shown: &str, values: Vec<Option<SlotValue>>) {
+        if self.invocations.get(id).is_some_and(|i| i.caller.is_none()) {
+            self.contexts.push(EntryContext {
+                entry: shown.to_owned(),
+                values,
+            });
         }
     }
 

@@ -48,7 +48,7 @@ pub use compile::input::{
     VariantInput,
 };
 pub use compile::{DIALECT_VERSION, compile_dialect, compile_dialect_input, compile_schema_input};
-pub use data::{BoundResult, DataReader, ReadOptions};
+pub use data::{BoundResult, DataReader, EntryContext, ReadOptions};
 pub use definition::{
     AccumulateOp, AnchorDecl, CheckScope, Definition, DefinitionKind, DiscoveryDecl, DocumentRule,
     DuplicateTreatment, ImportDecl, MatchKind, MatchRule, MergeDuplicates, MissingRequirement,
