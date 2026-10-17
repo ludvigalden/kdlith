@@ -1,0 +1,6 @@
+error[KDLITH-CLI001]: invalid value 'bogus' for '--view <VIEW>'
+  [possible values: source, bound, effective, origins, references, context, plan]
+
+  tip: a similar value exists: 'bound'
+
+For more information, try '--help'.

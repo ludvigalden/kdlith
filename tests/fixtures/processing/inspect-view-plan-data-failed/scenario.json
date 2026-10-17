@@ -1,0 +1,24 @@
+{
+  "binary": "kdlith",
+  "description": "The plan view of inspect data renders the plan of the schema the data bound under even when the read itself fails: the read reports KDLITH-CTX006 on stderr, the full plan of processing/bind/policies.kdl still prints, and the read's exit 1 governs; data.kdl is a byte copy of processing/bind/slot-reject-keeps-held/data.kdl so the stderr golden pins a scenario-relative location",
+  "args": [
+    "inspect",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/policies.kdl",
+    "--view",
+    "plan",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stdout-contains": [
+      "{\"item\":\"plan-context\""
+    ],
+    "stderr-contains": [
+      "error[KDLITH-CTX006]"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

@@ -1,0 +1,3 @@
+error[KDLITH-SCH001]: unknown type Missing
+  --> schema.kdl:3:9
+kdlith: the plan view needs the compiled definition, which did not compile

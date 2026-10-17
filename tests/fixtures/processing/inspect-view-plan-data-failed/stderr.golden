@@ -1,0 +1,2 @@
+error[KDLITH-CTX006]: context plain under duplicates=reject receives a second value from line 2 column 7 while it holds one from line 1 column 7
+  --> data.kdl:2:1

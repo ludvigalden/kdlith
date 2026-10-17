@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "The effective view over a schema that did not compile prints nothing on stdout: the compile stage reports KDLITH-SCH001 (an unknown type), then one line says the effective view needs the compiled definition, and the run exits 1; input.kdl is a byte copy of invalid/schemas/unknown-type/input.kdl so the stderr golden pins a scenario-relative location",
+  "args": [
+    "inspect",
+    "schema",
+    "--view",
+    "effective",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": [
+      "kdlith: the effective view needs the compiled definition, which did not compile\n"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

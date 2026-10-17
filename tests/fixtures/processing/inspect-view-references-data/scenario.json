@@ -1,0 +1,21 @@
+{
+  "binary": "kdlith",
+  "description": "The references view of inspect data fails closed before any document is read: the view is not implemented yet, so no data item prints and the run exits 1",
+  "args": [
+    "inspect",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "--view",
+    "references",
+    "{fx-suite}/processing/bind/stream/input.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": [
+      "kdlith: the references view is not implemented yet"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

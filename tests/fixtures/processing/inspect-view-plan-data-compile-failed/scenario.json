@@ -1,0 +1,21 @@
+{
+  "binary": "kdlith",
+  "description": "The plan view of inspect data over a schema that did not compile prints nothing on stdout: the schema load reports KDLITH-SCH001 (an unknown type), then one line says the plan view needs the compiled definition, and the run exits 1; schema.kdl is a byte copy of invalid/schemas/unknown-type/input.kdl so the stderr golden pins a scenario-relative location",
+  "args": [
+    "inspect",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "--view",
+    "plan",
+    "{fx-suite}/processing/bind/stream/input.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": [
+      "kdlith: the plan view needs the compiled definition, which did not compile\n"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

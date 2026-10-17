@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "The references view of inspect is parsed and rejected fail-closed: only the source view is implemented",
+  "description": "The references view of inspect dialect fails closed before any document is read: the view is not implemented yet, so the run exits 1",
   "args": [
     "inspect",
     "dialect",
