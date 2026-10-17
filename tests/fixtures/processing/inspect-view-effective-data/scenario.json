@@ -1,0 +1,21 @@
+{
+  "binary": "kdlith",
+  "description": "The effective view of inspect data prints the stream's declarations and resolutions in the order the reader yields them: the declarations of the entry and of its imported document, then one resolution per contributed target as the shipped layered resolver settled it, the imported document's user-layer contribution winning font",
+  "args": [
+    "inspect",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "--view",
+    "effective",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"key\":\"value\",\"value\":{\"kind\":\"string\",\"value\":\"sans\"}}"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

@@ -1,0 +1,6 @@
+locale en-gb
+region north
+entry one
+prefer sv-se
+entry two
+use "part.kdl"

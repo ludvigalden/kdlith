@@ -8,8 +8,8 @@ use kdlith_diagnostic::{DiagnosticRecord, ExitStatus};
 use std::sync::Arc;
 
 use kdlith_engine::{
-    CheckScope, DataReader, Definition, Extensions, Handlers, LAYERED, Layered, ReadOptions,
-    SharedResolver,
+    CheckScope, DataReader, Definition, EntryContext, Extensions, Handlers, LAYERED, Layered,
+    ReadOptions, SharedResolver,
 };
 use kdlith_model::Item;
 use kdlith_superproc::{load_dialect, load_schema_anchored, seed};
@@ -278,6 +278,33 @@ impl DataOptions {
 /// source identity. Bound items go to stdout as JSON lines; diagnostics
 /// go to stderr.
 pub fn vet_data(schema: Option<&Path>, entries: &[&Path], options: &DataOptions) -> ExitStatus {
+    stream_data(schema, entries, options, write_item)
+}
+
+/// [`vet_data`] with each item written by `render`, which may reframe
+/// it or write nothing. Diagnostics are collected from every item
+/// whatever `render` writes, so the exit is decided as `vet data`
+/// decides it.
+pub(crate) fn stream_data(
+    schema: Option<&Path>,
+    entries: &[&Path],
+    options: &DataOptions,
+    render: impl FnMut(&mut std::io::StdoutLock<'static>, &Item) -> std::io::Result<()>,
+) -> ExitStatus {
+    stream_data_then(schema, entries, options, render, |_, _, status| status)
+}
+
+/// [`stream_data`], then `finish` with the definition the data bound
+/// under, or `None` when it did not load, the context each entry
+/// document's root invocation left, in entry order, and the exit
+/// decided so far.
+pub(crate) fn stream_data_then(
+    schema: Option<&Path>,
+    entries: &[&Path],
+    options: &DataOptions,
+    mut render: impl FnMut(&mut std::io::StdoutLock<'static>, &Item) -> std::io::Result<()>,
+    finish: impl FnOnce(Option<&Definition>, &[EntryContext], ExitStatus) -> ExitStatus,
+) -> ExitStatus {
     let extensions = options.extensions();
     let loaded = match schema {
         None => options.governing(&extensions),
@@ -285,7 +312,7 @@ pub fn vet_data(schema: Option<&Path>, entries: &[&Path], options: &DataOptions)
     };
     let definition = match loaded {
         Ok(definition) => definition,
-        Err(records) => return report_all(&records),
+        Err(records) => return finish(None, &[], report_all(&records)),
     };
     let reader = options.reader(&definition);
     let mut records: Vec<DiagnosticRecord> = Vec::new();
@@ -295,22 +322,23 @@ pub fn vet_data(schema: Option<&Path>, entries: &[&Path], options: &DataOptions)
         if let Item::Diagnostic(record) = &item {
             records.push((**record).clone());
         }
-        written &= write_item(&mut out, &item).is_ok();
+        written &= render(&mut out, &item).is_ok();
     };
-    let read = reader.read(entries, &options.read_options(), &mut sink);
+    let read = reader.read_entry_contexts(entries, &options.read_options(), &mut sink);
     drop(out);
-    match read {
-        Ok(_) if written => report_all(&records),
-        Ok(_) => ExitStatus::Failure,
+    let (status, contexts) = match read {
+        Ok((_, contexts)) if written => (report_all(&records), contexts),
+        Ok((_, contexts)) => (ExitStatus::Failure, contexts),
         Err(error) => {
             report_all(&records);
             eprintln!("kdlith: {error}");
-            ExitStatus::Failure
+            (ExitStatus::Failure, Vec::new())
         }
-    }
+    };
+    finish(Some(&definition), &contexts, status)
 }
 
-fn write_item(out: &mut impl std::io::Write, item: &Item) -> std::io::Result<()> {
+pub(crate) fn write_item(out: &mut impl std::io::Write, item: &Item) -> std::io::Result<()> {
     serde_json::to_writer(&mut *out, item)?;
     out.write_all(b"\n")
 }

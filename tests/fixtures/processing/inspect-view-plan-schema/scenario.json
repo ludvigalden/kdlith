@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "The plan view of a schema reaching every schema-side plan feature: the plan-context line lists the slots in slot-id order (declaration order, not name order) and the namespaces in namespace-id order; the plan-node lines follow plan order, the imported part's node first; the requires flags appear in their fixed order, imported-schema-metadata on every node because the schema imports and global-validation because it declares a document rule",
+  "args": [
+    "inspect",
+    "schema",
+    "--view",
+    "plan",
+    "schema.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"requires\":[\"record-buffering\",\"imported-schema-metadata\",\"deferred-binding\",\"global-validation\"]}}\n"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

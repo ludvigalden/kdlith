@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "The bound view describes data binding, which a dialect target does not do: the pair is rejected before any document is read, exit 2 under KDLITH-CLI004",
+  "args": [
+    "inspect",
+    "dialect",
+    "--view",
+    "bound",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/types.kdl"
+  ],
+  "expect": {
+    "exit": 2,
+    "stderr-contains": [
+      "error[KDLITH-CLI004]"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

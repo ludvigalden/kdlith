@@ -1,0 +1,28 @@
+// A schema whose context control names the built-in copy-fields
+// handler: installing it through --handler executes its effect at the
+// declared transition; leaving it uninstalled fails the load.
+schema handlers version="1" {
+    types {
+        string Locale {
+            format kebab-case
+        }
+        object Stamp {
+            field at Locale
+        }
+    }
+    context {
+        slot locale Locale namespace=defaults
+    }
+    node locale role=context-control {
+        field locale Locale arg=0
+        effects target=following {
+            handler copy-fields
+        }
+    }
+    node stamp role=record type=Stamp {
+        field at context=locale
+    }
+    document {
+        following locale stamp
+    }
+}

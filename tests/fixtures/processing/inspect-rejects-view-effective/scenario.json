@@ -1,0 +1,21 @@
+{
+  "binary": "kdlith",
+  "description": "A stream view shows, then fails: under the effective view the declaration of a document whose contributions the shipped layered resolver refuses still prints, no resolution follows, the KDLITH-DLC010 refusal goes only to stderr, and the run exits 1; data.kdl is a byte copy of invalid/data/resolution-duplicate-reject/data.kdl",
+  "args": [
+    "inspect",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/resolution/replace.kdl",
+    "--view",
+    "effective",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": [
+      "error[KDLITH-DLC010]"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

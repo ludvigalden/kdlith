@@ -1,17 +1,21 @@
 {
   "binary": "kdlith",
-  "description": "The bound view of inspect is parsed and rejected fail-closed: only the source view is implemented",
+  "description": "The bound view prints only the data items of the inspect data stream, records, declarations and contributions, in the order the reader yields them, across an import: document, scope-complete and import lines are dropped, and the run exits 0",
   "args": [
     "inspect",
-    "dialect",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
     "--view",
     "bound",
-    "{fx-suite}/../../pkg/kdl/schemas/dialect/types.kdl"
+    "{fx-suite}/processing/bind/stream/input.kdl"
   ],
   "expect": {
-    "exit": 1,
-    "stderr-contains": [
-      "kdlith: the bound view is not implemented yet"
-    ]
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"contribution\",\"data\":{\"node\":{\"source\":0,\"index\":11},"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
   }
 }

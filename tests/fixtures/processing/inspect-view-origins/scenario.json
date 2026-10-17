@@ -1,17 +1,21 @@
 {
   "binary": "kdlith",
-  "description": "The origins view of inspect is parsed and rejected fail-closed: only the source view is implemented",
+  "description": "The origins view prints one origins line per record, declaration and contribution of the inspect data stream, in the order the reader yields them, across an import; each line's data is the provenance envelope export writes beside that item: the node location, the source revisions its locations name, the shared origin table with literal, merge-derived and context-derived origins, and each field's origin; input.kdl and other.kdl are byte copies of processing/bind/stream so the source paths are scenario-relative",
   "args": [
     "inspect",
-    "dialect",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
     "--view",
     "origins",
-    "{fx-suite}/../../pkg/kdl/schemas/dialect/types.kdl"
+    "input.kdl"
   ],
   "expect": {
-    "exit": 1,
-    "stderr-contains": [
-      "kdlith: the origins view is not implemented yet"
-    ]
+    "exit": 0,
+    "stdout-contains": [
+      "{\"kind\":\"derived\",\"operation\":\"context\","
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
   }
 }

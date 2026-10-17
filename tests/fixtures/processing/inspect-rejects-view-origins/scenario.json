@@ -1,0 +1,21 @@
+{
+  "binary": "kdlith",
+  "description": "A stream view shows, then fails: under the origins view the provenance envelope of every data item of a document that errors still prints, here the stamp record bound after a KDLITH-CTX006 duplicate context value, the diagnostic itself goes only to stderr, and the run exits 1; data.kdl is a byte copy of processing/bind/slot-reject-keeps-held/data.kdl so the goldens pin scenario-relative locations",
+  "args": [
+    "inspect",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/policies.kdl",
+    "--view",
+    "origins",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": [
+      "error[KDLITH-CTX006]"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

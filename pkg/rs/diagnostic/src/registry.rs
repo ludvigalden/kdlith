@@ -161,6 +161,16 @@ pub const CODES: &[CodeDefinition] = &[
         correction: "Choose one of the listed formats",
         retired: false,
     },
+    CodeDefinition {
+        code: "KDLITH-CLI004",
+        label: "inapplicable-view",
+        severity: Severity::Error,
+        exit_class: 2,
+        trigger: "inspect --view names a view that does not apply to the inspected target",
+        message_template: "the <view> view does not apply to a <target> target",
+        correction: "Choose a view the target supports; see the command's --help",
+        retired: false,
+    },
     // SRC
     CodeDefinition {
         code: "KDLITH-SRC001",

@@ -1,0 +1,3 @@
+{"item":"context","data":{"entry":"first.kdl","slots":[{"name":"region","value":{"kind":"string","value":"north"},"layer":null},{"name":"locale","value":{"kind":"string","value":"sv-se"},"layer":"user"},{"name":"zone","value":null,"layer":null}]}}
+{"item":"context","data":{"entry":"second.kdl","slots":[{"name":"region","value":{"kind":"string","value":"east"},"layer":null},{"name":"locale","value":{"kind":"string","value":"it-it"},"layer":"base"},{"name":"zone","value":null,"layer":null}]}}
+{"item":"context","data":{"entry":"again.kdl","slots":[{"name":"region","value":{"kind":"string","value":"east"},"layer":null},{"name":"locale","value":{"kind":"string","value":"it-it"},"layer":"base"},{"name":"zone","value":null,"layer":null}]}}

@@ -1,0 +1,47 @@
+// Three context slots declared out of name order: a plain slot records
+// read, a layered slot set at both layers, and a slot nothing sets.
+schema tuned version="1" {
+    types {
+        object Entry {
+            field id String
+            field locale String
+            field region String
+        }
+    }
+    context {
+        slot region String
+        slot locale String duplicates=layered {
+            layers user base
+        }
+        slot zone String
+    }
+    node locale role=context-control {
+        field value String arg=0
+        effects target=following {
+            set locale field=value layer=base
+        }
+    }
+    node prefer role=context-control {
+        field value String arg=0
+        effects target=following {
+            set locale field=value layer=user
+        }
+    }
+    node region role=context-control {
+        field value String arg=0
+        effects target=following {
+            set region field=value
+        }
+    }
+    node entry role=record type=Entry {
+        field id arg=0
+        field locale context=locale
+        field region context=region
+    }
+    node use role=source-import {
+        field path String arg=0
+    }
+    document {
+        following locale prefer region entry use
+    }
+}

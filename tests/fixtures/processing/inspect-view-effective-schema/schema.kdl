@@ -1,0 +1,44 @@
+// Every section of the effective view, each declared out of name
+// order: types, nodes, slots, an imported part, and two profiles.
+schema shelf version="1" {
+    import "part.kdl"
+    types {
+        object Widget {
+            field id String
+            field tags "list<String>"
+        }
+        enum Tone {
+            member warm
+            member cool
+        }
+    }
+    context {
+        slot tone Tone namespace=look
+        slot labels "list<String>" {
+            accumulate append
+        }
+        slot locale String duplicates=layered {
+            layers user base
+        }
+    }
+    node widget role=record type=Widget {
+        field id arg=0
+        field tags {
+            from {
+                context labels
+            }
+        }
+    }
+    node tone role=context-control {
+        field value Tone arg=0
+        effects target=following {
+            set tone field=value
+        }
+    }
+    profile retail
+    profile bulk {
+        roots {
+            allow Widget
+        }
+    }
+}

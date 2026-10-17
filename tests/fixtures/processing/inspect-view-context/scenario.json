@@ -1,17 +1,24 @@
 {
   "binary": "kdlith",
-  "description": "The context view of inspect is parsed and rejected fail-closed: only the source view is implemented",
+  "description": "The context view prints one context line per entry document in entry order (not name order), each listing every slot in slot-id order (declaration order, not name order) with the value and layer the entry's root level left: a plain slot records read, a layered slot whose user layer outranks the base layer set before it, and an unset slot with a null value; the imported part's context changes stay in its own invocation, and the last entry, a byte copy of the second, replays from the bound-result cache yet still reports its context",
   "args": [
     "inspect",
-    "dialect",
+    "data",
+    "--schema",
+    "schema.kdl",
     "--view",
     "context",
-    "{fx-suite}/../../pkg/kdl/schemas/dialect/types.kdl"
+    "first.kdl",
+    "second.kdl",
+    "again.kdl"
   ],
   "expect": {
-    "exit": 1,
-    "stderr-contains": [
-      "kdlith: the context view is not implemented yet"
-    ]
+    "exit": 0,
+    "stdout-contains": [
+      "{\"name\":\"locale\",\"value\":{\"kind\":\"string\",\"value\":\"sv-se\"},\"layer\":\"user\"}",
+      "{\"name\":\"zone\",\"value\":null,\"layer\":null}]}}\n"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
   }
 }

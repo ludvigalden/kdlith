@@ -1,17 +1,22 @@
 {
   "binary": "kdlith",
-  "description": "The effective view of inspect is parsed and rejected fail-closed: only the source view is implemented",
+  "description": "The effective view of the four canonical dialect files: one effective line per entry of the compiled definition, grouped as types then nodes (the canonical dialect declares no slots, imports or profiles), each group sorted by name as list sorts it; the entry shapes mirror the list entries",
   "args": [
     "inspect",
     "dialect",
     "--view",
     "effective",
-    "{fx-suite}/../../pkg/kdl/schemas/dialect/types.kdl"
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/types.kdl",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/bindings.kdl",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/context.kdl",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/documents.kdl"
   ],
   "expect": {
-    "exit": 1,
-    "stderr-contains": [
-      "kdlith: the effective view is not implemented yet"
-    ]
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"effective\",\"data\":{\"section\":\"type\",\"entry\":{\"name\":\"AccumulateOp\",\"parameters\":[],\"kind\":\"enum\"}}}\n"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
   }
 }

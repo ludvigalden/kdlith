@@ -1,0 +1,12 @@
+{"item":"effective","data":{"section":"type","entry":{"name":"Bin","parameters":[],"kind":"object"}}}
+{"item":"effective","data":{"section":"type","entry":{"name":"Tone","parameters":[],"kind":"enum"}}}
+{"item":"effective","data":{"section":"type","entry":{"name":"Widget","parameters":[],"kind":"object"}}}
+{"item":"effective","data":{"section":"node","entry":{"name":"bin","parents":[],"role":"declaration","type":"Bin","profile":null}}}
+{"item":"effective","data":{"section":"node","entry":{"name":"tone","parents":[],"role":"context-control","type":null,"profile":null}}}
+{"item":"effective","data":{"section":"node","entry":{"name":"widget","parents":[],"role":"record","type":"Widget","profile":null}}}
+{"item":"effective","data":{"section":"slot","entry":{"name":"labels","type":"list<String>","namespace":null,"accumulate":"append","duplicates":"reject","layers":[]}}}
+{"item":"effective","data":{"section":"slot","entry":{"name":"locale","type":"String","namespace":null,"accumulate":null,"duplicates":"layered","layers":["user","base"]}}}
+{"item":"effective","data":{"section":"slot","entry":{"name":"tone","type":"Tone","namespace":"look","accumulate":null,"duplicates":"reject","layers":[]}}}
+{"item":"effective","data":{"section":"import","entry":{"path":"part.kdl","project":[],"repeated":"reject","alias":null}}}
+{"item":"effective","data":{"section":"profile","entry":{"name":"bulk","roots":["Widget"],"grammar":null}}}
+{"item":"effective","data":{"section":"profile","entry":{"name":"retail","roots":null,"grammar":null}}}

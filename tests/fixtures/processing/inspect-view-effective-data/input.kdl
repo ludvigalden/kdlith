@@ -1,0 +1,6 @@
+option mode
+option font
+setting font serif layer=base
+setting mode light layer=base
+use "other.kdl"
+setting mode dark layer=user

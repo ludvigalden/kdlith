@@ -1,0 +1,2 @@
+{"item":"context","data":{"entry":"first.kdl","slots":[{"name":"region","value":{"kind":"string","value":"north"},"layer":null},{"name":"locale","value":{"kind":"string","value":"sv-se"},"layer":"user"},{"name":"zone","value":null,"layer":null}]}}
+{"item":"context","data":{"entry":"broken.kdl","slots":[{"name":"region","value":null,"layer":null},{"name":"locale","value":{"kind":"string","value":"fr-fr"},"layer":"base"},{"name":"zone","value":null,"layer":null}]}}

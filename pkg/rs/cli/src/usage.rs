@@ -17,6 +17,8 @@ const INVALID_ARGUMENT: &str = "KDLITH-CLI001";
 const CONFLICTING_OPTIONS: &str = "KDLITH-CLI002";
 /// `--stdout-format` or `export --format` names an unsupported encoding.
 const UNKNOWN_FORMAT: &str = "KDLITH-CLI003";
+/// `inspect --view` names a view the inspected target does not support.
+const INAPPLICABLE_VIEW: &str = "KDLITH-CLI004";
 
 /// The fault a format option's value parser reports: the named format
 /// is not one of the supported ones. It renders the registered
@@ -76,6 +78,20 @@ pub(crate) fn report_parse_error(error: &ClapError) -> ExitStatus {
 /// `help` path naming no command.
 pub(crate) fn report_invalid_argument(statement: &str) -> ExitStatus {
     eprintln!("error[{INVALID_ARGUMENT}]: {statement}");
+    ExitStatus::Usage
+}
+
+/// Report a view and target the parser accepts one by one but the
+/// inspect view matrix rejects together.
+pub(crate) fn report_inapplicable_view(view: &str, target: &str) -> ExitStatus {
+    let template = lookup(INAPPLICABLE_VIEW).map_or(
+        "the <view> view does not apply to a <target> target",
+        |definition| definition.message_template,
+    );
+    eprintln!(
+        "error[{INAPPLICABLE_VIEW}]: {}",
+        render(template, &[view, target])
+    );
     ExitStatus::Usage
 }
 

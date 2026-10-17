@@ -1,0 +1,22 @@
+{
+  "binary": "kdlith",
+  "description": "The context view over a failing read still prints every entry's context, then exits 1: the second entry reads a context slot it never set, which is reported on stderr, and its context line shows that slot null beside the base-layer slot it did set; schema.kdl, first.kdl and part.kdl are byte copies of processing/inspect-view-context",
+  "args": [
+    "inspect",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "--view",
+    "context",
+    "first.kdl",
+    "broken.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": [
+      "error[KDLITH-CTX001]: context region is not available here"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

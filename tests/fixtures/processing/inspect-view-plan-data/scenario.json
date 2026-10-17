@@ -1,0 +1,23 @@
+{
+  "binary": "kdlith",
+  "description": "The plan view of inspect data renders the plan of the schema the data bound under, after the read: no data item reaches stdout, the context-control node's following handler effect derives registered-domain-handlers, and the document rule derives global-validation; schema.kdl and data.kdl are byte copies of processing/bind/handler-effect",
+  "args": [
+    "inspect",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "--handler",
+    "copy-fields",
+    "--view",
+    "plan",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"following-effects\":[{\"effect\":\"handler\",\"name\":\"copy-fields\"}]"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

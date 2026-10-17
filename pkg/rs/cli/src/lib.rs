@@ -314,7 +314,10 @@ struct InspectDefinitionArgs {
     /// A dialect definition document replacing the bundled one
     #[arg(long = "dialect", value_name = "FILE")]
     dialect: Option<PathBuf>,
-    /// The item view to print; only the source view exists for now
+    /// The item view to print: source (every item), effective (the
+    /// compiled definition by section) or plan (its processing plan);
+    /// bound, context and origins apply only to inspect data
+    /// (KDLITH-CLI004, exit 2); references fails closed
     #[arg(long, value_enum, default_value_t = ViewArg::Source)]
     view: ViewArg,
     /// Definition documents
@@ -327,7 +330,10 @@ struct InspectSchemaArgs {
     /// A dialect definition document replacing the bundled one
     #[arg(long = "dialect", value_name = "FILE")]
     dialect: Option<PathBuf>,
-    /// The item view to print; only the source view exists for now
+    /// The item view to print: source (every item), effective (the
+    /// compiled definition by section) or plan (its processing plan);
+    /// bound, context and origins apply only to inspect data
+    /// (KDLITH-CLI004, exit 2); references fails closed
     #[arg(long, value_enum, default_value_t = ViewArg::Source)]
     view: ViewArg,
     /// A discovery anchor the schema documents' own import expressions
@@ -365,7 +371,10 @@ struct InspectDataArgs {
     /// A built-in context handler to install, by name (repeatable)
     #[arg(long = "handler", value_name = "NAME", value_parser = handlers::parse_handler)]
     handlers: Vec<String>,
-    /// The item view to print; only the source view exists for now
+    /// The item view to print: source, bound (records, declarations,
+    /// contributions), context (entry contexts), effective
+    /// (declarations, resolutions), origins (provenance) or plan (the
+    /// bound definition's plan); references fails closed
     #[arg(long, value_enum, default_value_t = ViewArg::Source)]
     view: ViewArg,
     /// Data documents
@@ -664,7 +673,7 @@ struct ExportArgs {
 
 /// Parse the process arguments, dispatch the verb, and resolve the
 /// exit stratum. Argument errors print their registered code
-/// (`KDLITH-CLI001`-`003`) with clap's statement of the fault and exit
+/// (`KDLITH-CLI001`-`004`) with clap's statement of the fault and exit
 /// 2; `--help` and `--version` print to stdout and exit 0.
 pub fn run() -> ExitStatus {
     let cli = match Cli::try_parse() {

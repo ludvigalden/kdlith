@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "Without --schema, data binds against the governing dialect, so the plan view of inspect data renders the bundled dialect's plan: the same lines inspect dialect --view plan prints for the canonical dialect files; data.kdl is a schema definition document read as data",
+  "args": [
+    "inspect",
+    "data",
+    "--view",
+    "plan",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"plan-context\",\"data\":{\"slots\":[],\"namespaces\":[]}}\n"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

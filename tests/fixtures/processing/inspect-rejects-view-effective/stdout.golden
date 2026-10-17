@@ -1,0 +1,1 @@
+{"item":"declaration","data":{"node":{"source":0,"index":0},"identity":{"domain":"Option","name":["mode"]},"type_name":"Option","fields":[{"name":"name","value":{"kind":"string","value":"mode"},"origin":0}],"origin":0,"validation":"valid"}}

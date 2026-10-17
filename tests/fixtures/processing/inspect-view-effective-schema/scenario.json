@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "The effective view of a schema whose declarations are written out of name order and partly imported: types, nodes, slots, imports and profiles in that fixed order, each group sorted by name, the imported part's type and node merged into their groups and its import listed as written",
+  "args": [
+    "inspect",
+    "schema",
+    "--view",
+    "effective",
+    "schema.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"effective\",\"data\":{\"section\":\"import\",\"entry\":{\"path\":\"part.kdl\",\"project\":[],\"repeated\":\"reject\",\"alias\":null}}}\n"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

@@ -1,0 +1,97 @@
+// Every plan feature a schema target reaches, declared in an order the
+// view must keep: slots out of name order across two namespaces, an
+// accumulating slot, a layered slot, context reads under both policies,
+// set, remove and clear effects, a reference, a contribution, a
+// dependent payload, a minimum-occurrence scope, a document rule, and an
+// imported part.
+schema planned version="1" {
+    import "part.kdl"
+    types {
+        object Shelf {
+            field name String
+            field sizes "list<String>"
+        }
+        object Item {
+            field id String
+            field shelf "ref<Shelf>"
+            field locale String
+            field region "optional<String>"
+            field tags "list<String>"
+        }
+        object Section {
+            field title String
+        }
+    }
+    context {
+        slot tags "list<String>" {
+            accumulate append
+        }
+        slot locale String namespace=look duplicates=layered {
+            layers user base
+        }
+        slot region String namespace=place
+    }
+    node shelf role=declaration type=Shelf {
+        field name arg=0
+        field sizes {
+            from {
+                args
+            }
+        }
+    }
+    node section role=container type=Section {
+        field title arg=0
+        children item min-occurs=1
+    }
+    node item role=record type=Item parent=section {
+        field id arg=0
+        field shelf property=shelf
+        field locale {
+            from {
+                property locale
+                context locale policy=fallback
+            }
+        }
+        field region {
+            from {
+                property region
+                context region policy=fixed
+            }
+        }
+        field tags {
+            from {
+                context tags
+            }
+        }
+    }
+    node tag role=context-control {
+        field value String arg=0
+        effects target=following {
+            set tags field=value
+        }
+    }
+    node locale role=context-control {
+        field value String arg=0
+        effects target=children {
+            set locale field=value layer=user
+        }
+        effects target=following {
+            set locale value=en layer=base
+        }
+    }
+    node reset role=context-control {
+        effects target=following {
+            remove region
+            clear look
+        }
+    }
+    node fill role=contribution {
+        field target "ref<Shelf>" arg=0
+        value codec=argument-tail {
+            against target=target member=sizes
+        }
+    }
+    document {
+        following shelf section tag locale reset fill bin
+    }
+}

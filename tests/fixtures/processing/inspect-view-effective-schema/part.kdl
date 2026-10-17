@@ -1,0 +1,11 @@
+// The imported part: one type and the node that binds it.
+schema shelf version="1" {
+    types {
+        object Bin {
+            field name String
+        }
+    }
+    node bin role=declaration type=Bin {
+        field name arg=0
+    }
+}
