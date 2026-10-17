@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "Expanded members appear at the include's position: A's fields splice before the locally declared own field and B's after it, so the bound record's fields read a1, a2, own, b1 in declaration order — the order the source wrote them, not sorted",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

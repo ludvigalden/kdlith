@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "An include cycle fails complete checking with the cycle code, reachable from the CLI: each object includes the other, so neither group is ever ready and every include on the cycle is reported with the chain it closes",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

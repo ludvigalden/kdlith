@@ -7,8 +7,8 @@ use std::path::{Path, PathBuf};
 use kdlith_diagnostic::registry::{lookup, render};
 use kdlith_diagnostic::{ByteSpan, DiagnosticRecord};
 use kdlith_model::{
-    BoundContribution, BoundItem, Field, Identity, ImportRequest, NodeId, PendingBinding,
-    ResolvedContribution, ScopeCompletion, SourceId,
+    BoundContribution, BoundItem, ExpansionRequest, Field, Identity, ImportRequest, NodeId,
+    PendingBinding, ResolvedContribution, ScopeCompletion, SourceId,
 };
 use kdlith_runtime::{
     Admission, Context, ContributionRecord, InvocationId, Invocations, SessionError, SlotId,
@@ -74,6 +74,10 @@ pub enum TypedItem<T> {
     PendingBinding(PendingBinding),
     /// An import as written; the imported document's items follow it.
     Import(ImportRequest),
+    /// An include written among a definition's like members, as
+    /// written: the request is the position marker the compiler's
+    /// expansion pass splices at.
+    Expansion(ExpansionRequest),
     Diagnostic(Box<DiagnosticRecord>),
     ScopeComplete(ScopeCompletion),
     /// A contribution target the registered contribution resolver
@@ -428,6 +432,7 @@ impl<T: 'static> Reading<'_, '_, T> {
             }
             BoundItem::Contribution(contribution) => TypedItem::Contribution(contribution),
             BoundItem::Import(request) => TypedItem::Import(request),
+            BoundItem::Expansion(request) => TypedItem::Expansion(request),
             BoundItem::PendingBinding(pending) => TypedItem::PendingBinding(pending),
             BoundItem::Diagnostic(record) => {
                 self.failed = true;

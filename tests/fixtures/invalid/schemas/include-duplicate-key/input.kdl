@@ -1,0 +1,14 @@
+schema dup version="1" {
+    types {
+        object Base {
+            field id String
+        }
+        object Extended {
+            include Base
+            field id String
+        }
+    }
+    node extended role=record type=Extended {
+        field id arg=0
+    }
+}

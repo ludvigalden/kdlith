@@ -1,0 +1,11 @@
+schema miss version="1" {
+    types {
+        object Extended {
+            include Base
+            field extra String
+        }
+    }
+    node extended role=record type=Extended {
+        field extra arg=0
+    }
+}

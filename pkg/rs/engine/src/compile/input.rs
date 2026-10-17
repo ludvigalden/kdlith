@@ -39,6 +39,14 @@ pub enum Construct {
     Slot(SlotInput),
     Rule(DocumentRuleInput),
     Import(ImportInput),
+    /// One `include TARGET` child among a declaring node's keyed
+    /// members: the splice the complete-checking expansion pass applies
+    /// to `owner` after its first `at` like members.
+    Include {
+        owner: String,
+        target: String,
+        at: usize,
+    },
     Profile(ProfileInput),
     Discovery(DiscoveryInput),
     Reference(ReferenceInput),

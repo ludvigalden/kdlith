@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use kdlith_diagnostic::{DiagnosticRecord, ExitStatus, Severity};
 use kdlith_engine::{
     AccumulateOp, CheckScope, ContextPolicy, DeferredBinding, Definition, EffectStep, EntryContext,
-    Extensions, ImportDecl, LinkOutcome, Names, Role, ScopeId, ScopeRules, SetFrom, SlotDecl,
+    Extensions, ImportDecl, LinkOutcome, Names, Role, ScopeId, ScopeRules, SetFrom, Site, SlotDecl,
     SourceRevisions, Sym, TypeExpr, TypedItem, list_nodes, list_profiles, list_types,
 };
 use kdlith_model::Location;
@@ -601,7 +601,31 @@ fn effective_lines(def: &Definition) -> Vec<serde_json::Value> {
     let entry = |section: &str, entry: serde_json::Value| json!({"item": "effective", "data": {"section": section, "entry": entry}});
     let mut lines = Vec::new();
     for t in list_types(def) {
-        let value = json!({"name": t.name, "parameters": t.parameters, "kind": t.kind});
+        let mut value = json!({"name": t.name, "parameters": t.parameters, "kind": t.kind});
+        let groups = n
+            .get(&t.name)
+            .and_then(|name| def.types.lookup(name))
+            .map_or(&[][..], |id| def.types.expanded(id));
+        // Only a type whose includes spliced members carries the key, so
+        // every other type renders as it always has.
+        if !groups.is_empty() {
+            let site = |site: &Site| {
+                json!({
+                    "source": def.documents.get(site.document),
+                    "span": site.span,
+                })
+            };
+            value["expanded"] = groups
+                .iter()
+                .map(|group| {
+                    json!({
+                        "target": n.resolve(group.target),
+                        "declared": group.declared.as_ref().map(site),
+                        "included": site(&group.included),
+                    })
+                })
+                .collect();
+        }
         lines.push(entry("type", value));
     }
     for node in list_nodes(def) {

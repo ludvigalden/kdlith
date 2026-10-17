@@ -173,6 +173,11 @@ pub struct ExpansionRequest {
     pub member: Option<String>,
     pub site: Location,
     pub origin: OriginId,
+    /// The declaration whose members the group splices into, when the
+    /// expansion point is written among them.
+    pub owner: Option<String>,
+    /// How many like members of the owner precede the expansion point.
+    pub at: usize,
 }
 
 /// A document whose items follow: the source identity its records,
@@ -356,6 +361,29 @@ impl PendingBinding {
     }
 }
 
+impl ExpansionRequest {
+    /// A request for the group `target` names, outside any owner.
+    pub fn new(node: NodeId, target: Reference, site: Location, origin: OriginId) -> Self {
+        Self {
+            node,
+            target,
+            member: None,
+            site,
+            origin,
+            owner: None,
+            at: 0,
+        }
+    }
+
+    /// The request written among `owner`'s members, after `at` of them.
+    #[must_use]
+    pub fn among(mut self, owner: impl Into<String>, at: usize) -> Self {
+        self.owner = Some(owner.into());
+        self.at = at;
+        self
+    }
+}
+
 impl ScopeCompletion {
     pub fn new(source: SourceId, scope: Option<NodeId>) -> Self {
         Self { source, scope }
@@ -393,6 +421,7 @@ pub enum BoundItem {
     Contribution(Box<BoundContribution>),
     Import(ImportRequest),
     PendingBinding(PendingBinding),
+    Expansion(ExpansionRequest),
     Diagnostic(Box<DiagnosticRecord>),
     ScopeComplete(ScopeCompletion),
 }
@@ -405,14 +434,15 @@ impl From<BoundItem> for Item {
             BoundItem::Contribution(contribution) => Item::Contribution(*contribution),
             BoundItem::Import(request) => Item::Import(request),
             BoundItem::PendingBinding(pending) => Item::PendingBinding(pending),
+            BoundItem::Expansion(request) => Item::Expansion(request),
             BoundItem::Diagnostic(record) => Item::Diagnostic(record),
             BoundItem::ScopeComplete(completion) => Item::ScopeComplete(completion),
         }
     }
 }
 
-/// An item outside the bound vocabulary (documents, expansions,
-/// resolutions) is handed back unchanged.
+/// An item outside the bound vocabulary (documents, resolutions) is
+/// handed back unchanged.
 impl TryFrom<Item> for BoundItem {
     type Error = Item;
 
@@ -423,6 +453,7 @@ impl TryFrom<Item> for BoundItem {
             Item::Contribution(contribution) => BoundItem::Contribution(Box::new(contribution)),
             Item::Import(request) => BoundItem::Import(request),
             Item::PendingBinding(pending) => BoundItem::PendingBinding(pending),
+            Item::Expansion(request) => BoundItem::Expansion(request),
             Item::Diagnostic(record) => BoundItem::Diagnostic(record),
             Item::ScopeComplete(completion) => BoundItem::ScopeComplete(completion),
             other => return Err(other),

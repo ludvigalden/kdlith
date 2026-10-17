@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "An include naming no declared type fails as an unresolved type: the expansion pass cannot resolve the target, and the unknown-type code names the include's spelling",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

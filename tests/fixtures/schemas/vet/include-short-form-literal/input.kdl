@@ -1,0 +1,17 @@
+schema incl version="1" {
+    types {
+        object Base {
+            field id String
+        }
+        object Extended {
+            field id String
+            field extra String
+        }
+    }
+    node base role=declaration type=Base {
+        field id arg=0
+    }
+    node extended role=record type=Extended {
+        field extra arg=0
+    }
+}

@@ -471,6 +471,22 @@ pub struct MapType {
 pub struct TypeCatalog {
     types: Vec<TypeDecl>,
     by_name: BTreeMap<Sym, TypeId>,
+    /// The member groups each declaration's includes spliced in.
+    expanded: BTreeMap<TypeId, Vec<ExpandedGroup>>,
+}
+
+/// One member group an `include` spliced into a declaration: the
+/// provenance its expanded members share — where the group was
+/// declared, and where it was included.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct ExpandedGroup {
+    /// The declaration whose member group was spliced in.
+    pub target: Sym,
+    /// Where the target was declared.
+    pub declared: Option<Site>,
+    /// Where the include was written.
+    pub included: Site,
 }
 
 impl TypeCatalog {
@@ -478,6 +494,7 @@ impl TypeCatalog {
         let mut catalog = Self {
             types: Vec::new(),
             by_name: BTreeMap::new(),
+            expanded: BTreeMap::new(),
         };
         for builtin in Builtin::ALL {
             // Built-in names are distinct, so registering one never collides.
@@ -531,6 +548,21 @@ impl TypeCatalog {
         if let Some(slot) = self.types.get_mut(id.index()) {
             *slot = decl;
         }
+    }
+
+    /// Record a group an include spliced into `id`, keeping the groups
+    /// in the order their includes were written.
+    pub(crate) fn record_expansion(&mut self, id: TypeId, group: ExpandedGroup) {
+        let groups = self.expanded.entry(id).or_default();
+        let written = |g: &ExpandedGroup| (g.included.document, g.included.span.start);
+        let at = groups.partition_point(|held| written(held) <= written(&group));
+        groups.insert(at, group);
+    }
+
+    /// The member groups includes spliced into `id`, in written order;
+    /// empty for a declaration that includes nothing.
+    pub fn expanded(&self, id: TypeId) -> &[ExpandedGroup] {
+        self.expanded.get(&id).map_or(&[], Vec::as_slice)
     }
 
     /// Every type in id order.

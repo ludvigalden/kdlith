@@ -1,0 +1,39 @@
+schema kinds version="1" {
+    types {
+        enum Warm {
+            member red
+            member orange
+        }
+        enum Tone {
+            include Warm
+            member blue
+        }
+        union Lookup {
+            variant by-id String
+        }
+        union Input {
+            include Lookup
+            variant terms String
+        }
+        codec Base output=String {
+            match "(?<a>[a-z]+)-(?<b>[0-9]+)"
+            capture a String
+            capture b String
+        }
+        codec Wide output=String {
+            match "(?<a>[a-z]+)-(?<b>[0-9]+)-(?<c>[a-z]+)"
+            include Base
+            capture c String
+        }
+        object Keyed {
+            field id String
+        }
+        object Extended {
+            include Keyed
+            field extra String
+        }
+    }
+    node tone role=record {
+        field value Tone arg=0
+    }
+}

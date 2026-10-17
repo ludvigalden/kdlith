@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "Nested includes resolve through the multi-round pass: B splices A's members first, then C splices B's expanded group at its own include point, so the record's fields read c1, a1, b1, c2",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

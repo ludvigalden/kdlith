@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "An expanded key colliding with a locally declared one is a duplicate-key rejection: Base's id, spliced into Extended at the include, meets Extended's own id, reported at the include with a note at the owner's declaration",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

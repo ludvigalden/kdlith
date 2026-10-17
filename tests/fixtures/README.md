@@ -164,13 +164,16 @@ prints its items before failing. The `processing/inspect-view-*`
 scenarios pin each `inspect --view` per target: the implemented views'
 output, the inapplicable pairs, the unimplemented `references` view, and
 the failure interactions.
-`invalid/schemas/include-short-form/` and
-`invalid/schemas/inspect-include-short-form/` pin the loud rejection of the
-`include` short form: every CLI reading path goes through the typed reader,
-where no role or field binding consumes an `include` child, so `vet schema`
-and `inspect schema` both reject it with `KDLITH-BND001` instead of dropping
-the included members. [COVERAGE.md](COVERAGE.md) carries the declared elision
-row for the splice itself, with its reopen condition.
+`schemas/vet/include-short-form/` and `schemas/inspect/include-short-form/`
+pin the `include` short form splicing on the reader path: the typed reader
+streams each `include` child as an `expansion` item at its position, and
+the schema compiles with the included members in place.
+`schemas/vet/include-short-form-literal/` writes those members out and
+reports the same digest, the oracle for the splice.
+`processing/bind/include-order/` and `processing/bind/include-nested/` bind
+data against spliced schemas, `processing/inspect-view-effective-include/`
+pins each spliced group's provenance, and `invalid/schemas/include-*` hold
+the cycle, undeclared-target, and duplicate-key rejections.
 
 `processing/sch003-span-vet/` and `processing/sch003-span-inspect/` pin the
 span of one diagnostic: an overlapping binding (`KDLITH-SCH003`) is reported

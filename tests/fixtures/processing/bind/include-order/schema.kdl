@@ -1,0 +1,22 @@
+schema merge version="1" {
+    types {
+        object A {
+            field a1 String
+            field a2 String
+        }
+        object B {
+            field b1 String
+        }
+        object Merged {
+            include A
+            field own String
+            include B
+        }
+    }
+    node m role=record type=Merged {
+        field a1 arg=0
+        field a2 arg=1
+        field own arg=2
+        field b1 arg=3
+    }
+}

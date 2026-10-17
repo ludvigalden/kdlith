@@ -11,6 +11,7 @@ use crate::bindings::{
     Placement, Role, SequenceDecl, SequenceStep, SetFrom, Source,
 };
 use crate::compile::Cx;
+use crate::compile::expansions::Pending;
 use crate::compile::input::{
     ChildRuleInput, ConstraintInput, Construct, DefaultInput, DefinitionInput, DependentInput,
     DiscoveryInput, DocumentRuleInput, EffectGroupInput, EffectInput, FieldBindingInput,
@@ -62,6 +63,7 @@ pub(crate) fn all(cx: &mut Cx<'_>, input: &DefinitionInput) {
             Construct::Slot(input) => slot(cx, site, input),
             Construct::Rule(input) => rule(cx, site, input),
             Construct::Import(input) => import(cx, site, input),
+            Construct::Include { owner, target, at } => include(cx, site, owner, target, *at),
             Construct::Resolution(input) => resolution(cx, site, input),
             Construct::Provider(input) => provider(cx, site, input),
             Construct::SourceContext(input) => source_context(cx, site, input),
@@ -87,6 +89,20 @@ fn stream(input: &DefinitionInput) -> Vec<(Site, &Located<Construct>)> {
         .collect();
     stream.sort_by_key(|(_, located)| located.position);
     stream
+}
+
+/// One `include TARGET` among a declaring node's keyed members, recorded
+/// for the expansion pass to splice at the include's position.
+fn include(cx: &mut Cx<'_>, site: Site, owner: &str, target: &str, at: usize) {
+    if !cx.type_name(site, &format!("include of {owner}"), target) {
+        return;
+    }
+    cx.expansions.push(Pending {
+        owner: cx.names.intern(owner),
+        target: cx.names.intern(target),
+        site,
+        at,
+    });
 }
 
 fn type_decl(cx: &mut Cx<'_>, site: Site, ty: &TypeInput) {

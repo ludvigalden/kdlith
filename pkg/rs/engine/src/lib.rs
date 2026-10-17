@@ -103,8 +103,8 @@ pub use typed::{
     object_value, read_fields, text_value, variant_value,
 };
 pub use types::{
-    Builtin, CaptureDef, CodecDecl, Constraint, DefaultSpec, EnumMember, EnumType, FieldDef,
-    FormatRule, MapType, ObjectType, OutputPolicy, Sensitivity, StringFormat, StringType,
+    Builtin, CaptureDef, CodecDecl, Constraint, DefaultSpec, EnumMember, EnumType, ExpandedGroup,
+    FieldDef, FormatRule, MapType, ObjectType, OutputPolicy, Sensitivity, StringFormat, StringType,
     TypeCatalog, TypeDecl, TypeExpr, TypeId, TypeKind, UnionType, ValidatorUse, Variant,
 };
 

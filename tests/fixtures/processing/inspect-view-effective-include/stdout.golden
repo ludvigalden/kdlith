@@ -1,0 +1,9 @@
+{"item":"effective","data":{"section":"type","entry":{"name":"Base","parameters":[],"kind":"codec"}}}
+{"item":"effective","data":{"section":"type","entry":{"name":"Extended","parameters":[],"kind":"object","expanded":[{"target":"Keyed","declared":{"source":"input.kdl","span":{"start":670,"end":676}},"included":{"source":"input.kdl","span":{"start":761,"end":768}}}]}}}
+{"item":"effective","data":{"section":"type","entry":{"name":"Input","parameters":[],"kind":"union","expanded":[{"target":"Lookup","declared":{"source":"input.kdl","span":{"start":205,"end":210}},"included":{"source":"input.kdl","span":{"start":297,"end":304}}}]}}}
+{"item":"effective","data":{"section":"type","entry":{"name":"Keyed","parameters":[],"kind":"object"}}}
+{"item":"effective","data":{"section":"type","entry":{"name":"Lookup","parameters":[],"kind":"union"}}}
+{"item":"effective","data":{"section":"type","entry":{"name":"Tone","parameters":[],"kind":"enum","expanded":[{"target":"Warm","declared":{"source":"input.kdl","span":{"start":47,"end":51}},"included":{"source":"input.kdl","span":{"start":150,"end":157}}}]}}}
+{"item":"effective","data":{"section":"type","entry":{"name":"Warm","parameters":[],"kind":"enum"}}}
+{"item":"effective","data":{"section":"type","entry":{"name":"Wide","parameters":[],"kind":"codec","expanded":[{"target":"Base","declared":{"source":"input.kdl","span":{"start":363,"end":368}},"included":{"source":"input.kdl","span":{"start":610,"end":617}}}]}}}
+{"item":"effective","data":{"section":"node","entry":{"name":"tone","parents":[],"role":"record","type":null,"profile":null}}}

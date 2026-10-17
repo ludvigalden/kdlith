@@ -1,0 +1,22 @@
+schema nest version="1" {
+    types {
+        object A {
+            field a1 String
+        }
+        object B {
+            include A
+            field b1 String
+        }
+        object C {
+            field c1 String
+            include B
+            field c2 String
+        }
+    }
+    node c role=record type=C {
+        field a1 arg=0
+        field b1 arg=1
+        field c1 arg=2
+        field c2 arg=3
+    }
+}

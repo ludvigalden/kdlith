@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "An include child among like members streams as an expansion item where the include closes — after the included Base, ahead of the declaration of Extended, which owns it — carrying its owner and its position among the owner's members, and the schema then compiles",
+  "args": [
+    "inspect",
+    "schema",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

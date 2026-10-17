@@ -5,7 +5,9 @@
 use crate::compile::Cx;
 use crate::diag::{EXPANSION_CYCLE, Site, duplicate_key};
 use crate::names::Sym;
-use crate::types::{CaptureDef, EnumMember, FieldDef, TypeDecl, TypeId, TypeKind, Variant};
+use crate::types::{
+    CaptureDef, EnumMember, ExpandedGroup, FieldDef, TypeDecl, TypeId, TypeKind, Variant,
+};
 
 /// One `include TARGET` read inside a type declaration, awaiting the
 /// complete-checking pass that splices its entries.
@@ -32,6 +34,18 @@ struct Group {
     of: Of,
 }
 
+impl Group {
+    /// How many entries the group splices in.
+    fn len(&self) -> usize {
+        match self.of {
+            Of::Fields => self.fields.len(),
+            Of::Members => self.members.len(),
+            Of::Variants => self.variants.len(),
+            Of::Captures => self.captures.len(),
+        }
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Of {
     Fields,
@@ -43,7 +57,7 @@ enum Of {
 /// Resolve every pending include; the `expand` sources are validated by
 /// linking, which sees the compiled bindings.
 pub(crate) fn run(cx: &mut Cx<'_>) {
-    let pending = std::mem::take(&mut cx.expansions);
+    let mut pending = std::mem::take(&mut cx.expansions);
     let total = pending.len();
     let mut applied = vec![false; total];
     for _ in 0..total {
@@ -64,7 +78,12 @@ pub(crate) fn run(cx: &mut Cx<'_>) {
             }
             match group_of(cx, &pending[at]) {
                 Some(group) => {
+                    let count = group.len();
                     splice(cx, &pending[at], group);
+                    // A splice shifts every later include of the same
+                    // owner, whose recorded position still counts the
+                    // members as written before it.
+                    shift_later(&mut pending, &applied, at, count);
                     applied[at] = true;
                     progressed = true;
                 }
@@ -81,6 +100,19 @@ pub(crate) fn run(cx: &mut Cx<'_>) {
             continue;
         }
         report_stuck(cx, &pending, &applied, at);
+    }
+}
+
+/// Move every unapplied include of the spliced one's owner that is
+/// written after it (a later position, or the same position and a later
+/// include) past the entries the splice inserted.
+fn shift_later(pending: &mut [Pending], applied: &[bool], spliced: usize, count: usize) {
+    let (owner, at) = (pending[spliced].owner, pending[spliced].at);
+    for (other, item) in pending.iter_mut().enumerate() {
+        if applied[other] || item.owner != owner || (item.at, other) <= (at, spliced) {
+            continue;
+        }
+        item.at += count;
     }
 }
 
@@ -199,6 +231,17 @@ fn splice(cx: &mut Cx<'_>, pending: &Pending, group: Group) {
         _ => {}
     }
     cx.types.put_decl(owner_id, decl);
+    let declared = cx
+        .types
+        .lookup(pending.target)
+        .and_then(|id| cx.types.get(id))
+        .and_then(|decl| decl.site);
+    let group = ExpandedGroup {
+        target: pending.target,
+        declared,
+        included: pending.site,
+    };
+    cx.types.record_expansion(owner_id, group);
 }
 
 fn existing_keys(cx: &Cx<'_>, id: TypeId) -> Vec<String> {

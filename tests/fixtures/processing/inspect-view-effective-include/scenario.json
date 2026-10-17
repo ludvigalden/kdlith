@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "The effective view's type entries carry an expanded array only for types whose includes spliced members, one entry per include with the target and both provenance sites — where the group was declared and where the include was written; types without includes render exactly as before",
+  "args": [
+    "inspect",
+    "schema",
+    "--view",
+    "effective",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

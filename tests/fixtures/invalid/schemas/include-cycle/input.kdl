@@ -1,0 +1,15 @@
+schema cyc version="1" {
+    types {
+        object A {
+            include B
+            field a String
+        }
+        object B {
+            include A
+            field b String
+        }
+    }
+    node a role=declaration type=A {
+        field a arg=0
+    }
+}

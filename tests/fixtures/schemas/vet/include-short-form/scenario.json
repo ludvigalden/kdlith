@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "The include short form splices on the reader path: an include child among like members feeds an expansion request to the compiler, so Base's fields splice into Extended at the include's position and the schema compiles",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

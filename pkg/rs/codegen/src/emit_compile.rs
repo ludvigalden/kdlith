@@ -407,6 +407,27 @@ const TAKE_TAIL: &str = r##"            // A record of any other type is a reade
                 span,
             );
         }
+        // An include among a declaration's like members: the splice
+        // point the expansion pass applies once every type is declared.
+        TypedItem::Expansion(request) => {
+            let span = request.site.span.byte_span();
+            let Some(owner) = request.owner else {
+                records.push(broken_contract(
+                    "a definition reading yielded an include outside a declaration",
+                ));
+                return;
+            };
+            push(
+                input,
+                records,
+                Some(Construct::Include {
+                    owner,
+                    target: request.target.written,
+                    at: request.at,
+                }),
+                span,
+            );
+        }
         TypedItem::Diagnostic(record) => records.push(*record),
         // A document's completion closes it; a node scope's carries
         // nothing.

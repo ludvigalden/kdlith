@@ -12,9 +12,9 @@ use std::collections::BTreeMap;
 use kdlith_diagnostic::registry::{lookup, render};
 use kdlith_diagnostic::{ByteSpan, DiagnosticRecord, Label};
 use kdlith_model::{
-    BoundContribution, BoundDeclaration, BoundItem, BoundRecord, Derivation, Entry, Field,
-    Identity, ImportRequest, Location, Origin, OriginId, PendingBinding, QualifiedName, Reference,
-    Repeated, ScopeCompletion, SourceId, Trace, ValidationState, Value,
+    BoundContribution, BoundDeclaration, BoundItem, BoundRecord, Derivation, Entry,
+    ExpansionRequest, Field, Identity, ImportRequest, Location, Origin, OriginId, PendingBinding,
+    QualifiedName, Reference, Repeated, ScopeCompletion, SourceId, Trace, ValidationState, Value,
 };
 use kdlith_parse::{Locator, Parser};
 use kdlith_runtime::{
@@ -81,6 +81,12 @@ enum CaseSelection {
 
 /// The dialect construct a schema definition's root node is written as.
 const SCHEMA_ROOT: &str = "schema";
+
+/// The include short form's declared type, target field, and the owner
+/// field its splice point counts from.
+const INCLUDE_TYPE: &str = "IncludeRef";
+const INCLUDE_TARGET: &str = "target";
+const INCLUDE_NAME: &str = "name";
 
 /// The fields of the node an effect step runs for, as its timing knows
 /// them: the header alone for children effects, the node's fully bound
@@ -1974,7 +1980,9 @@ impl<'d, 's> Binder<'d, 's> {
             return;
         };
         let Some(bind) = parent.table(&self.tables).and_then(|t| t.child(frame.name)) else {
-            self.reject_unconsumed(cx, parent, frame);
+            if !self.expansion_point(cx, parent, frame, &values) {
+                self.reject_unconsumed(cx, parent, frame);
+            }
             return;
         };
         let infos = &self.tables.decls[owner.index()].fields;
@@ -2029,6 +2037,89 @@ impl<'d, 's> Binder<'d, 's> {
         }
         let span = frame.span;
         self.route(cx, parent, bind, value, span);
+    }
+
+    /// Emit an `include` child's expansion request at its position among
+    /// the owner's like members; whether the node was consumed as one.
+    fn expansion_point(
+        &mut self,
+        cx: &mut Cx<'_>,
+        parent: &BindFrame,
+        frame: &BindFrame,
+        values: &[Option<Value>],
+    ) -> bool {
+        let info = &self.tables.decls[frame.owner.index()];
+        if self.def.kind != DefinitionKind::Dialect || info.type_name != INCLUDE_TYPE {
+            return false;
+        }
+        // The keyed members bound before the include: its splice point
+        // among the owner's members. Every declaring container admits
+        // exactly one keyed member group.
+        let members = parent
+            .table(&self.tables)
+            .map(|table| {
+                table
+                    .children
+                    .iter()
+                    .filter(|(_, bind)| bind.mode == Mode::Keyed)
+                    .map(|(_, bind)| {
+                        parent
+                            .fields
+                            .get(bind.field)
+                            .and_then(|held| held.as_ref())
+                            .map_or(0, |held| match &held.value {
+                                Value::Map(entries) => entries.len(),
+                                _ => 0,
+                            })
+                    })
+                    .sum::<usize>()
+            })
+            .unwrap_or(0);
+        let infos = &self.tables.decls[frame.owner.index()].fields;
+        let target = infos
+            .iter()
+            .zip(values)
+            .find(|(info, _)| self.name(info.name) == INCLUDE_TARGET)
+            .and_then(|(_, value)| value.as_ref())
+            .and_then(|value| match value {
+                Value::String(text) => Some(text.clone()),
+                _ => None,
+            });
+        // An include with no usable target or no named owner is rejected
+        // loudly as unconsumed, never dropped.
+        let Some(target) = target else {
+            return false;
+        };
+        let Some(owner) = self.held_value(parent, INCLUDE_NAME) else {
+            return false;
+        };
+        let Some(Value::String(owner)) = owner else {
+            return false;
+        };
+        let site = self.location(frame.span);
+        let domain = self.tables.decls[parent.owner.index()].type_name.clone();
+        let reference = Reference::new(domain, QualifiedName(vec![target.clone()]), target, site);
+        let node = cx.node();
+        let request = ExpansionRequest::new(node, reference, site, OriginId(node.index))
+            .among(owner, members);
+        cx.emit(BoundItem::Expansion(request));
+        true
+    }
+
+    /// The value `frame` holds so far for its owner's field `field`:
+    /// `None` when the owner declares no such field.
+    fn held_value(&self, frame: &BindFrame, field: &str) -> Option<Option<Value>> {
+        let infos = &self.tables.decls[frame.owner.index()].fields;
+        let at = infos
+            .iter()
+            .position(|info| self.name(info.name) == field)?;
+        Some(
+            frame
+                .fields
+                .get(at)
+                .and_then(|held| held.as_ref())
+                .map(|held| held.value.clone()),
+        )
     }
 
     /// A child rule admitted the node, but neither a role nor a field of

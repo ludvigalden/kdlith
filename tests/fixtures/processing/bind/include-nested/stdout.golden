@@ -1,0 +1,3 @@
+{"item":"document","data":{"source":0,"path":"input.kdl"}}
+{"item":"record","data":{"node":{"source":0,"index":0},"type_name":"C","fields":[{"name":"c1","value":{"kind":"string","value":"three"},"origin":0},{"name":"a1","value":{"kind":"string","value":"one"},"origin":0},{"name":"b1","value":{"kind":"string","value":"two"},"origin":0},{"name":"c2","value":{"kind":"string","value":"four"},"origin":0}],"origin":0,"validation":"valid"}}
+{"item":"scope-complete","data":{"source":0,"scope":null}}
