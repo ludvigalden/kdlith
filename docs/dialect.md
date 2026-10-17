@@ -729,6 +729,222 @@ unqualified (`Option`, `Item`, `Ref`, and the engine items its modules
 import). Such a definition still vets: the limit is the generated
 crate's, not the dialect's.
 
+## Inspect views
+
+`inspect dialect`, `inspect schema`, and `inspect data` take `--view`,
+which picks what standard output carries. Every view writes JSON lines
+in the tagged envelope the item stream already uses,
+`{"item":"<kind>","data":{…}}`, so one decoder reads all of them.
+Diagnostics always go to standard error. The default view, `source`,
+is the item stream described under
+[One code per rejected construct](#one-code-per-rejected-construct).
+The view names follow the design drafts' inspection command (F §8).
+
+### Which views apply to which target
+
+| View         | `inspect dialect` | `inspect schema` | `inspect data`               |
+| ------------ | ----------------- | ---------------- | ---------------------------- |
+| `source`     | item stream       | item stream      | item stream                  |
+| `bound`      | `KDLITH-CLI004`   | `KDLITH-CLI004`  | data items                   |
+| `context`    | `KDLITH-CLI004`   | `KDLITH-CLI004`  | entry contexts               |
+| `effective`  | compiled entries  | compiled entries | declarations and resolutions |
+| `origins`    | `KDLITH-CLI004`   | `KDLITH-CLI004`  | provenance envelopes         |
+| `plan`       | processing plan   | processing plan  | the bound definition's plan  |
+| `references` | not implemented   | not implemented  | not implemented              |
+
+`bound`, `context`, and `origins` describe how data binds, and a
+definition target binds no data. Asking for one of them on `inspect
+dialect` or `inspect schema` is an argument fault, reported before any
+document is read and exiting 2:
+
+```text
+error[KDLITH-CLI004]: the bound view does not apply to a dialect target
+```
+
+`references` is not implemented yet: on every target it fails closed
+before any document is read, with
+`kdlith: the references view is not implemented yet` and exit 1, so no
+view prints a poorer stand-in. A `--view` value that names no view is
+a usage error from the argument parser (`KDLITH-CLI001`, exit 2), which
+lists the seven names.
+
+### Line formats
+
+Each sample below is one line copied from the committed fixture
+goldens under `tests/fixtures/processing/inspect-view-*`.
+
+**`bound`** (`inspect data`) writes the stream's `record`,
+`declaration`, and `contribution` items unchanged. Document, import,
+scope, resolution, and diagnostic items are dropped.
+
+```text
+{"item":"declaration","data":{"node":{"source":1,"index":1},"identity":{"domain":"Group","name":["imported"]},"type_name":"Group","fields":[{"name":"name","value":{"kind":"string","value":"imported"},"origin":1},{"name":"labels","value":{"kind":"map","value":[{"key":"i","value":{"kind":"map","value":[{"key":"text","value":{"kind":"string","value":"Imported"}}]}}]},"origin":1}],"origin":1,"validation":"valid"}}
+```
+
+**`origins`** (`inspect data`) writes one `origins` line for each record,
+declaration, and contribution. Its `data` is exactly the provenance
+envelope `export` writes beside that item: `node` (the item's
+location), `sources` (the source revisions its locations name),
+`origins` (the shared origin table, whose entries are `literal`,
+`derived` with an `operation` and its `inputs`, or `resolved`), and
+`fields` (each field's index into that table, in field order).
+
+```text
+{"item":"origins","data":{"node":{"source":0,"span":{"start":{"offset":265,"line":15,"column":1},"end":{"offset":272,"line":15,"column":8}}},"sources":[{"source":0,"path":"input.kdl","revision":"fnv1a64:c8ffe414bb5839bc"}],"origins":[{"kind":"literal","location":{"source":0,"span":{"start":{"offset":273,"line":15,"column":9},"end":{"offset":279,"line":15,"column":15}}}},{"kind":"literal","location":{"source":0,"span":{"start":{"offset":279,"line":15,"column":15},"end":{"offset":283,"line":15,"column":19}}}}],"fields":[{"name":"target","origin":0},{"name":"value","origin":1}]}}
+```
+
+**`context`** (`inspect data`) writes one `context` line per entry
+document after the read. `entry` is the path as given, and `slots`
+lists every declared slot with the `value` and `layer` the entry's
+root level left. A value uses the same tagged encoding as item fields;
+an unset slot has `"value":null`, and a slot that is not layered has
+`"layer":null`.
+
+```text
+{"item":"context","data":{"entry":"first.kdl","slots":[{"name":"region","value":{"kind":"string","value":"north"},"layer":null},{"name":"locale","value":{"kind":"string","value":"sv-se"},"layer":"user"},{"name":"zone","value":null,"layer":null}]}}
+```
+
+Only entry documents report. An imported document runs under its
+import's projection, and its effects stay in its own invocation, so it
+writes no line of its own; the provenance of the items it emits covers
+it. An entry replayed from the bound-result cache still reports the
+context its cached reading left. The snapshot is the entry's state at
+the end of its document, while the root level is still live; it is not
+the context restored after the document closes.
+
+**`effective`** on `inspect dialect` and `inspect schema` writes one
+`effective` line per entry of the compiled definition. `section` is
+`type`, `node`, `slot`, `import`, or `profile`, and `entry` carries
+that section's keys:
+
+| Section   | Entry keys                                                                                         |
+| --------- | -------------------------------------------------------------------------------------------------- |
+| `type`    | `name`, `parameters`, `kind` (as `list types` reports them)                                        |
+| `node`    | `name`, `parents`, `role`, `type`, `profile` (as `list nodes` reports them)                        |
+| `slot`    | `name`, `type` (the type expression as written), `namespace`, `accumulate`, `duplicates`, `layers` |
+| `import`  | `path`, `project`, `repeated` (kebab-case, as on the import item), `alias`                         |
+| `profile` | `name`, `roots`, `grammar` (as `list profiles` reports them)                                       |
+
+```text
+{"item":"effective","data":{"section":"slot","entry":{"name":"locale","type":"String","namespace":null,"accumulate":null,"duplicates":"layered","layers":["user","base"]}}}
+```
+
+On `inspect data`, `effective` writes the stream's `declaration` and
+`resolution` items unchanged: the declarations as imported, then the
+values the shipped `layered` contribution resolver settled.
+
+```text
+{"item":"resolution","data":{"target":{"domain":"Option","name":["size"],"qualifiers":[],"written":"size","site":{"source":1,"span":{"start":{"offset":20,"line":2,"column":9},"end":{"offset":25,"line":2,"column":14}}}},"value":{"kind":"map","value":[{"key":"target","value":{"kind":"reference","value":{"domain":"Option","name":["size"],"qualifiers":[],"written":"size","site":{"source":1,"span":{"start":{"offset":20,"line":2,"column":9},"end":{"offset":25,"line":2,"column":14}}}}}},{"key":"value","value":{"kind":"string","value":"large"}},{"key":"layer","value":{"kind":"string","value":"base"}}]},"layers":["base"]}}
+```
+
+The two sides answer different questions. On a definition target the
+view is context-free: compiling merged the imported documents, so
+their types and nodes appear in their sections and each import is
+listed as written. On data, what is effective depends on both imports
+and context (R1 §5): an imported document's contribution can win a
+layer over the entry's own, and the resolution lines show the outcome.
+
+**`plan`** writes one `plan-context` line, then one `plan-node` line per
+node declaration. On `inspect data` it renders the plan of the
+definition the data bound under: the `--schema` schema, or the
+governing dialect without one. No data item is written, but the data
+is still read, and the read decides the exit status.
+
+```text
+{"item":"plan-context","data":{"slots":[{"name":"tags","type":"list<String>","namespace":null,"accumulate":"append"},{"name":"locale","type":"String","namespace":"look","accumulate":null},{"name":"region","type":"String","namespace":"place","accumulate":null}],"namespaces":["look","place"]}}
+{"item":"plan-node","data":{"name":"fill","role":"contribution","scope":7,"children-effects":[],"following-effects":[],"context-reads":[],"deferred":[{"deferred":"contribution"},{"deferred":"reference","field":"target","target":"Shelf"}],"dependent":{"target":"target","member":"sizes","codec":"argument-tail"},"declaration":false,"requires":["record-buffering","imported-schema-metadata","deferred-binding","global-validation"]}}
+```
+
+A `plan-node` carries `name`, `role` (or null), `scope` (the scope
+index, or null), `children-effects` and `following-effects`,
+`context-reads` (`field`, `slot`, and `policy`: `fallback`, `fixed`, or
+null), `deferred` (`{"deferred":"reference","field","target"}` or
+`{"deferred":"contribution"}`), `dependent` (`target`, `member`, and
+`codec`, or null), `declaration`, and `requires`. An effect is
+`{"effect":"set","slot",…,"layer"}` (with `field` when the value comes
+from a field, or `value` when it is written in the schema),
+`{"effect":"remove","slot"}`, `{"effect":"clear","namespace"}`, or
+`{"effect":"handler","name"}`. Slots and namespaces are named, never
+numbered.
+
+`requires` lists what processing the node needs, derived from the
+plan, always in this order:
+
+| Flag                         | Present when                                                                                                                                           |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `record-buffering`           | the node defers a contribution, or one of its effects sets a slot that accumulates                                                                     |
+| `scope-completion`           | the node's scope runs checks when it closes: a minimum count, an exactly-one group, a required first child, an ordered sequence, or a descendant bound |
+| `declaration-lookup`         | the node registers a declaration                                                                                                                       |
+| `imported-schema-metadata`   | the definition imports documents (marks every node)                                                                                                    |
+| `deferred-binding`           | the node defers a reference                                                                                                                            |
+| `global-validation`          | the definition declares a document rule (marks every node)                                                                                             |
+| `registered-domain-handlers` | one of the node's effects is a registered handler                                                                                                      |
+
+A node with no flag is processed within its own header and record. The
+accumulation need belongs to the node that sets the slot, not to the
+nodes that read it. A scope that only caps counts or permits children
+runs no check when it closes, so it does not need scope completion.
+
+This vocabulary follows the design drafts' list for the `plan` view
+(F §8). The drafts' earlier table of plan requirements (R2 §12) names
+other categories: its scope-completion and global-validation
+requirements are the same two flags here; its header-local and
+record-local requirements are what a node with no flag needs; its
+indexed lookup is split into `declaration-lookup` (registering an
+identity) and `deferred-binding` (referring to one); and its staged
+schema compilation has no flag. `record-buffering`,
+`imported-schema-metadata`, and `registered-domain-handlers` appear only
+in the `plan` view's list.
+
+### Ordering
+
+Every view's output order is chosen, never the iteration order of a
+hash map:
+
+1. **Stream order** (`bound`, `origins`, `effective` on data): the order
+   the reader yields items, never re-sorted. An imported document's
+   items follow the import that brings them in.
+2. **Entry order** (`context`): the order the entry documents are given
+   on the command line.
+3. **Section order** (`effective` on a definition target): types,
+   nodes, slots, imports, profiles. Within a section, entries sort by
+   name as `list` sorts them; imports sort by path, then alias.
+4. **Slot order** (`context` slots, `plan-context` slots): the order the
+   slots are declared, which is the order of their slot ids, not name
+   order. `plan-context` lists namespaces in namespace-id order.
+5. **Plan order** (`plan-node` lines): declaration order, with the nodes
+   of an imported document where its import merged them.
+6. **`requires` order**: the fixed order of the table above.
+
+### When reading or compiling fails
+
+Every view keeps the rule the source view follows: show, then fail.
+What there is to show depends on the view.
+
+- Stream views (`source`, `bound`, `origins`, and `effective` on data)
+  write every item the reader yields, then exit 1 if any error was
+  reported.
+- `context` writes the context of every entry that was read, then exits
+  1 if any error was reported. An entry that reads an unset slot still
+  gets its line, showing that slot as null.
+- Views rendered from the compiled definition (`effective` and `plan`
+  on a definition target, and `plan` on data) have nothing to show when
+  the definition did not compile. Standard output stays empty, the load
+  diagnostics are reported, and one more line says why the view is
+  missing, then the run exits 1:
+
+  ```text
+  error[KDLITH-SCH001]: unknown type Missing
+    --> input.kdl:3:9
+  kdlith: the plan view needs the compiled definition, which did not compile
+  ```
+
+- `plan` on data whose schema compiled but whose read failed still
+  writes the whole plan; the read's exit 1 governs.
+- When the `--schema` schema of `inspect data` does not compile, there
+  is no stream either: the stream views and `context` write nothing and
+  exit 1.
+
 ## Changing the dialect
 
 Change the canonical files first, then this record. A mechanism moves

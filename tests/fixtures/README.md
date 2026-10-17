@@ -158,6 +158,12 @@ the reader rejects an input, the compile stage does not run.
 `processing/inspect-rejects-*` each inspect, through `inspect schema`, the
 same input a `vet schema` scenario rejects with a compiler-only code:
 the items still stream to stdout, and the run then fails with that code.
+The `processing/inspect-rejects-view-*` scenarios are the exception: they
+run a stream view of `inspect data` over an erroring read, which still
+prints its items before failing. The `processing/inspect-view-*`
+scenarios pin each `inspect --view` per target: the implemented views'
+output, the inapplicable pairs, the unimplemented `references` view, and
+the failure interactions.
 `invalid/schemas/include-short-form/` and
 `invalid/schemas/inspect-include-short-form/` pin the loud rejection of the
 `include` short form: every CLI reading path goes through the typed reader,
@@ -178,9 +184,11 @@ no-arguments invocation, and the argument-error stratum. Every argument
 rejection exits `2` under its registered code: the `cli001-*` scenarios
 pin `KDLITH-CLI001` across the argument forms, the `cli002-*` scenarios
 pin `KDLITH-CLI002` on `gen`'s exclusive `--dry-run`/`--check` pair, and
-`cli003-export-format` pins `KDLITH-CLI003`. Each of these holds its
-streams byte for byte, so a change to clap's wording or to the command
-grammar means regenerating their goldens from the binary's output.
+`cli003-export-format` pins `KDLITH-CLI003`; the
+`processing/inspect-view-inapplicable-*` scenarios pin `KDLITH-CLI004`.
+Each of these holds its streams byte for byte, so a change to clap's
+wording or to the command grammar means regenerating their goldens from
+the binary's output.
 
 The `*-dialect` twins under `processing/list/`, `processing/cache/`,
 `processing/export/`, and `processing/read-data-found-dialect/` run a data
