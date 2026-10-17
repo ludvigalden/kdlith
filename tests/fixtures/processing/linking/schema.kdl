@@ -1,0 +1,101 @@
+// The linking schema the linking scenarios share: configuration
+// variables declared under a namespace context and looked up by an
+// explicit and a context-qualified reference type, tools carrying a
+// contract their reference requires, and input sets an aliased import
+// can contribute.
+schema linking version="1" {
+    types {
+        object ConfigVarDef {
+            field namespace String
+            field local-name String
+        }
+        object ToolDef {
+            field program String
+            field tool String
+            field contract String
+        }
+        object InputSetDef {
+            field name String
+        }
+        object Use {
+            field target ConfigVarRef
+        }
+        object Pin {
+            field target ConfigPathRef
+        }
+        object Depends {
+            field target ToolRef
+        }
+        object Takes {
+            field target InputSetRef
+        }
+        codec DottedName output=String {
+            match #"(?:(?<namespace>[a-z]+)\.)?(?<local>[a-z-]+)"#
+            capture namespace String
+            capture local String
+        }
+        codec ProgramSlashTool output=String {
+            match #"(?<program>[a-z]+)/(?<tool>[a-z-]+)(?:@(?<contract>[a-z0-9]+))?"#
+            capture program String
+            capture tool String
+            capture contract String
+        }
+    }
+    context {
+        slot namespace String duplicates=last-wins
+    }
+    node namespace role=context-control {
+        field value String arg=0
+        effects target=following {
+            set namespace field=value
+        }
+    }
+    node config-var role=declaration type=ConfigVarDef {
+        field local-name arg=0
+        field namespace context=namespace
+        identity {
+            domain config-vars
+            compose qualified-name namespace local-name
+        }
+    }
+    node tool role=declaration type=ToolDef {
+        field tool arg=0
+        field program property=program
+        field contract property=contract
+        identity {
+            domain tools
+            compose qualified-name program tool
+        }
+    }
+    node input-set role=declaration type=InputSetDef {
+        field name arg=0
+        identity {
+            domain input-sets
+            compose qualified-name name
+        }
+    }
+    node use role=record type=Use {
+        field target arg=0
+    }
+    node pin role=record type=Pin {
+        field target arg=0
+    }
+    node depends role=record type=Depends {
+        field target arg=0
+    }
+    node takes role=record type=Takes {
+        field target arg=0
+    }
+    node import role=source-import {
+        field path String arg=0
+        field alias "optional<String>" property=as
+    }
+    reference ConfigVarRef target=ConfigVarDef codec=DottedName lookup=config-vars qualification=explicit-or-context {
+        qualifier namespace String required=#false
+    }
+    reference ConfigPathRef target=ConfigVarDef codec=DottedName lookup=config-vars qualification=explicit
+    reference ToolRef target=ToolDef codec=ProgramSlashTool lookup=tools qualification=explicit {
+        qualifier contract String
+    }
+    reference InputSetRef target=InputSetDef codec=DottedName lookup=input-sets qualification=imported-or-context
+}

@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "Under the default complete scope an explicit reference spelling every segment of a composed identity resolves to its one declaration and the run exits 0",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/linking/schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

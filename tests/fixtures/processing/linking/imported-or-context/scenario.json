@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "An imported-or-context reference resolves through an import alias: the aliased document's declaration registers under the alias namespace, and the reference naming that namespace as its first segment links to it under the default complete scope",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/linking/schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

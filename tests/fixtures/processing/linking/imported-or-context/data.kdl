@@ -1,0 +1,2 @@
+import "part.kdl" as=common
+takes "common.lookup"

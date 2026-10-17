@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "An explicit reference that leaves an identity segment unspelled derives no candidate even where context would supply it",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/linking/schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

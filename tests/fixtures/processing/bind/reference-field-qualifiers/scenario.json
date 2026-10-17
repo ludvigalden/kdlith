@@ -1,9 +1,11 @@
 {
   "binary": "kdlith",
-  "description": "The capture mapping of a reference-typed field: the capture named as a declared qualifier becomes that qualifier wherever it sits in the match, the other captures are the name's segments in capture declaration order, the domain falls back to the target when no lookup is declared, and the reference type wins over the same-named codec it reaches its codec through",
+  "description": "The capture mapping of a reference-typed field: the capture named as a declared qualifier becomes that qualifier wherever it sits in the match, the other captures are the name's segments in capture declaration order, the domain falls back to the target when no lookup is declared, and the reference type wins over the same-named codec it reaches its codec through; bound alone under --scope local, since the scenario pins binding and declares no target to link",
   "args": [
     "vet",
     "data",
+    "--scope",
+    "local",
     "--schema",
     "schema.kdl",
     "data.kdl"

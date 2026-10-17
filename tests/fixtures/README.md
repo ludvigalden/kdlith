@@ -249,6 +249,19 @@ schema verbs load a schema naming `layered`. The `invalid/data/resolution-*`
 negatives pin the resolver's refusals (`KDLITH-DLC010`) and a policy
 naming a resolver no processor installs (`KDLITH-DLC006`).
 
+`processing/linking/` holds the reference-linking scenarios over the
+shared `schema.kdl`, which declares configuration variables composed
+from a namespace context and a local name, tools whose reference type
+requires a `contract` qualifier, and input sets an aliased import can
+contribute, with an explicit, an explicit-or-context, and an
+imported-or-context reference type. Each qualification policy resolves
+under the default complete scope (exit 0); `alias-gated` pins the
+unresolved message naming the alias namespace; and the `scope-*` and
+`inspect-scope-*` pairs run one failing input under both scopes, pinning
+that `--scope local` changes only the exit, never the output. The
+`invalid/data/reference-*` negatives pin `KDLITH-REF001` through
+`KDLITH-REF004` with no `--scope` flag, so they prove the default.
+
 `schemas/vet/import-repeat-coalesce/` and
 `schemas/vet/import-repeat-instantiate/` pin the two non-default
 repeated-import policies on the schema path;

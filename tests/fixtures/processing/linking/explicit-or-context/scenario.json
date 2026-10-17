@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "An explicit-or-context reference resolves twice under the default complete scope: a bare local name takes its missing namespace from the namespace context captured where it binds, and a spelled namespace qualifier pins that segment against a different context",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/linking/schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

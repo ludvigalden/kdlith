@@ -1,0 +1,20 @@
+{
+  "binary": "kdlith",
+  "description": "inspect data --scope local renders the same bound view as the complete run and exits 0: the scope gates the exit decision only",
+  "args": [
+    "inspect",
+    "data",
+    "--view",
+    "bound",
+    "--scope",
+    "local",
+    "--schema",
+    "{fx-suite}/processing/linking/schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

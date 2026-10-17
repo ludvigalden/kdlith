@@ -161,10 +161,9 @@ enum VetCommand {
     /// Vet a schema definition under the bundled dialect, or the one
     /// `--dialect` names, itself vetted with complete checking
     Schema(VetSchemaArgs),
-    /// Bind data documents against the schema `--schema` names, under
-    /// the bundled dialect or the one `--dialect` names, or against
-    /// the dialect itself without `--schema`; bound items go to stdout
-    /// as one JSON line each
+    /// Bind data documents against the schema `--schema` names (or the
+    /// dialect itself), under the bundled dialect or `--dialect`, then
+    /// link their references; items go to stdout as JSON lines
     Data(VetDataArgs),
 }
 
@@ -224,6 +223,11 @@ struct VetDataArgs {
     /// A built-in context handler to install, by name (repeatable)
     #[arg(long = "handler", value_name = "NAME", value_parser = handlers::parse_handler)]
     handlers: Vec<String>,
+    /// Bind the documents alone (local) or also link every reference a
+    /// declared reference type looks up, failing on any that does not
+    /// resolve to exactly one declaration (complete)
+    #[arg(long, value_enum, default_value_t = ScopeArg::Complete)]
+    scope: ScopeArg,
     /// Data documents
     #[arg(required = true)]
     files: Vec<PathBuf>,
@@ -278,7 +282,7 @@ impl ProfileArgs {
     }
 }
 
-/// The `--scope` value of `vet dialect` and `vet schema`.
+/// The `--scope` value of `vet` and `inspect data`.
 #[derive(Clone, Copy, Debug, ValueEnum)]
 enum ScopeArg {
     Local,
@@ -377,6 +381,11 @@ struct InspectDataArgs {
     /// bound definition's plan); references fails closed
     #[arg(long, value_enum, default_value_t = ViewArg::Source)]
     view: ViewArg,
+    /// Bind the documents alone (local) or also link every reference a
+    /// declared reference type looks up (complete); a link failure
+    /// fails the run after the view has printed
+    #[arg(long, value_enum, default_value_t = ScopeArg::Complete)]
+    scope: ScopeArg,
     /// Data documents
     #[arg(required = true)]
     files: Vec<PathBuf>,

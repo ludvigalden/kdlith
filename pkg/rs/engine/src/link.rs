@@ -12,6 +12,7 @@ use kdlith_model::{
 
 use crate::definition::{Definition, Qualification, ReferenceDecl};
 use crate::diag::record;
+use crate::types::{TypeExpr, TypeKind};
 
 const UNRESOLVED: &str = "KDLITH-REF001";
 const DUPLICATE: &str = "KDLITH-REF002";
@@ -186,27 +187,21 @@ pub struct BoundReference {
 /// Stage two, reference binding: every reference value in the reading's
 /// records, declarations, and contributions, in stream order, with the
 /// declared reference type looking it up. A reference whose domain no
-/// declared reference type looks up is left to its own mechanism. When
-/// several declared reference types share a domain, the first in
-/// declaration order whose qualifiers cover the reference's spelled
-/// qualifiers binds it.
+/// declared reference type looks up is left to its own mechanism.
+///
+/// The reference type the holding field's declared type names binds the
+/// reference, so its qualification is the one the author chose. Where no
+/// field type names one (a contribution's target), the first reference
+/// type of the domain in declaration order whose qualifiers cover the
+/// reference's spelled qualifiers binds it.
 pub fn bind_references(definition: &Definition, items: &[Item]) -> Vec<BoundReference> {
-    let declared = definition.symbols.references();
     let mut bound = Vec::new();
     for item in items {
-        for reference in references_of(item) {
-            let mut types = declared
-                .iter()
+        for (field, reference) in held_references(item) {
+            let named = field
+                .and_then(|field| field_reference_type(definition, item, field))
                 .filter(|decl| domain_of(definition, decl) == reference.domain);
-            let first = types.clone().next();
-            let covering = types.find(|decl| {
-                reference.qualifiers.iter().all(|(name, _)| {
-                    decl.qualifiers
-                        .iter()
-                        .any(|q| definition.names.resolve(q.name) == name)
-                })
-            });
-            if let Some(decl) = covering.or(first) {
+            if let Some(decl) = named.or_else(|| domain_reference_type(definition, reference)) {
                 bound.push(BoundReference {
                     reference: reference.clone(),
                     declared: decl.clone(),
@@ -215,6 +210,59 @@ pub fn bind_references(definition: &Definition, items: &[Item]) -> Vec<BoundRefe
         }
     }
     bound
+}
+
+/// The reference type a record's or declaration's field is declared
+/// with, through any optional, nullable, or list wrapper.
+fn field_reference_type<'d>(
+    definition: &'d Definition,
+    item: &Item,
+    field: &str,
+) -> Option<&'d ReferenceDecl> {
+    let type_name = match item {
+        Item::Record(record) => &record.type_name,
+        Item::Declaration(declaration) => &declaration.type_name,
+        _ => return None,
+    };
+    let names = &definition.names;
+    let ty = definition.types.lookup(names.get(type_name)?)?;
+    let TypeKind::Object(object) = &definition.types.get(ty)?.kind else {
+        return None;
+    };
+    let field = names.get(field)?;
+    let mut ty = &object.fields.iter().find(|def| def.name == field)?.ty;
+    loop {
+        match ty {
+            TypeExpr::Named(name) => return definition.symbols.reference(*name),
+            TypeExpr::Optional(inner) | TypeExpr::Nullable(inner) | TypeExpr::List(inner) => {
+                ty = inner;
+            }
+            _ => return None,
+        }
+    }
+}
+
+/// The reference type of a reference's domain when no field type names
+/// one: the first in declaration order whose qualifiers cover the
+/// spelled ones, else the first.
+fn domain_reference_type<'d>(
+    definition: &'d Definition,
+    reference: &Reference,
+) -> Option<&'d ReferenceDecl> {
+    let mut types = definition
+        .symbols
+        .references()
+        .iter()
+        .filter(|decl| domain_of(definition, decl) == reference.domain);
+    let first = types.clone().next();
+    let covering = types.find(|decl| {
+        reference.qualifiers.iter().all(|(name, _)| {
+            decl.qualifiers
+                .iter()
+                .any(|q| definition.names.resolve(q.name) == name)
+        })
+    });
+    covering.or(first)
 }
 
 /// The candidates one reference's lookup policy derives.
@@ -572,22 +620,39 @@ fn field_text<'f>(fields: &'f [Field], name: &str) -> Option<&'f str> {
 
 /// Every reference value an item holds, in field order.
 fn references_of(item: &Item) -> Vec<&Reference> {
-    let mut found = Vec::new();
-    match item {
-        Item::Record(record) => {
-            for field in &record.fields {
-                collect(&field.value, &mut found);
-            }
+    held_references(item)
+        .into_iter()
+        .map(|(_, reference)| reference)
+        .collect()
+}
+
+/// Every reference value an item holds, in field order, with the name
+/// of the record or declaration field holding it.
+fn held_references(item: &Item) -> Vec<(Option<&str>, &Reference)> {
+    let mut held = Vec::new();
+    let fields = match item {
+        Item::Record(record) => record.fields.as_slice(),
+        Item::Declaration(declaration) => declaration.fields.as_slice(),
+        Item::Contribution(contribution) => {
+            let mut found = Vec::new();
+            collect(&contribution.value, &mut found);
+            return found
+                .into_iter()
+                .map(|reference| (None, reference))
+                .collect();
         }
-        Item::Declaration(declaration) => {
-            for field in &declaration.fields {
-                collect(&field.value, &mut found);
-            }
-        }
-        Item::Contribution(contribution) => collect(&contribution.value, &mut found),
-        _ => {}
+        _ => return held,
+    };
+    for field in fields {
+        let mut found = Vec::new();
+        collect(&field.value, &mut found);
+        held.extend(
+            found
+                .into_iter()
+                .map(|reference| (Some(field.name.as_str()), reference)),
+        );
     }
-    found
+    held
 }
 
 fn collect<'v>(value: &'v Value, found: &mut Vec<&'v Reference>) {

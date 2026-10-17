@@ -1,0 +1,5 @@
+use "region"
+namespace stock
+config-var region
+namespace plan
+config-var region

@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "Local scope binds without linking: the input scope-complete fails on passes with exit 0 and the same item stream, so --scope gates only the link stage",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "local",
+    "--schema",
+    "{fx-suite}/processing/linking/schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

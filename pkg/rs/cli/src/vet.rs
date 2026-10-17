@@ -9,7 +9,8 @@ use std::sync::Arc;
 
 use kdlith_engine::{
     CheckScope, DataReader, Definition, EntryContext, Extensions, Handlers, LAYERED, Layered,
-    ReadOptions, SharedResolver,
+    LinkInputs, ReadOptions, SharedResolver, bind_references, derive_candidates, index_identities,
+    link,
 };
 use kdlith_model::Item;
 use kdlith_superproc::{load_dialect, load_schema_anchored, seed};
@@ -39,7 +40,9 @@ pub(crate) fn run(command: VetCommand) -> ExitStatus {
             Ok(options) => vet_data(
                 args.schema.as_deref(),
                 &paths(&args.files),
-                &options.with_dialect(args.dialect),
+                &options
+                    .with_dialect(args.dialect)
+                    .with_scope(scope_of(args.scope)),
             ),
             Err(status) => status,
         },
@@ -50,7 +53,7 @@ fn paths(files: &[PathBuf]) -> Vec<&Path> {
     files.iter().map(PathBuf::as_path).collect()
 }
 
-fn scope_of(scope: ScopeArg) -> CheckScope {
+pub(crate) fn scope_of(scope: ScopeArg) -> CheckScope {
     match scope {
         ScopeArg::Local => CheckScope::Local,
         ScopeArg::Complete => CheckScope::Complete,
@@ -147,8 +150,9 @@ fn summary_line(definition: &Definition) -> String {
 /// What one data reading supplies beyond its documents: the dialect
 /// definition replacing the bundled one, the discovery anchors the host
 /// passes on the command line, the profile or profile set the
-/// invocation names, the built-in context handlers to install, and the
-/// value resolver `--resolve-from` loaded. The data verbs (`vet
+/// invocation names, the built-in context handlers to install, the
+/// value resolver `--resolve-from` loaded, and the checking scope. The
+/// data verbs (`vet
 /// data`, `inspect data`, `read data`, `list items`, `cache refresh`,
 /// and `export`) share one of these, so every path observes the same
 /// execution semantics.
@@ -160,6 +164,7 @@ pub struct DataOptions {
     profiles: Vec<String>,
     handlers: Vec<String>,
     resolver: Option<SharedResolver>,
+    scope: CheckScope,
 }
 
 impl DataOptions {
@@ -175,7 +180,17 @@ impl DataOptions {
             profiles: Vec::new(),
             handlers,
             resolver: None,
+            scope: CheckScope::Complete,
         }
+    }
+
+    /// The same options checking the reading under `scope`: complete
+    /// links the reading's references after binding, local does not.
+    /// Only `vet data` and `inspect data` link a reading.
+    #[must_use]
+    pub fn with_scope(mut self, scope: CheckScope) -> Self {
+        self.scope = scope;
+        self
     }
 
     /// The same options resolving computed defaults through `resolver`,
@@ -297,7 +312,9 @@ pub(crate) fn stream_data(
 /// [`stream_data`], then `finish` with the definition the data bound
 /// under, or `None` when it did not load, the context each entry
 /// document's root invocation left, in entry order, and the exit
-/// decided so far.
+/// decided so far. Under complete scope a reading that completed is
+/// linked first, and its link diagnostics decide the exit with the
+/// binding diagnostics; they reach stderr only, after every item.
 pub(crate) fn stream_data_then(
     schema: Option<&Path>,
     entries: &[&Path],
@@ -318,14 +335,22 @@ pub(crate) fn stream_data_then(
     let mut records: Vec<DiagnosticRecord> = Vec::new();
     let mut out = std::io::stdout().lock();
     let mut written = true;
+    let linking = options.scope == CheckScope::Complete;
+    let mut inputs = LinkInputs::new();
     let mut sink = |item: Item| {
         if let Item::Diagnostic(record) = &item {
             records.push((**record).clone());
+        }
+        if linking {
+            inputs.observe(&item);
         }
         written &= render(&mut out, &item).is_ok();
     };
     let read = reader.read_entry_contexts(entries, &options.read_options(), &mut sink);
     drop(out);
+    if linking && read.is_ok() {
+        records.extend(link_reading(&definition, &inputs));
+    }
     let (status, contexts) = match read {
         Ok((_, contexts)) if written => (report_all(&records), contexts),
         Ok((_, contexts)) => (ExitStatus::Failure, contexts),
@@ -336,6 +361,16 @@ pub(crate) fn stream_data_then(
         }
     };
     finish(Some(&definition), &contexts, status)
+}
+
+/// The diagnostics of linking one reading: its identity index, its
+/// references bound to their declared reference types, the candidates
+/// each one's lookup policy derives, and the linked outcomes.
+fn link_reading(definition: &Definition, inputs: &LinkInputs) -> Vec<DiagnosticRecord> {
+    let index = index_identities(definition, &inputs.items, &inputs.aliases);
+    let bound = bind_references(definition, &inputs.items);
+    let lookups = derive_candidates(&index, &bound);
+    link(definition, &index, lookups, &inputs.documents).diagnostics
 }
 
 pub(crate) fn write_item(out: &mut impl std::io::Write, item: &Item) -> std::io::Result<()> {

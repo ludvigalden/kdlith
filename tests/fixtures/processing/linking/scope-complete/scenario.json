@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "The default scope links: the explicit reference spelling only the local name finds no declaration and fails KDLITH-REF001 after every item has streamed, while the context-qualified reference beside it resolves; --scope complete is the same run",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "{fx-suite}/processing/linking/schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

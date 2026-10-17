@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A reference resolving to one declaration fails a required qualifier it spells with another value, or does not spell",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/linking/schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

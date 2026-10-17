@@ -55,7 +55,9 @@ pub(crate) fn run(command: InspectCommand) -> ExitStatus {
                 Ok(options) => crate::vet::stream_data_then(
                     args.schema.as_deref(),
                     &paths(&args.files),
-                    &options.with_dialect(args.dialect),
+                    &options
+                        .with_dialect(args.dialect)
+                        .with_scope(crate::vet::scope_of(args.scope)),
                     |out, item| {
                         revisions.observe(item);
                         render_data(args.view, &revisions, out, item)

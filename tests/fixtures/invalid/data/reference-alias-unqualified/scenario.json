@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A declaration an aliased import contributes is reachable only through the alias namespace: the unqualified name does not resolve",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/linking/schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

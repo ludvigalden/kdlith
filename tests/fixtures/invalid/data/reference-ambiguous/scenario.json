@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "An explicit-or-context reference bound where no namespace context is set derives a candidate in every namespace declaring its local name, and more than one candidate is ambiguous",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/linking/schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

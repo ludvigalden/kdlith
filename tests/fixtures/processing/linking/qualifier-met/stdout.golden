@@ -1,0 +1,4 @@
+{"item":"document","data":{"source":0,"path":"data.kdl"}}
+{"item":"declaration","data":{"node":{"source":0,"index":0},"identity":{"domain":"tools","name":["stock","query"]},"type_name":"ToolDef","fields":[{"name":"program","value":{"kind":"string","value":"stock"},"origin":0},{"name":"tool","value":{"kind":"string","value":"query"},"origin":0},{"name":"contract","value":{"kind":"string","value":"v2"},"origin":0}],"origin":0,"validation":"valid"}}
+{"item":"record","data":{"node":{"source":0,"index":1},"type_name":"Depends","fields":[{"name":"target","value":{"kind":"reference","value":{"domain":"tools","name":["stock","query"],"qualifiers":[["contract","v2"]],"written":"stock/query@v2","site":{"source":0,"span":{"start":{"offset":45,"line":2,"column":9},"end":{"offset":61,"line":2,"column":25}}}}},"origin":1}],"origin":1,"validation":"provisional"}}
+{"item":"scope-complete","data":{"source":0,"scope":null}}

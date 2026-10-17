@@ -1,0 +1,6 @@
+namespace stock
+config-var region
+namespace plan
+config-var currency
+use "currency"
+use "stock.region"

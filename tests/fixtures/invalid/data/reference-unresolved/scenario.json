@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A reference no declaration of its lookup domain matches is unresolved under the default complete scope",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/linking/schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

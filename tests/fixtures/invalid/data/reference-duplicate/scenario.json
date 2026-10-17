@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "Two declarations composing one identity in one domain are a duplicate, reported at the second with the first as a label",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/linking/schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

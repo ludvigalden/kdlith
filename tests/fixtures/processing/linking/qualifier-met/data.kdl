@@ -1,0 +1,2 @@
+tool query program=stock contract=v2
+depends "stock/query@v2"

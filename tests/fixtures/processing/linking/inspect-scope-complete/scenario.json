@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "inspect data links under the default scope: the bound view renders every record and declaration first, then the unresolved reference fails the run with KDLITH-REF001",
+  "args": [
+    "inspect",
+    "data",
+    "--view",
+    "bound",
+    "--schema",
+    "{fx-suite}/processing/linking/schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

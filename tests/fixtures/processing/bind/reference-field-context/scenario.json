@@ -1,9 +1,11 @@
 {
   "binary": "kdlith",
-  "description": "A reference whose qualification may come from context carries the namespace slot's value in effect where it binds: none before any namespace control, the first namespace for the reference after it, and the later namespace for the reference after that, alongside an explicit qualifier it spells",
+  "description": "A reference whose qualification may come from context carries the namespace slot's value in effect where it binds: none before any namespace control, the first namespace for the reference after it, and the later namespace for the reference after that, alongside an explicit qualifier it spells; bound alone under --scope local, since the scenario pins binding and declares no target to link",
   "args": [
     "vet",
     "data",
+    "--scope",
+    "local",
     "--schema",
     "schema.kdl",
     "data.kdl"

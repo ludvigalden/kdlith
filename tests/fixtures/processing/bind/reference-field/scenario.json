@@ -1,9 +1,11 @@
 {
   "binary": "kdlith",
-  "description": "A field typed by a declared reference type binds through the reference's codec: the whole-string match yields a reference whose domain is the declaration's lookup, whose qualifier-named capture is that qualifier, whose remaining capture is the name, and whose written spelling is preserved; under an explicit qualification no context is carried",
+  "description": "A field typed by a declared reference type binds through the reference's codec: the whole-string match yields a reference whose domain is the declaration's lookup, whose qualifier-named capture is that qualifier, whose remaining capture is the name, and whose written spelling is preserved; under an explicit qualification no context is carried; bound alone under --scope local, since the scenario pins binding and declares no target to link",
   "args": [
     "vet",
     "data",
+    "--scope",
+    "local",
     "--schema",
     "schema.kdl",
     "data.kdl"

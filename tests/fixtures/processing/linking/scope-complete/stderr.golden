@@ -1,0 +1,2 @@
+error[KDLITH-REF001]: reference region in config-vars does not resolve
+  --> data.kdl:4:5
