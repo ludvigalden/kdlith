@@ -1,0 +1,5 @@
+{"item":"document","data":{"source":0,"path":"data.kdl"}}
+{"item":"record","data":{"node":{"source":0,"index":1},"type_name":"Stamp","fields":[{"name":"at","value":{"kind":"string","value":"sv-se"},"origin":1},{"name":"near","value":{"kind":"string","value":"se"},"origin":1}],"origin":1,"validation":"valid"}}
+{"item":"record","data":{"node":{"source":0,"index":3},"type_name":"Stamp","fields":[],"origin":3,"validation":"valid"}}
+{"item":"record","data":{"node":{"source":0,"index":5},"type_name":"Stamp","fields":[{"name":"at","value":{"kind":"string","value":"de"},"origin":5}],"origin":5,"validation":"valid"}}
+{"item":"scope-complete","data":{"source":0,"scope":null}}

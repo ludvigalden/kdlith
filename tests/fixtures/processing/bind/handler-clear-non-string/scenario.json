@@ -1,0 +1,23 @@
+{
+  "binary": "kdlith",
+  "description": "The built-in clear-namespace handler reads a namespace name only from a string field: the reset control's field is a number, which names no namespace, so the handler produces no effect and the stamp still reads both held slots",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "--handler",
+    "copy-fields",
+    "--handler",
+    "clear-namespace",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"name\":\"at\",\"value\":{\"kind\":\"string\",\"value\":\"sv-se\"},\"origin\":2},{\"name\":\"near\",\"value\":{\"kind\":\"string\",\"value\":\"se\"},\"origin\":2}"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

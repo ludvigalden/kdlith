@@ -1,0 +1,23 @@
+{
+  "binary": "kdlith",
+  "description": "The built-in remove-fields handler unsets the context slot each of the control's fields names, not null: the stamp after forget reads no locale, and the later copy-fields set on the slot under the reject duplicate policy is a first one rather than a KDLITH-CTX006 second value, so the last stamp reads en-gb",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "--handler",
+    "copy-fields",
+    "--handler",
+    "remove-fields",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":3},\"type_name\":\"Stamp\",\"fields\":[],\"origin\":3,\"validation\":\"valid\"}}\n"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

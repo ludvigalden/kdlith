@@ -1,0 +1,32 @@
+// A schema whose controls name the built-in copy-fields and
+// remove-fields handlers over a slot under the reject duplicate
+// policy: remove-fields unsets the slot the forget control's field
+// names, so a later set on it is a first one rather than a duplicate.
+schema handlers version="1" {
+    types {
+        string Locale {
+            format kebab-case
+        }
+        object Stamp {
+            field at "optional<Locale>"
+        }
+    }
+    context {
+        slot locale Locale namespace=defaults
+    }
+    node locale role=context-control {
+        field locale Locale arg=0
+        effects target=following {
+            handler copy-fields
+        }
+    }
+    node forget role=context-control {
+        field locale Locale arg=0
+        effects target=following {
+            handler remove-fields
+        }
+    }
+    node stamp role=record type=Stamp {
+        field at context=locale
+    }
+}

@@ -1,0 +1,20 @@
+// A context control naming the built-in remove-fields handler while
+// its field is named zone: the handler removes a slot per field name,
+// and the schema declares only the locale slot, so the handler's
+// effect addresses a slot the definition does not declare.
+schema handlers version="1" {
+    types {
+        string Locale {
+            format kebab-case
+        }
+    }
+    context {
+        slot locale Locale namespace=defaults
+    }
+    node forget role=context-control {
+        field zone Locale arg=0
+        effects target=following {
+            handler remove-fields
+        }
+    }
+}

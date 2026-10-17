@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "An installed handler whose effect removes a context slot the definition does not declare is rejected at its effect point: remove-fields removes one slot per field name, the control's field is zone, and the schema declares only locale, so the run fails closed with the handler-effect code under the removes arm",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "--handler",
+    "remove-fields",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

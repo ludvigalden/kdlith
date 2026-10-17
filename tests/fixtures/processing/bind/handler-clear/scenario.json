@@ -1,0 +1,23 @@
+{
+  "binary": "kdlith",
+  "description": "The built-in clear-namespace handler clears the context namespace the control's string field names: reset defaults unsets both locale and region, so the next stamp reads neither, and the later copy-fields set on locale under the reject duplicate policy is a first one, so the last stamp reads de with region still unset",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "--handler",
+    "copy-fields",
+    "--handler",
+    "clear-namespace",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":3},\"type_name\":\"Stamp\",\"fields\":[],\"origin\":3,\"validation\":\"valid\"}}\n"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

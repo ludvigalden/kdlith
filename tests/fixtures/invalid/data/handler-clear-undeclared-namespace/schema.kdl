@@ -1,0 +1,21 @@
+// A context control naming the built-in clear-namespace handler: the
+// handler clears the namespace the control's string field names, and
+// the input names nowhere while the schema declares only defaults, so
+// the handler's effect addresses a namespace the definition does not
+// declare.
+schema handlers version="1" {
+    types {
+        string Locale {
+            format kebab-case
+        }
+    }
+    context {
+        slot locale Locale namespace=defaults
+    }
+    node reset role=context-control {
+        field namespace String arg=0
+        effects target=following {
+            handler clear-namespace
+        }
+    }
+}

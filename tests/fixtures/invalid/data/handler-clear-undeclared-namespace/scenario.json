@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "An installed handler whose effect clears a context namespace the definition does not declare is rejected at its effect point: clear-namespace clears the namespace the control's string field names, the input names nowhere, and the schema declares only defaults, so the run fails closed with the handler-effect code under the clears arm",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "--handler",
+    "clear-namespace",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

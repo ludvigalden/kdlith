@@ -1,0 +1,36 @@
+// The handler-clear schema with the reset control's field typed as a
+// number: clear-namespace reads a namespace name only from a string
+// field, so a number names no namespace and the handler produces no
+// effect.
+schema handlers version="1" {
+    types {
+        string Locale {
+            format kebab-case
+        }
+        object Stamp {
+            field at "optional<Locale>"
+            field near "optional<Locale>"
+        }
+    }
+    context {
+        slot locale Locale namespace=defaults
+        slot region Locale namespace=defaults
+    }
+    node locale role=context-control {
+        field locale Locale arg=0
+        field region "optional<Locale>" arg=1
+        effects target=following {
+            handler copy-fields
+        }
+    }
+    node reset role=context-control {
+        field namespace U64 arg=0
+        effects target=following {
+            handler clear-namespace
+        }
+    }
+    node stamp role=record type=Stamp {
+        field at context=locale
+        field near context=region
+    }
+}

@@ -7,20 +7,34 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use kdlith_engine::{HandlerCall, HandlerEffect, HandlerFn, Handlers, StringFormat};
+use kdlith_model::Value;
 
 /// `copy-fields` sets each context slot the node's field names, from
 /// that field's value. A field naming no declared slot fails closed at
 /// the effect point (`KDLITH-CTX005`).
 const COPY_FIELDS: &str = "copy-fields";
 
+/// `clear-namespace` clears the context namespace each of the node's
+/// string fields names. A non-string field names no namespace and
+/// produces no effect; an undeclared namespace fails closed at the
+/// effect point (`KDLITH-CTX005`).
+const CLEAR_NAMESPACE: &str = "clear-namespace";
+
+/// `remove-fields` unsets each context slot the node's field names,
+/// whatever the field's value. A field naming no declared slot fails
+/// closed at the effect point (`KDLITH-CTX005`).
+const REMOVE_FIELDS: &str = "remove-fields";
+
 /// The names of the built-in catalog, in name order.
-pub(crate) const BUILT_INS: &[&str] = &[COPY_FIELDS];
+pub(crate) const BUILT_INS: &[&str] = &[CLEAR_NAMESPACE, COPY_FIELDS, REMOVE_FIELDS];
 
 /// One built-in handler's implementation, or `None` for a name the
 /// catalog does not carry.
 fn built_in(name: &str) -> Option<HandlerFn> {
     match name {
+        CLEAR_NAMESPACE => Some(Arc::new(clear_namespace)),
         COPY_FIELDS => Some(Arc::new(copy_fields)),
+        REMOVE_FIELDS => Some(Arc::new(remove_fields)),
         _ => None,
     }
 }
@@ -31,6 +45,25 @@ fn copy_fields(call: &HandlerCall<'_>) -> Vec<HandlerEffect> {
         .map(|(name, value)| HandlerEffect::Set {
             slot: (*name).clone(),
             value: value.clone(),
+        })
+        .collect()
+}
+
+fn remove_fields(call: &HandlerCall<'_>) -> Vec<HandlerEffect> {
+    call.fields
+        .keys()
+        .map(|name| HandlerEffect::Remove { slot: name.clone() })
+        .collect()
+}
+
+fn clear_namespace(call: &HandlerCall<'_>) -> Vec<HandlerEffect> {
+    call.fields
+        .values()
+        .filter_map(|value| match value {
+            Value::String(namespace) => Some(HandlerEffect::Clear {
+                namespace: namespace.clone(),
+            }),
+            _ => None,
         })
         .collect()
 }
