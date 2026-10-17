@@ -375,10 +375,10 @@ struct InspectDataArgs {
     /// A built-in context handler to install, by name (repeatable)
     #[arg(long = "handler", value_name = "NAME", value_parser = handlers::parse_handler)]
     handlers: Vec<String>,
-    /// The item view to print: source, bound (records, declarations,
-    /// contributions), context (entry contexts), effective
-    /// (declarations, resolutions), origins (provenance) or plan (the
-    /// bound definition's plan); references fails closed
+    /// The item view: source, bound (records, declarations,
+    /// contributions, pending bindings), context (entry contexts),
+    /// effective (declarations, resolutions), origins or plan (the
+    /// definition's plan); references fails closed
     #[arg(long, value_enum, default_value_t = ViewArg::Source)]
     view: ViewArg,
     /// Bind the documents alone (local) or also link every reference a
