@@ -45,7 +45,7 @@ pub use frame::BindFrame;
 pub use source::ParseEvents;
 
 use frame::{Kind, Opened, Sibling, Supplied};
-use tables::{Bind, Collect, FieldInfo, Mode, SlotInfo, Tables};
+use tables::{Bind, Collect, FieldInfo, IdentityBind, Mode, SlotInfo, Tables};
 
 const COLLISION: &str = "KDLITH-BND007";
 const DUPLICATE_PROPERTY: &str = "KDLITH-SYN003";
@@ -1671,7 +1671,16 @@ impl<'d, 's> Binder<'d, 's> {
             Some(Value::String(text)) => Some(text.clone()),
             _ => None,
         };
-        let identity = text_of(info.identity);
+        let identity = match role {
+            Role::Declaration => {
+                let Some(identity) = self.compose_identity(cx, frame, &values, &type_name) else {
+                    return;
+                };
+                Some(identity)
+            }
+            _ => None,
+        };
+        let info = &self.tables.decls[owner.index()];
         let path = text_of(info.path);
         let repeated = text_of(info.repeated);
         let alias = text_of(info.alias);
@@ -1718,8 +1727,7 @@ impl<'d, 's> Binder<'d, 's> {
                     .with_site(node_site),
             ),
             Role::Declaration => {
-                let name = QualifiedName(identity.into_iter().collect());
-                let identity = Identity::new(type_name.clone(), name);
+                let identity = identity.expect("a declaration composes its identity above");
                 BoundItem::Declaration(
                     BoundDeclaration::new(
                         node, identity, type_name, fields, origin, validation, frame.span,
@@ -1787,6 +1795,52 @@ impl<'d, 's> Binder<'d, 's> {
             _ => return,
         };
         cx.emit(item);
+    }
+
+    /// A declaration's identity. An identity field left unbound or not
+    /// a string is reported and yields no identity, since a shortened
+    /// name could collide with another declaration's.
+    fn compose_identity(
+        &mut self,
+        cx: &mut Cx<'_>,
+        frame: &BindFrame,
+        values: &[Option<Value>],
+        type_name: &str,
+    ) -> Option<Identity> {
+        let owner = frame.owner;
+        let text = |at: Option<usize>| at.and_then(|at| values.get(at)?.as_ref());
+        match &self.tables.decls[owner.index()].identity {
+            IdentityBind::Fallback(at) => {
+                let name = match text(*at) {
+                    Some(Value::String(segment)) => vec![segment.clone()],
+                    _ => Vec::new(),
+                };
+                Some(Identity::new(type_name.to_owned(), QualifiedName(name)))
+            }
+            IdentityBind::Composed { domain, fields } => {
+                let (domain, fields) = (domain.clone(), fields.clone());
+                let mut name = Vec::with_capacity(fields.len());
+                let mut complete = true;
+                for (field, at) in fields {
+                    match text(at) {
+                        Some(Value::String(segment)) => name.push(segment.clone()),
+                        Some(other) => {
+                            complete = false;
+                            let what = format!("{}.{}", self.name(frame.name), self.name(field));
+                            let found = decode::found(other);
+                            self.diagnose(cx, VALUE_TYPE, frame.span, &[&what, "String", &found]);
+                        }
+                        None => {
+                            complete = false;
+                            let node = self.name(frame.name).to_owned();
+                            let field = self.name(field).to_owned();
+                            self.diagnose(cx, MISSING_FIELD, frame.span, &[&node, &field]);
+                        }
+                    }
+                }
+                complete.then(|| Identity::new(domain, QualifiedName(name)))
+            }
+        }
     }
 
     /// Whether a dialect document's import path is literal, reported

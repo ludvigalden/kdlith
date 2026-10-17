@@ -75,8 +75,8 @@ pub(crate) struct FieldInfo {
 pub(crate) struct DeclInfo {
     pub(crate) fields: Vec<FieldInfo>,
     pub(crate) type_name: String,
-    /// The field carrying a declaration's identity.
-    pub(crate) identity: Option<usize>,
+    /// How a declaration's item composes its identity.
+    pub(crate) identity: IdentityBind,
     /// The fields of an import's path (argument 0), its projected slots
     /// (`project`), its repeat policy (`repeated`), and its `as=` alias.
     pub(crate) path: Option<usize>,
@@ -95,6 +95,20 @@ pub(crate) struct DeclInfo {
     pub(crate) otherwise: Option<TypeExpr>,
     /// The dependent payload binding, when the node declares one.
     pub(crate) dependent: Option<DependentBinding>,
+}
+
+/// How a declaration composes its identity.
+#[derive(Clone, Debug)]
+pub(crate) enum IdentityBind {
+    /// No identity block: the domain is the declaration's type and the
+    /// name is argument 0's field, when one binds it.
+    Fallback(Option<usize>),
+    /// An identity block: its domain, and every field it composes, in
+    /// order, with the field's position when the node declares it.
+    Composed {
+        domain: String,
+        fields: Vec<(Sym, Option<usize>)>,
+    },
 }
 
 /// The syntax of one scope's owner: which owner field each argument,
@@ -370,11 +384,24 @@ fn decl_info(def: &Definition, id: NodeDeclId, decl: &NodeDecl) -> DeclInfo {
             .and_then(position)
             .filter(|_| contribution)
     };
-    let identity = def
-        .symbols
-        .declaration(id)
-        .and_then(|d| d.identity_fields.first().copied())
-        .and_then(position);
+    let identity = match def.symbols.declaration(id) {
+        Some(declaration) if declaration.identity.is_some() => IdentityBind::Composed {
+            domain: def.names.resolve(declaration.domain).to_owned(),
+            fields: declaration
+                .identity_fields
+                .iter()
+                .map(|name| (*name, position(*name)))
+                .collect(),
+        },
+        Some(declaration) => IdentityBind::Fallback(
+            declaration
+                .identity_fields
+                .first()
+                .copied()
+                .and_then(position),
+        ),
+        None => IdentityBind::Fallback(None),
+    };
     let deferred = def.plan.node(id).map_or(&[][..], |plan| &plan.deferred);
     let references = deferred
         .iter()
