@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "Pinned rendering: a brace-less indented line is a sibling, so tag is rejected under the document root as KDLITH-BND001, and because the item written above it admits tag as a child and tag is indented past it, the error carries a note at item's line asking whether tag was meant to nest there; input.kdl is a byte copy of invalid/data/indented-line-not-child/input.kdl so the golden pins scenario-relative locations",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/expansion/schema.kdl",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": [
+      "error[KDLITH-BND001]"
+    ],
+    "stderr-golden": "stderr.golden"
+  }
+}

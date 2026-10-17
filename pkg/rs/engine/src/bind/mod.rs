@@ -10,7 +10,7 @@ use std::borrow::Cow;
 use std::collections::BTreeMap;
 
 use kdlith_diagnostic::registry::{lookup, render};
-use kdlith_diagnostic::{ByteSpan, DiagnosticRecord};
+use kdlith_diagnostic::{ByteSpan, DiagnosticRecord, Label};
 use kdlith_model::{
     BoundContribution, BoundDeclaration, BoundItem, BoundRecord, Derivation, Entry, Field,
     Identity, ImportRequest, Location, Origin, OriginId, QualifiedName, Reference, Repeated,
@@ -31,7 +31,7 @@ use crate::definition::{
 };
 use crate::diag::{
     CONFLICTING_BINDING, DUPLICATE_KEY, MALFORMED, MISSING_FIELD, NOT_INSTALLED, TYPE_EXPRESSION,
-    UNBOUND_ENTRY, UNKNOWN_MEMBER, UNKNOWN_NODE, VALUE_TYPE,
+    UNBOUND_ENTRY, UNKNOWN_MEMBER, UNKNOWN_NODE, VALUE_TYPE, sibling_note,
 };
 use crate::names::Sym;
 use crate::overlap;
@@ -44,7 +44,7 @@ use crate::value_resolver::{ResolutionCall, SharedResolver};
 pub use frame::BindFrame;
 pub use source::ParseEvents;
 
-use frame::{Kind, Opened, Supplied};
+use frame::{Kind, Opened, Sibling, Supplied};
 use tables::{Bind, Collect, FieldInfo, Mode, SlotInfo, Tables};
 
 const COLLISION: &str = "KDLITH-BND007";
@@ -166,6 +166,8 @@ pub struct Binder<'d, 's> {
     order_broken: bool,
     /// The name of the document's first root node, once it opened.
     root_name: Option<String>,
+    /// The root node bound last, while no later root node has opened.
+    root_last: Option<Sibling>,
     /// The `as=` aliases this document's imports bound, with the span of
     /// the first import that bound each; an alias is unique in its
     /// document.
@@ -280,6 +282,7 @@ impl<'d, 's> Binder<'d, 's> {
             profile_reported,
             order_broken: false,
             root_name: None,
+            root_last: None,
             aliases: Vec::new(),
             handlers: Handlers::new(),
             resolver: None,
@@ -300,9 +303,34 @@ impl<'d, 's> Binder<'d, 's> {
         self.root_name.as_deref()
     }
 
-    /// A node no binding accepts here.
-    fn unknown(&mut self, cx: &mut Cx<'_>, span: ByteSpan, node: &str, owner: &str) {
-        self.diagnose(cx, UNKNOWN_NODE, span, &[node, owner]);
+    /// A node no binding accepts here, with a note when the sibling
+    /// bound just before it admits it as a child and the node is
+    /// indented past that sibling.
+    fn unknown(
+        &mut self,
+        cx: &mut Cx<'_>,
+        span: ByteSpan,
+        node: &str,
+        owner: &str,
+        previous: Option<Sibling>,
+    ) {
+        let note = previous.and_then(|sibling| self.sibling_label(span, node, sibling));
+        self.diagnose_noted(cx, UNKNOWN_NODE, span, &[node, owner], note);
+    }
+
+    fn sibling_label(&mut self, span: ByteSpan, node: &str, sibling: Sibling) -> Option<Label> {
+        let def = self.def;
+        let sym = def.names.get(node)?;
+        def.bindings.child(sibling.scope?, sym)?;
+        let at = self.locator.locate(span).start;
+        let above = self.locator.locate(sibling.span).start;
+        if at.column <= above.column {
+            return None;
+        }
+        let message = sibling_note(self.name(sibling.name), node);
+        let label = Label::new(Some(self.path.clone()), sibling.span, message)
+            .with_position(above.line, above.column);
+        Some(label)
     }
 
     /// Report a value that did not decode as `ty`, under the code that
@@ -363,6 +391,17 @@ impl<'d, 's> Binder<'d, 's> {
     }
 
     fn diagnose(&mut self, cx: &mut Cx<'_>, code: &'static str, span: ByteSpan, values: &[&str]) {
+        self.diagnose_noted(cx, code, span, values, None);
+    }
+
+    fn diagnose_noted(
+        &mut self,
+        cx: &mut Cx<'_>,
+        code: &'static str,
+        span: ByteSpan,
+        values: &[&str],
+        note: Option<Label>,
+    ) {
         let mut record = DiagnosticRecord::from_code(code)
             .expect("binder diagnostic codes are registered and never retired");
         if let Some(definition) = lookup(code) {
@@ -373,16 +412,27 @@ impl<'d, 's> Binder<'d, 's> {
             .with_source(self.path.clone())
             .with_span(span, Some(at.line), Some(at.column))
             .with_origin("data-document");
+        let record = match note {
+            Some(label) => record.with_label(label),
+            None => record,
+        };
         self.errors += 1;
         cx.emit(BoundItem::Diagnostic(Box::new(record)));
     }
 
-    fn violation(&mut self, cx: &mut Cx<'_>, span: ByteSpan, owner: &str, violation: &Violation) {
+    fn violation(
+        &mut self,
+        cx: &mut Cx<'_>,
+        span: ByteSpan,
+        owner: &str,
+        violation: &Violation,
+        previous: Option<Sibling>,
+    ) {
         let code = violation.code();
         let (what, count, expected) = match violation {
             Violation::NotPermitted { child } => {
                 let child = self.name(*child);
-                self.unknown(cx, span, child, owner);
+                self.unknown(cx, span, child, owner, previous);
                 return;
             }
             Violation::FirstNotAllowed { child } | Violation::NotFollowing { child } => {
@@ -1938,6 +1988,12 @@ impl<'s> Processor for Binder<'_, 's> {
         let mark = self.errors;
         let def = self.def;
         let owner_label = parent.as_ref().map_or(DOCUMENT_ROOT, |p| self.name(p.name));
+        // Only a node that binds becomes the sibling the next one is
+        // compared against.
+        let previous = match parent.as_deref_mut() {
+            Some(frame) => frame.last_child.take(),
+            None => self.root_last.take(),
+        };
         let scope = match parent.as_ref() {
             Some(frame) => frame.scope,
             None => Some(def.bindings.root_scope()),
@@ -1958,7 +2014,7 @@ impl<'s> Processor for Binder<'_, 's> {
             return Disposition::Skip;
         }
         let (Some(sym), Some(scope_id)) = (def.names.get(&node.name), scope) else {
-            self.unknown(cx, span, &node.name, owner_label);
+            self.unknown(cx, span, &node.name, owner_label, previous);
             return Disposition::Skip;
         };
         let Some(scope) = def.bindings.scope(scope_id) else {
@@ -1978,7 +2034,7 @@ impl<'s> Processor for Binder<'_, 's> {
                     Violation::FirstNotAllowed { .. } | Violation::NotFollowing { .. }
                 );
             }
-            self.violation(cx, span, owner_label, &violation);
+            self.violation(cx, span, owner_label, &violation, previous);
             return Disposition::Skip;
         }
         let parent_owner = parent.as_ref().map(|p| p.owner);
@@ -1991,7 +2047,7 @@ impl<'s> Processor for Binder<'_, 's> {
             (Some(ChildPlan::Nested(inner)), Some(owner)) => (Kind::Nested, owner, Some(inner)),
             (Some(ChildPlan::Scalar), Some(owner)) => (Kind::Scalar, owner, None),
             _ => {
-                self.unknown(cx, span, &node.name, owner_label);
+                self.unknown(cx, span, &node.name, owner_label, previous);
                 return Disposition::Skip;
             }
         };
@@ -2008,7 +2064,7 @@ impl<'s> Processor for Binder<'_, 's> {
                             .is_none_or(|ty| !roots.contains(&ty))
                     }))
             {
-                self.unknown(cx, span, &node.name, owner_label);
+                self.unknown(cx, span, &node.name, owner_label, previous);
                 return Disposition::Skip;
             }
         }
@@ -2027,6 +2083,15 @@ impl<'s> Processor for Binder<'_, 's> {
         let state = inner
             .and_then(|id| def.bindings.scope(id))
             .map(|scope| scope.rules.start());
+        let bound = Some(Sibling {
+            name: sym,
+            span,
+            scope: inner,
+        });
+        match parent {
+            Some(frame) => frame.last_child = bound,
+            None => self.root_last = bound,
+        }
         Disposition::Bind(BindFrame::new(Opened {
             name: sym,
             owner,
@@ -2153,7 +2218,7 @@ impl<'s> Processor for Binder<'_, 's> {
                 if let Some(violations) = compiled {
                     let owner = self.name(frame.name);
                     for violation in violations {
-                        self.violation(cx, frame.span, owner, &violation);
+                        self.violation(cx, frame.span, owner, &violation, None);
                     }
                 }
                 ScopeRules::subtree(&state).clone()
@@ -2210,7 +2275,7 @@ impl<'s> Processor for Binder<'_, 's> {
                 if self.order_broken && violation == Violation::FirstMissing {
                     continue;
                 }
-                self.violation(cx, span, DOCUMENT_ROOT, &violation);
+                self.violation(cx, span, DOCUMENT_ROOT, &violation, None);
             }
         }
     }

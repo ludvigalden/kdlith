@@ -37,7 +37,11 @@ fn render(record: &DiagnosticRecord) -> String {
     for label in &record.labels {
         let _ = write!(line, "\n  note: {}", label.message);
         if let Some(path) = &label.source_path {
-            let _ = write!(line, " ({path})");
+            let _ = write!(line, " ({path}");
+            if let (Some(row), Some(col)) = (label.line, label.col) {
+                let _ = write!(line, ":{row}:{col}");
+            }
+            line.push(')');
         }
     }
     line

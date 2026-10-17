@@ -109,6 +109,25 @@ impl<'d> Diagnostics<'d> {
         self.records.push(record);
     }
 
+    /// A condition with an optional positioned note at another span of
+    /// the same document.
+    pub(crate) fn noted(
+        &mut self,
+        code: &'static str,
+        site: Site,
+        values: &[&str],
+        note: Option<(ByteSpan, String)>,
+    ) {
+        let mut record = self.located(self.record(code, values), site);
+        if let (Some((span, message)), Some(document)) = (note, self.documents.get(site.document)) {
+            let at = locate(document.text(), span).start;
+            let label = Label::new(Some(document.path().to_owned()), span, message)
+                .with_position(at.line, at.column);
+            record = record.with_label(label);
+        }
+        self.records.push(record);
+    }
+
     pub(crate) fn has_errors(&self) -> bool {
         !self.records.is_empty()
     }
@@ -143,6 +162,12 @@ pub(crate) fn record(code: &'static str, values: &[&str], origin: &str) -> Diagn
         None => record,
     };
     record.with_origin(origin)
+}
+
+/// The note on an unknown node whose sibling written above it admits it
+/// as a child: without braces, an indented line is still a sibling.
+pub(crate) fn sibling_note(sibling: &str, child: &str) -> String {
+    format!("the sibling {sibling} above admits {child} as a child — did you mean to nest it there")
 }
 
 /// A record placed at a span of a parsed document.

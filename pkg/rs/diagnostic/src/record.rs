@@ -46,6 +46,10 @@ impl ByteSpan {
 pub struct Label {
     pub source_path: Option<String>,
     pub span: ByteSpan,
+    /// The 1-based line and Unicode-scalar column of the span's start,
+    /// when the label points at a line rather than a document.
+    pub line: Option<u32>,
+    pub col: Option<u32>,
     pub message: String,
 }
 
@@ -54,8 +58,17 @@ impl Label {
         Self {
             source_path,
             span,
+            line: None,
+            col: None,
             message: message.into(),
         }
+    }
+
+    /// Attach the line and column of the span's start.
+    pub fn with_position(mut self, line: u32, col: u32) -> Self {
+        self.line = Some(line);
+        self.col = Some(col);
+        self
     }
 }
 

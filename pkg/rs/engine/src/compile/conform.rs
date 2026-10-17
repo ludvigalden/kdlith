@@ -3,11 +3,13 @@
 //! the dialect does not declare is caught. A dialect describes itself.
 
 use kdlith_diagnostic::ByteSpan;
+use kdlith_parse::locate;
 
 use crate::bindings::{ChildPlan, ScopeId};
 use crate::definition::{Definition, DefinitionKind};
 use crate::diag::{
     CARDINALITY, Diagnostics, MISSING_FIELD, Site, UNBOUND_ENTRY, UNKNOWN_NODE, UNRESOLVED_DIALECT,
+    sibling_note,
 };
 use crate::structure::Violation;
 use crate::syntax::{ParsedDocument, SyntaxNode};
@@ -22,11 +24,12 @@ pub(crate) fn run(
     describing: &Definition,
     documents: &[ParsedDocument],
 ) {
-    let walk = Walk {
-        kind,
-        dialect: describing,
-    };
     for (doc, document) in documents.iter().enumerate() {
+        let walk = Walk {
+            kind,
+            dialect: describing,
+            text: document.text(),
+        };
         let mut found = Vec::new();
         walk.scope(
             &mut found,
@@ -47,6 +50,8 @@ struct Finding {
     span: ByteSpan,
     code: &'static str,
     values: Vec<String>,
+    /// A note at another span, with its message.
+    note: Option<(ByteSpan, String)>,
 }
 
 impl Finding {
@@ -55,6 +60,7 @@ impl Finding {
             span,
             code,
             values: values.iter().map(|v| (*v).to_owned()).collect(),
+            note: None,
         }
     }
 
@@ -74,6 +80,16 @@ impl Finding {
 struct Walk<'d> {
     kind: DefinitionKind,
     dialect: &'d Definition,
+    /// The text of the document being walked, to compare columns.
+    text: &'d str,
+}
+
+/// A child the scope admitted, kept as the sibling the next child is
+/// compared against.
+#[derive(Clone, Copy)]
+struct Admitted<'n> {
+    node: &'n SyntaxNode,
+    scope: Option<ScopeId>,
 }
 
 impl Walk<'_> {
@@ -88,7 +104,7 @@ impl Walk<'_> {
             }
             DefinitionKind::Schema => {
                 let values: Vec<&str> = finding.values.iter().map(String::as_str).collect();
-                diags.error(finding.code, site, &values);
+                diags.noted(finding.code, site, &values, finding.note.clone());
             }
         }
     }
@@ -108,14 +124,24 @@ impl Walk<'_> {
         };
         let names = &self.dialect.names;
         let mut state = compiled.rules.start();
+        let mut previous: Option<Admitted<'_>> = None;
         for child in children {
-            let unknown = || Finding::new(child.span, UNKNOWN_NODE, &[&child.name, owner]);
+            let above = previous.take();
+            let unknown = || {
+                let mut finding = Finding::new(child.span, UNKNOWN_NODE, &[&child.name, owner]);
+                finding.note = above.and_then(|sibling| self.sibling(sibling, child));
+                finding
+            };
             let Some(sym) = names.get(&child.name) else {
                 found.push(unknown());
                 continue;
             };
             if let Err(violation) = compiled.rules.admit(&mut state, sym) {
-                found.push(self.violation(child.span, owner, &violation));
+                let finding = match violation {
+                    Violation::NotPermitted { .. } => unknown(),
+                    _ => self.violation(child.span, owner, &violation),
+                };
+                found.push(finding);
                 continue;
             }
             if depth >= MAX_DEPTH {
@@ -131,21 +157,49 @@ impl Walk<'_> {
                 ));
                 continue;
             }
-            match compiled.child(sym) {
+            let inner = match compiled.child(sym) {
                 Some(ChildPlan::Declared { decl, .. }) => {
-                    if let Some(inner) = self.dialect.bindings.decl_scope(decl) {
+                    let inner = self.dialect.bindings.decl_scope(decl);
+                    if let Some(inner) = inner {
                         self.node(found, inner, child, depth);
                     }
+                    inner
                 }
-                Some(ChildPlan::Nested(inner)) => self.node(found, inner, child, depth),
-                Some(ChildPlan::Scalar) => self.scalar(found, child),
-                None => found.push(unknown()),
-            }
+                Some(ChildPlan::Nested(inner)) => {
+                    self.node(found, inner, child, depth);
+                    Some(inner)
+                }
+                Some(ChildPlan::Scalar) => {
+                    self.scalar(found, child);
+                    None
+                }
+                None => {
+                    found.push(unknown());
+                    continue;
+                }
+            };
+            previous = Some(Admitted {
+                node: child,
+                scope: inner,
+            });
         }
         let span = children.last().map_or(ByteSpan::new(0, 0), |c| c.span);
         for close in compiled.rules.complete(&state) {
             found.push(self.violation(span, owner, &close));
         }
+    }
+
+    /// The note for an unknown child whose admitted sibling above it
+    /// admits it as a child, when the child is indented past it.
+    fn sibling(&self, sibling: Admitted<'_>, child: &SyntaxNode) -> Option<(ByteSpan, String)> {
+        let sym = self.dialect.names.get(&child.name)?;
+        self.dialect.bindings.child(sibling.scope?, sym)?;
+        let at = locate(self.text, child.span).start;
+        let above = locate(self.text, sibling.node.span).start;
+        (at.column > above.column).then(|| {
+            let message = sibling_note(&sibling.node.name, &child.name);
+            (sibling.node.span, message)
+        })
     }
 
     /// A child bound as exactly one positional value of its owner's field.

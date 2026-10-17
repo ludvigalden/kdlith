@@ -10,6 +10,16 @@ use crate::structure::ScopeState;
 
 use super::tables::{Bind, Table, Tables};
 
+/// The node bound last among one open scope's children: the sibling an
+/// unknown node written after it is compared against.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Sibling {
+    pub(crate) name: Sym,
+    pub(crate) span: ByteSpan,
+    /// The scope admitting the sibling's own children.
+    pub(crate) scope: Option<ScopeId>,
+}
+
 /// How an open node binds.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Kind {
@@ -82,6 +92,8 @@ pub struct BindFrame {
     /// How each resolved field value came to be, by field position,
     /// once the node's fields are finished.
     pub(crate) traces: Vec<Trace>,
+    /// The child bound last, while no later child has opened.
+    pub(crate) last_child: Option<Sibling>,
 }
 
 /// What a new frame is made of.
@@ -119,6 +131,7 @@ impl BindFrame {
             mark: opened.mark,
             excluded: 0,
             traces: Vec::new(),
+            last_child: None,
         }
     }
 
