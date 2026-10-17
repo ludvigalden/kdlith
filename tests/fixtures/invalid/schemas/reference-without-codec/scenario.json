@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A reference type that declares no codec has no spelling a field typed by it could bind, so the reference declaration is malformed",
+  "args": [
+    "vet",
+    "schema",
+    "schema.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

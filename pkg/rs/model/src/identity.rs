@@ -51,6 +51,10 @@ pub struct Reference {
     pub qualifiers: Vec<(String, String)>,
     pub written: String,
     pub site: Location,
+    /// The context namespace in effect where the reference was bound,
+    /// for a reference whose qualification may come from context.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub context: Option<Box<str>>,
 }
 
 impl Reference {
@@ -66,6 +70,7 @@ impl Reference {
             qualifiers: Vec::new(),
             written: written.into(),
             site,
+            context: None,
         }
     }
 }

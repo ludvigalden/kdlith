@@ -1,0 +1,21 @@
+schema config version="1" {
+    types {
+        object ConfigVarDef {
+            field name String
+        }
+        object Use {
+            field target ConfigVarRef
+        }
+        codec DottedName output=String {
+            match #"(?<scope>[a-z]+)\.(?<local>[a-z-]+)"#
+            capture scope String
+            capture local String
+        }
+    }
+    node use role=record type=Use {
+        field target arg=0
+    }
+    reference ConfigVarRef target=ConfigVarDef codec=DottedName lookup=config-vars qualification=explicit {
+        qualifier scope String
+    }
+}

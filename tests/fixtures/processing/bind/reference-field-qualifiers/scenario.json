@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "The capture mapping of a reference-typed field: the capture named as a declared qualifier becomes that qualifier wherever it sits in the match, the other captures are the name's segments in capture declaration order, the domain falls back to the target when no lookup is declared, and the reference type wins over the same-named codec it reaches its codec through",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":0},\"type_name\":\"Run\",\"fields\":[{\"name\":\"tool\",\"value\":{\"kind\":\"reference\",\"value\":{\"domain\":\"ToolDef\",\"name\":[\"kdlith\",\"vet-data\"],\"qualifiers\":[[\"contract\",\"v2\"]],\"written\":\"v2:kdlith/vet-data\",\"site\":{\"source\":0,\"span\":{\"start\":{\"offset\":4,\"line\":1,\"column\":5},\"end\":{\"offset\":24,\"line\":1,\"column\":25}}}}},\"origin\":0}],\"origin\":0,\"validation\":\"provisional\"}}\n"
+    ]
+  }
+}

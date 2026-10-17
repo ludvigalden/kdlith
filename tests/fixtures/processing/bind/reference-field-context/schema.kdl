@@ -1,0 +1,30 @@
+schema config version="1" {
+    types {
+        object Use {
+            field target ConfigVarRef
+        }
+        object ConfigVarDef {
+            field name String
+        }
+        codec DottedName output=String {
+            match #"(?:(?<namespace>[a-z]+)\.)?(?<local>[a-z-]+)"#
+            capture namespace String
+            capture local String
+        }
+    }
+    context {
+        slot namespace String duplicates=last-wins
+    }
+    node namespace role=context-control {
+        field value String arg=0
+        effects target=following {
+            set namespace field=value
+        }
+    }
+    node use role=record type=Use {
+        field target arg=0
+    }
+    reference ConfigVarRef target=ConfigVarDef codec=DottedName lookup=config-vars qualification=explicit-or-context {
+        qualifier namespace String required=#false
+    }
+}

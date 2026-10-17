@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "A spelling the reference type's codec does not match fails to decode at the field site, with the codec decode failure every typed field reports",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stdout-contains": [
+      "{\"item\":\"diagnostic\",\"data\":{\"code\":\"KDLITH-BND003\",\"severity\":\"error\",\"source_path\":\"data.kdl\",\"span\":{\"start\":4,\"end\":12},\"line\":1,\"col\":5,\"origin\":\"data-document\",\"labels\":[],\"related\":[],\"correction\":\"Supply a value of the declared type\",\"message\":\"use.target expects ConfigVarRef, found string \\\"region\\\"\"}}\n"
+    ]
+  }
+}

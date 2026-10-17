@@ -10,7 +10,7 @@ use kdlith_runtime::SlotId;
 use crate::bindings::{
     CaseRule, ContextPolicy, DependentBinding, NodeDecl, NodeDeclId, Role, ScopeId, Source,
 };
-use crate::definition::Definition;
+use crate::definition::{Definition, ReferenceDecl};
 use crate::names::Sym;
 use crate::plan::DeferredBinding;
 use crate::types::{DefaultSpec, Sensitivity, TypeExpr, TypeKind};
@@ -68,6 +68,9 @@ pub(crate) struct FieldInfo {
     /// The declaration-group expansions splicing into this field's
     /// collection, as (target, member) pairs.
     pub(crate) expand: Vec<(Sym, Sym)>,
+    /// The declared reference type the field is typed by, whose codec
+    /// parses its spelling.
+    pub(crate) reference: Option<ReferenceDecl>,
 }
 
 /// Everything the binder needs about one node declaration.
@@ -87,7 +90,8 @@ pub(crate) struct DeclInfo {
     /// the preserved record carries as its metadata.
     pub(crate) layer: Option<usize>,
     pub(crate) scope: Option<usize>,
-    /// Fields holding `ref<T>` values, which keep the item provisional.
+    /// Fields holding `ref<T>` or declared reference type values, which
+    /// keep the item provisional.
     pub(crate) references: Vec<usize>,
     pub(crate) provisional: bool,
     /// The case dispatch selecting the type a node binds as.
@@ -147,6 +151,9 @@ pub(crate) struct Tables {
     /// Each slot's name, type, declared accumulation operation, and
     /// declared duplicate policy, by slot index.
     pub(crate) slots: Vec<SlotInfo>,
+    /// The slot named `namespace`: the context a reference whose
+    /// qualification may come from context captures where it binds.
+    pub(crate) namespace: Option<SlotId>,
 }
 
 /// One context slot, as the binder sees it.
@@ -162,6 +169,9 @@ pub(crate) struct SlotInfo {
     /// The layer order of a layered slot, highest precedence first.
     pub(crate) layers: Vec<String>,
 }
+
+/// The context slot naming the namespace in effect at a position.
+const NAMESPACE_SLOT: &str = "namespace";
 
 /// One binding source and the owner field it supplies.
 type Use<'d> = (usize, &'d Source);
@@ -180,6 +190,10 @@ pub(crate) fn build(def: &Definition) -> Tables {
         .collect();
     slots.sort_by_key(|(id, ..)| *id);
     let mut tables = Tables {
+        namespace: def
+            .names
+            .get(NAMESPACE_SLOT)
+            .and_then(|name| def.plan.context.slot(name)),
         decls: Vec::with_capacity(def.bindings.len()),
         scopes: vec![None; def.bindings.scopes().len()],
         slots: slots
@@ -328,6 +342,7 @@ fn decl_info(def: &Definition, id: NodeDeclId, decl: &NodeDecl) -> DeclInfo {
                 context: None,
                 sensitivity: field.sensitivity,
                 expand: Vec::new(),
+                reference: reference_type(def, &field.ty),
             })
             .collect(),
         None => decl
@@ -343,6 +358,7 @@ fn decl_info(def: &Definition, id: NodeDeclId, decl: &NodeDecl) -> DeclInfo {
                 context: None,
                 sensitivity: None,
                 expand: Vec::new(),
+                reference: binding.ty.as_ref().and_then(|ty| reference_type(def, ty)),
             })
             .collect(),
     };
@@ -403,13 +419,18 @@ fn decl_info(def: &Definition, id: NodeDeclId, decl: &NodeDecl) -> DeclInfo {
         None => IdentityBind::Fallback(None),
     };
     let deferred = def.plan.node(id).map_or(&[][..], |plan| &plan.deferred);
-    let references = deferred
+    let mut references: Vec<usize> = deferred
         .iter()
         .filter_map(|binding| match binding {
             DeferredBinding::Reference { field, .. } => position(*field),
             DeferredBinding::Contribution => None,
         })
         .collect();
+    for (at, field) in fields.iter().enumerate() {
+        if field.reference.is_some() && !references.contains(&at) {
+            references.push(at);
+        }
+    }
     DeclInfo {
         type_name: def.names.resolve(decl.ty.unwrap_or(decl.name)).to_owned(),
         identity,
@@ -419,12 +440,24 @@ fn decl_info(def: &Definition, id: NodeDeclId, decl: &NodeDecl) -> DeclInfo {
         alias: import_field("alias"),
         layer: contribution_field("layer"),
         scope: contribution_field("scope"),
+        provisional: !deferred.is_empty() || !references.is_empty(),
         references,
-        provisional: !deferred.is_empty(),
         cases: decl.cases.clone(),
         otherwise: decl.otherwise.clone(),
         dependent: decl.value.clone(),
         fields,
+    }
+}
+
+/// The declared reference type a field's type names, through any
+/// optional, nullable, or list wrapper.
+fn reference_type(def: &Definition, ty: &TypeExpr) -> Option<ReferenceDecl> {
+    match ty {
+        TypeExpr::Named(name) => def.symbols.reference(*name).cloned(),
+        TypeExpr::Optional(inner) | TypeExpr::Nullable(inner) | TypeExpr::List(inner) => {
+            reference_type(def, inner)
+        }
+        _ => None,
     }
 }
 

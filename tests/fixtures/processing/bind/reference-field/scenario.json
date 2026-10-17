@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "A field typed by a declared reference type binds through the reference's codec: the whole-string match yields a reference whose domain is the declaration's lookup, whose qualifier-named capture is that qualifier, whose remaining capture is the name, and whose written spelling is preserved; under an explicit qualification no context is carried",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":0},\"type_name\":\"Use\",\"fields\":[{\"name\":\"target\",\"value\":{\"kind\":\"reference\",\"value\":{\"domain\":\"config-vars\",\"name\":[\"region\"],\"qualifiers\":[[\"scope\",\"stock\"]],\"written\":\"stock.region\",\"site\":{\"source\":0,\"span\":{\"start\":{\"offset\":4,\"line\":1,\"column\":5},\"end\":{\"offset\":18,\"line\":1,\"column\":19}}}}},\"origin\":0}],\"origin\":0,\"validation\":\"provisional\"}}\n"
+    ]
+  }
+}

@@ -273,7 +273,11 @@ impl<'d, 's> Binder<'d, 's> {
         Self {
             def,
             tables: tables::build(def),
-            decoder: Decoder::new(&def.types).0,
+            decoder: Decoder::new(&def.types).0.with_references(
+                &def.types,
+                &def.names,
+                def.symbols.references(),
+            ),
             path: path.into(),
             locator: Locator::new(text),
             source,
@@ -571,9 +575,19 @@ impl<'d, 's> Binder<'d, 's> {
             return Some(value);
         };
         let site = self.location(span);
+        // The namespace in effect at this position, never a later one.
+        let namespace = self
+            .tables
+            .namespace
+            .and_then(|slot| cx.context().get(slot))
+            .and_then(|held| match &held.value {
+                Value::String(text) => Some(text.clone()),
+                _ => None,
+            });
+        let at = (site, namespace.as_deref());
         let decoded = self
             .decoder
-            .decode(&self.def.types, &self.def.names, &ty, &value, site);
+            .decode_at(&self.def.types, &self.def.names, &ty, &value, at);
         if decoded.is_none() {
             self.mismatched_as(cx, &ty, what, &value, span, conceal);
         }

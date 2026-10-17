@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "A reference whose qualification may come from context carries the namespace slot's value in effect where it binds: none before any namespace control, the first namespace for the reference after it, and the later namespace for the reference after that, alongside an explicit qualifier it spells",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":0},\"type_name\":\"Use\",\"fields\":[{\"name\":\"target\",\"value\":{\"kind\":\"reference\",\"value\":{\"domain\":\"config-vars\",\"name\":[\"region\"],\"qualifiers\":[],\"written\":\"region\",\"site\":{\"source\":0,\"span\":{\"start\":{\"offset\":4,\"line\":1,\"column\":5},\"end\":{\"offset\":12,\"line\":1,\"column\":13}}}}},\"origin\":0}],\"origin\":0,\"validation\":\"provisional\"}}\n",
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":2},\"type_name\":\"Use\",\"fields\":[{\"name\":\"target\",\"value\":{\"kind\":\"reference\",\"value\":{\"domain\":\"config-vars\",\"name\":[\"region\"],\"qualifiers\":[],\"written\":\"region\",\"site\":{\"source\":0,\"span\":{\"start\":{\"offset\":33,\"line\":3,\"column\":5},\"end\":{\"offset\":41,\"line\":3,\"column\":13}}},\"context\":\"stock\"}},\"origin\":2}],\"origin\":2,\"validation\":\"provisional\"}}\n",
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":4},\"type_name\":\"Use\",\"fields\":[{\"name\":\"target\",\"value\":{\"kind\":\"reference\",\"value\":{\"domain\":\"config-vars\",\"name\":[\"tags\"],\"qualifiers\":[[\"namespace\",\"stock\"]],\"written\":\"stock.tags\",\"site\":{\"source\":0,\"span\":{\"start\":{\"offset\":62,\"line\":5,\"column\":5},\"end\":{\"offset\":74,\"line\":5,\"column\":17}}},\"context\":\"other\"}},\"origin\":4}],\"origin\":4,\"validation\":\"provisional\"}}\n"
+    ]
+  }
+}

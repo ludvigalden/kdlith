@@ -7,8 +7,9 @@ use std::collections::BTreeMap;
 use kdlith_model::{Entry, Location, QualifiedName, Reference, Value};
 use regex::Regex;
 
+use crate::definition::{Qualification, ReferenceDecl};
 use crate::extensions::TYPE_EXPRESSION_VALIDATOR;
-use crate::names::Names;
+use crate::names::{Names, Sym};
 use crate::syntax::parse_u64;
 use crate::type_expr::{self, ExprError};
 use crate::types::{
@@ -21,6 +22,18 @@ use crate::types::{
 pub(crate) struct Decoder {
     patterns: BTreeMap<TypeId, Regex>,
     codecs: BTreeMap<TypeId, Regex>,
+    references: BTreeMap<Sym, ReferenceSyntax>,
+}
+
+/// How a field typed by a declared reference type decodes its spelling.
+#[derive(Clone, Debug)]
+struct ReferenceSyntax {
+    /// The lookup domain, else the target's.
+    domain: String,
+    codec: TypeId,
+    qualifiers: Vec<String>,
+    /// The qualification may take a missing qualifier from context.
+    contextual: bool,
 }
 
 /// A string type or codec whose pattern does not compile.
@@ -64,6 +77,37 @@ impl Decoder {
         (decoder, bad)
     }
 
+    /// Install the declared reference types, so a field typed by one
+    /// decodes through its codec. A declared reference type wins over a
+    /// same-named codec: the codec is reached through it.
+    pub(crate) fn with_references(
+        mut self,
+        types: &TypeCatalog,
+        names: &Names,
+        references: &[ReferenceDecl],
+    ) -> Self {
+        for reference in references {
+            let codec = reference.codec.and_then(|codec| types.lookup(codec));
+            let Some(codec) = codec.filter(|id| self.codecs.contains_key(id)) else {
+                continue;
+            };
+            let syntax = ReferenceSyntax {
+                domain: names
+                    .resolve(reference.lookup.unwrap_or(reference.target))
+                    .to_owned(),
+                codec,
+                qualifiers: reference
+                    .qualifiers
+                    .iter()
+                    .map(|q| names.resolve(q.name).to_owned())
+                    .collect(),
+                contextual: reference.qualification != Qualification::Explicit,
+            };
+            self.references.insert(reference.name, syntax);
+        }
+        self
+    }
+
     /// Decode `value` as `ty`: `Some` with the decoded value (a `ref<T>`
     /// string becomes a reference; everything else is unchanged), or
     /// `None` when the value does not fit, leaving it to the caller's
@@ -76,13 +120,28 @@ impl Decoder {
         value: &Value,
         site: Location,
     ) -> Option<Value> {
+        self.decode_at(types, names, ty, value, (site, None))
+    }
+
+    /// Decode `value` as `ty` at a bind position: `context` is the
+    /// namespace in effect there, which a reference whose qualification
+    /// may come from context carries.
+    pub(crate) fn decode_at(
+        &self,
+        types: &TypeCatalog,
+        names: &Names,
+        ty: &TypeExpr,
+        value: &Value,
+        at: (Location, Option<&str>),
+    ) -> Option<Value> {
+        let site = at.0;
         match ty {
-            TypeExpr::Optional(inner) => self.decode(types, names, inner, value, site),
+            TypeExpr::Optional(inner) => self.decode_at(types, names, inner, value, at),
             TypeExpr::Nullable(inner) => {
                 if *value == Value::Null {
                     Some(Value::Null)
                 } else {
-                    self.decode(types, names, inner, value, site)
+                    self.decode_at(types, names, inner, value, at)
                 }
             }
             TypeExpr::Ref(inner) => match (inner.as_ref(), value) {
@@ -104,7 +163,7 @@ impl Decoder {
             TypeExpr::List(inner) => match value {
                 Value::List(items) => items
                     .iter()
-                    .map(|item| self.decode(types, names, inner, item, site))
+                    .map(|item| self.decode_at(types, names, inner, item, at))
                     .collect::<Option<Vec<_>>>()
                     .map(Value::List),
                 _ => None,
@@ -114,8 +173,8 @@ impl Decoder {
                     .iter()
                     .map(|entry| {
                         let key_value = Value::String(entry.key.clone());
-                        self.decode(types, names, key, &key_value, site)?;
-                        let value = self.decode(types, names, inner, &entry.value, site)?;
+                        self.decode_at(types, names, key, &key_value, at)?;
+                        let value = self.decode_at(types, names, inner, &entry.value, at)?;
                         Some(Entry::new(entry.key.clone(), value))
                     })
                     .collect::<Option<Vec<_>>>()
@@ -124,13 +183,16 @@ impl Decoder {
             },
             TypeExpr::Union(members) => members
                 .iter()
-                .find_map(|member| self.decode(types, names, member, value, site)),
+                .find_map(|member| self.decode_at(types, names, member, value, at)),
             // A surviving instantiation means incomplete checking: fail
             // closed rather than guess the unsubstituted body.
             TypeExpr::Instantiation(_, _) => None,
             TypeExpr::Named(name) => {
+                if let Some(syntax) = self.references.get(name) {
+                    return self.reference(types, names, syntax, value, at);
+                }
                 let id = types.lookup(*name)?;
-                self.named(types, names, id, value, site)
+                self.named(types, names, id, value, at)
             }
         }
     }
@@ -141,8 +203,9 @@ impl Decoder {
         names: &Names,
         id: TypeId,
         value: &Value,
-        site: Location,
+        at: (Location, Option<&str>),
     ) -> Option<Value> {
+        let site = at.0;
         let decl = types.get(id)?;
         match (&decl.kind, value) {
             (TypeKind::Builtin(builtin), value) => {
@@ -166,7 +229,7 @@ impl Decoder {
                         .as_deref()
                         .is_some_and(|prefix| text.starts_with(prefix))
                 })?;
-                self.decode(types, names, &variant.ty, value, site)
+                self.decode_at(types, names, &variant.ty, value, at)
             }
             // A codec decodes a matching string in the stream; the
             // decoded value carries the output type.
@@ -180,6 +243,62 @@ impl Decoder {
             }
             _ => None,
         }
+    }
+
+    /// Decode a reference's spelling through its codec: qualifier-named
+    /// captures become qualifiers, the rest the name's segments in
+    /// capture order; a spelling yielding no segment is no reference.
+    fn reference(
+        &self,
+        types: &TypeCatalog,
+        names: &Names,
+        syntax: &ReferenceSyntax,
+        value: &Value,
+        (site, context): (Location, Option<&str>),
+    ) -> Option<Value> {
+        let text = match value {
+            Value::String(text) => text,
+            Value::Reference(reference) if reference.domain == syntax.domain => {
+                return Some(value.clone());
+            }
+            _ => return None,
+        };
+        let TypeKind::Codec(codec) = &types.get(syntax.codec)?.kind else {
+            return None;
+        };
+        let captures = self.codecs.get(&syntax.codec)?.captures(text)?;
+        let mut segments = Vec::new();
+        let mut qualifiers = Vec::new();
+        for capture in &codec.captures {
+            let Some(found) = captures.name(&capture.name) else {
+                continue;
+            };
+            let raw = found.as_str().to_owned();
+            let typed = match numeric_builtin(types, &capture.ty) {
+                Some(_) => Value::Number(raw.clone()),
+                None => Value::String(raw.clone()),
+            };
+            self.decode(types, names, &capture.ty, &typed, site)?;
+            if syntax.qualifiers.contains(&capture.name) {
+                qualifiers.push((capture.name.clone(), raw));
+            } else {
+                segments.push(raw);
+            }
+        }
+        if segments.is_empty() {
+            return None;
+        }
+        let mut reference = Reference::new(
+            syntax.domain.clone(),
+            QualifiedName(segments),
+            text.clone(),
+            site,
+        );
+        reference.qualifiers = qualifiers;
+        if syntax.contextual {
+            reference.context = context.map(Box::from);
+        }
+        Some(Value::Reference(reference))
     }
 
     /// Decode a string through a codec: the whole-string match, each

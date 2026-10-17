@@ -15,6 +15,7 @@ use crate::types::{TypeExpr, TypeKind};
 
 pub(crate) fn run(cx: &mut Cx<'_>, bindings: &BindingCatalog, symbols: &SymbolCatalog) {
     types(cx, symbols);
+    references(cx, symbols);
     prefixes(cx);
     expansions(cx, bindings);
     for slot in cx.slots.clone() {
@@ -133,6 +134,28 @@ fn types(cx: &mut Cx<'_>, symbols: &SymbolCatalog) {
     }
 }
 
+/// A declared reference type names the codec that parses its spelling;
+/// without one, no spelling of it could bind.
+fn references(cx: &mut Cx<'_>, symbols: &SymbolCatalog) {
+    for reference in symbols.references() {
+        let label = format!("reference {}", cx.names.resolve(reference.name));
+        let Some(codec) = reference.codec else {
+            let reason = "declares no codec, so no spelling of it can bind";
+            cx.malformed(reference.site, &label, reason);
+            continue;
+        };
+        if !named(cx, reference.site, codec) {
+            continue;
+        }
+        let kind = cx.types.lookup(codec).and_then(|id| cx.types.get(id));
+        if !matches!(kind.map(|decl| &decl.kind), Some(TypeKind::Codec(_))) {
+            let spelled = cx.names.resolve(codec);
+            let reason = format!("codec {spelled} is not a codec type");
+            cx.malformed(reference.site, &label, &reason);
+        }
+    }
+}
+
 /// The variant prefixes of one union are pairwise unambiguous: one
 /// being a prefix of another leaves value dispatch non-deterministic.
 fn prefixes(cx: &mut Cx<'_>) {
@@ -212,7 +235,8 @@ fn expansions(cx: &mut Cx<'_>, bindings: &BindingCatalog) {
 fn expr(cx: &mut Cx<'_>, symbols: &SymbolCatalog, site: Site, ty: &TypeExpr, params: &[Sym]) {
     match ty {
         TypeExpr::Named(name) => {
-            if params.contains(name) {
+            // A declared reference type types a field directly.
+            if params.contains(name) || symbols.reference(*name).is_some() {
                 return;
             }
             named(cx, site, *name);

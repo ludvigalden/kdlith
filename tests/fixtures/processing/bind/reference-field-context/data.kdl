@@ -1,0 +1,5 @@
+use "region"
+namespace stock
+use "region"
+namespace other
+use "stock.tags"
