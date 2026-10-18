@@ -1227,8 +1227,11 @@ What there is to show depends on the view.
   writes the whole plan; the read's exit 1 governs.
 - `references` writes the report of a reading that completed, even one
   that reported binding errors, then exits 1 on those errors or, under
-  complete scope, on its link diagnostics. A read that stopped writes
-  no report.
+  complete scope, on its link diagnostics. A syntax fault, a missing
+  document, or a crossed limit still completes the reading as
+  diagnostics, so the report prints with the links bound before the
+  fault. Only a reading the reader abandons as broken, which no input
+  document provokes, writes no report.
 - When the `--schema` schema of `inspect data` does not compile, there
   is no stream either: the stream views, `context`, and `references`
   write nothing and exit 1.
