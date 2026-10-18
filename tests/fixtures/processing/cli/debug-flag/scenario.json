@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "--debug (the top of the verbosity band) is accepted before any verb and leaves the verb's contract unchanged: a clean read exits 0 with empty streams",
+  "args": [
+    "--debug",
+    "read",
+    "file",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

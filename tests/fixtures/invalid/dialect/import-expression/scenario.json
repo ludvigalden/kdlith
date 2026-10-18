@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A dialect root binds no discovery grammar, so a dialect's imports are literal paths only: a pattern expression in one is a malformed construct (KDLITH-DLC005), never expanded",
+  "args": [
+    "vet",
+    "dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/types.kdl",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/bindings.kdl",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/context.kdl",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/documents.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

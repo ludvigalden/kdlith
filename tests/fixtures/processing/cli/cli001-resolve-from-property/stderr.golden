@@ -1,0 +1,1 @@
+error[KDLITH-CLI001]: invalid value "values.kdl" for --resolve-from: line 1: a value node takes arguments only, without type annotations

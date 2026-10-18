@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "A --resolve-from file holding a node other than value breaks the values-file form: KDLITH-CLI001, exit 2, before any definition loads; pinned byte for byte",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/resolve/schema.kdl",
+    "--resolve-from",
+    "values.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 2,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

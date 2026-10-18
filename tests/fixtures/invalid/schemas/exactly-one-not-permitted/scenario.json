@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "An exactly-one group naming a node the declaring node's children rules do not permit contradicts them (KDLITH-SCH005); entry is permitted and passes, other is not",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A --resolve-from file that is not valid KDL fails with its syntax code (KDLITH-SYN001) at its own location",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/resolve/schema.kdl",
+    "--resolve-from",
+    "values.kdl",
+    "data.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

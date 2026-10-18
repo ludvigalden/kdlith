@@ -1,0 +1,13 @@
+{
+  "binary": "kdlith",
+  "description": "-V is the short form of --version: the binary name and version on stdout, exit 0",
+  "args": [
+    "-V"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "kdlith "
+    ]
+  }
+}

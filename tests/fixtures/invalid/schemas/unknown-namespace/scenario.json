@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A clear effect naming a context namespace the schema does not declare is an undeclared reference (KDLITH-SCH006), the namespace arm beside the slot, field, parent, profile, layer, and reference-target arms",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

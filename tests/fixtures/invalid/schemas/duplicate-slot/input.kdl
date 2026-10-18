@@ -1,0 +1,11 @@
+schema s version="1" {
+    types {
+        string Locale {
+            format kebab-case
+        }
+    }
+    context {
+        slot locale Locale
+        slot locale Locale
+    }
+}

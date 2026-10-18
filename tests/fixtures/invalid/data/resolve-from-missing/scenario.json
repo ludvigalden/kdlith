@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A --resolve-from file that cannot be read is KDLITH-SRC001 naming it, reported before any document binds",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/resolve/schema.kdl",
+    "--resolve-from",
+    "missing.kdl",
+    "data.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

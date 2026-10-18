@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "An import chain nesting past the invocation stack's import-depth limit of 64 fails closed with the source limit code at the import that would open the 65th level; the chain is 65 imports deep",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/imports.kdl",
+    "d00.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A value the --resolve-from file resolves is decoded against the field's declared type like any other: a string for the Integer replicas is a decode failure (KDLITH-BND003) at the node, never a silent fallback",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/resolve/schema.kdl",
+    "--resolve-from",
+    "values.kdl",
+    "data.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

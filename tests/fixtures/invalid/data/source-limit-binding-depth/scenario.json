@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A data document whose bound nodes nest past the session's binding-depth limit of 512 is rejected with the source limit code: the document opens 513 bound nodes inside 512 children blocks, so it parses clean under the parser's own depth limit of 512 (read exits 0 on it) and only the binding session refuses it",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

@@ -1,0 +1,23 @@
+// A schema whose root binds a discovery grammar: the anchor root is a
+// host-supplied typed path and the star pattern is admitted. The data
+// path expands grammar-admitted expressions against the host's anchors.
+schema found version="1" grammar=main {
+    types {
+        object Part {
+            field id String
+        }
+    }
+    discovery main allow-empty=#true {
+        anchor root provider=path
+        patterns star=#true
+    }
+    node part role=record type=Part {
+        field id arg=0
+    }
+    node use role=source-import {
+        field path String arg=0
+    }
+    document {
+        following part use
+    }
+}

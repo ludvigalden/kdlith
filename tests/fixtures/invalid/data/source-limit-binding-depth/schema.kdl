@@ -1,0 +1,16 @@
+// A recursive container: box admits box without bound, so a data
+// document's binding depth is limited only by the session.
+schema nest version="1" {
+    node root role=container {
+        children box max-occurs=1
+    }
+    node box role=container {
+        parents root box
+        children box max-occurs=1
+    }
+    document {
+        first {
+            exactly-one root
+        }
+    }
+}

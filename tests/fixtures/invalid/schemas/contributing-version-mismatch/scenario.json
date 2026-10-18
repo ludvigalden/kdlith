@@ -1,0 +1,13 @@
+{
+  "binary": "kdlith",
+  "description": "Two contributing schema documents that repeat the root name but not its version disagree, and the second is rejected as a root mismatch (KDLITH-DLC004) at its root",
+  "args": [
+    "vet",
+    "schema",
+    "a.kdl",
+    "b.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

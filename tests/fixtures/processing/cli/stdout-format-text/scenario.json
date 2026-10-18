@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "--stdout-format text, the one supported response format and its default, is accepted explicitly; a clean read exits 0 with empty streams",
+  "args": [
+    "--stdout-format",
+    "text",
+    "read",
+    "file",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

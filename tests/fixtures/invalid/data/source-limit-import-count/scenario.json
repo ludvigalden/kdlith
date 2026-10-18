@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "One session invokes at most 1024 sources: the entry and 1023 instantiated imports fill it, and the entry's 1024th import is refused with the source limit code at its site",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/imports.kdl",
+    "data.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

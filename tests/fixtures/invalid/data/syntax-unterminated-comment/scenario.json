@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A block comment still open at the end of input is the unterminated-comment arm of KDLITH-SYN002",
+  "args": [
+    "read",
+    "file",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

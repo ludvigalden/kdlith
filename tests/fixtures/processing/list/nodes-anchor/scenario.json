@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "list nodes takes --anchor: the schema's own $root/*.kdl import expands, so the listing includes the extra node parts/a.kdl contributes; stdout and stderr pinned byte for byte",
+  "args": [
+    "list",
+    "nodes",
+    "--schema",
+    "{fx-suite}/schemas/vet/import-anchor/schema.kdl",
+    "--anchor",
+    "root={fx-suite}/schemas/vet/import-anchor/parts"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

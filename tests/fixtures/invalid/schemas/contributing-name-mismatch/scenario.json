@@ -1,0 +1,13 @@
+{
+  "binary": "kdlith",
+  "description": "Two schema documents read as one definition whose roots name different schemas are a root mismatch (KDLITH-DLC004), reported at the second root",
+  "args": [
+    "vet",
+    "schema",
+    "a.kdl",
+    "b.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

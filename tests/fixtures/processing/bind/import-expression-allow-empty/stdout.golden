@@ -1,0 +1,4 @@
+{"item":"document","data":{"source":0,"path":"data.kdl"}}
+{"item":"record","data":{"node":{"source":0,"index":0},"type_name":"Part","fields":[{"name":"id","value":{"kind":"string","value":"zero"},"origin":0}],"origin":0,"validation":"valid"}}
+{"item":"import","data":{"node":{"source":0,"index":1},"expression":"$root/none-*.kdl","alias":null,"project":[],"repeated":"reject","site":{"source":0,"span":{"start":{"offset":10,"line":2,"column":1},"end":{"offset":13,"line":2,"column":4}}},"origin":1}}
+{"item":"scope-complete","data":{"source":0,"scope":null}}

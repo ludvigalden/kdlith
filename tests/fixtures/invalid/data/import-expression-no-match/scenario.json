@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "An admitted expression matching zero sources does not resolve (KDLITH-IMP001) when its grammar declares no empty-match allowance",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/import-anchor/schema.kdl",
+    "--anchor",
+    "root={fx-suite}/processing/bind/import-anchor/parts",
+    "data.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

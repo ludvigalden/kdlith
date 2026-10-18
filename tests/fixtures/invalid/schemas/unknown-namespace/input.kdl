@@ -1,0 +1,21 @@
+schema s version="1" {
+    types {
+        object Entry {
+            field id String
+        }
+    }
+    context {
+        slot locale String namespace=defaults
+    }
+    node entry role=record type=Entry {
+        field id arg=0
+    }
+    node reset role=context-control {
+        effects target=following {
+            clear ghost
+        }
+    }
+    document {
+        following entry reset
+    }
+}

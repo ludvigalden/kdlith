@@ -1,0 +1,21 @@
+{
+  "binary": "kdlith",
+  "description": "cache refresh creates its state directory only when the parent exists: a state path under a missing parent is the create arm of KDLITH-CAC003, exit 1, and nothing is created; pinned byte for byte",
+  "args": [
+    "cache",
+    "refresh",
+    "--state",
+    "missing/state",
+    "--schema",
+    "{fx-suite}/processing/bind/imports.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden",
+    "absent": [
+      "missing"
+    ]
+  }
+}

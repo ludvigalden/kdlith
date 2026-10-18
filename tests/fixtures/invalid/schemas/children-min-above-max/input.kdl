@@ -1,0 +1,14 @@
+schema s version="1" {
+    types {
+        object Entry {
+            field id String
+            field name String
+        }
+    }
+    node entry role=record type=Entry {
+        field id arg=0
+    }
+    node box role=container {
+        children entry min-occurs=3 max-occurs=1
+    }
+}

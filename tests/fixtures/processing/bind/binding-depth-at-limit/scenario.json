@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "The binding-depth limit's passing side: 512 bound nodes nested in one document bind, and the stream ends with the scope completion; invalid/data/source-limit-binding-depth adds one level and is refused",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":null}}\n"
+    ]
+  }
+}

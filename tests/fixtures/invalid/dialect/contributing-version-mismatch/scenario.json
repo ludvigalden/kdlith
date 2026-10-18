@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A document contributing to the canonical dialect at another version than the canonical documents' is a root mismatch (KDLITH-DLC004) on the dialect path",
+  "args": [
+    "vet",
+    "dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/types.kdl",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/bindings.kdl",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/context.kdl",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/documents.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

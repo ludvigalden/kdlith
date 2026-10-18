@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A children rule whose min-occurs exceeds its max-occurs is a self-contradicting child rule (KDLITH-SCH005)",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

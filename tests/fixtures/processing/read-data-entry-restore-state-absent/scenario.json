@@ -1,0 +1,24 @@
+{
+  "binary": "kdlith",
+  "description": "read data --state naming a directory that does not exist replays: the output equals the replay twin's, and the read never creates the store",
+  "args": [
+    "read",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "--entry",
+    "entry.kdl",
+    "data.kdl",
+    "one",
+    "--state",
+    "state"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden",
+    "absent": [
+      "state"
+    ]
+  }
+}

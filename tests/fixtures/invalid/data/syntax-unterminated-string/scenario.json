@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A quoted string still open at the end of input is the unterminated-string arm of KDLITH-SYN002, distinct from the children-block arm invalid/data/syntax pins; the input ends inside the string with no newline, so the single-line-string newline fault (SYN001) cannot fire first",
+  "args": [
+    "read",
+    "file",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

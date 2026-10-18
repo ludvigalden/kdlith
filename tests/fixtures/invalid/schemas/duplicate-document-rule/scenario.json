@@ -1,0 +1,13 @@
+{
+  "binary": "kdlith",
+  "description": "Two contributing schema documents each declaring the document rule are a duplicate declaration (KDLITH-SCH004) reported at the second; within one document a second document block is a cardinality fault instead",
+  "args": [
+    "vet",
+    "schema",
+    "a.kdl",
+    "b.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

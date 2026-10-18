@@ -1,0 +1,3 @@
+dialect kdlith version="0" {
+    import "*.kdl"
+}

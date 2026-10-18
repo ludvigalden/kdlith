@@ -1,0 +1,1 @@
+error[KDLITH-CLI001]: invalid value "values.kdl" for --resolve-from: line 2: "setting" is not a top-level value node without a type annotation

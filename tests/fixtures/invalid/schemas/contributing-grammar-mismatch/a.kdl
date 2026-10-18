@@ -1,0 +1,8 @@
+schema shop version="1" grammar=main {
+    discovery main {
+        anchor root provider=path
+    }
+    discovery other {
+        anchor base provider=path
+    }
+}

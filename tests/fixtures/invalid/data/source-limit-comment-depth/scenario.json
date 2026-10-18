@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "Block comments nested past the parser's comment-depth limit of 128 are rejected with the source limit code before the comment is consumed; 129 levels still parse, so the input nests 130",
+  "args": [
+    "read",
+    "file",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

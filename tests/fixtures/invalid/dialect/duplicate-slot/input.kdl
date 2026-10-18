@@ -1,0 +1,6 @@
+dialect kdlith version="0" {
+    context {
+        slot extra String
+        slot extra String
+    }
+}

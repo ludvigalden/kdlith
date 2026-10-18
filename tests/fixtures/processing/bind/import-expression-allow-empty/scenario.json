@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "A grammar declaring allow-empty=#true admits an expression matching zero sources: the import item streams with no targets key and no document follows, exit 0, where invalid/data/import-expression-no-match fails the same expression under a grammar without the allowance",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "--anchor",
+    "root=parts",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

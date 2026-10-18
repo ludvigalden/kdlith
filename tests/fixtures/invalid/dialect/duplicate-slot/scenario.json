@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A document contributing to the canonical dialect declares one context slot twice and is rejected as a duplicate dialect construct (KDLITH-DLC002), the slot arm beside the type and root-node arms",
+  "args": [
+    "vet",
+    "dialect",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/types.kdl",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/bindings.kdl",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/context.kdl",
+    "{fx-suite}/../../pkg/kdl/schemas/dialect/documents.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

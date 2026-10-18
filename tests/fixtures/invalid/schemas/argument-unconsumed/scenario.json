@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A node declaration binding argument 1 while no field consumes argument 0 leaves an argument unconsumed, a contradictory binding (KDLITH-SCH005)",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

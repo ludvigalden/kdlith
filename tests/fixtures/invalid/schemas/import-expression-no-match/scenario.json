@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "On the definition path a schema's own admitted import expression matching zero documents does not resolve (KDLITH-IMP001) at the import",
+  "args": [
+    "vet",
+    "schema",
+    "--anchor",
+    "root=parts",
+    "schema.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

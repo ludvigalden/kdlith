@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "Pattern syntax no grammar defines (a ? wildcard; only star, doublestar, and braces exist) is KDLITH-IMP004 at compile-time grammar validation, the pattern arm beside the environment-interpolation arm",
+  "args": [
+    "vet",
+    "schema",
+    "--scope",
+    "local",
+    "schema.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

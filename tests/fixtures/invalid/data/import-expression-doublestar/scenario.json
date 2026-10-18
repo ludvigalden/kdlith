@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "On the data path an import expression using a pattern its grammar does not admit (doublestar, where the grammar admits only star) is KDLITH-IMP004 at the import, with the anchor supplied, so the grammar alone refuses it",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/import-anchor/schema.kdl",
+    "--anchor",
+    "root={fx-suite}/processing/bind/import-anchor/parts",
+    "data.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

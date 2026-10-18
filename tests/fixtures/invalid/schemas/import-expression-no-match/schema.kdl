@@ -1,0 +1,24 @@
+// A schema whose own imports use discovery syntax: the root binds the
+// grammar main, whose anchor root is a host-supplied typed path. The
+// definition verbs expand $root/*.kdl against --anchor root=PATH.
+schema demo version="1" grammar=main {
+    types {
+        object Thing {
+            field name String
+        }
+    }
+    node thing role=record type=Thing {
+        field name arg=0
+    }
+    discovery main {
+        anchor root provider=path
+        patterns star=#true
+    }
+    import "$root/none-*.kdl"
+    document {
+        first {
+            exactly-one thing
+        }
+        following extra
+    }
+}

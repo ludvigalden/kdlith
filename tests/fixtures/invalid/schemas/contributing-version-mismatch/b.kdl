@@ -1,0 +1,5 @@
+schema shop version="2" {
+    node entry role=record type=Entry {
+        field id arg=0
+    }
+}

@@ -1,0 +1,5 @@
+schema other version="1" {
+    node entry role=record type=Entry {
+        field id arg=0
+    }
+}

@@ -1,0 +1,13 @@
+{
+  "binary": "kdlith",
+  "description": "Contributing schema roots that bind different discovery grammars are a root mismatch (KDLITH-DLC004), reported at the second root",
+  "args": [
+    "vet",
+    "schema",
+    "a.kdl",
+    "b.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}
