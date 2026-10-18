@@ -33,10 +33,13 @@ pub const CACHE_FORMAT: u32 = 3;
 /// into an entry. A change to the serialized item shape takes a new
 /// number, so an entry written under another one is never misread.
 pub const CACHE_CANONICALIZATION: u32 = 1;
-/// The snapshot entry format version this build reads and writes.
-pub const SNAPSHOT_FORMAT: u32 = 1;
-/// How slot values are serialized into a snapshot entry's payload.
-pub const SNAPSHOT_CANONICALIZATION: u32 = 1;
+/// The snapshot entry format version this build reads and writes:
+/// format 2 indexes one context snapshot per record, where format 1
+/// held one per entry document.
+pub const SNAPSHOT_FORMAT: u32 = 2;
+/// How record index lines and their slot values are serialized into a
+/// snapshot entry's payload.
+pub const SNAPSHOT_CANONICALIZATION: u32 = 2;
 /// The largest entry file the store reads; a larger one is corrupt.
 pub const MAX_ENTRY_BYTES: u64 = 64 * 1024 * 1024;
 
@@ -161,8 +164,8 @@ impl fmt::Display for CacheEntry {
     }
 }
 
-/// One owned, intact snapshot entry: its key, the entry document it
-/// captures, and the stamps its metadata line carries.
+/// One owned, intact snapshot entry: its key, the entry document whose
+/// records it indexes, and the stamps its metadata line carries.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct SnapshotEntry {
@@ -175,13 +178,14 @@ impl fmt::Display for SnapshotEntry {
         let meta = &self.meta;
         write!(
             f,
-            "snapshot {} entry={} revision={} schema={} profiles={} lineage=[{}] slots={} layout={}",
+            "snapshot {} entry={} revision={} schema={} profiles={} lineage=[{}] records={} slots={} layout={}",
             self.key,
             meta.entry,
             meta.revision,
             meta.schema,
             meta.profiles,
             meta.lineage.join(","),
+            meta.records,
             meta.slots,
             meta.layout
         )
@@ -191,8 +195,8 @@ impl fmt::Display for SnapshotEntry {
 /// The metadata line of a snapshot entry: the lookup key's inputs (the
 /// entry document as its invocation spelled it, its source revision,
 /// the profile selection), the schema fingerprint and lineage a restore
-/// checks, and the payload's slot count, slot-layout digest, and body
-/// digest. Every fingerprint is a stamped digest.
+/// checks, the record count, each record's slot count, the slot-layout
+/// digest, and the body digest. Every fingerprint is a stamped digest.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 #[non_exhaustive]
@@ -203,6 +207,7 @@ pub struct SnapshotMeta {
     pub schema: String,
     pub profiles: String,
     pub lineage: Vec<String>,
+    pub records: usize,
     pub slots: usize,
     pub layout: String,
     pub digest: String,
@@ -210,8 +215,8 @@ pub struct SnapshotMeta {
 
 impl SnapshotMeta {
     /// The metadata of a snapshot of `entry` at `revision` under the
-    /// profile selection `profiles`; the key and the body digest are
-    /// derived, never supplied.
+    /// profile selection `profiles`; the key, the counts, and the body
+    /// digest are derived, never supplied.
     pub fn new(
         entry: impl Into<String>,
         revision: u64,
@@ -228,6 +233,7 @@ impl SnapshotMeta {
             schema: schema.into(),
             profiles: digest(profiles),
             lineage,
+            records: 0,
             slots: 0,
             layout: layout.into(),
             digest: String::new(),
@@ -384,15 +390,77 @@ pub fn snapshot_key(entry: &str, revision: u64, profiles: u64) -> String {
     format!("{hash:016x}")
 }
 
+/// One indexed record of a snapshot entry: the record's identity (its
+/// `id` field, when it has one) and type, where it was bound (the
+/// source's revision digest, its source id within the reading, the
+/// node's index, and the byte span the record reports), the id of its
+/// context snapshot, how far its checking had progressed, and the
+/// context it bound under, in slot-id order.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct SnapshotRecord {
+    pub identity: Option<String>,
+    pub ty: String,
+    pub digest: String,
+    pub source: u32,
+    pub node: u32,
+    pub span: (u32, u32),
+    pub snapshot: String,
+    pub validation: String,
+    pub values: Vec<Option<SlotValue>>,
+}
+
+impl SnapshotRecord {
+    /// A record bound at `node` of `source`, whose text has revision
+    /// `revision`; its snapshot id is assigned when it is encoded.
+    pub fn new(
+        identity: Option<String>,
+        ty: impl Into<String>,
+        (revision, source, node): (u64, u32, u32),
+        span: (u32, u32),
+        validation: impl Into<String>,
+        values: Vec<Option<SlotValue>>,
+    ) -> Self {
+        Self {
+            identity,
+            ty: ty.into(),
+            digest: digest(revision),
+            source,
+            node,
+            span,
+            snapshot: String::new(),
+            validation: validation.into(),
+            values,
+        }
+    }
+}
+
+/// The validation statuses a record index line may name.
+const VALIDATIONS: [&str; 3] = ["validated", "pending", "failed"];
+
 /// Encode one snapshot entry: the ownership header, the metadata line
-/// with its body digest and slot count stamped from `payload`, then the
-/// payload — one line per slot, each closed by a newline.
-pub fn encode_snapshot(mut meta: SnapshotMeta, payload: &str) -> io::Result<EncodedEntry> {
-    meta.slots = payload.split_terminator('\n').count();
-    meta.digest = snapshot_digest(payload.as_bytes());
+/// with its counts and body digest stamped from the records, then one
+/// index line per record in the order given. `names` names the slots;
+/// each record's snapshot id is `<key>/<position>`.
+pub fn encode_snapshot(
+    mut meta: SnapshotMeta,
+    names: &[String],
+    records: &[SnapshotRecord],
+) -> io::Result<EncodedEntry> {
+    let mut body = Vec::new();
+    let mut indexed = Vec::with_capacity(records.len());
+    for (at, record) in records.iter().enumerate() {
+        let mut record = record.clone();
+        record.snapshot = format!("{}/{at}", meta.key);
+        write_ndjson(&mut body, &RecordLine::from_record(names, &record))?;
+        indexed.push(record);
+    }
+    meta.records = records.len();
+    meta.slots = names.len();
+    meta.digest = snapshot_digest(&body);
     let mut bytes = EntryClass::Snapshot.header().into_bytes();
     write_ndjson(&mut bytes, &meta)?;
-    bytes.extend_from_slice(payload.as_bytes());
+    bytes.extend_from_slice(&body);
     Ok(EncodedEntry {
         entry: OwnedEntry::Snapshot(SnapshotEntry {
             key: meta.key.clone(),
@@ -400,45 +468,6 @@ pub fn encode_snapshot(mut meta: SnapshotMeta, payload: &str) -> io::Result<Enco
         }),
         bytes,
     })
-}
-
-/// A snapshot payload: one line per slot, in slot-id order, each
-/// `{"name","value","layer"}` with the value in its tagged form; an
-/// unset slot's value and layer are null. `names` names the slots.
-pub fn encode_slot_lines(names: &[String], values: &[Option<SlotValue>]) -> String {
-    let mut out = Vec::new();
-    for (at, held) in values.iter().enumerate() {
-        let line = SlotLine {
-            name: names.get(at).cloned().unwrap_or_default(),
-            value: held.as_ref().map(|held| held.value.clone()),
-            layer: held.as_ref().and_then(|held| held.layer.clone()),
-        };
-        // A slot line holds strings and tagged values only; writing it
-        // into memory cannot fail.
-        let _ = write_ndjson(&mut out, &line);
-    }
-    String::from_utf8(out).unwrap_or_default()
-}
-
-/// The slot names and values of a payload, in slot-id order. Values
-/// come back untraced, with the layer they were captured under.
-fn decode_slot_lines(payload: &str) -> Result<SlotLines, String> {
-    let mut slots = Vec::new();
-    for line in payload.split_terminator('\n') {
-        let line: SlotLine =
-            serde_json::from_str(line).map_err(|error| format!("unreadable slot line: {error}"))?;
-        let value = match (line.value, line.layer) {
-            (Some(value), layer) => {
-                Some(SlotValue::new(value, OriginId::SOURCE_METADATA).with_layer(layer))
-            }
-            (None, None) => None,
-            (None, Some(_)) => {
-                return Err(format!("unset slot {:?} carries a layer", line.name));
-            }
-        };
-        slots.push((line.name, value));
-    }
-    Ok(slots)
 }
 
 /// A stamped digest of a slot layout: each slot's name in slot-id
@@ -452,10 +481,32 @@ pub fn slot_layout_digest<'a>(names: impl IntoIterator<Item = &'a str>) -> Strin
     digest(hash)
 }
 
-/// A payload's slots: each slot's name and value, in slot-id order.
-type SlotLines = Vec<(String, Option<SlotValue>)>;
+/// One record index line of a snapshot payload.
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RecordLine {
+    identity: Option<String>,
+    #[serde(rename = "type")]
+    ty: String,
+    digest: String,
+    source: u32,
+    node: u32,
+    span: SpanLine,
+    snapshot: String,
+    validation: String,
+    slots: Vec<SlotLine>,
+}
 
-/// One slot line of a snapshot payload.
+/// A record's byte span in its source.
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct SpanLine {
+    start: u32,
+    end: u32,
+}
+
+/// One slot of a record's context: its name, its value in the tagged
+/// form, and its layer; an unset slot's value and layer are null.
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct SlotLine {
@@ -464,15 +515,79 @@ struct SlotLine {
     layer: Option<String>,
 }
 
+impl RecordLine {
+    fn from_record(names: &[String], record: &SnapshotRecord) -> Self {
+        let slots = record
+            .values
+            .iter()
+            .enumerate()
+            .map(|(at, held)| SlotLine {
+                name: names.get(at).cloned().unwrap_or_default(),
+                value: held.as_ref().map(|held| held.value.clone()),
+                layer: held.as_ref().and_then(|held| held.layer.clone()),
+            })
+            .collect();
+        Self {
+            identity: record.identity.clone(),
+            ty: record.ty.clone(),
+            digest: record.digest.clone(),
+            source: record.source,
+            node: record.node,
+            span: SpanLine {
+                start: record.span.0,
+                end: record.span.1,
+            },
+            snapshot: record.snapshot.clone(),
+            validation: record.validation.clone(),
+            slots,
+        }
+    }
+
+    /// The record the line indexes, with its slot names; values come
+    /// back untraced, each with the layer it was captured under.
+    fn into_record(self) -> Result<(SnapshotRecord, Vec<String>), String> {
+        if !VALIDATIONS.contains(&self.validation.as_str()) {
+            return Err(format!("unknown validation status {:?}", self.validation));
+        }
+        undigest(&self.digest)?;
+        let mut names = Vec::with_capacity(self.slots.len());
+        let mut values = Vec::with_capacity(self.slots.len());
+        for slot in self.slots {
+            values.push(match (slot.value, slot.layer) {
+                (Some(value), layer) => {
+                    Some(SlotValue::new(value, OriginId::SOURCE_METADATA).with_layer(layer))
+                }
+                (None, None) => None,
+                (None, Some(_)) => {
+                    return Err(format!("unset slot {:?} carries a layer", slot.name));
+                }
+            });
+            names.push(slot.name);
+        }
+        let record = SnapshotRecord {
+            identity: self.identity,
+            ty: self.ty,
+            digest: self.digest,
+            source: self.source,
+            node: self.node,
+            span: (self.span.start, self.span.end),
+            snapshot: self.snapshot,
+            validation: self.validation,
+            values,
+        };
+        Ok((record, names))
+    }
+}
+
 /// What looking a snapshot up by key found.
 #[derive(Clone, Debug)]
 #[non_exhaustive]
 pub enum SnapshotLookup {
     /// No owned snapshot entry with the key exists.
     Miss,
-    /// An intact entry: its metadata and its slot values in slot-id
-    /// order, untraced, each with the layer it was captured under.
-    Hit(Box<SnapshotEntry>, Vec<Option<SlotValue>>),
+    /// An intact entry: its metadata and its indexed records, in the
+    /// order they were bound.
+    Hit(Box<SnapshotEntry>, Vec<SnapshotRecord>),
     /// An owned entry that cannot be used: another version, an
     /// interrupted write, or damage — reported as `KDLITH-CAC002`, never
     /// read as this version's.
@@ -508,10 +623,7 @@ pub fn read_snapshot(dir: &Path, key: &str) -> Result<SnapshotLookup, Box<Diagno
         return Ok(SnapshotLookup::Miss);
     }
     Ok(match decode_snapshot(key, &bytes) {
-        Ok((entry, slots)) => {
-            let values = slots.into_iter().map(|(_, value)| value).collect();
-            SnapshotLookup::Hit(Box::new(entry), values)
-        }
+        Ok((entry, records)) => SnapshotLookup::Hit(Box::new(entry), records),
         Err(fault) => {
             let shown = path.display().to_string();
             SnapshotLookup::Unusable(Box::new(coded(CORRUPT, &[&shown, &fault.to_string()])))
@@ -803,9 +915,13 @@ fn decode(key: &str, bytes: &[u8]) -> Result<CacheEntry, EntryFault> {
 }
 
 /// Checked access to one snapshot entry: header, metadata, key, body
-/// digest, slot lines, and layout digest, each verified before anything
-/// is trusted.
-fn decode_snapshot(key: &str, bytes: &[u8]) -> Result<(SnapshotEntry, SlotLines), EntryFault> {
+/// digest, then every record line — its validation status, its
+/// snapshot id, its slot count, and its slot names against the layout
+/// digest — each verified before anything is trusted.
+fn decode_snapshot(
+    key: &str,
+    bytes: &[u8],
+) -> Result<(SnapshotEntry, Vec<SnapshotRecord>), EntryFault> {
     let damaged = |reason: String| EntryFault::Damaged(reason);
     let (meta, body) = envelope(EntryClass::Snapshot, bytes)?;
     let meta: SnapshotMeta = serde_json::from_str(meta)
@@ -823,15 +939,32 @@ fn decode_snapshot(key: &str, bytes: &[u8]) -> Result<(SnapshotEntry, SlotLines)
     if snapshot_digest(body.as_bytes()) != meta.digest {
         return Err(damaged("its payload does not match its digest".to_owned()));
     }
-    let slots = decode_slot_lines(body).map_err(damaged)?;
-    if slots.len() != meta.slots || !(body.is_empty() || body.ends_with('\n')) {
-        return Err(damaged(
-            "its slot count does not match its slot lines".to_owned(),
-        ));
+    if !(body.is_empty() || body.ends_with('\n')) {
+        return Err(damaged("its last record line is unterminated".to_owned()));
     }
-    if slot_layout_digest(slots.iter().map(|(name, _)| name.as_str())) != meta.layout {
+    let mut records = Vec::new();
+    for (at, line) in body.split_terminator('\n').enumerate() {
+        let line: RecordLine = serde_json::from_str(line)
+            .map_err(|error| damaged(format!("unreadable record line: {error}")))?;
+        let (record, names) = line.into_record().map_err(damaged)?;
+        if record.snapshot != format!("{key}/{at}") {
+            return Err(damaged(format!(
+                "record {at} names snapshot {:?}",
+                record.snapshot
+            )));
+        }
+        if names.len() != meta.slots
+            || slot_layout_digest(names.iter().map(String::as_str)) != meta.layout
+        {
+            return Err(damaged(format!(
+                "record {at}'s slots do not match the layout"
+            )));
+        }
+        records.push(record);
+    }
+    if records.len() != meta.records {
         return Err(damaged(
-            "its slot names do not match its layout digest".to_owned(),
+            "its record count does not match its record lines".to_owned(),
         ));
     }
     Ok((
@@ -839,7 +972,7 @@ fn decode_snapshot(key: &str, bytes: &[u8]) -> Result<(SnapshotEntry, SlotLines)
             key: key.to_owned(),
             meta,
         },
-        slots,
+        records,
     ))
 }
 

@@ -1,0 +1,27 @@
+{
+  "binary": "kdlith",
+  "description": "a layered value's layer survives snapshot restore and the duplicate policy still governs it: record two bound under locale sv-se held at the override layer, and inside its own span a control sets the slot at the lower base layer (fr-fr), which the held override value outranks, so the record and its probe read sv-se; were the layer lost or restored as base, the same set would be KDLITH-CTX006 and this golden would fail; the state is the real refresh of these inputs, left byte-identical, and the line equals processing/read-data-entry-restore-layered-replay's",
+  "args": [
+    "read",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/read-data-entry-restore-layered/schema.kdl",
+    "--entry",
+    "entry.kdl",
+    "data.kdl",
+    "two",
+    "--state",
+    "state"
+  ],
+  "expect": {
+    "exit": 0,
+    "files": {
+      "state/0c2e669302b23ae8.kdlith-snapshot": "state/0c2e669302b23ae8.kdlith-snapshot",
+      "state/5704a12658e2e03f.kdlith-cache": "state/5704a12658e2e03f.kdlith-cache",
+      "state/b857548b3e800d5c.kdlith-cache": "state/b857548b3e800d5c.kdlith-cache",
+      "state/e5724b71f2704430.kdlith-snapshot": "state/e5724b71f2704430.kdlith-snapshot"
+    },
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

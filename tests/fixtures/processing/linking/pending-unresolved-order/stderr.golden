@@ -1,0 +1,4 @@
+error[KDLITH-REF001]: reference s9 in Setting does not resolve
+  --> data.kdl:3:11
+error[KDLITH-REF005]: pending payload of put-count under codec fixture-value does not match Integer: found string "two"
+  --> data.kdl:2:11

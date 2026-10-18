@@ -1,0 +1,64 @@
+// A layered slot read by a record and by the probes inside it, with
+// controls inside the record's own span setting each layer.
+schema layered version="2" {
+    types {
+        string Locale {
+            format kebab-case
+        }
+        object Probe {
+            field lay "optional<Locale>"
+        }
+        object Stamp {
+            field id String
+            field lay "optional<Locale>"
+            field probes "list<Probe>"
+        }
+    }
+    context {
+        slot lay Locale duplicates=layered {
+            layers override base
+        }
+    }
+    node base role=context-control {
+        field value Locale arg=0
+        effects target=following {
+            set lay field=value layer=base
+        }
+    }
+    node override role=context-control {
+        field value Locale arg=0
+        effects target=following {
+            set lay field=value layer=override
+        }
+    }
+    node stamp role=record type=Stamp {
+        field id arg=0
+        field lay context=lay
+        field probes {
+            from {
+                children probe
+            }
+        }
+        children rebase
+        children reoverride
+        children probe
+    }
+    node reoverride role=context-control parent=stamp {
+        field value Locale arg=0
+        effects target=following {
+            set lay field=value layer=override
+        }
+    }
+    node rebase role=context-control parent=stamp {
+        field value Locale arg=0
+        effects target=following {
+            set lay field=value layer=base
+        }
+    }
+    node probe type=Probe parent=stamp {
+        field lay context=lay
+    }
+    document {
+        following base override stamp
+    }
+}

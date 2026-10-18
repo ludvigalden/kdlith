@@ -219,7 +219,11 @@ document's declarations compose with the read document, observed through
 the bound record's source index. `processing/read-data-entry-import/` pins
 the execution-backed composition: the entry's own import executes in the
 same session, so a record reached through it is found under its own source
-identity. The data verbs take host inputs the fixtures exercise:
+identity. The `processing/read-data-entry-restore*` scenarios pin `read data
+--state`: each seeds a `state/` a real `cache refresh` wrote, the
+restore positives match their `-replay` twins' stdout goldens byte for
+byte (`-revision-miss` matches the plain replay twin), and
+the `invalid/data/read-entry-snapshot-*` negatives pin `KDLITH-CTX004`. The data verbs take host inputs the fixtures exercise:
 `--anchor NAME=PATH` supplies a discovery anchor
 (`processing/bind/import-anchor`), `--handler NAME` installs a built-in
 context handler (`processing/bind/handler-effect`), and `--profile NAME`
@@ -266,7 +270,11 @@ outcome on its own, a gated alias namespace, a contribution's target, and
 a duplicate declaration, while `references-scope-local` shows the view
 linking under local scope too. The
 `invalid/data/reference-*` negatives pin `KDLITH-REF001` through
-`KDLITH-REF004` with no `--scope` flag, so they prove the default.
+`KDLITH-REF004` with no `--scope` flag, so they prove the default. The
+`pending-*` scenarios, over the shared `pending-schema.kdl`, pin pending
+payload validation: `pending-payload-valid` passes, and
+`invalid/data/pending-*` and `pending-unresolved-order` pin
+`KDLITH-REF005` and its order after the link diagnostics.
 
 `schemas/vet/import-repeat-coalesce/` and
 `schemas/vet/import-repeat-instantiate/` pin the two non-default

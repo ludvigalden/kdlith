@@ -78,7 +78,8 @@ enum Command {
     List(ListArgs),
     /// Read one definition or indexed data item
     Read(ReadArgs),
-    /// Inspect, refresh, or clean derived processing state
+    /// Inspect, refresh, or clean derived processing state: cached
+    /// results and record context snapshots
     Cache(CacheArgs),
     /// Show the embedded changelog archive
     Changelog,
@@ -123,7 +124,8 @@ struct GenFormArgs {
     #[arg(long)]
     dry_run: bool,
     /// Compare the generated tree against the destination without
-    /// writing; report drift and exit nonzero on any difference
+    /// writing; report drift and exit nonzero on any difference. A
+    /// definition the generator refuses fails before anything is compared
     #[arg(long, conflicts_with = "dry_run")]
     check: bool,
     /// Definition documents: the dialect entrypoint, or the schema's
@@ -498,29 +500,30 @@ struct CacheArgs {
 
 #[derive(Subcommand)]
 enum CacheCommand {
-    /// List each cached entry with its invocation identity and the
-    /// readings it was derived from; report entries the cache does not
-    /// own or cannot use
+    /// List each owned entry: cached results with their invocation
+    /// identity and derivations, record snapshots with their entry,
+    /// lineage, and counts; report entries not owned or not usable
     Inspect(CacheStateArgs),
     /// Read the data documents through the schema and replace the
-    /// state's owned entries with the bound results the reading caches
+    /// state's owned entries with the bound results and record context
+    /// snapshots the reading derives
     Refresh(CacheRefreshArgs),
-    /// Remove every cache-owned entry; report, never remove, anything
-    /// else in the state directory
+    /// Remove every owned entry, cached results and snapshots alike;
+    /// report, never remove, anything else in the state directory
     Clean(CacheStateArgs),
 }
 
 #[derive(Args)]
 struct CacheStateArgs {
-    /// The state directory the cache keeps its entries in
+    /// The state directory holding the cached results and snapshots
     #[arg(long, value_name = "DIR", required = true)]
     state: PathBuf,
 }
 
 #[derive(Args)]
 struct CacheRefreshArgs {
-    /// The state directory the cache keeps its entries in; created when
-    /// it does not exist, its parent must
+    /// The state directory holding the cached results and snapshots;
+    /// created when it does not exist, its parent must
     #[arg(long, value_name = "DIR", required = true)]
     state: PathBuf,
     /// A dialect definition document replacing the bundled one; it is
@@ -586,10 +589,16 @@ struct ReadDataArgs {
     /// the one `--dialect` names
     #[arg(long, required = true)]
     schema: PathBuf,
-    /// An entry document bound before the read document, establishing
-    /// its declarations and context
+    /// An entry document bound before the read document as its own
+    /// invocation of the same session; its declarations are visible to
+    /// the read document, its context is its own
     #[arg(long)]
     entry: Option<PathBuf>,
+    /// A state directory a cache refresh wrote: the record restores the
+    /// context it bound under and, of the read document, only its span
+    /// binds. A miss replays; another schema or entry chain is CTX004
+    #[arg(long, value_name = "DIR")]
+    state: Option<PathBuf>,
     /// A discovery anchor the schema's and the data documents' import
     /// expressions expand against, as NAME=PATH (repeatable)
     #[arg(

@@ -1,16 +1,21 @@
 {
   "binary": "kdlith",
-  "description": "cache clean removes the owned entries of both classes and nothing else: an intact cache entry, an intact snapshot entry, and a snapshot entry of another canonicalization are removed and named on stdout, while a file named like a snapshot entry that carries a cache header is foreign, left byte-identical, and reported as KDLITH-CAC001 with exit 1",
-  "args": ["cache", "clean", "--state", "state"],
+  "description": "cache clean removes the owned entries of both classes and nothing else: an intact cache entry, an intact snapshot entry, and a snapshot entry of an earlier format are removed and named on stdout, while a file named like a snapshot entry that carries a cache header is foreign, left byte-identical, and reported as KDLITH-CAC001 with exit 1",
+  "args": [
+    "cache",
+    "clean",
+    "--state",
+    "state"
+  ],
   "expect": {
     "exit": 1,
     "files": {
       "state/2222222222222222.kdlith-snapshot": "expected/2222222222222222.kdlith-snapshot"
     },
     "absent": [
-      "state/087115ac0fd96e64.kdlith-cache",
-      "state/18f93b1853515e00.kdlith-snapshot",
-      "state/ffffffffffffffff.kdlith-snapshot"
+      "state/f0fd2bdc2cff1c72.kdlith-cache",
+      "state/da80e2319bfa34ae.kdlith-snapshot",
+      "state/18f93b1853515e00.kdlith-snapshot"
     ],
     "stdout-golden": "stdout.golden",
     "stderr-golden": "stderr.golden"

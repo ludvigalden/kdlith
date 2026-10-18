@@ -1,0 +1,10 @@
+base en-gb
+stamp one {
+    reoverride de-de
+    probe
+}
+override sv-se
+stamp two {
+    rebase fr-fr
+    probe
+}

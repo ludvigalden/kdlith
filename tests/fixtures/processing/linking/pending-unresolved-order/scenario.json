@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "Resolution precedes payload validation: the pending item whose reference resolves but whose payload is a string where its Integer member is declared fails KDLITH-REF005, while the later item whose reference resolves to nothing fails KDLITH-REF001 alone, its equally wrong payload never validated; the link diagnostic is reported before the payload diagnostic although its item streams after it",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/linking/pending-schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

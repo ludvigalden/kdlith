@@ -1,12 +1,17 @@
 {
   "binary": "kdlith",
-  "description": "cache inspect labels each owned entry by class: a state seeded with the bytes a real refresh of processing/cache/snapshot-write wrote lists the cache entry (key, invocation identity, item count, derived line) and then the snapshot entry (key, entry as spelled, revision, schema fingerprint, profile selection, lineage, slot count, layout digest); stdout and stderr pinned byte for byte, and inspection writes nothing",
-  "args": ["cache", "inspect", "--state", "state"],
+  "description": "cache inspect labels each owned entry by class: a state seeded with the bytes a real refresh of processing/cache/snapshot-write wrote lists the cache entry (key, invocation identity, item count, derived line) and then the snapshot entry (key, entry as spelled, revision, schema fingerprint, profile selection, lineage, record count, slot count, layout digest); stdout and stderr pinned byte for byte, and inspection writes nothing",
+  "args": [
+    "cache",
+    "inspect",
+    "--state",
+    "state"
+  ],
   "expect": {
     "exit": 0,
     "files": {
-      "state/087115ac0fd96e64.kdlith-cache": "state/087115ac0fd96e64.kdlith-cache",
-      "state/18f93b1853515e00.kdlith-snapshot": "state/18f93b1853515e00.kdlith-snapshot"
+      "state/f0fd2bdc2cff1c72.kdlith-cache": "state/f0fd2bdc2cff1c72.kdlith-cache",
+      "state/da80e2319bfa34ae.kdlith-snapshot": "state/da80e2319bfa34ae.kdlith-snapshot"
     },
     "stdout-golden": "stdout.golden",
     "stderr-golden": "stderr.golden"

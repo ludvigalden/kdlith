@@ -1,0 +1,2 @@
+kdlith-snapshot format=2 canonicalization=2
+{"key":"20db6c0195111646","entry":"entry.kdl","revision":"fnv1a64:b892e522ece3e9c2","schema":"fnv1a64:0b1347b9931fba58","profiles":"fnv1a64:e1b51df36e161fca","lineage":["entry.kdl"],"records":0,"slots":1,"layout":"fnv1a64:c63f52fb0be76339","digest":"fnv1a64:b9a88b09eb863eeb"}

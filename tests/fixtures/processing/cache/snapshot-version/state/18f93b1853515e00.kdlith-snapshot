@@ -1,4 +1,4 @@
-kdlith-snapshot format=9 canonicalization=1
+kdlith-snapshot format=1 canonicalization=1
 {"key":"18f93b1853515e00","entry":"entry.kdl","revision":"fnv1a64:ea4340603997dce6","schema":"fnv1a64:dc7d34668e3669fe","profiles":"fnv1a64:e1b51df36e161fca","lineage":["entry.kdl"],"slots":2,"layout":"fnv1a64:d3616258da16a477","digest":"fnv1a64:e6fe2addd382fe2e"}
 {"name":"locale","value":{"kind":"string","value":"en-gb"},"layer":"base"}
 {"name":"region","value":{"kind":"string","value":"en-us"},"layer":null}

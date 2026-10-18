@@ -50,7 +50,7 @@ pub use compile::input::{
     VariantInput,
 };
 pub use compile::{DIALECT_VERSION, compile_dialect, compile_dialect_input, compile_schema_input};
-pub use data::{BoundResult, DataReader, EntryContext, ReadOptions};
+pub use data::{BoundResult, DataReader, EntryContext, ReadOptions, RecordContext, Restored};
 pub use definition::{
     AccumulateOp, AnchorDecl, CheckScope, Definition, DefinitionKind, DiscoveryDecl, DocumentRule,
     DuplicateTreatment, ImportDecl, MatchKind, MatchRule, MergeDuplicates, MissingRequirement,
@@ -68,8 +68,8 @@ pub use extensions::{
 pub use kdlith_model::ResolvedContribution;
 pub use kdlith_runtime::{
     CacheEntry, CacheScan, CleanOutcome, Derivation, EncodedEntry, EntryClass, EntryFault,
-    OwnedEntry, SnapshotEntry, SnapshotMeta, WriteOutcome, cache_key, clean_state, scan_state,
-    snapshot_key, write_state,
+    OwnedEntry, SnapshotEntry, SnapshotMeta, SnapshotRecord, WriteOutcome, cache_key, clean_state,
+    scan_state, snapshot_key, write_state,
 };
 pub use kdlith_runtime::{
     ContributionPolicy, ContributionRecord, ContributionResolver, LAYERED, Layered,
@@ -81,7 +81,7 @@ pub use kdlith_runtime::{
 pub use link::{
     BoundReference, DuplicateDeclaration, IdentityIndex, IndexedDeclaration, Link, LinkInputs,
     LinkOutcome, LinkReport, Lookup, ReferenceLinks, UnmetQualifier, bind_references,
-    derive_candidates, index_identities, link,
+    derive_candidates, index_identities, link, link_reading,
 };
 pub use list::{
     IndexEntry, IndexKind, ItemIndex, NodeEntry, ProfileEntry, TypeEntry, index_items, list_nodes,
@@ -94,17 +94,18 @@ pub use snapshot_store::{SnapshotLoad, encode_snapshot_entry, load_snapshot};
 pub use snapshots::{
     ContextSnapshot, SNAPSHOT_MISMATCH, SnapshotError, SnapshotIndex, SnapshotIndexEntry,
     ValidationStatus as SnapshotValidation, definition_layout_digest, snapshot_fingerprint,
-    snapshot_payload,
 };
 pub use source_context::{AppliedSourceValue, apply as apply_source_context};
 pub use structure::{Occurs, OrderRule, ScopeRules, ScopeState, Violation};
 pub use symbols::{ContributionDescriptor, DeclarationDescriptor, ReferencePolicy, SymbolCatalog};
 pub use syntax::ParsedDocument;
+#[allow(deprecated)]
+pub use typed::Links;
 pub use typed::{
     Declarations, Expression, FieldShape, Fields, FromFields, FromValue, Handler, ItemVariant,
-    Links, LogicalType, Mismatch, NodeShape, OrderedMap, ReadError, ReadFn, Ref, Shaped, SlotShape,
-    TypeShape, TypedItem, TypedReader, Unresolved, ValueExpr, VariantShape, member_value,
-    object_value, read_fields, text_value, variant_value,
+    LogicalType, Mismatch, NodeShape, OrderedMap, ReadError, ReadFn, Reading, Ref, ResolveError,
+    Shaped, SlotShape, TypeShape, TypedItem, TypedReader, Unresolved, ValueExpr, VariantShape,
+    member_value, object_value, read_fields, reference_value, text_value, variant_value,
 };
 pub use types::{
     Builtin, CaptureDef, CodecDecl, Constraint, DefaultSpec, EnumMember, EnumType, ExpandedGroup,

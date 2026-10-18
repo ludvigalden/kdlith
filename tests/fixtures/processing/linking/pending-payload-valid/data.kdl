@@ -1,0 +1,8 @@
+setting "s1" text="a" count=1 "x"
+put-text "s1" "b"
+put-count "s1" 2
+put-tags "s1"
+put-tags "s1" "p"
+put-tags "s1" "p" "q"
+put-note "s1"
+put-note "s1" "n"

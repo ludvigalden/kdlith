@@ -3,5 +3,5 @@ cache 6a04fc03b2b2d0f9 revision=fnv1a64:36bdb8244ceeaa7e schema=fnv1a64:47b688ab
   derived entry=data.kdl source=part.kdl caller=data.kdl
 cache 7d32de8aad864ffd revision=fnv1a64:f2958960a2cd65cc schema=fnv1a64:47b688abe06a8e86 context=fnv1a64:97c312de49340b52 profiles=fnv1a64:e1b51df36e161fca resolved=fnv1a64:7c4cd565807bb610 policy=reject items=2
   derived entry=other.kdl source=other.kdl caller=-
-snapshot 05e8c8e97b56de20 entry=data.kdl revision=fnv1a64:33c7bdffe5ba6534 schema=fnv1a64:47b688abe06a8e86 profiles=fnv1a64:e1b51df36e161fca lineage=[data.kdl] slots=1 layout=fnv1a64:c63f52fb0be76339
-snapshot d7ab998e922f273d entry=other.kdl revision=fnv1a64:f2958960a2cd65cc schema=fnv1a64:47b688abe06a8e86 profiles=fnv1a64:e1b51df36e161fca lineage=[other.kdl] slots=1 layout=fnv1a64:c63f52fb0be76339
+snapshot 05e8c8e97b56de20 entry=data.kdl revision=fnv1a64:33c7bdffe5ba6534 schema=fnv1a64:47b688abe06a8e86 profiles=fnv1a64:e1b51df36e161fca lineage=[data.kdl] records=3 slots=1 layout=fnv1a64:c63f52fb0be76339
+snapshot d7ab998e922f273d entry=other.kdl revision=fnv1a64:f2958960a2cd65cc schema=fnv1a64:47b688abe06a8e86 profiles=fnv1a64:e1b51df36e161fca lineage=[data.kdl,other.kdl] records=1 slots=1 layout=fnv1a64:c63f52fb0be76339

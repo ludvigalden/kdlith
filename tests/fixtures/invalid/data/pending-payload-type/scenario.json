@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A pending payload whose reference resolves fails its member type: two values where a String member takes exactly one (several values never collapse into a scalar), a string where an Integer is declared, a number among a list<String> member's values, two values for an optional member, and a string as the one element of a list<list<String>> member, where each element must itself be a list and a scalar is never promoted to one",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/linking/pending-schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

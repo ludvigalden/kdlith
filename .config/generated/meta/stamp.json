@@ -45,10 +45,6 @@
       "origin": "generated",
       "mode": "0644"
     },
-    ".config/generated/tools/security/betterleaks.toml": {
-      "sha256": "f57f191fa97ee44df54051be9353be4b9ff73b22be9c7a725fb879be6a1789c3",
-      "origin": "generated"
-    },
     ".config/generated/tools/yaml/.yamlfmt": {
       "sha256": "c9cd9deec23f3f7fbef5ffd5cd8f54983239fa2d59944994db6bb85fd0c20e93",
       "origin": "generated"
@@ -57,5 +53,8 @@
       "sha256": "f83fd31789a3fa79a29f03dfa2a6be20c599a128027c2755ca52bec55e58ad92",
       "origin": "generated"
     }
+  },
+  "overrides": {
+    ".config/security/betterleaks.toml": "916cfbc19ccb5b7bda1a16dbd4f35abd67dbb7f6023bb836d12df21a0acdad75"
   }
 }

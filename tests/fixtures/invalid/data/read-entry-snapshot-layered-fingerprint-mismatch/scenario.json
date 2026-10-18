@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "a layered record's snapshot captured under another schema is KDLITH-CTX004, never a restore of its layered values: the state is the real refresh of processing/read-data-entry-restore-layered's documents under schema-b.kdl (that schema at version 2), the read names the version-1 schema, and the restore's fingerprint check rejects it, exit 1",
+  "args": [
+    "read",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/read-data-entry-restore-layered/schema.kdl",
+    "--entry",
+    "entry.kdl",
+    "data.kdl",
+    "two",
+    "--state",
+    "state"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

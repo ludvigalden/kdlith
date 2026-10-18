@@ -1,12 +1,17 @@
 {
   "binary": "kdlith",
-  "description": "a snapshot entry written under another format or canonicalization is a typed unusable outcome, never misread: a state holding the bytes of a real snapshot entry with only its header's format (9) or canonicalization (2) changed lists no intact entry, reports each as KDLITH-CAC002 naming the header it was written under beside this version's, exits 1, and leaves both files byte-identical",
-  "args": ["cache", "inspect", "--state", "state"],
+  "description": "a snapshot entry written under another format or canonicalization is a typed unusable outcome, never misread: a state holding a real format-1 entry (the per-entry-document shape an earlier build wrote, committed byte for byte) and the bytes of a real current entry with only its header's canonicalization changed (3) lists no intact entry, reports each as KDLITH-CAC002 naming the header it was written under beside this version's (format=2 canonicalization=2), exits 1, and leaves both files byte-identical",
+  "args": [
+    "cache",
+    "inspect",
+    "--state",
+    "state"
+  ],
   "expect": {
     "exit": 1,
     "files": {
       "state/18f93b1853515e00.kdlith-snapshot": "state/18f93b1853515e00.kdlith-snapshot",
-      "state/ffffffffffffffff.kdlith-snapshot": "state/ffffffffffffffff.kdlith-snapshot"
+      "state/da80e2319bfa34ae.kdlith-snapshot": "state/da80e2319bfa34ae.kdlith-snapshot"
     },
     "stdout-golden": "stdout.golden",
     "stderr-golden": "stderr.golden"

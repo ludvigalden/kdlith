@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "cache refresh writes an entry document's context snapshot beside its bound result: entry.kdl sets the layered locale slot (base layer) and the plain region slot, so the state gains the cache entry and one <key>.kdlith-snapshot entry whose header (kdlith-snapshot format=1 canonicalization=1), metadata line (key, entry as spelled, revision, schema fingerprint, profile selection, lineage [entry.kdl], slot count, layout and body digests), and one tagged slot line per slot with its layer are pinned byte for byte; no part file remains",
+  "description": "cache refresh indexes each record an entry reading binds with the context it bound under: entry.kdl sets the layered locale slot (base layer) and the plain region slot, then binds record one directly and record two under an override control (locale sv-se, layer override). The state gains the cache entry and one <key>.kdlith-snapshot entry whose header (kdlith-snapshot format=2 canonicalization=2), metadata line (key, entry as spelled, revision, schema fingerprint, profile selection, lineage [entry.kdl], record and slot counts, layout and body digests), and one index line per record in stream order (identity, type, source revision digest, source id, node index, span, snapshot id <key>/<n>, validation status, and every slot with its value and layer — base for one, override for two) are pinned byte for byte; no part file remains",
   "args": [
     "cache",
     "refresh",
@@ -13,12 +13,12 @@
   "expect": {
     "exit": 0,
     "files": {
-      "state/18f93b1853515e00.kdlith-snapshot": "expected/18f93b1853515e00.kdlith-snapshot",
-      "state/087115ac0fd96e64.kdlith-cache": "expected/087115ac0fd96e64.kdlith-cache"
+      "state/da80e2319bfa34ae.kdlith-snapshot": "expected/da80e2319bfa34ae.kdlith-snapshot",
+      "state/f0fd2bdc2cff1c72.kdlith-cache": "expected/f0fd2bdc2cff1c72.kdlith-cache"
     },
     "absent": [
-      "state/.18f93b1853515e00.kdlith-snapshot-part",
-      "state/.087115ac0fd96e64.kdlith-cache-part"
+      "state/.da80e2319bfa34ae.kdlith-snapshot-part",
+      "state/.f0fd2bdc2cff1c72.kdlith-cache-part"
     ],
     "stdout-golden": "stdout.golden",
     "stderr-golden": "stderr.golden"

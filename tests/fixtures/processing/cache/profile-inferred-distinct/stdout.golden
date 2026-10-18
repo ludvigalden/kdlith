@@ -2,5 +2,5 @@ cache 2c9f94eb29b3e0ce revision=fnv1a64:eb591ae7d7f555e5 schema=fnv1a64:c3e4b32e
   derived entry=plain.kdl source=plain.kdl caller=-
 cache 52db412dcd119e26 revision=fnv1a64:eb591ae7d7f555e5 schema=fnv1a64:c3e4b32ef08677af context=fnv1a64:9997e70adc235eeb profiles=fnv1a64:4bb1db6ee8157a42 resolved=fnv1a64:7c4cd565807bb610 policy=reject items=2
   derived entry=retail.kdl source=retail.kdl caller=-
-snapshot 2807c14000b991f1 entry=retail.kdl revision=fnv1a64:eb591ae7d7f555e5 schema=fnv1a64:c3e4b32ef08677af profiles=fnv1a64:4bb1db6ee8157a42 lineage=[retail.kdl] slots=0 layout=fnv1a64:adcd05b1a3b78f21
-snapshot 904161af3aee225f entry=plain.kdl revision=fnv1a64:eb591ae7d7f555e5 schema=fnv1a64:c3e4b32ef08677af profiles=fnv1a64:8365def15d97f091 lineage=[plain.kdl] slots=0 layout=fnv1a64:adcd05b1a3b78f21
+snapshot 2807c14000b991f1 entry=retail.kdl revision=fnv1a64:eb591ae7d7f555e5 schema=fnv1a64:c3e4b32ef08677af profiles=fnv1a64:4bb1db6ee8157a42 lineage=[retail.kdl] records=1 slots=0 layout=fnv1a64:adcd05b1a3b78f21
+snapshot 904161af3aee225f entry=plain.kdl revision=fnv1a64:eb591ae7d7f555e5 schema=fnv1a64:c3e4b32ef08677af profiles=fnv1a64:8365def15d97f091 lineage=[retail.kdl,plain.kdl] records=1 slots=0 layout=fnv1a64:adcd05b1a3b78f21

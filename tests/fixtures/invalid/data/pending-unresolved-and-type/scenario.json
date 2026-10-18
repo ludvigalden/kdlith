@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "One pending item's reference resolves to nothing and fails KDLITH-REF001 without its payload being validated, while another item's reference resolves and its string payload fails the Integer member with KDLITH-REF005",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/linking/pending-schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

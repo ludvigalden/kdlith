@@ -7,7 +7,7 @@ use std::path::Path;
 
 use kdlith_diagnostic::registry::{lookup, render};
 use kdlith_diagnostic::{DiagnosticRecord, ExitStatus};
-use kdlith_engine::record_identity;
+use kdlith_engine::{Restored, record_identity};
 use kdlith_model::Item;
 use kdlith_parse::Parser;
 
@@ -77,7 +77,10 @@ pub(crate) fn source_error(code: &str, values: &[&str]) -> DiagnosticRecord {
 /// documents' imports execute as invocations, so a record reached
 /// through an import is found like any other. The binding always runs
 /// to the end, so a diagnostic anywhere in the documents fails the read
-/// even after the record is found.
+/// even after the record is found. With `--state`, a snapshot of the
+/// record restores its context and, of the read document, only its span
+/// binds; a store that cannot serve it replays, and a snapshot from
+/// another definition or entry chain fails (`KDLITH-CTX004`).
 pub(crate) fn read_data(args: &crate::ReadDataArgs) -> ExitStatus {
     let options = match args
         .profiles
@@ -97,42 +100,89 @@ pub(crate) fn read_data(args: &crate::ReadDataArgs) -> ExitStatus {
         documents.push(entry);
     }
     documents.push(args.file.as_path());
-    let mut records: Vec<DiagnosticRecord> = Vec::new();
-    let mut found: Option<Item> = None;
-    let mut sink = |item: Item| {
-        if let Item::Diagnostic(record) = &item {
-            records.push((**record).clone());
-        }
-        if found.is_none() && record_identity(&item) == Some(args.id.as_str()) {
-            found = Some(item);
-        }
-    };
     let reader = options.reader(&definition);
-    let read = reader.read(&documents, &options.read_options(), &mut sink);
+    let read_options = options.read_options();
+    if let Some(state) = args.state.as_deref() {
+        let mut found = Found::new(&args.id);
+        let restored =
+            reader.read_restored(&documents, &read_options, state, &args.id, &mut |item| {
+                found.take(item)
+            });
+        match restored {
+            Ok(Restored::Bound(_)) => return found.finish(args),
+            Ok(Restored::Unusable(record)) => return report(&record),
+            Ok(Restored::Mismatch(mismatch)) => {
+                let (error, snapshot) = *mismatch;
+                return report(&error.diagnostic(&snapshot));
+            }
+            Err(error) => {
+                report_all(&found.records);
+                eprintln!("kdlith: {error}");
+                return ExitStatus::Failure;
+            }
+            // A miss emitted nothing: the documents are replayed.
+            Ok(_) => {}
+        }
+    }
+    let mut found = Found::new(&args.id);
+    let read = reader.read(&documents, &read_options, &mut |item| found.take(item));
     if let Err(error) = read {
-        report_all(&records);
+        report_all(&found.records);
         eprintln!("kdlith: {error}");
         return ExitStatus::Failure;
     }
-    match found {
-        Some(item) => {
-            let mut out = std::io::stdout().lock();
-            let written = write_item(&mut out, &item).is_ok();
-            drop(out);
-            if written {
-                report_all(&records)
-            } else {
+    found.finish(args)
+}
+
+/// The diagnostics a reading reported and the first item carrying the
+/// identity asked for.
+struct Found<'a> {
+    id: &'a str,
+    records: Vec<DiagnosticRecord>,
+    item: Option<Item>,
+}
+
+impl<'a> Found<'a> {
+    fn new(id: &'a str) -> Self {
+        Self {
+            id,
+            records: Vec::new(),
+            item: None,
+        }
+    }
+
+    fn take(&mut self, item: Item) {
+        if let Item::Diagnostic(record) = &item {
+            self.records.push((**record).clone());
+        }
+        if self.item.is_none() && record_identity(&item) == Some(self.id) {
+            self.item = Some(item);
+        }
+    }
+
+    /// Print the record found and every diagnostic, or report that none
+    /// was found.
+    fn finish(self, args: &crate::ReadDataArgs) -> ExitStatus {
+        match self.item {
+            Some(item) => {
+                let mut out = std::io::stdout().lock();
+                let written = write_item(&mut out, &item).is_ok();
+                drop(out);
+                if written {
+                    report_all(&self.records)
+                } else {
+                    ExitStatus::Failure
+                }
+            }
+            None => {
+                report_all(&self.records);
+                eprintln!(
+                    "kdlith: no record with identity {} in {}",
+                    args.id,
+                    args.file.display()
+                );
                 ExitStatus::Failure
             }
-        }
-        None => {
-            report_all(&records);
-            eprintln!(
-                "kdlith: no record with identity {} in {}",
-                args.id,
-                args.file.display()
-            );
-            ExitStatus::Failure
         }
     }
 }

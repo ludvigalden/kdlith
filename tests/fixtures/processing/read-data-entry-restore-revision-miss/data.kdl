@@ -1,0 +1,6 @@
+locale sv-se
+region fi-fi
+section "Main" {
+    public
+    item one kind=book title="Dune"
+}

@@ -1,2 +1,9 @@
 locale en-gb
 region en-us
+section "Main" {
+    public
+    item one kind=book
+    override sv-se {
+        item two kind=film
+    }
+}

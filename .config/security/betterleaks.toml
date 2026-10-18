@@ -1,0 +1,20 @@
+# Secret and policy scan: the repository override of the generated
+# baseline, which it replaces whole. The default rule set is inherited.
+
+title = 'secret and policy scan'
+minVersion = 'v2.0.0-rc.1'
+
+# Overrides: findings inside committed cache and snapshot fixture
+# entries whose value is a content-addressed FNV-1a key or digest (16
+# lowercase hex digits). These are deterministic state digests, not
+# credentials; any other value in those files, and everything elsewhere,
+# is still reported. The tree scan reports absolute paths and the
+# history scan repository-relative ones, so the path is anchored at a
+# segment boundary.
+filter = '''
+matchesAny(attributes["path"], [`(^|/)tests/fixtures/.*\.kdlith-(cache|snapshot)$`]) &&
+matchesAny(finding["secret"], [`^(fnv1a64:)?[0-9a-f]{16}$`])
+'''
+
+[extend]
+useDefault = true

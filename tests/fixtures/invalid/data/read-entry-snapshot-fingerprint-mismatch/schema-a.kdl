@@ -1,0 +1,29 @@
+// The schema a restore requests under; schema-b.kdl differs only in its
+// version, so its fingerprint differs.
+schema shelf version="1" {
+    types {
+        string Locale {
+            format kebab-case
+        }
+        object Item {
+            field id String
+            field locale Locale
+        }
+    }
+    context {
+        slot locale Locale
+    }
+    node locale role=context-control {
+        field value Locale arg=0
+        effects target=following {
+            set locale field=value
+        }
+    }
+    node item role=record type=Item {
+        field id arg=0
+        field locale context=locale
+    }
+    document {
+        following locale item
+    }
+}

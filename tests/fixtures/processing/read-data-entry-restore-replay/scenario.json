@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "the replay twin of processing/read-data-entry-restore: identical inputs without --state, so both documents bind in full; its stdout golden is byte-identical to the restore scenario's, proving restored and replayed output equal, with the record's context-fed locale and region governing the line in both",
+  "args": [
+    "read",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "--entry",
+    "entry.kdl",
+    "data.kdl",
+    "one"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

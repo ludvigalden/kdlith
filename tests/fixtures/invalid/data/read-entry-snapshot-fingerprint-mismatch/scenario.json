@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "a snapshot captured under another schema is rejected at restore, never restored best-effort: the state is the real refresh under schema-b.kdl, the read names schema-a.kdl over the same entry and data documents, so the store hands over the record's snapshot (same document, revision, profiles, so the same key) and the restore's fingerprint check fails with the engine's KDLITH-CTX004, exit 1",
+  "args": [
+    "read",
+    "data",
+    "--schema",
+    "schema-a.kdl",
+    "--entry",
+    "entry.kdl",
+    "data.kdl",
+    "one",
+    "--state",
+    "state"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

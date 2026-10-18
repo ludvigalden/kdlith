@@ -10,6 +10,7 @@ use kdlith_runtime::{EncodedEntry, encode_entry};
 
 use crate::data::{DataReader, ReadOptions};
 use crate::snapshot_store::encode_snapshot_entry;
+use crate::snapshots::snapshot_fingerprint;
 use crate::typed::ReadError;
 
 /// What one derivation produced: the entries to persist — the bound
@@ -26,10 +27,11 @@ pub struct DerivedState {
 
 /// Read the entry documents and their imports, and encode each bound
 /// result the reading cached as one owned entry, and each entry
-/// document's context as one snapshot entry. The reading is the same
+/// document's records with the contexts they bound under as one
+/// snapshot entry. The reading is the same
 /// execution-backed one every data verb runs, so an entry holds exactly
-/// what the session-level cache would replay. An entry whose binding
-/// consulted the value resolver gets no snapshot.
+/// what the session-level cache would replay. An entry whose reading
+/// consulted the value resolver gets no snapshot entry.
 pub fn derive_state(
     reader: &DataReader<'_>,
     entries: &[&Path],
@@ -52,10 +54,11 @@ pub fn derive_state(
     }
     encoded.sort_by(|a, b| a.entry.key().cmp(b.entry.key()));
     let def = reader.definition();
+    let fingerprint = snapshot_fingerprint(def);
     let mut snapshots = Vec::new();
-    for (entry, snapshot) in reader.entry_snapshots(contexts) {
-        if let Some(snapshot) = snapshot {
-            let encoded = encode_snapshot_entry(def, &entry, &snapshot)
+    for (entry, records) in reader.record_snapshots(contexts) {
+        if let Some(records) = records {
+            let encoded = encode_snapshot_entry(def, &entry, &records, &fingerprint)
                 .map_err(|_| ReadError::UnsupportedItem)?;
             snapshots.push(encoded);
         }

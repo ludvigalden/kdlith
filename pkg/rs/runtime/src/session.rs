@@ -177,6 +177,14 @@ where
         self
     }
 
+    /// Number the first node opened `node` rather than 0, so a node bound
+    /// alone keeps the identity it had in its whole document.
+    #[must_use]
+    pub fn starting_at(mut self, node: u32) -> Self {
+        self.next_node = node;
+        self
+    }
+
     pub fn source_id(&self) -> SourceId {
         self.source_id
     }

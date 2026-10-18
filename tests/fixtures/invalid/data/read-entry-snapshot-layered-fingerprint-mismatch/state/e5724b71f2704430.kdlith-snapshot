@@ -1,0 +1,4 @@
+kdlith-snapshot format=2 canonicalization=2
+{"key":"e5724b71f2704430","entry":"data.kdl","revision":"fnv1a64:1ee4dc5a7bd16830","schema":"fnv1a64:e655414c67fec4b9","profiles":"fnv1a64:e1b51df36e161fca","lineage":["entry.kdl","data.kdl"],"records":2,"slots":1,"layout":"fnv1a64:4721bc569ce56c38","digest":"fnv1a64:c87228cb1e11cff4"}
+{"identity":"one","type":"Stamp","digest":"fnv1a64:1ee4dc5a7bd16830","source":1,"node":1,"span":{"start":11,"end":16},"snapshot":"e5724b71f2704430/0","validation":"validated","slots":[{"name":"lay","value":{"kind":"string","value":"en-gb"},"layer":"base"}]}
+{"identity":"two","type":"Stamp","digest":"fnv1a64:1ee4dc5a7bd16830","source":1,"node":5,"span":{"start":71,"end":76},"snapshot":"e5724b71f2704430/1","validation":"validated","slots":[{"name":"lay","value":{"kind":"string","value":"sv-se"},"layer":"override"}]}

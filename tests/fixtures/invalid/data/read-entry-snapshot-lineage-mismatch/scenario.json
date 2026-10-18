@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "a snapshot captured under another entry chain is rejected at restore rather than printing a source id replay would not: the state is the real refresh of entry.kdl then data.kdl (lineage [entry.kdl,data.kdl], the record at source 1), the read names data.kdl without --entry, which keys the same snapshot, and the restore's lineage check fails with KDLITH-CTX004, exit 1",
+  "args": [
+    "read",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "data.kdl",
+    "one",
+    "--state",
+    "state"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

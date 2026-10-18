@@ -1,0 +1,27 @@
+{
+  "binary": "kdlith",
+  "description": "a snapshot of an earlier revision of the record's document is a key miss that falls back to replay, never a restore of stale context: the state is the real refresh of a data.kdl whose first control set locale de-de, the scenario's data.kdl sets sv-se, so its revision keys no snapshot; the record line carries sv-se and is byte-identical to processing/read-data-entry-restore-replay's",
+  "args": [
+    "read",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "--entry",
+    "entry.kdl",
+    "data.kdl",
+    "one",
+    "--state",
+    "state"
+  ],
+  "expect": {
+    "exit": 0,
+    "files": {
+      "state/087115ac0fd96e64.kdlith-cache": "state/087115ac0fd96e64.kdlith-cache",
+      "state/18f93b1853515e00.kdlith-snapshot": "state/18f93b1853515e00.kdlith-snapshot",
+      "state/39244c7bccb036f3.kdlith-snapshot": "state/39244c7bccb036f3.kdlith-snapshot",
+      "state/d9a23c06826bda84.kdlith-cache": "state/d9a23c06826bda84.kdlith-cache"
+    },
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

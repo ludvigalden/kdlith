@@ -1,0 +1,27 @@
+{
+  "binary": "kdlith",
+  "description": "an entry whose import tree grew after the scan shifts the record's source id, and restore follows the invocation as it is now, never the scan's numbering: the state is the real refresh with entry.kdl importing x.kdl alone (the record indexed at source 2), the scenario's x.kdl now imports y.kdl; the record's document is unchanged, so its snapshot still restores, while the entries before it bind as in replay (numbering the invocations, their diagnostics surfaced, their items not printed); the record line carries source 3 and is byte-identical to processing/read-data-entry-restore-import-shift-replay's",
+  "args": [
+    "read",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "--entry",
+    "entry.kdl",
+    "data.kdl",
+    "one",
+    "--state",
+    "state"
+  ],
+  "expect": {
+    "exit": 0,
+    "files": {
+      "state/59d7e8266aada090.kdlith-cache": "state/59d7e8266aada090.kdlith-cache",
+      "state/6de4a696fa92688f.kdlith-snapshot": "state/6de4a696fa92688f.kdlith-snapshot",
+      "state/839a746a454a83a7.kdlith-snapshot": "state/839a746a454a83a7.kdlith-snapshot",
+      "state/a7efc653717addd2.kdlith-cache": "state/a7efc653717addd2.kdlith-cache"
+    },
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

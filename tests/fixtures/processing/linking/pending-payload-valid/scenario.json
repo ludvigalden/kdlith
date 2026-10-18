@@ -1,0 +1,20 @@
+{
+  "binary": "kdlith",
+  "description": "Linking validates each pending payload against the member type of the declaration its reference resolved to, and every payload here fits: a String and an Integer member take exactly one value, a list member zero, one, or several values each of its element type, and an optional member none or one; under complete scope the run exits 0 and the bound view still admits every pending item with its raw payload unchanged, so validation executes nothing",
+  "args": [
+    "inspect",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "{fx-suite}/processing/linking/pending-schema.kdl",
+    "--view",
+    "bound",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

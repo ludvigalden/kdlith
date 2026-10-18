@@ -40,7 +40,7 @@ fn inspect(state: &Path) -> ExitStatus {
     combine(printed, report_all(&scan.records(state)))
 }
 
-/// Derive the state the data reading caches — bound results and entry
+/// Derive the state the data reading caches — bound results and record
 /// context snapshots — and replace the owned entries with it. Nothing
 /// is written when the reading fails or the directory holds a foreign
 /// entry.

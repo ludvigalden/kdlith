@@ -1,0 +1,27 @@
+{
+  "binary": "kdlith",
+  "description": "read data --state restores the indexed record instead of replaying its documents: the seeded state is the real cache refresh of these exact inputs, so the record's snapshot holds the context it bound under (locale sv-se at base, region fi-fi, both set by controls earlier in data.kdl), restore binds only the record's span under it with the source id and node index the scan recorded, and the record line is byte-identical to the replay twin's (processing/read-data-entry-restore-replay); the state is left byte-identical, the read never writes the store",
+  "args": [
+    "read",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "--entry",
+    "entry.kdl",
+    "data.kdl",
+    "one",
+    "--state",
+    "state"
+  ],
+  "expect": {
+    "exit": 0,
+    "files": {
+      "state/087115ac0fd96e64.kdlith-cache": "state/087115ac0fd96e64.kdlith-cache",
+      "state/18f93b1853515e00.kdlith-snapshot": "state/18f93b1853515e00.kdlith-snapshot",
+      "state/59d7e8266aada090.kdlith-cache": "state/59d7e8266aada090.kdlith-cache",
+      "state/839a746a454a83a7.kdlith-snapshot": "state/839a746a454a83a7.kdlith-snapshot"
+    },
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

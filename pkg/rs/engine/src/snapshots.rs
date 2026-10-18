@@ -4,8 +4,7 @@
 
 use kdlith_diagnostic::DiagnosticRecord;
 use kdlith_runtime::{
-    Context, ContextError, ContextLayout, SlotId, SlotValue, encode_slot_lines, slot_layout_digest,
-    stable_hash,
+    Context, ContextError, ContextLayout, SlotId, SlotValue, slot_layout_digest, stable_hash,
 };
 
 use crate::definition::Definition;
@@ -297,14 +296,6 @@ impl SnapshotIndex {
     }
 }
 
-/// The payload of a persisted snapshot: one line per slot in slot-id
-/// order, each naming its slot, with the value in its tagged form and
-/// its layer — the context view's slot form. Provenance is not
-/// persisted: a trace locates nodes of one reading and is not semantics.
-pub fn snapshot_payload(def: &Definition, values: &[Option<SlotValue>]) -> String {
-    encode_slot_lines(&slot_names(def), values)
-}
-
 /// The stamped digest of `def`'s slot layout: its slot names in slot-id
 /// order.
 pub fn definition_layout_digest(def: &Definition) -> String {
@@ -319,7 +310,7 @@ pub fn snapshot_fingerprint(def: &Definition) -> String {
 }
 
 /// Each slot's name, in slot-id order.
-fn slot_names(def: &Definition) -> Vec<String> {
+pub(crate) fn slot_names(def: &Definition) -> Vec<String> {
     let mut names = vec![String::new(); def.plan.context.layout.slot_count()];
     for slot in &def.slots {
         if let Some(id) = def.plan.context.slot(slot.name)

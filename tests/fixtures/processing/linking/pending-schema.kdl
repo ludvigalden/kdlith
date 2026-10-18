@@ -1,0 +1,62 @@
+// The schema the pending-payload scenarios share: settings declared by
+// name, and contributions whose payload binds against one member of the
+// referenced setting through fixture-value, a binding codec the
+// reference processor does not install, so every payload stays pending
+// until linking validates it.
+schema pending version="1" {
+    types {
+        object Setting {
+            field name String
+            field text String
+            field count Integer
+            field tags "list<String>"
+            field note "optional<String>"
+            field rows "optional<list<list<String>>>"
+        }
+        codec SettingName output=String {
+            match #"(?<name>[a-z0-9-]+)"#
+            capture name String
+        }
+    }
+    node setting role=declaration type=Setting {
+        field name arg=0
+        field text property=text
+        field count property=count
+        field tags {
+            from {
+                args
+            }
+        }
+    }
+    node put-text role=contribution {
+        field target "ref<Setting>" arg=0
+        value codec=fixture-value {
+            against target=target member=text
+        }
+    }
+    node put-count role=contribution {
+        field target "ref<Setting>" arg=0
+        value codec=fixture-value {
+            against target=target member=count
+        }
+    }
+    node put-tags role=contribution {
+        field target "ref<Setting>" arg=0
+        value codec=fixture-value {
+            against target=target member=tags
+        }
+    }
+    node put-note role=contribution {
+        field target "ref<Setting>" arg=0
+        value codec=fixture-value {
+            against target=target member=note
+        }
+    }
+    node put-rows role=contribution {
+        field target "ref<Setting>" arg=0
+        value codec=fixture-value {
+            against target=target member=rows
+        }
+    }
+    reference SettingRef target=Setting codec=SettingName qualification=explicit
+}
