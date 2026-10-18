@@ -76,7 +76,7 @@ pub use kdlith_runtime::{
 };
 pub use kdlith_runtime::{
     Delivery, FieldProvenance, HandlerCall, HandlerEffect, HandlerFn, Handlers, Provenance,
-    SourceRevision, SourceRevisions, export_line,
+    SlotValue, SourceRevision, SourceRevisions, export_line,
 };
 pub use link::{
     BoundReference, DuplicateDeclaration, IdentityIndex, IndexedDeclaration, Link, LinkInputs,
@@ -103,9 +103,10 @@ pub use syntax::ParsedDocument;
 pub use typed::Links;
 pub use typed::{
     Declarations, Expression, FieldShape, Fields, FromFields, FromValue, Handler, ItemVariant,
-    LogicalType, Mismatch, NodeShape, OrderedMap, ReadError, ReadFn, Reading, Ref, ResolveError,
-    Shaped, SlotShape, TypeShape, TypedItem, TypedReader, Unresolved, ValueExpr, VariantShape,
-    member_value, object_value, read_fields, reference_value, text_value, variant_value,
+    LogicalType, Mismatch, NodeShape, OrderedMap, Origin, ReadError, ReadFn, Reading, Ref,
+    ResolveError, Shaped, SlotShape, TypeShape, TypedItem, TypedReader, Unresolved, ValueExpr,
+    VariantShape, member_value, object_value, read_fields, reference_value, text_value,
+    variant_value,
 };
 pub use types::{
     Builtin, CaptureDef, CodecDecl, Constraint, DefaultSpec, EnumMember, EnumType, ExpandedGroup,

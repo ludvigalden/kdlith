@@ -32,6 +32,9 @@ use crate::value_resolver::SharedResolver;
 
 const ORIGIN: &str = "data-document";
 
+/// Takes each document's entry context: every slot's value in slot order.
+pub(crate) type Entering<'e> = &'e mut dyn FnMut(&[Option<SlotValue>]);
+
 /// What one reading supplies beyond its definition: the profile, or the
 /// profile set, the invocation names, and the host-supplied values of the discovery
 /// anchors the active grammar declares. A grammar-declared anchor the
@@ -257,16 +260,23 @@ impl<'d> DataReader<'d> {
     /// Read as [`DataReader::read`] does, or as [`DataReader::read_local`]
     /// when `follow` is false, also giving each document's text to
     /// `texts` immediately before the document item it belongs to, so a
-    /// consumer pairs them in stream order without reading a file again.
+    /// consumer pairs them in stream order without reading a file again;
+    /// with `entered`, also giving it, at the same point, every slot's
+    /// value in slot order as the document's invocation entered it.
     pub(crate) fn read_documents(
         &self,
         entries: &[&Path],
         options: &ReadOptions,
         sink: &mut dyn FnMut(Item),
         texts: &mut dyn FnMut(&str),
+        entered: Option<Entering<'_>>,
         follow: bool,
     ) -> Result<bool, ReadError> {
-        self.read_inner(entries, options, sink, Some(texts), follow, follow)
+        let sides = Sides {
+            texts: Some(texts),
+            entering: entered,
+        };
+        self.read_inner(entries, options, sink, sides, follow, follow)
             .map(|outcome| outcome.failed)
     }
 
@@ -426,7 +436,7 @@ impl<'d> DataReader<'d> {
                 sink(item);
             }
         };
-        let before = self.read_inner(earlier, options, &mut tap, None, true, false)?;
+        let before = self.read_inner(earlier, options, &mut tap, Sides::none(), true, false)?;
         let source = SourceId(u32::try_from(before.entered).unwrap_or(u32::MAX));
         let Some(scope) = dispatch_scope(def, &text, record.node) else {
             return Ok(Restored::Miss);
@@ -496,7 +506,7 @@ impl<'d> DataReader<'d> {
         sink: &mut dyn FnMut(Item),
         follow: bool,
     ) -> Result<Outcome, ReadError> {
-        self.read_inner(entries, options, sink, None, follow, follow)
+        self.read_inner(entries, options, sink, Sides::none(), follow, follow)
     }
 
     /// [`DataReader::read_scoped`], with contribution resolution chosen
@@ -507,7 +517,7 @@ impl<'d> DataReader<'d> {
         entries: &[&Path],
         options: &ReadOptions,
         sink: &mut dyn FnMut(Item),
-        texts: Option<&mut dyn FnMut(&str)>,
+        sides: Sides<'_, '_>,
         follow: bool,
         resolving: bool,
     ) -> Result<Outcome, ReadError> {
@@ -564,7 +574,16 @@ impl<'d> DataReader<'d> {
             }
             sink(item);
         };
-        let mut texts = texts;
+        let Sides {
+            mut texts,
+            mut entering,
+        } = sides;
+        let armed = entering.is_some();
+        let mut enter = |values: &[Option<SlotValue>]| {
+            if let Some(entering) = &mut entering {
+                entering(values);
+            }
+        };
         let mut give = |text: &str| {
             if let Some(texts) = &mut texts {
                 texts(text);
@@ -577,6 +596,7 @@ impl<'d> DataReader<'d> {
             grammars,
             supplied: options.anchors.clone(),
             texts: &mut give,
+            entering: if armed { Some(&mut enter) } else { None },
             invocations: Invocations::new().with_schema_fingerprint(self.schema_fingerprint()),
             syntax: HashMap::new(),
             bound: HashMap::new(),
@@ -648,6 +668,38 @@ impl<'d> DataReader<'d> {
     }
 }
 
+/// Every slot's value as a document's first node binds under it: the
+/// projected context with source-context values applied, as a binding
+/// session applies them, so replay and bind enter alike.
+fn entry_values(
+    def: &Definition,
+    context: Option<&Context>,
+    shown: &str,
+) -> Vec<Option<SlotValue>> {
+    let mut context = context
+        .cloned()
+        .unwrap_or_else(|| Context::new(def.plan.context.layout.clone()));
+    // A derived value that fails its type is the session's diagnostic.
+    let _ = crate::source_context::apply(def, &mut context, shown);
+    context.snapshot_values()
+}
+
+/// Where a reading gives what a consumer pairs with each document item,
+/// just before it: the document's text, and its entry context.
+struct Sides<'t, 'e> {
+    texts: Option<&'t mut dyn FnMut(&str)>,
+    entering: Option<Entering<'e>>,
+}
+
+impl Sides<'_, '_> {
+    fn none() -> Self {
+        Self {
+            texts: None,
+            entering: None,
+        }
+    }
+}
+
 /// What a finished reading returns beyond its item stream.
 struct Outcome {
     failed: bool,
@@ -687,6 +739,9 @@ struct Reading<'r, 'd> {
     supplied: Vec<(String, PathBuf)>,
     /// Where each document's text goes just before its document item.
     texts: &'r mut dyn FnMut(&str),
+    /// Where each document's entry context goes just before its text,
+    /// when a consumer asked for it.
+    entering: Option<Entering<'r>>,
     invocations: Invocations,
     /// The syntax cache: document text by source revision, so a source
     /// invoked again under the same revision is read and stored once.
@@ -764,6 +819,13 @@ impl Reading<'_, '_> {
                     let identity = self.invocations.get(id).and_then(|i| i.identity());
                     let digest = revision_digest(revision);
                     let active = self.selection.members().to_vec();
+                    if let Some(entering) = &mut self.entering {
+                        entering(&entry_values(
+                            self.reader.def,
+                            context.as_ref().ok(),
+                            &shown,
+                        ));
+                    }
                     if let Some(cached) =
                         identity.and_then(|k| self.bound.get(&(k, active.clone())))
                     {

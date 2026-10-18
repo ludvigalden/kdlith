@@ -2,7 +2,7 @@
 //! engine's data reader and hands each record and declaration to the
 //! processor's handler for its role and type.
 
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
 
@@ -12,16 +12,19 @@ use kdlith_model::{
     BoundContribution, ExpansionRequest, Field, Identity, ImportRequest, Item, Location, NodeId,
     PendingBinding, ResolvedContribution, ScopeCompletion, SourceId,
 };
-use kdlith_runtime::{Handlers, SessionError};
+use kdlith_runtime::{Handlers, SessionError, SlotValue};
 use serde::Serialize;
 
 use crate::bindings::Role;
-use crate::data::{DataReader, ReadOptions};
+use crate::data::{DataReader, Entering, ReadOptions};
 use crate::definition::{CheckScope, Definition};
-use crate::link::{DuplicateDeclaration, Link, LinkInputs, LinkOutcome, LinkReport, link_reading};
+use crate::link::{
+    DuplicateDeclaration, ImportAliases, Link, LinkInputs, LinkOutcome, LinkReport, link_reading,
+};
 use crate::resolution::SharedContributionResolver;
 use crate::typed::conform;
 use crate::typed::links::{ItemVariant, Ref};
+use crate::typed::origin::Origin;
 use crate::typed::shape::{Declarations, Handler};
 use crate::typed::value::Fields;
 use crate::value_resolver::SharedResolver;
@@ -41,6 +44,12 @@ pub enum TypedItem<T> {
         /// locate its diagnostics; not part of the item's serialized form.
         #[serde(skip)]
         text: String,
+        /// The slots [`TypedReader::capturing`] named, in the order it
+        /// named them, each with its value as the document's first node
+        /// binds under it; `None` where the slot is unset. Empty unless
+        /// capture was asked for.
+        #[serde(skip)]
+        context: Vec<(String, Option<SlotValue>)>,
     },
     /// A record, read as the processor's type for it.
     Record {
@@ -52,6 +61,12 @@ pub enum TypedItem<T> {
         /// serialized form.
         #[serde(skip)]
         span: ByteSpan,
+        /// Where the record was written, as the bound record carries it.
+        #[serde(skip)]
+        site: Option<Location>,
+        /// The document the record was read from.
+        #[serde(skip)]
+        origin: Origin,
     },
     /// A declaration with its identity, read as the processor's type.
     Declaration {
@@ -64,6 +79,13 @@ pub enum TypedItem<T> {
         /// item's serialized form.
         #[serde(skip)]
         span: ByteSpan,
+        /// Where the declaration was written, as the bound declaration
+        /// carries it.
+        #[serde(skip)]
+        site: Option<Location>,
+        /// The document the declaration was read from.
+        #[serde(skip)]
+        origin: Origin,
     },
     Contribution(Box<BoundContribution>),
     /// A dependent value kept raw until its referenced declaration is
@@ -91,6 +113,9 @@ pub enum ReadError {
     Session(SessionError),
     /// The binder yielded an item kind this reader does not know.
     UnsupportedItem,
+    /// [`TypedReader::capturing`] named a slot the definition does not
+    /// declare.
+    UnknownSlot(String),
 }
 
 impl std::fmt::Display for ReadError {
@@ -98,6 +123,9 @@ impl std::fmt::Display for ReadError {
         match self {
             ReadError::Session(error) => error.fmt(f),
             ReadError::UnsupportedItem => f.write_str("the binder yielded an unsupported item"),
+            ReadError::UnknownSlot(name) => {
+                write!(f, "the definition declares no context slot {name}")
+            }
         }
     }
 }
@@ -310,6 +338,9 @@ pub struct TypedReader<'d, T: 'static> {
     options: ReadOptions,
     /// The scope the reading links under, when linking was asked for.
     linking: Option<CheckScope>,
+    /// The context slots each document item carries, by name, in the
+    /// order they were asked for.
+    capture: Vec<String>,
 }
 
 impl<'d, T: 'static> TypedReader<'d, T> {
@@ -325,6 +356,7 @@ impl<'d, T: 'static> TypedReader<'d, T> {
                 reader: DataReader::new(def),
                 options: ReadOptions::new(),
                 linking: None,
+                capture: Vec::new(),
             });
         }
         let processor = format!("{} {}", declarations.kind.root_name(), declarations.name);
@@ -405,6 +437,17 @@ impl<'d, T: 'static> TypedReader<'d, T> {
         self
     }
 
+    /// Carry, on every document item, the named context slots' values as
+    /// the document's first node binds under them, in the order named,
+    /// in place of any named before. A name the definition declares no
+    /// slot for fails the reading before any document is read
+    /// ([`ReadError::UnknownSlot`]).
+    #[must_use]
+    pub fn capturing(mut self, slots: &[&str]) -> Self {
+        self.capture = slots.iter().map(|&slot| slot.to_owned()).collect();
+        self
+    }
+
     /// Read every entry document and the documents they import, giving
     /// each item to `sink` as it is read. `Ok(true)` when any error
     /// diagnostic was among the items, or, linked under complete scope,
@@ -451,10 +494,22 @@ impl<'d, T: 'static> TypedReader<'d, T> {
         sink: &mut dyn FnMut(TypedItem<T>),
         follow: bool,
     ) -> Result<(bool, Option<LinkReport>), ReadError> {
-        // The data reader gives each document's text just before its
-        // document item, so the two pair in stream order.
+        let captured = self.captured_slots()?;
+        // The data reader gives each document's text, and its entry
+        // context when asked, just before its document item, so they
+        // pair in stream order.
         let text = Cell::new(String::new());
         let mut texts = |read: &str| text.set(read.to_owned());
+        let context = RefCell::new(Vec::new());
+        let mut entered = |values: &[Option<SlotValue>]| {
+            *context.borrow_mut() = captured
+                .iter()
+                .map(|(name, at)| (name.clone(), values.get(*at).cloned().flatten()))
+                .collect();
+        };
+        let entering: Option<Entering<'_>> = (!captured.is_empty()).then_some(&mut entered);
+        let mut origins: HashMap<SourceId, Origin> = HashMap::new();
+        let mut imports = ImportAliases::default();
         let mut mismatched = false;
         let mut unsupported = false;
         let mut inputs = self.linking.map(|_| LinkInputs::new());
@@ -467,7 +522,18 @@ impl<'d, T: 'static> TypedReader<'d, T> {
             if let Some(inputs) = &mut inputs {
                 inputs.observe(&item);
             }
-            let typed = match self.typed(item, &text) {
+            // An item's origin is its document's, found by the source its
+            // node is in: an importer's items after a nested import's
+            // document stay the importer's.
+            let alias = imports.observe(&item);
+            if let Item::Document(document) = &item {
+                let origin = Origin {
+                    path: document.path.clone(),
+                    alias,
+                };
+                origins.insert(document.source, origin);
+            }
+            let typed = match self.typed(item, &text, &context, &origins) {
                 // A reading a record failed to type is incomplete, so no
                 // target is settled from its contributions.
                 Some(Ok(TypedItem::Resolution(_))) if mismatched => return,
@@ -485,14 +551,35 @@ impl<'d, T: 'static> TypedReader<'d, T> {
             };
             sink(typed);
         };
-        let failed =
-            self.reader
-                .read_documents(entries, &self.options, &mut typing, &mut texts, follow)?;
+        let failed = self.reader.read_documents(
+            entries,
+            &self.options,
+            &mut typing,
+            &mut texts,
+            entering,
+            follow,
+        )?;
         if unsupported {
             return Err(ReadError::UnsupportedItem);
         }
         let report = inputs.map(|inputs| link_reading(self.reader.definition(), &inputs));
         Ok((failed || mismatched, report))
+    }
+
+    /// Each slot [`TypedReader::capturing`] named, with its position in
+    /// the definition's slot order; a name no slot carries fails closed.
+    fn captured_slots(&self) -> Result<Vec<(String, usize)>, ReadError> {
+        let def = self.reader.definition();
+        self.capture
+            .iter()
+            .map(|name| {
+                def.names
+                    .get(name)
+                    .and_then(|sym| def.plan.context.slot(sym))
+                    .map(|slot| (name.clone(), slot.index()))
+                    .ok_or_else(|| ReadError::UnknownSlot(name.clone()))
+            })
+            .collect()
     }
 
     /// One engine item as the processor reads it: a record or
@@ -502,12 +589,17 @@ impl<'d, T: 'static> TypedReader<'d, T> {
         &self,
         item: Item,
         text: &Cell<String>,
+        context: &RefCell<Vec<(String, Option<SlotValue>)>>,
+        origins: &HashMap<SourceId, Origin>,
     ) -> Option<Result<TypedItem<T>, Box<DiagnosticRecord>>> {
+        // Every record and declaration follows its document's item.
+        let origin = |node: NodeId| origins.get(&node.source).cloned().unwrap_or_default();
         let typed = match item {
             Item::Document(document) => TypedItem::Document {
                 source: document.source,
                 path: document.path,
                 text: text.take(),
+                context: context.take(),
             },
             Item::Record(record) => {
                 let value = self.value(
@@ -521,6 +613,8 @@ impl<'d, T: 'static> TypedReader<'d, T> {
                     type_name: record.type_name,
                     value,
                     span: record.span,
+                    site: record.site,
+                    origin: origin(record.node),
                 }));
             }
             Item::Declaration(declaration) => {
@@ -536,6 +630,8 @@ impl<'d, T: 'static> TypedReader<'d, T> {
                     type_name: declaration.type_name,
                     value,
                     span: declaration.span,
+                    site: declaration.site,
+                    origin: origin(declaration.node),
                 }));
             }
             Item::Contribution(contribution) => TypedItem::Contribution(Box::new(contribution)),

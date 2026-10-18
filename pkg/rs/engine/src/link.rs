@@ -37,8 +37,7 @@ pub struct LinkInputs {
     pub documents: BTreeMap<SourceId, String>,
     /// The alias namespace of each document an aliased import loaded.
     pub aliases: BTreeMap<SourceId, String>,
-    /// Import requests whose targets may still load, oldest first.
-    pending: Vec<(Option<String>, Vec<String>)>,
+    imports: ImportAliases,
 }
 
 impl LinkInputs {
@@ -47,35 +46,60 @@ impl LinkInputs {
     }
 
     /// Take one item of the reading, in stream order.
-    ///
-    /// A document belongs to the most recent import request naming its
-    /// path among the request's targets. Targets are paths as the reading
-    /// shows them, so the same file under two spellings is two targets;
-    /// matching the most recent request, never a global path set, keeps
-    /// the attribution exact for nested and repeated imports.
     pub fn observe(&mut self, item: &Item) {
+        let alias = self.imports.observe(item);
         match item {
             Item::Document(document) => {
-                let owner = self.pending.iter_mut().rev().find_map(|(alias, targets)| {
-                    let at = targets.iter().position(|t| *t == document.path)?;
-                    targets.remove(at);
-                    Some(alias.clone())
-                });
-                if let Some(Some(alias)) = owner {
+                if let Some(alias) = alias {
                     self.aliases.insert(document.source, alias);
                 }
                 self.documents
                     .insert(document.source, document.path.clone());
-            }
-            Item::Import(request) if !request.targets.is_empty() => {
-                self.pending
-                    .push((request.alias.clone(), request.targets.clone()));
             }
             Item::Declaration(_) | Item::PendingBinding(_) => self.items.push(item.clone()),
             Item::Record(_) | Item::Contribution(_) if !references_of(item).is_empty() => {
                 self.items.push(item.clone());
             }
             _ => {}
+        }
+    }
+}
+
+/// Which import request loaded each document of a reading, followed
+/// through its item stream.
+///
+/// A document belongs to the most recent import request naming its path
+/// among the request's targets. Targets are paths as the reading shows
+/// them, so the same file under two spellings is two targets; matching
+/// the most recent request, never a global path set, keeps the
+/// attribution exact for nested and repeated imports.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct ImportAliases {
+    /// Import requests whose targets may still load, oldest first.
+    pending: Vec<(Option<String>, Vec<String>)>,
+}
+
+impl ImportAliases {
+    /// Take one item of the reading, in stream order: for a document an
+    /// aliased import loaded, that import's alias.
+    pub(crate) fn observe(&mut self, item: &Item) -> Option<String> {
+        match item {
+            Item::Document(document) => self
+                .pending
+                .iter_mut()
+                .rev()
+                .find_map(|(alias, targets)| {
+                    let at = targets.iter().position(|t| *t == document.path)?;
+                    targets.remove(at);
+                    Some(alias.clone())
+                })
+                .flatten(),
+            Item::Import(request) if !request.targets.is_empty() => {
+                self.pending
+                    .push((request.alias.clone(), request.targets.clone()));
+                None
+            }
+            _ => None,
         }
     }
 }
