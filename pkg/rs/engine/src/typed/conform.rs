@@ -5,7 +5,7 @@
 use std::fmt;
 
 use crate::bindings::{NodeDecl, Placement, Role};
-use crate::definition::Definition;
+use crate::definition::{Definition, ReferenceDecl};
 use crate::names::Names;
 use crate::summary::expr;
 use crate::typed::shape::{Declarations, NodeShape, TypeShape};
@@ -75,6 +75,11 @@ fn types<T>(found: &mut Vec<Disagreement>, def: &Definition, declarations: &Decl
         .filter(|(_, decl)| decl.site.is_some())
         .map(|(_, decl)| decl)
         .collect();
+    // Reference types are declared apart from the type catalog, so their
+    // shapes are matched against the definition's references alone.
+    let (references, shapes): (Vec<&TypeShape>, Vec<&TypeShape>) = shapes
+        .into_iter()
+        .partition(|shape| matches!(shape, TypeShape::Reference { .. }));
     for decl in &declared {
         let name = names.resolve(decl.name);
         if !shapes.iter().any(|shape| shape.name() == name) {
@@ -98,6 +103,64 @@ fn types<T>(found: &mut Vec<Disagreement>, def: &Definition, declarations: &Decl
             }
         }
     }
+    for decl in &def.references {
+        let name = names.resolve(decl.name);
+        if !references.iter().any(|shape| shape.name() == name) {
+            found.push(Disagreement::new(
+                format!("reference {name}"),
+                "not declared by the processor",
+            ));
+        }
+    }
+    for shape in references {
+        let subject = format!("reference {}", shape.name());
+        let decl = def
+            .references
+            .iter()
+            .find(|decl| names.resolve(decl.name) == shape.name());
+        match decl {
+            None => found.push(Disagreement::new(subject, "not declared by the definition")),
+            Some(decl) => {
+                if let Some(reason) = reference_shape(names, decl, shape) {
+                    found.push(Disagreement::new(subject, reason));
+                }
+            }
+        }
+    }
+}
+
+/// How a reference type differs from its shape, if it does: the lookup
+/// is the domain its references decode into.
+fn reference_shape(names: &Names, decl: &ReferenceDecl, shape: &TypeShape) -> Option<String> {
+    let TypeShape::Reference {
+        target,
+        lookup,
+        qualifiers,
+        ..
+    } = shape
+    else {
+        return Some(format!(
+            "declared as a reference, read as {}",
+            shape_kind(shape)
+        ));
+    };
+    let theirs = [
+        format!("target {}", names.resolve(decl.target)),
+        format!(
+            "lookup {}",
+            names.resolve(decl.lookup.unwrap_or(decl.target))
+        ),
+    ];
+    let ours = [format!("target {target}"), format!("lookup {lookup}")];
+    if let Some(reason) = differ("policy", &theirs, &ours) {
+        return Some(reason);
+    }
+    let theirs: Vec<&str> = decl
+        .qualifiers
+        .iter()
+        .map(|q| names.resolve(q.name))
+        .collect();
+    differ("qualifiers", &theirs, qualifiers)
 }
 
 /// How a type's compiled kind differs from its shape, if it does.
@@ -135,6 +198,10 @@ fn type_shape(names: &Names, kind: &TypeKind, shape: &TypeShape) -> Option<Strin
                 .map(|v| format!("{}: {}", v.discriminator, (v.expression)()))
                 .collect();
             differ("variants", &theirs, &ours)
+        }
+        (TypeKind::Codec(codec), TypeShape::Codec { output, .. }) => {
+            let theirs = [expr(names, &codec.output)];
+            differ("output", &theirs, &[output()])
         }
         (kind, _) => Some(format!(
             "declared as {}, read as {}",
@@ -174,6 +241,8 @@ fn shape_kind(shape: &TypeShape) -> &'static str {
         TypeShape::Enum { .. } => "an enum",
         TypeShape::Object { .. } => "an object",
         TypeShape::Union { .. } => "a union",
+        TypeShape::Reference { .. } => "a reference",
+        TypeShape::Codec { .. } => "a codec",
     }
 }
 
@@ -267,40 +336,82 @@ fn slots<T>(found: &mut Vec<Disagreement>, def: &Definition, declarations: &Decl
     }
 }
 
-/// Every record and declaration node has exactly one handler for the
-/// role and type name its items carry, and every handler has a node.
+/// Every record and declaration node has exactly one handler: its own,
+/// or else the one for the role and type name its items carry; and every
+/// handler has a node.
 fn handlers<T>(found: &mut Vec<Disagreement>, def: &Definition, declarations: &Declarations<T>) {
     let names = &def.names;
     let handlers: Vec<_> = declarations
         .handlers
         .iter()
         .flat_map(|h| h.iter())
-        .map(|h| (h.role, h.ty))
+        .map(|h| (h.role, h.ty, h.node))
         .collect();
-    let mut wanted: Vec<(Role, &str)> = Vec::new();
+    let mut wanted: Vec<(Role, &str, Vec<&str>)> = Vec::new();
     for (_, decl) in def.bindings.iter() {
         let Some(role @ (Role::Record | Role::Declaration)) = decl.role else {
             continue;
         };
         let ty = names.resolve(decl.ty.unwrap_or(decl.name));
-        if !wanted.contains(&(role, ty)) {
-            wanted.push((role, ty));
+        let node = names.resolve(decl.name);
+        match wanted.iter_mut().find(|(r, t, _)| (*r, *t) == (role, ty)) {
+            Some((_, _, nodes)) if !nodes.contains(&node) => nodes.push(node),
+            Some(_) => {}
+            None => wanted.push((role, ty, vec![node])),
         }
     }
-    for (role, ty) in &wanted {
-        let count = handlers.iter().filter(|h| **h == (*role, *ty)).count();
-        if count != 1 {
+    let count = |role: Role, ty: &str, node: Option<&str>| {
+        handlers
+            .iter()
+            .filter(|h| (h.0, h.1, h.2) == (role, ty, node))
+            .count()
+    };
+    for (role, ty, nodes) in &wanted {
+        let mut shared = false;
+        for node in nodes {
+            match count(*role, ty, Some(node)) {
+                0 => shared = true,
+                1 => {}
+                more => found.push(Disagreement::new(
+                    format!("{} items of node {node}", role_name(Some(*role))),
+                    format!("{more} handlers, expected 1"),
+                )),
+            }
+        }
+        let typed = count(*role, ty, None);
+        if shared && typed != 1 {
             let subject = format!("{} items of type {ty}", role_name(Some(*role)));
             found.push(Disagreement::new(
                 subject,
-                format!("{count} handlers, expected 1"),
+                format!("{typed} handlers, expected 1"),
+            ));
+        } else if !shared && typed > 0 {
+            let subject = format!("handler for {} items of type {ty}", role_name(Some(*role)));
+            found.push(Disagreement::new(
+                subject,
+                "every node reads with its own handler",
             ));
         }
     }
-    for (role, ty) in &handlers {
-        if !wanted.contains(&(*role, *ty)) {
-            let subject = format!("handler for {} items of type {ty}", role_name(Some(*role)));
-            found.push(Disagreement::new(subject, "no node yields such items"));
+    for (role, ty, node) in &handlers {
+        let nodes = wanted
+            .iter()
+            .find(|(r, t, _)| (r, t) == (role, ty))
+            .map(|(_, _, nodes)| nodes);
+        match (node, nodes) {
+            (None, Some(_)) => {}
+            (Some(node), Some(nodes)) if nodes.contains(node) => {}
+            (None, None) => {
+                let subject = format!("handler for {} items of type {ty}", role_name(Some(*role)));
+                found.push(Disagreement::new(subject, "no node yields such items"));
+            }
+            (Some(node), _) => {
+                let subject = format!(
+                    "handler for {} items of type {ty} from node {node}",
+                    role_name(Some(*role))
+                );
+                found.push(Disagreement::new(subject, "no node yields such items"));
+            }
         }
     }
 }

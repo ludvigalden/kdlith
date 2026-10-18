@@ -1,0 +1,10 @@
+[package]
+name = "codec-exercise"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+
+[dependencies]
+kdlith-diagnostic = { path = "../diagnostic" }
+kdlith-engine = { path = "../engine" }
+timing-proc = { path = "../timing-proc" }

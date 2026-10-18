@@ -4,12 +4,12 @@
 
 use std::fmt::Write as _;
 
-use kdlith_engine::{DefinitionKind, Names, Role, TypeDecl, TypeExpr, TypeKind};
+use kdlith_engine::{DefinitionKind, Names, ReferenceDecl, Role, TypeDecl, TypeExpr, TypeKind};
 
 use crate::Error;
 use crate::catalog;
 use crate::manifest::{MANIFEST_NAME, manifest_text};
-use crate::model::{Document, Emission, kind_name};
+use crate::model::{Document, Emission, ItemNode, kind_name};
 use crate::render::{engine_names, field_name, named_references, pascal, rust_type};
 
 /// Width a `use` list or other greedy-wrapped list fills to.
@@ -195,6 +195,7 @@ impl Emission<'_> {
                 out.line("kdlith-runtime = { path = \"../runtime\" }");
             }
             DefinitionKind::Schema => {
+                out.line("kdlith-model = { path = \"../model\" }");
                 out.line("kdlith-superproc = { path = \"../superproc\" }");
             }
             _ => {}
@@ -233,6 +234,17 @@ impl Emission<'_> {
         out.line("    ContributionResolver, LAYERED, Layered, ResolutionCall, SharedContributionResolver,");
         out.line("    SharedResolver, Unresolvable, ValueResolver,");
         out.line("};");
+        // The dialect form stays byte-equal to the reference processor;
+        // schema crates also carry the tool-author surface so a tool
+        // needs no dependency beyond the generated crate.
+        if self.kind == DefinitionKind::Schema {
+            out.line("pub use kdlith_engine::{");
+            out.line("    CheckScope, Extensions, ItemVariant, LinkOutcome, LinkReport,");
+            out.line("    ReadOptions, Reading, Ref, ResolveError, TypedItem, UnmetQualifier,");
+            out.line("};");
+            out.line("pub use kdlith_model::Location;");
+            out.line("pub use kdlith_diagnostic::DiagnosticRecord;");
+        }
         out.line("pub use processors::{");
         out.line("    DECLARATIONS, Item, reader, reader_with_contribution_resolver, reader_with_resolver,");
         out.line("};");
@@ -253,24 +265,27 @@ impl Emission<'_> {
             .map(|decl| self.names.resolve(decl.name))
             .collect();
         declared.extend(locals.iter().map(String::as_str));
+        declared.extend(
+            doc.references
+                .iter()
+                .map(|decl| self.names.resolve(decl.name)),
+        );
+        let shaped = !doc.types.is_empty() || !doc.references.is_empty();
         // A document contributing only node-local item types has no
         // shape table, so it names neither shape item.
-        let mut engine: Vec<String> = if doc.types.is_empty() {
+        let mut engine: Vec<String> = if !shaped {
             Vec::new()
         } else {
             vec!["Shaped".into(), "TypeShape".into()]
         };
         let mut references: Vec<String> = Vec::new();
         let mut macros: Vec<String> = Vec::new();
-        let note_ref = |expr: &TypeExpr, engine: &mut Vec<String>| {
-            if engine_names(expr, self.names).contains(&"Ref") {
-                push_unique(engine, "Ref");
-            }
-        };
         for node in &doc.locals {
             for field in &node.fields {
                 if let Some(ty) = &field.ty {
-                    note_ref(ty, &mut engine);
+                    for name in engine_names(ty, self.names) {
+                        push_unique(&mut engine, name);
+                    }
                     references.extend(named_references(ty, self.names));
                 }
             }
@@ -279,12 +294,9 @@ impl Emission<'_> {
         for decl in &doc.types {
             let name = self.names.resolve(decl.name);
             for expr in declaration_expressions(decl) {
-                if matches!(expr, TypeExpr::OrderedMap(_, _))
-                    && !engine.iter().any(|n| n == "OrderedMap")
-                {
-                    engine.push("OrderedMap".to_owned());
+                for name in engine_names(expr, self.names) {
+                    push_unique(&mut engine, name);
                 }
-                note_ref(expr, &mut engine);
                 references.extend(named_references(expr, self.names));
             }
             match &decl.kind {
@@ -292,6 +304,7 @@ impl Emission<'_> {
                 TypeKind::Enum(_) => push_unique(&mut macros, "enum_type"),
                 TypeKind::Object(_) => push_unique(&mut macros, "object_type"),
                 TypeKind::Union(_) => push_unique(&mut macros, "union_type"),
+                TypeKind::Codec(_) => push_unique(&mut macros, "codec_type"),
                 TypeKind::Builtin(_) => unreachable!("built-ins carry no site"),
                 kind => {
                     return Err(Error::UnsupportedTypeKind {
@@ -300,6 +313,10 @@ impl Emission<'_> {
                     });
                 }
             }
+        }
+        for decl in &doc.references {
+            references.push(self.names.resolve(decl.target).to_owned());
+            push_unique(&mut macros, "reference_type");
         }
         if references.iter().any(|name| name == "ValueExpr")
             && !engine.iter().any(|name| name == "ValueExpr")
@@ -319,7 +336,7 @@ impl Emission<'_> {
         let mut out = Out::new();
         match catalog::types_header(&doc.file_name) {
             Some(lines) => out.doc(lines),
-            None if doc.types.is_empty() => out.doc(&[&format!(
+            None if !shaped => out.doc(&[&format!(
                 "Node-local item types contributed by `{}`.",
                 doc.file_name
             )]),
@@ -338,16 +355,25 @@ impl Emission<'_> {
             out.blank();
             self.type_declaration(&mut out, decl)?;
         }
+        for decl in &doc.references {
+            out.blank();
+            self.reference_declaration(&mut out, decl);
+        }
         for (node, name) in doc.locals.iter().zip(&locals) {
             out.blank();
             self.local_declaration(&mut out, node, name)?;
         }
-        if !doc.types.is_empty() {
+        if shaped {
             out.blank();
             out.line("/// The shapes of this document's types, in declaration order.");
             out.line("pub(crate) const TYPES: &[TypeShape] = &[");
-            for decl in &doc.types {
-                out.line(&format!("    {}::SHAPE,", self.names.resolve(decl.name)));
+            let shapes = doc
+                .types
+                .iter()
+                .map(|decl| decl.name)
+                .chain(doc.references.iter().map(|decl| decl.name));
+            for name in shapes {
+                out.line(&format!("    {}::SHAPE,", self.names.resolve(name)));
             }
             out.line("];");
         }
@@ -470,6 +496,17 @@ impl Emission<'_> {
                 out.line("    }");
                 out.line("}");
             }
+            TypeKind::Codec(codec) => {
+                out.line("codec_type! {");
+                for line in doc.unwrap_or(&[]) {
+                    out.line(&format!("    /// {line}"));
+                }
+                out.line(&format!(
+                    "    pub struct {name}({});",
+                    rust_type(&codec.output, self.names)?
+                ));
+                out.line("}");
+            }
             TypeKind::Builtin(_) => unreachable!("built-ins carry no site"),
             kind => {
                 return Err(Error::UnsupportedTypeKind {
@@ -479,6 +516,26 @@ impl Emission<'_> {
             }
         }
         Ok(())
+    }
+
+    /// One reference type: a newtype over the engine's `Ref` to its
+    /// target, carrying the lookup domain its references decode into
+    /// and its qualifier names, as conformance compares them.
+    fn reference_declaration(&self, out: &mut Out, decl: &ReferenceDecl) {
+        let name = self.names.resolve(decl.name);
+        let target = self.names.resolve(decl.target);
+        let lookup = self.names.resolve(decl.lookup.unwrap_or(decl.target));
+        let qualifiers: Vec<String> = decl
+            .qualifiers
+            .iter()
+            .map(|qualifier| format!("{:?}", self.names.resolve(qualifier.name)))
+            .collect();
+        out.line("reference_type! {");
+        out.line(&format!("    pub struct {name} => {target} {{"));
+        out.line(&format!("        lookup: {lookup:?},"));
+        out.line(&format!("        qualifiers: [{}],", qualifiers.join(", ")));
+        out.line("    }");
+        out.line("}");
     }
 
     /// The types module root: alphabetical module list and re-exports,
@@ -504,7 +561,7 @@ impl Emission<'_> {
         // document of node-local item types holds none.
         let modules: Vec<String> = self
             .type_documents()
-            .filter(|doc| !doc.types.is_empty())
+            .filter(|doc| !doc.types.is_empty() || !doc.references.is_empty())
             .map(|doc| doc.module.clone())
             .collect();
         // Module declarations and re-exports are alphabetical; the
@@ -734,8 +791,7 @@ impl Emission<'_> {
     /// The processors module root: the item enum, the handler table, the
     /// declarations, and the one reader.
     fn processors_mod_rs(&self) -> Result<String, Error> {
-        let item_types: Vec<String> = self.items.iter().map(|item| item.ty.clone()).collect();
-        let mut sorted = item_types.clone();
+        let mut sorted: Vec<String> = self.items.iter().map(|item| item.ty.clone()).collect();
         sorted.sort();
         sorted.dedup();
 
@@ -782,8 +838,8 @@ impl Emission<'_> {
             _ => out.line("    /// A record or declaration of a document written in the schema."),
         }
         out.line("    pub enum Item {");
-        for ty in &item_types {
-            out.line(&format!("        {ty},"));
+        for line in self.item_variants() {
+            out.line(&format!("        {line},"));
         }
         out.line("    }");
         out.line("}");
@@ -850,20 +906,39 @@ impl Emission<'_> {
         Ok(rust_file(&out.finish()))
     }
 
+    /// The `Item` enum's variant lines: one per type, named after it,
+    /// unless a type backs node-keyed variants, which groups every
+    /// variant under the type it reads.
+    fn item_variants(&self) -> Vec<String> {
+        let declared = self.items.iter().filter(|item| item.declares_variant);
+        if !self.items.iter().any(|item| item.keyed) {
+            return declared.map(|item| item.ty.clone()).collect();
+        }
+        let mut groups: Vec<(&str, Vec<&str>)> = Vec::new();
+        for item in declared {
+            match groups.iter_mut().find(|(ty, _)| *ty == item.ty) {
+                Some((_, variants)) => variants.push(&item.variant),
+                None => groups.push((&item.ty, vec![&item.variant])),
+            }
+        }
+        groups
+            .into_iter()
+            .map(|(ty, variants)| format!("{ty} => {}", variants.join(" | ")))
+            .collect()
+    }
+
     /// One document's handlers, in node declaration order.
     fn processors_doc_rs(&self, doc: &Document<'_>) -> String {
-        let items: Vec<(&str, bool, Option<&str>)> = self
+        let items: Vec<&ItemNode<'_>> = self
             .items
             .iter()
+            .filter(|item| item.declares_handler)
             .filter(|item| doc.nodes.iter().any(|node| std::ptr::eq(*node, item.node)))
-            .map(|item| {
-                let named = item.local.then_some(item.item_name.as_str());
-                (item.ty.as_str(), item.record, named)
-            })
             .collect();
-        let mut types: Vec<String> = items.iter().map(|(ty, _, _)| (*ty).to_owned()).collect();
+        let mut types: Vec<String> = items.iter().map(|item| item.ty.clone()).collect();
         types.sort();
         types.dedup();
+        let keyed = items.iter().any(|item| item.keyed);
 
         let mut out = Out::new();
         match catalog::processors_header(&doc.file_name) {
@@ -874,23 +949,33 @@ impl Emission<'_> {
             )]),
         }
         out.blank();
-        out.line("use kdlith_engine::Handler;");
+        if keyed {
+            out.line("use kdlith_engine::{Handler, read_fields};");
+        } else {
+            out.line("use kdlith_engine::Handler;");
+        }
         out.blank();
         out.line("use super::Item;");
         out.use_list("crate::types", &types);
         out.blank();
         let handlers: Vec<String> = items
             .iter()
-            .map(|(ty, record, named)| {
-                let handler = if *record {
-                    format!("Handler::record::<{ty}>()")
-                } else {
-                    format!("Handler::declaration::<{ty}>()")
-                };
+            .map(|item| {
+                let (ty, role) = (&item.ty, if item.record { "record" } else { "declaration" });
+                if item.keyed {
+                    let node = self.names.resolve(item.node.name);
+                    let variant = &item.variant;
+                    return format!(
+                        "Handler::{role}_with::<{ty}>(|fields| read_fields(fields).map(Item::{variant}))\
+                         .node(\"{node}\")"
+                    );
+                }
+                let handler = format!("Handler::{role}::<{ty}>()");
                 // A typeless node's items carry the node's name.
-                match named {
-                    Some(name) => format!("{handler}.named(\"{name}\")"),
-                    None => handler,
+                if item.local {
+                    format!("{handler}.named(\"{}\")", item.item_name)
+                } else {
+                    handler
                 }
             })
             .collect();
@@ -917,6 +1002,7 @@ fn declaration_expressions(decl: &TypeDecl) -> Vec<&TypeExpr> {
     match &decl.kind {
         TypeKind::Object(object) => object.fields.iter().map(|field| &field.ty).collect(),
         TypeKind::Union(union) => union.variants.iter().map(|variant| &variant.ty).collect(),
+        TypeKind::Codec(codec) => vec![&codec.output],
         _ => Vec::new(),
     }
 }

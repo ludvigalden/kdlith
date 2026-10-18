@@ -1,0 +1,31 @@
+{
+  "binary": "kdlith",
+  "kind": "codegen-oracle",
+  "description": "The qualified reference-field generation fixture: gen schema generates the committed processing/bind/reference-field schema itself, whose record field is typed by a reference type with an explicit scope qualifier decoded through a pattern codec, twice into two scratch trees the harness requires byte-identical; the generated crate compiles inside a scratch workspace materialized from this scenario's committed template, and the compiled processor loads the schema with the digest the reference CLI reports and binds the committed data document alone, as the binding scenario does, printing the record's reference with its lookup domain, its qualifier-named capture as that qualifier, the remaining capture as the name, and the spelling preserved",
+  "form": "schema",
+  "entrypoint": "{fx-suite}/processing/bind/reference-field/schema.kdl",
+  "crate": "config-proc",
+  "steps": [
+    { "generate": "ws/rs/config-proc" },
+    { "generate": "gen-again" },
+    { "determinism": ["ws/rs/config-proc", "gen-again"] },
+    {
+      "compile": {
+        "workspace": "ws",
+        "copy": {
+          "crates": ["diagnostic", "engine", "model", "parse", "runtime", "superproc"],
+          "kdl": true
+        },
+        "command": ["cargo", "build", "--offline", "--manifest-path", "ws/rs/config-proc/Cargo.toml"]
+      }
+    },
+    {
+      "exercise": {
+        "command": ["cargo", "run", "--offline", "--quiet", "--manifest-path", "ws/rs/exercise/Cargo.toml", "--", "processing/bind/reference-field/schema.kdl", "processing/bind/reference-field/data.kdl"],
+        "stdout-contains": [
+          "schema ok digest=44a145e159bda8a6\nreference-type ConfigVarRef lookup=config-vars qualifiers=[\"scope\"]\nread errors=false references=1\nuse domain=config-vars name=region qualifiers=[scope=stock] written=stock.region\n"
+        ]
+      }
+    }
+  ]
+}
