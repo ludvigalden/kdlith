@@ -257,10 +257,159 @@ macro_rules! union_type {
     };
 }
 
+/// A named reference type: a newtype over the `ref<Target>` carrier,
+/// spelled as the declaration names it. Its references decode into the
+/// lookup domain, so reading compares against that domain rather than
+/// the target's name; a spelling no codec decoded never reads as one.
+#[macro_export]
+macro_rules! reference_type {
+    (
+        $(#[$meta:meta])* $vis:vis struct $name:ident => $target:ident {
+            lookup: $lookup:literal,
+            qualifiers: [$($qualifier:literal),* $(,)?] $(,)?
+        }
+    ) => {
+        $(#[$meta])*
+        #[derive(Clone, Debug, PartialEq, Eq)]
+        $vis struct $name(pub $crate::Ref<$target>);
+
+        impl $name {
+            /// The identity domain its references look up in.
+            pub const LOOKUP: &'static str = $lookup;
+
+            /// Its qualifier names, in declaration order.
+            pub const QUALIFIERS: &'static [&'static str] = &[$($qualifier),*];
+        }
+
+        impl $crate::FromValue for $name {
+            fn from_value(
+                value: &$crate::__private::Value,
+            ) -> ::core::result::Result<Self, $crate::Mismatch> {
+                $crate::reference_value(value, Self::LOOKUP).map(Self)
+            }
+        }
+
+        impl $crate::LogicalType for $name {
+            fn expression() -> ::std::string::String {
+                ::std::string::String::from(stringify!($name))
+            }
+        }
+
+        impl $crate::Shaped for $name {
+            const SHAPE: $crate::TypeShape = $crate::TypeShape::reference(
+                stringify!($name),
+                stringify!($target),
+                $lookup,
+                &[$($qualifier),*],
+            );
+        }
+
+        impl $crate::__private::serde::Serialize for $name {
+            fn serialize<S: $crate::__private::serde::Serializer>(
+                &self,
+                serializer: S,
+            ) -> ::core::result::Result<S::Ok, S::Error> {
+                $crate::__private::serde::Serialize::serialize(&self.0, serializer)
+            }
+        }
+    };
+}
+
+/// A codec: a newtype over its output type, spelled as the codec. A
+/// field typed by the codec binds the decoded output value.
+#[macro_export]
+macro_rules! codec_type {
+    ($(#[$meta:meta])* $vis:vis struct $name:ident($output:ty);) => {
+        $(#[$meta])*
+        #[derive(Clone, Debug, PartialEq, Eq)]
+        $vis struct $name(pub $output);
+
+        impl $crate::FromValue for $name {
+            fn from_value(
+                value: &$crate::__private::Value,
+            ) -> ::core::result::Result<Self, $crate::Mismatch> {
+                <$output as $crate::FromValue>::from_value(value).map(Self)
+            }
+        }
+
+        impl $crate::LogicalType for $name {
+            fn expression() -> ::std::string::String {
+                ::std::string::String::from(stringify!($name))
+            }
+        }
+
+        impl $crate::Shaped for $name {
+            const SHAPE: $crate::TypeShape = $crate::TypeShape::codec(
+                stringify!($name),
+                <$output as $crate::LogicalType>::expression,
+            );
+        }
+
+        impl $crate::__private::serde::Serialize for $name {
+            fn serialize<S: $crate::__private::serde::Serializer>(
+                &self,
+                serializer: S,
+            ) -> ::core::result::Result<S::Ok, S::Error> {
+                $crate::__private::serde::Serialize::serialize(&self.0, serializer)
+            }
+        }
+    };
+}
+
 /// What a processor yields for its items: one variant per item type,
-/// named after it, each converting from that type.
+/// named after it, each converting from that type. The grouped form
+/// `Type => VariantA | VariantB` names the variants apart from the type,
+/// so one type can back several variants; only a type backing exactly
+/// one variant converts into the item, and projecting onto a type
+/// matches every variant it backs.
 #[macro_export]
 macro_rules! item_type {
+    (@from $name:ident $ty:ident $only:ident) => {
+        impl ::core::convert::From<$ty> for $name {
+            fn from(value: $ty) -> Self {
+                Self::$only(value)
+            }
+        }
+    };
+    (@from $name:ident $ty:ident $($variant:ident)+) => {};
+    (
+        $(#[$meta:meta])* $vis:vis enum $name:ident {
+            $($ty:ident => $($variant:ident)|+),+ $(,)?
+        }
+    ) => {
+        $(#[$meta])*
+        #[derive(Clone, Debug, PartialEq, Eq)]
+        #[non_exhaustive]
+        $vis enum $name {
+            $($($variant($ty)),+),+
+        }
+
+        $($crate::item_type!(@from $name $ty $($variant)+);)+
+
+        $(impl $crate::ItemVariant<$ty> for $name {
+            // A type backing every variant leaves the fallback arm unreachable.
+            #[allow(unreachable_patterns)]
+            fn variant(&self) -> ::core::option::Option<&$ty> {
+                match self {
+                    $(Self::$variant(inner))|+ => ::core::option::Option::Some(inner),
+                    _ => ::core::option::Option::None,
+                }
+            }
+        })+
+
+        impl $crate::__private::serde::Serialize for $name {
+            fn serialize<S: $crate::__private::serde::Serializer>(
+                &self,
+                serializer: S,
+            ) -> ::core::result::Result<S::Ok, S::Error> {
+                match self {
+                    $($(Self::$variant(inner))|+ => {
+                        $crate::__private::serde::Serialize::serialize(inner, serializer)
+                    })+
+                }
+            }
+        }
+    };
     ($(#[$meta:meta])* $vis:vis enum $name:ident { $($(#[$vmeta:meta])* $variant:ident),+ $(,)? }) => {
         $(#[$meta])*
         #[derive(Clone, Debug, PartialEq, Eq)]

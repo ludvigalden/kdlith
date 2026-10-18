@@ -1,35 +1,32 @@
-//! The typed reader: binds documents of one definition, follows their
-//! imports where written, and hands each record and declaration to the
+//! The typed reader: reads documents of one definition through the
+//! engine's data reader and hands each record and declaration to the
 //! processor's handler for its role and type.
 
+use std::cell::Cell;
+use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
 
 use kdlith_diagnostic::registry::{lookup, render};
 use kdlith_diagnostic::{ByteSpan, DiagnosticRecord};
 use kdlith_model::{
-    BoundContribution, BoundItem, ExpansionRequest, Field, Identity, ImportRequest, NodeId,
+    BoundContribution, ExpansionRequest, Field, Identity, ImportRequest, Item, Location, NodeId,
     PendingBinding, ResolvedContribution, ScopeCompletion, SourceId,
 };
-use kdlith_runtime::{
-    Admission, Context, ContributionRecord, InvocationId, Invocations, SessionError, SlotId,
-};
+use kdlith_runtime::{Handlers, SessionError};
 use serde::Serialize;
 
-use crate::anchors::{self, Base, DeclaredGrammars, Target};
-use crate::bind::BindingSession;
 use crate::bindings::Role;
-use crate::definition::{Definition, DefinitionKind, ProfileSelection};
-use crate::diag::{IMPORT_UNRESOLVED, UNRESOLVED_DIALECT, UNRESOLVED_SCHEMA, record};
-use crate::discovery;
-use crate::documents::{import_failure, read_text};
-use crate::resolution::{SharedContributionResolver, failure_record, resolve};
+use crate::data::{DataReader, ReadOptions};
+use crate::definition::{CheckScope, Definition};
+use crate::link::{DuplicateDeclaration, Link, LinkInputs, LinkOutcome, LinkReport, link_reading};
+use crate::resolution::SharedContributionResolver;
 use crate::typed::conform;
+use crate::typed::links::{ItemVariant, Ref};
 use crate::typed::shape::{Declarations, Handler};
 use crate::typed::value::Fields;
 use crate::value_resolver::SharedResolver;
 
 const MISMATCH: &str = "KDLITH-GEN003";
-const ORIGIN: &str = "data-document";
 
 /// One item of a typed reading, in stream order.
 #[derive(Clone, Debug, Serialize)]
@@ -107,20 +104,212 @@ impl std::fmt::Display for ReadError {
 
 impl std::error::Error for ReadError {}
 
-/// A typed processor's reader over one compiled definition.
+/// Why a reference of a collected reading yields no value of the
+/// requested type. A failed link carries the engine's outcome as the
+/// link stage decided it; nothing is defaulted.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum ResolveError {
+    /// The reading was not linked: no [`TypedReader::link`] step was
+    /// requested.
+    NotLinked,
+    /// The reading linked no reference written where this one was: it
+    /// came from another reading, or no declared reference type looks
+    /// up its domain.
+    NotLinkedHere,
+    /// The reference did not resolve: unresolved (`KDLITH-REF001`),
+    /// ambiguous (`KDLITH-REF003`), or failing a required qualifier
+    /// (`KDLITH-REF004`), with the alias namespaces that hid a match.
+    Link {
+        outcome: LinkOutcome,
+        gated: Vec<String>,
+    },
+    /// The one declaration it resolved to is not read as the requested
+    /// type, or was not read at all because its typing failed.
+    NotOfType,
+}
+
+impl std::fmt::Display for ResolveError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ResolveError::NotLinked => f.write_str("the reading was not linked"),
+            ResolveError::NotLinkedHere => {
+                f.write_str("the reading linked no reference written at this site")
+            }
+            ResolveError::Link { outcome, .. } => match outcome.code() {
+                Some(code) => write!(f, "the reference did not resolve ({code})"),
+                None => f.write_str("the reference did not resolve"),
+            },
+            ResolveError::NotOfType => {
+                f.write_str("the declaration is not read as the requested type")
+            }
+        }
+    }
+}
+
+impl std::error::Error for ResolveError {}
+
+/// A typed reading collected whole: its items in stream order, linked
+/// when the reader asked for linking, so each reference its values hold
+/// resolves through the link stage's outcome for that reference.
+#[derive(Clone, Debug)]
+pub struct Reading<T> {
+    items: Vec<TypedItem<T>>,
+    documents: BTreeMap<SourceId, String>,
+    report: Option<LinkReport>,
+    diagnostics: Vec<DiagnosticRecord>,
+    failed: bool,
+    /// Each linked reference's link, by the site it was written at: a
+    /// site is one token of one document, so it names one reference.
+    sites: HashMap<Location, (usize, usize)>,
+    /// Each typed declaration's item, by node.
+    declarations: HashMap<NodeId, usize>,
+}
+
+impl<T> Reading<T> {
+    fn new(
+        items: Vec<TypedItem<T>>,
+        report: Option<LinkReport>,
+        scope: Option<CheckScope>,
+        failed: bool,
+    ) -> Self {
+        let mut documents = BTreeMap::new();
+        let mut diagnostics = Vec::new();
+        let mut declarations = HashMap::new();
+        for (at, item) in items.iter().enumerate() {
+            match item {
+                TypedItem::Document { source, path, .. } => {
+                    documents.insert(*source, path.clone());
+                }
+                TypedItem::Diagnostic(record) => diagnostics.push((**record).clone()),
+                TypedItem::Declaration { node, .. } => {
+                    declarations.insert(*node, at);
+                }
+                _ => {}
+            }
+        }
+        let mut sites = HashMap::new();
+        if let Some(report) = &report {
+            diagnostics.extend(report.diagnostics.iter().cloned());
+            for (kind, entry) in report.types.iter().enumerate() {
+                for (at, link) in entry.links.iter().enumerate() {
+                    sites.entry(link.reference.site).or_insert((kind, at));
+                }
+            }
+        }
+        let gated = scope == Some(CheckScope::Complete)
+            && report.as_ref().is_some_and(LinkReport::has_errors);
+        Self {
+            items,
+            documents,
+            report,
+            diagnostics,
+            failed: failed || gated,
+            sites,
+            declarations,
+        }
+    }
+
+    /// Every item of the reading, in stream order, pending typed
+    /// bindings among them at their nodes' positions.
+    pub fn items(&self) -> &[TypedItem<T>] {
+        &self.items
+    }
+
+    /// The reading's items, in stream order.
+    pub fn into_items(self) -> Vec<TypedItem<T>> {
+        self.items
+    }
+
+    /// Each document's path as the reading showed it.
+    pub fn documents(&self) -> &BTreeMap<SourceId, String> {
+        &self.documents
+    }
+
+    /// The link stage's report, when the reading was linked.
+    pub fn link_report(&self) -> Option<&LinkReport> {
+        self.report.as_ref()
+    }
+
+    /// The declarations that repeat an earlier one's identity
+    /// (`KDLITH-REF002`); empty when the reading was not linked. The
+    /// first declaration stays the one references resolve to.
+    pub fn duplicates(&self) -> &[DuplicateDeclaration] {
+        self.report
+            .as_ref()
+            .map_or(&[], |report| report.duplicates.as_slice())
+    }
+
+    /// The stream's diagnostics in stream order, then the link stage's:
+    /// duplicates, failed links, and pending payloads failing their
+    /// member type (`KDLITH-REF005`).
+    pub fn diagnostics(&self) -> &[DiagnosticRecord] {
+        &self.diagnostics
+    }
+
+    /// Whether the reading failed: an error among its items, or, linked
+    /// under complete scope, any link diagnostic. Linked under local
+    /// scope, the link stage reports without deciding this.
+    pub fn failed(&self) -> bool {
+        self.failed
+    }
+
+    /// The link the reading's link stage made for `reference`, found by
+    /// the site it was written at.
+    pub fn link_of<V>(&self, reference: &Ref<V>) -> Option<&Link> {
+        let (kind, at) = *self.sites.get(&reference.site())?;
+        self.report.as_ref()?.types.get(kind)?.links.get(at)
+    }
+
+    /// The declaration `reference` resolved to, read as its target type.
+    pub fn resolve<D>(&self, reference: &Ref<D>) -> Result<&D, ResolveError>
+    where
+        T: ItemVariant<D>,
+    {
+        self.settled::<D, D>(reference)
+    }
+
+    /// The declaration `reference` resolved to, read as `D`: the link
+    /// stage decides the declaration, and the processor's item type
+    /// projects it.
+    pub fn settled<D, V>(&self, reference: &Ref<V>) -> Result<&D, ResolveError>
+    where
+        T: ItemVariant<D>,
+    {
+        if self.report.is_none() {
+            return Err(ResolveError::NotLinked);
+        }
+        let link = self.link_of(reference).ok_or(ResolveError::NotLinkedHere)?;
+        let target = match (&link.outcome, link.candidates.as_slice()) {
+            (LinkOutcome::Resolved, [target]) => target,
+            (outcome, _) => {
+                return Err(ResolveError::Link {
+                    outcome: outcome.clone(),
+                    gated: link.gated.clone(),
+                });
+            }
+        };
+        let at = self
+            .declarations
+            .get(&target.node)
+            .ok_or(ResolveError::NotOfType)?;
+        match &self.items[*at] {
+            TypedItem::Declaration { value, .. } => value.variant().ok_or(ResolveError::NotOfType),
+            _ => Err(ResolveError::NotOfType),
+        }
+    }
+}
+
+/// A typed processor's reader over one compiled definition: the
+/// engine's data reader decides what is read — imports, profiles,
+/// handlers, output policy — and this reader types each record and
+/// declaration through the processor's handler for it.
 pub struct TypedReader<'d, T: 'static> {
-    def: &'d Definition,
     declarations: &'static Declarations<T>,
-    /// The host-supplied discovery anchors the documents' own import
-    /// expressions expand against.
-    anchors: Vec<(String, PathBuf)>,
-    /// The value resolver the consuming program registered: an absent
-    /// field whose declared fallback is computed resolves through it.
-    resolver: Option<SharedResolver>,
-    /// The contribution resolver the program registered: a full reading
-    /// routes every contribution record to it under the schema's
-    /// declared policy.
-    contributions: Option<SharedContributionResolver>,
+    reader: DataReader<'d>,
+    options: ReadOptions,
+    /// The scope the reading links under, when linking was asked for.
+    linking: Option<CheckScope>,
 }
 
 impl<'d, T: 'static> TypedReader<'d, T> {
@@ -132,11 +321,10 @@ impl<'d, T: 'static> TypedReader<'d, T> {
         let disagreements = conform::run(def, declarations);
         if disagreements.is_empty() {
             return Ok(Self {
-                def,
                 declarations,
-                anchors: Vec::new(),
-                resolver: None,
-                contributions: None,
+                reader: DataReader::new(def),
+                options: ReadOptions::new(),
+                linking: None,
             });
         }
         let processor = format!("{} {}", declarations.kind.root_name(), declarations.name);
@@ -148,11 +336,37 @@ impl<'d, T: 'static> TypedReader<'d, T> {
 
     /// Supply the discovery anchors the documents' import expressions
     /// expand against, under the grammar the documents themselves
-    /// declare. A declared anchor left unsupplied, or a supplied one no
-    /// grammar read declares, fails closed (`KDLITH-IMP005`).
+    /// declare, in place of any supplied before. A declared anchor left
+    /// unsupplied, or a supplied one no grammar declares, fails closed
+    /// (`KDLITH-IMP005`).
     #[must_use]
     pub fn with_anchors(mut self, anchors: &[(String, PathBuf)]) -> Self {
-        self.anchors = anchors.to_vec();
+        self.options.set_anchors(anchors);
+        self
+    }
+
+    /// Read under `options`, in place of every option set before: the
+    /// profile or profile set, the anchors, and the output policy, as
+    /// [`DataReader::read`] applies them.
+    #[must_use]
+    pub fn with_options(mut self, options: ReadOptions) -> Self {
+        self.options = options;
+        self
+    }
+
+    /// Name the profile every entry document binds under, as
+    /// [`ReadOptions::with_profile`] does.
+    #[must_use]
+    pub fn with_profile(mut self, profile: impl Into<String>) -> Self {
+        self.options = self.options.with_profile(profile);
+        self
+    }
+
+    /// Install the context handlers a handler effect executes through;
+    /// one the registry lacks fails at its effect site.
+    #[must_use]
+    pub fn with_handlers(mut self, handlers: Handlers) -> Self {
+        self.reader = self.reader.replace_handlers(handlers);
         self
     }
 
@@ -163,7 +377,7 @@ impl<'d, T: 'static> TypedReader<'d, T> {
     /// data; a value it declines fails its node (`KDLITH-BND009`).
     #[must_use]
     pub fn with_resolver(mut self, resolver: SharedResolver) -> Self {
-        self.resolver = Some(resolver);
+        self.reader = self.reader.with_resolver(resolver);
         self
     }
 
@@ -175,19 +389,33 @@ impl<'d, T: 'static> TypedReader<'d, T> {
     /// a refusal, fails the reading (`KDLITH-DLC006`, `KDLITH-DLC010`).
     #[must_use]
     pub fn with_contribution_resolver(mut self, resolver: SharedContributionResolver) -> Self {
-        self.contributions = Some(resolver);
+        self.reader = self.reader.with_contribution_resolver(resolver);
+        self
+    }
+
+    /// Link every reading this reader makes, as `vet data` links one:
+    /// once the documents are read, the link stage resolves each
+    /// reference a declared reference type looks up and validates each
+    /// pending payload. Under complete scope a link diagnostic fails the
+    /// reading; under local scope the stage reports without deciding
+    /// that. A reading that stops short of its documents is not linked.
+    #[must_use]
+    pub fn link(mut self, scope: CheckScope) -> Self {
+        self.linking = Some(scope);
         self
     }
 
     /// Read every entry document and the documents they import, giving
     /// each item to `sink` as it is read. `Ok(true)` when any error
-    /// diagnostic was among the items.
+    /// diagnostic was among the items, or, linked under complete scope,
+    /// the link stage reported any.
     pub fn read(
         &self,
         entries: &[&Path],
         sink: &mut dyn FnMut(TypedItem<T>),
     ) -> Result<bool, ReadError> {
         self.read_scoped(entries, sink, true)
+            .map(|(failed, report)| failed || self.gates(report.as_ref()))
     }
 
     /// Read the named entry documents only, giving each import request
@@ -199,6 +427,22 @@ impl<'d, T: 'static> TypedReader<'d, T> {
         sink: &mut dyn FnMut(TypedItem<T>),
     ) -> Result<bool, ReadError> {
         self.read_scoped(entries, sink, false)
+            .map(|(failed, report)| failed || self.gates(report.as_ref()))
+    }
+
+    /// Read as [`TypedReader::read`] does and keep the whole reading:
+    /// its items in stream order and, when linking was asked for, the
+    /// link stage's report its references resolve through.
+    pub fn collect(&self, entries: &[&Path]) -> Result<Reading<T>, ReadError> {
+        let mut items = Vec::new();
+        let (failed, report) = self.read_scoped(entries, &mut |item| items.push(item), true)?;
+        Ok(Reading::new(items, report, self.linking, failed))
+    }
+
+    /// Whether a reading's link report fails it: under complete scope
+    /// only.
+    fn gates(&self, report: Option<&LinkReport>) -> bool {
+        self.linking == Some(CheckScope::Complete) && report.is_some_and(LinkReport::has_errors)
     }
 
     fn read_scoped(
@@ -206,95 +450,127 @@ impl<'d, T: 'static> TypedReader<'d, T> {
         entries: &[&Path],
         sink: &mut dyn FnMut(TypedItem<T>),
         follow: bool,
-    ) -> Result<bool, ReadError> {
-        // A local reading leaves imports unfollowed, so its records are
-        // never the whole picture a resolver must see.
-        let resolver = self
-            .contributions
-            .as_ref()
-            .filter(|_| follow && self.def.resolution.is_some());
-        let mut records: Vec<ContributionRecord> = Vec::new();
-        let mut tap = |item: TypedItem<T>| {
-            if resolver.is_some()
-                && let TypedItem::Contribution(contribution) = &item
-            {
-                records.push(ContributionRecord::from_bound(contribution));
+    ) -> Result<(bool, Option<LinkReport>), ReadError> {
+        // The data reader gives each document's text just before its
+        // document item, so the two pair in stream order.
+        let text = Cell::new(String::new());
+        let mut texts = |read: &str| text.set(read.to_owned());
+        let mut mismatched = false;
+        let mut unsupported = false;
+        let mut inputs = self.linking.map(|_| LinkInputs::new());
+        let mut typing = |item: Item| {
+            if unsupported {
+                return;
             }
-            sink(item);
-        };
-        let mut reading = Reading {
-            reader: self,
-            invocations: Invocations::new(),
-            grammars: DeclaredGrammars::compiled(self.def),
-            selection: ProfileSelection::Unprofiled,
-            sink: &mut tap,
-            failed: false,
-            broken: None,
-            follow,
-        };
-        if reading.declared() {
-            // Every entry declares its grammars before any import runs,
-            // as the compiler validates expressions against the full set.
-            reading.grammars = DeclaredGrammars::default();
-            for entry in entries {
-                if let Ok(text) = std::fs::read_to_string(entry) {
-                    reading.grammars.scan(&text);
+            // The link stage sees the engine's items, as `vet data`
+            // links them, whatever the processor makes of them.
+            if let Some(inputs) = &mut inputs {
+                inputs.observe(&item);
+            }
+            let typed = match self.typed(item, &text) {
+                // A reading a record failed to type is incomplete, so no
+                // target is settled from its contributions.
+                Some(Ok(TypedItem::Resolution(_))) if mismatched => return,
+                Some(Ok(typed)) => typed,
+                Some(Err(diagnostic)) => {
+                    mismatched = true;
+                    TypedItem::Diagnostic(diagnostic)
                 }
-            }
-        }
-        let layout = self.def.plan.context.layout.clone();
-        for entry in entries {
-            // One selection per entry document, from its source path as
-            // the reading spells it; its imports bind under it.
-            let shown = entry.display().to_string();
-            reading.selection = self.def.select_profile(None, &[], &shown);
-            match reading
-                .invocations
-                .enter_root(entry, Context::new(layout.clone()))
-            {
-                Ok(id) => reading.visit(id),
-                Err(failure) => reading.diagnose(import_failure(failure, ORIGIN)),
-            }
-            if let Some(error) = reading.broken {
-                return Err(error);
-            }
-        }
-        let grammars = &reading.grammars;
-        for record in
-            anchors::undeclared(&self.anchors, &grammars.grammars, &grammars.names, ORIGIN)
-        {
-            reading.diagnose(record);
-        }
-        let mut failed = reading.failed;
-        // A failed reading's records are incomplete; resolving them
-        // would report on a partial picture.
-        if let Some(resolver) = resolver.filter(|_| !failed && !records.is_empty()) {
-            match resolve(self.def, resolver.as_ref(), &records) {
-                Ok(resolved) => resolved
-                    .into_iter()
-                    .for_each(|resolved| sink(TypedItem::Resolution(resolved))),
-                Err(error) => {
-                    failed = true;
-                    let record = failure_record(&error, ORIGIN);
-                    sink(TypedItem::Diagnostic(Box::new(record)));
+                // An item outside this reader's vocabulary is never
+                // silently dropped.
+                None => {
+                    unsupported = true;
+                    return;
                 }
-            }
+            };
+            sink(typed);
+        };
+        let failed =
+            self.reader
+                .read_documents(entries, &self.options, &mut typing, &mut texts, follow)?;
+        if unsupported {
+            return Err(ReadError::UnsupportedItem);
         }
-        Ok(failed)
+        let report = inputs.map(|inputs| link_reading(self.reader.definition(), &inputs));
+        Ok((failed || mismatched, report))
     }
 
-    fn handler(&self, role: Role, type_name: &str) -> Option<&'static Handler<T>> {
-        self.declarations
-            .handlers
-            .iter()
-            .flat_map(|handlers| handlers.iter())
-            .find(|handler| handler.role == role && handler.ty == type_name)
+    /// One engine item as the processor reads it: a record or
+    /// declaration through its handler, every other item as its twin;
+    /// `None` for an item this reader does not know.
+    fn typed(
+        &self,
+        item: Item,
+        text: &Cell<String>,
+    ) -> Option<Result<TypedItem<T>, Box<DiagnosticRecord>>> {
+        let typed = match item {
+            Item::Document(document) => TypedItem::Document {
+                source: document.source,
+                path: document.path,
+                text: text.take(),
+            },
+            Item::Record(record) => {
+                let value = self.value(
+                    Role::Record,
+                    &record.node_name,
+                    &record.type_name,
+                    &record.fields,
+                );
+                return Some(value.map(|value| TypedItem::Record {
+                    node: record.node,
+                    type_name: record.type_name,
+                    value,
+                    span: record.span,
+                }));
+            }
+            Item::Declaration(declaration) => {
+                let value = self.value(
+                    Role::Declaration,
+                    &declaration.node_name,
+                    &declaration.type_name,
+                    &declaration.fields,
+                );
+                return Some(value.map(|value| TypedItem::Declaration {
+                    node: declaration.node,
+                    identity: declaration.identity,
+                    type_name: declaration.type_name,
+                    value,
+                    span: declaration.span,
+                }));
+            }
+            Item::Contribution(contribution) => TypedItem::Contribution(Box::new(contribution)),
+            Item::Import(request) => TypedItem::Import(request),
+            Item::Expansion(request) => TypedItem::Expansion(request),
+            Item::PendingBinding(pending) => TypedItem::PendingBinding(pending),
+            Item::Diagnostic(record) => TypedItem::Diagnostic(record),
+            Item::ScopeComplete(completion) => TypedItem::ScopeComplete(completion),
+            Item::Resolution(resolved) => TypedItem::Resolution(resolved),
+            _ => return None,
+        };
+        Some(Ok(typed))
     }
 
-    /// Read a bound item's fields with the handler for its role and type.
+    /// The handler registered for the item's declaring node, else the
+    /// one registered for its type.
+    fn handler(&self, role: Role, node: &str, type_name: &str) -> Option<&'static Handler<T>> {
+        let handlers = || {
+            self.declarations
+                .handlers
+                .iter()
+                .flat_map(|handlers| handlers.iter())
+                .filter(move |handler| handler.role == role && handler.ty == type_name)
+        };
+        handlers()
+            .find(|handler| handler.node == Some(node))
+            .or_else(|| handlers().find(|handler| handler.node.is_none()))
+    }
+
+    /// Read a bound item's fields with the handler for its role, its
+    /// declaring node, and its type.
     fn value(
         &self,
         role: Role,
+        node: &str,
         type_name: &str,
         fields: &[Field],
     ) -> Result<T, Box<DiagnosticRecord>> {
@@ -304,293 +580,12 @@ impl<'d, T: 'static> TypedReader<'d, T> {
             self.declarations.name
         );
         let subject = format!("{} items of type {type_name}", role.name());
-        let Some(handler) = self.handler(role, type_name) else {
+        let Some(handler) = self.handler(role, node, type_name) else {
             return Err(Box::new(mismatch(&processor, &subject, "no handler")));
         };
         (handler.read)(Fields::of_item(fields))
             .map_err(|m| Box::new(mismatch(&processor, &subject, &m.to_string())))
     }
-}
-
-/// One reading in progress: the invocation stack and the sink.
-struct Reading<'r, 'd, T: 'static> {
-    reader: &'r TypedReader<'d, T>,
-    invocations: Invocations,
-    /// The discovery grammars the documents read so far declare.
-    grammars: DeclaredGrammars,
-    /// The profile selection of the entry document being read.
-    selection: ProfileSelection,
-    sink: &'r mut dyn FnMut(TypedItem<T>),
-    failed: bool,
-    broken: Option<ReadError>,
-    /// Whether import requests are followed; a local reading gives each
-    /// request as an item and stops there.
-    follow: bool,
-}
-
-impl<T: 'static> Reading<'_, '_, T> {
-    /// Whether the documents are definitions declaring their own
-    /// grammars, rather than data documents of a compiled schema.
-    fn declared(&self) -> bool {
-        self.reader.def.kind == DefinitionKind::Dialect
-    }
-
-    fn diagnose(&mut self, record: DiagnosticRecord) {
-        self.failed = true;
-        (self.sink)(TypedItem::Diagnostic(Box::new(record)));
-    }
-
-    /// Bind the innermost active invocation's document, following each
-    /// import as its request is read, then leave it.
-    fn visit(&mut self, id: InvocationId) {
-        if let Some(invocation) = self.invocations.get(id) {
-            let (path, shown) = (invocation.path.clone(), invocation.shown.clone());
-            let context = invocation.context.project(&self.all_slots());
-            match read_text(&path, &shown, "document size", ORIGIN) {
-                Ok(text) => {
-                    if self.declared() {
-                        self.grammars.scan(&text);
-                    }
-                    self.bind(id, &shown, &text, context.ok());
-                }
-                Err(record) => self.diagnose(*record),
-            }
-        }
-        self.invocations.leave();
-    }
-
-    fn bind(&mut self, id: InvocationId, shown: &str, text: &str, context: Option<Context>) {
-        let def = self.reader.def;
-        let source = SourceId(u32::try_from(id.index()).unwrap_or(u32::MAX));
-        let context = context.unwrap_or_else(|| Context::new(def.plan.context.layout.clone()));
-        (self.sink)(TypedItem::Document {
-            source,
-            path: shown.to_owned(),
-            text: text.to_owned(),
-        });
-        let selection = self.selection.clone();
-        let mut session =
-            BindingSession::with_selection(def, source, shown, text, context, selection)
-                .with_resolver(self.reader.resolver.clone());
-        while self.broken.is_none() {
-            match session.next_item() {
-                Ok(Some(item)) => {
-                    if let BoundItem::Import(request) = &item {
-                        if self.follow {
-                            let mut request = request.clone();
-                            let projected = self.projection(&session, &request, shown);
-                            let resolved =
-                                projected.map(|context| (context, self.targets(&request)));
-                            if let Some((_, Ok(targets))) = &resolved {
-                                request.targets =
-                                    targets.iter().map(|target| target.shown.clone()).collect();
-                            }
-                            (self.sink)(TypedItem::Import(request.clone()));
-                            if let Some((context, targets)) = resolved {
-                                self.import(&request, shown, context, targets);
-                            }
-                            continue;
-                        }
-                    }
-                    self.item(item);
-                }
-                Ok(None) => break,
-                Err(error) => self.broken = Some(ReadError::Session(error)),
-            }
-        }
-        self.failed |= session.failed();
-    }
-
-    fn item(&mut self, item: BoundItem) {
-        let reader = self.reader;
-        let typed = match item {
-            BoundItem::Record(record) => {
-                let span = record.span;
-                match reader.value(Role::Record, &record.type_name, &record.fields) {
-                    Ok(value) => TypedItem::Record {
-                        node: record.node,
-                        type_name: record.type_name,
-                        value,
-                        span,
-                    },
-                    Err(diagnostic) => return self.diagnose(*diagnostic),
-                }
-            }
-            BoundItem::Declaration(declaration) => {
-                let span = declaration.span;
-                let fields = declaration.fields;
-                match reader.value(Role::Declaration, &declaration.type_name, &fields) {
-                    Ok(value) => TypedItem::Declaration {
-                        node: declaration.node,
-                        identity: declaration.identity,
-                        type_name: declaration.type_name,
-                        value,
-                        span,
-                    },
-                    Err(diagnostic) => return self.diagnose(*diagnostic),
-                }
-            }
-            BoundItem::Contribution(contribution) => TypedItem::Contribution(contribution),
-            BoundItem::Import(request) => TypedItem::Import(request),
-            BoundItem::Expansion(request) => TypedItem::Expansion(request),
-            BoundItem::PendingBinding(pending) => TypedItem::PendingBinding(pending),
-            BoundItem::Diagnostic(record) => {
-                self.failed = true;
-                TypedItem::Diagnostic(record)
-            }
-            BoundItem::ScopeComplete(completion) => TypedItem::ScopeComplete(completion),
-            // A bound item outside this reader's vocabulary is never
-            // silently dropped.
-            _ => {
-                self.broken = Some(ReadError::UnsupportedItem);
-                return;
-            }
-        };
-        (self.sink)(typed);
-    }
-
-    /// The import site's context, holding only the slots it projects.
-    fn projection(
-        &mut self,
-        session: &BindingSession<'_, '_>,
-        request: &ImportRequest,
-        shown: &str,
-    ) -> Option<Context> {
-        let def = self.reader.def;
-        let mut slots = Vec::with_capacity(request.project.len());
-        for name in &request.project {
-            match def
-                .names
-                .get(name)
-                .and_then(|sym| def.plan.context.slot(sym))
-            {
-                Some(slot) => slots.push(slot),
-                None => {
-                    // The code the definition loader reports for the same
-                    // projection: by the kind of the importing definition.
-                    let code = match (def.kind, session.root_name()) {
-                        (DefinitionKind::Dialect, Some(root))
-                            if root == DefinitionKind::Dialect.root_name() =>
-                        {
-                            UNRESOLVED_DIALECT
-                        }
-                        _ => UNRESOLVED_SCHEMA,
-                    };
-                    let record = record(code, &["context slot", name], ORIGIN);
-                    self.diagnose(at_request(record, shown, request));
-                    return None;
-                }
-            }
-        }
-        session.context().project(&slots).ok()
-    }
-
-    /// Invoke each target a request resolved to under its policy.
-    fn import(
-        &mut self,
-        request: &ImportRequest,
-        shown: &str,
-        context: Context,
-        targets: Result<Vec<Target>, Box<DiagnosticRecord>>,
-    ) {
-        let targets = match targets {
-            Ok(targets) => targets,
-            Err(record) => return self.diagnose(at_request(*record, shown, request)),
-        };
-        for target in targets {
-            let admitted = self.invocations.invoke_resolved(
-                &target.resolved,
-                &target.shown,
-                request.repeated,
-                context.clone(),
-            );
-            self.admitted(admitted, request, shown);
-        }
-    }
-
-    /// The targets a request resolves to: the literal path relative to
-    /// its importer, or the matches of a grammar-admitted expression
-    /// under the grammar the documents declare, against the
-    /// host-supplied anchors, in order.
-    fn targets(&self, request: &ImportRequest) -> Result<Vec<Target>, Box<DiagnosticRecord>> {
-        let importer = self
-            .invocations
-            .innermost()
-            .and_then(|id| self.invocations.get(id));
-        if !discovery::is_expression(&request.expression) {
-            let Some(importer) = importer else {
-                return Err(Box::new(unresolvable(&request.expression)));
-            };
-            let shown = Path::new(&importer.shown)
-                .parent()
-                .unwrap_or(Path::new(""))
-                .join(&request.expression)
-                .display()
-                .to_string();
-            let base = importer.path.parent().unwrap_or(Path::new(""));
-            let resolved = std::fs::canonicalize(base.join(&request.expression))
-                .ok()
-                .filter(|resolved| resolved.is_file());
-            return match resolved {
-                Some(resolved) => Ok(vec![Target { resolved, shown }]),
-                None => Err(Box::new(unresolvable(&shown))),
-            };
-        }
-        let Some(importer) = importer else {
-            return Ok(Vec::new());
-        };
-        let dir = importer.path.parent().unwrap_or(Path::new("")).to_owned();
-        let shown_dir = Path::new(&importer.shown)
-            .parent()
-            .unwrap_or(Path::new(""))
-            .to_owned();
-        let names = &self.grammars.names;
-        let anchors = anchors::anchor_map(&self.reader.anchors, names);
-        let base = Base {
-            dir: &dir,
-            shown: &shown_dir,
-        };
-        anchors::expression_targets(
-            &request.expression,
-            self.grammars.grammar(),
-            names,
-            &anchors,
-            &base,
-            ORIGIN,
-        )
-    }
-
-    /// Visit an admitted invocation, or report why it was refused.
-    fn admitted(
-        &mut self,
-        admitted: Result<Admission, kdlith_runtime::ImportFailure>,
-        request: &ImportRequest,
-        shown: &str,
-    ) {
-        match admitted {
-            Ok(Admission::Invoke(id)) => self.visit(id),
-            Ok(_) => {}
-            Err(failure) => {
-                let record = import_failure(failure, ORIGIN);
-                self.diagnose(at_request(record, shown, request));
-            }
-        }
-    }
-
-    /// Every slot of the definition: an invocation's own context is
-    /// already its caller's projection.
-    fn all_slots(&self) -> Vec<SlotId> {
-        self.reader.def.plan.context.layout.slots().collect()
-    }
-}
-
-fn at_request(record: DiagnosticRecord, shown: &str, request: &ImportRequest) -> DiagnosticRecord {
-    let start = request.site.span.start;
-    record.with_source(shown).with_span(
-        request.site.span.byte_span(),
-        Some(start.line),
-        Some(start.column),
-    )
 }
 
 fn mismatch(processor: &str, subject: &str, reason: &str) -> DiagnosticRecord {
@@ -604,9 +599,4 @@ fn mismatch(processor: &str, subject: &str, reason: &str) -> DiagnosticRecord {
         None => record,
     };
     record.with_origin("processor")
-}
-
-/// An import target that does not resolve (`KDLITH-IMP001`).
-fn unresolvable(target: &str) -> DiagnosticRecord {
-    record(IMPORT_UNRESOLVED, &[target], ORIGIN)
 }

@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use kdlith_diagnostic::DiagnosticRecord;
 use kdlith_model::Value;
 
-use crate::definition::{AnchorDecl, Definition, DiscoveryDecl, Patterns};
+use crate::definition::{AnchorDecl, DiscoveryDecl, Patterns};
 use crate::diag::{IMPORT_ANCHOR, IMPORT_GRAMMAR, IMPORT_UNRESOLVED, Site, record};
 use crate::discovery::{self, ExpansionError};
 use crate::names::{Names, Sym};
@@ -127,10 +127,9 @@ fn expansion_record(expression: &str, error: &ExpansionError, origin: &str) -> D
     }
 }
 
-/// The discovery grammars a reading's import expressions expand under:
-/// a schema's compiled grammars when its data documents are read, or,
-/// when definition documents are read, the grammars they declare,
-/// gathered in reading order with the grammar a schema root binds.
+/// The discovery grammars definition documents declare for their own
+/// imports, gathered in reading order with the grammar a schema root
+/// binds.
 #[derive(Debug, Default)]
 pub(crate) struct DeclaredGrammars {
     pub(crate) names: Names,
@@ -142,17 +141,6 @@ pub(crate) struct DeclaredGrammars {
 }
 
 impl DeclaredGrammars {
-    /// The grammars a compiled definition declares, for reading its data
-    /// documents; a definition declaring profiles binds none here.
-    pub(crate) fn compiled(def: &Definition) -> Self {
-        Self {
-            names: def.names.clone(),
-            grammars: def.discoveries.clone(),
-            root: def.root_grammar,
-            profiled: !def.profiles.is_empty(),
-        }
-    }
-
     /// Record what one document declares, read from its syntax, so a
     /// grammar written after the import it governs still governs it.
     /// Text that does not parse declares nothing; binding reports it.

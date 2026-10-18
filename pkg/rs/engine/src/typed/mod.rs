@@ -9,8 +9,10 @@ mod read;
 mod shape;
 mod value;
 
-pub use links::{ItemVariant, Links, Ref, Unresolved};
-pub use read::{ReadError, TypedItem, TypedReader};
+#[allow(deprecated)]
+pub use links::Links;
+pub use links::{ItemVariant, Ref, Unresolved, reference_value};
+pub use read::{ReadError, Reading, ResolveError, TypedItem, TypedReader};
 pub use shape::{
     Declarations, Expression, FieldShape, Handler, NodeShape, ReadFn, Shaped, SlotShape, TypeShape,
     VariantShape,

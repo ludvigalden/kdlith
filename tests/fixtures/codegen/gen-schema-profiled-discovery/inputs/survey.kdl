@@ -1,0 +1,28 @@
+// A schema declaring profiles binds its discovery grammar per invocation
+// profile: an entry document named entry.kdl selects the only profile,
+// whose grammar admits the $root/*.kdl import its documents write, and
+// any other entry document selects no profile unless the invocation
+// names one.
+schema survey version="1" {
+    types {
+        object Thing {
+            field name String
+        }
+    }
+    node thing role=record type=Thing {
+        field name arg=0
+    }
+    node use role=source-import {
+        field path String arg=0
+    }
+    discovery main {
+        anchor root provider=path
+        patterns star=#true
+    }
+    profile only grammar=main {
+        match {
+            file-name "entry.kdl"
+        }
+    }
+    profile audit
+}

@@ -31,6 +31,21 @@ pub enum TypeShape {
         name: &'static str,
         variants: &'static [VariantShape],
     },
+    /// A named reference type: the declaration type it targets, the
+    /// domain it looks up in, and its qualifier names in declaration
+    /// order.
+    Reference {
+        name: &'static str,
+        target: &'static str,
+        lookup: &'static str,
+        qualifiers: &'static [&'static str],
+    },
+    /// A codec: the expression of the output type a decoded value
+    /// carries.
+    Codec {
+        name: &'static str,
+        output: Expression,
+    },
 }
 
 impl TypeShape {
@@ -50,12 +65,32 @@ impl TypeShape {
         Self::Union { name, variants }
     }
 
+    pub const fn reference(
+        name: &'static str,
+        target: &'static str,
+        lookup: &'static str,
+        qualifiers: &'static [&'static str],
+    ) -> Self {
+        Self::Reference {
+            name,
+            target,
+            lookup,
+            qualifiers,
+        }
+    }
+
+    pub const fn codec(name: &'static str, output: Expression) -> Self {
+        Self::Codec { name, output }
+    }
+
     pub const fn name(&self) -> &'static str {
         match self {
             Self::String { name }
             | Self::Enum { name, .. }
             | Self::Object { name, .. }
-            | Self::Union { name, .. } => name,
+            | Self::Union { name, .. }
+            | Self::Reference { name, .. }
+            | Self::Codec { name, .. } => name,
         }
     }
 }
@@ -182,13 +217,17 @@ impl SlotShape {
     }
 }
 
-/// Reads the bound items of one role and logical type: the role and
-/// type name an item carries select its handler.
+/// Reads the bound items of one role and logical type. An item's role
+/// and declaring node select a handler registered for that node; failing
+/// one, its role and type name select the type's handler.
 #[derive(Debug)]
 #[non_exhaustive]
 pub struct Handler<T> {
     pub role: Role,
     pub ty: &'static str,
+    /// The declared node whose items alone this handler reads, when one
+    /// type backs several nodes; `None` reads every node of the type.
+    pub node: Option<&'static str>,
     pub read: ReadFn<T>,
 }
 
@@ -201,6 +240,7 @@ impl<T> Handler<T> {
         Self {
             role: Role::Record,
             ty: D::SHAPE.name(),
+            node: None,
             read: read_as::<D, T>,
         }
     }
@@ -213,7 +253,31 @@ impl<T> Handler<T> {
         Self {
             role: Role::Declaration,
             ty: D::SHAPE.name(),
+            node: None,
             read: read_as::<D, T>,
+        }
+    }
+
+    /// Read record items of `D`'s logical type through `read`, which
+    /// chooses the item's variant: a type backing several nodes reads
+    /// into the variant of the node a handler is keyed to.
+    pub const fn record_with<D: Shaped>(read: ReadFn<T>) -> Self {
+        Self {
+            role: Role::Record,
+            ty: D::SHAPE.name(),
+            node: None,
+            read,
+        }
+    }
+
+    /// Read declaration items of `D`'s logical type through `read`,
+    /// which chooses the item's variant.
+    pub const fn declaration_with<D: Shaped>(read: ReadFn<T>) -> Self {
+        Self {
+            role: Role::Declaration,
+            ty: D::SHAPE.name(),
+            node: None,
+            read,
         }
     }
 
@@ -223,6 +287,14 @@ impl<T> Handler<T> {
     #[must_use]
     pub const fn named(mut self, ty: &'static str) -> Self {
         self.ty = ty;
+        self
+    }
+
+    /// The same handler for the items of the declared node `name` alone,
+    /// so nodes binding one type can read as distinct values.
+    #[must_use]
+    pub const fn node(mut self, name: &'static str) -> Self {
+        self.node = Some(name);
         self
     }
 }
