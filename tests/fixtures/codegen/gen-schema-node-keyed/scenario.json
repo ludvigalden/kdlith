@@ -1,0 +1,32 @@
+{
+  "binary": "kdlith",
+  "kind": "codegen-oracle",
+  "description": "The node-keyed generation fixture: gen schema generates the committed processing/list schema itself, where three differently named nodes (widget, gadget, and part, the last admitted under two parents) bind one object type Widget beside a declaration type Bin, twice into two scratch trees the harness requires byte-identical; the generated crate keys one Item variant per node (Widget => Widget | Gadget | Part, Bin => Bin) and compiles inside a scratch workspace materialized from this scenario's committed template, and the compiled processor loads the schema by suite path with the digest the reference CLI reports, reads a committed data document through its own typed reader with the schema's default profile, and prints each item in stream order under the variant its node reads as, while the type-level ItemVariant<Widget> projection matches every Widget variant and no other",
+  "form": "schema",
+  "entrypoint": "{fx-suite}/processing/list/schema.kdl",
+  "crate": "shop-proc",
+  "steps": [
+    { "generate": "ws/rs/shop-proc" },
+    { "generate": "gen-again" },
+    { "determinism": ["ws/rs/shop-proc", "gen-again"] },
+    {
+      "compile": {
+        "workspace": "ws",
+        "copy": {
+          "crates": ["diagnostic", "engine", "model", "parse", "runtime", "superproc"],
+          "kdl": true
+        },
+        "command": ["cargo", "build", "--offline", "--manifest-path", "ws/rs/shop-proc/Cargo.toml"]
+      }
+    },
+    {
+      "exercise": {
+        "command": ["cargo", "run", "--offline", "--quiet", "--manifest-path", "ws/rs/exercise/Cargo.toml", "--", "processing/list/schema.kdl", "inputs/data.kdl"],
+        "stdout-contains": [
+          "schema ok digest=41ce19db1b7acc53\n",
+          "read ok items=5\npart id=p1 tone=cool widget=p1\nwidget id=w1 tone=warm widget=w1\ngadget id=g1 tone=cool widget=g1\npart id=p2 tone=warm widget=p2\nbin name=b1 widget=-\n"
+        ]
+      }
+    }
+  ]
+}

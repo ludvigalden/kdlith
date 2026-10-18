@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "list types lists a pattern codec under the codec declaration kind; stdout is pinned byte for byte and stderr is empty",
+  "args": [
+    "list",
+    "types",
+    "--schema",
+    "{fx-suite}/processing/bind/codecs/schema.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

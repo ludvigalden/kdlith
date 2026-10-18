@@ -1,0 +1,19 @@
+schema fleet version="1" {
+    types {
+        object Ship {
+            field id String
+        }
+        object Tender {
+            field id String
+        }
+    }
+    node ship role=record type=Ship {
+        field id arg=0
+    }
+    node tender role=record type=Ship {
+        field id arg=0
+    }
+    node launch role=record type=Tender {
+        field id arg=0
+    }
+}

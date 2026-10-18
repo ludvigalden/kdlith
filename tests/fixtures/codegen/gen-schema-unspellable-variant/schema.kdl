@@ -1,0 +1,13 @@
+schema dock version="1" {
+    types {
+        object Ship {
+            field id String
+        }
+    }
+    node ship role=record type=Ship {
+        field id arg=0
+    }
+    node self role=record type=Ship {
+        field id arg=0
+    }
+}

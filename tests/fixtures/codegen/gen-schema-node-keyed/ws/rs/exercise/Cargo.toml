@@ -1,0 +1,10 @@
+[package]
+name = "node-keyed-exercise"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+
+[dependencies]
+kdlith-diagnostic = { path = "../diagnostic" }
+kdlith-engine = { path = "../engine" }
+shop-proc = { path = "../shop-proc" }

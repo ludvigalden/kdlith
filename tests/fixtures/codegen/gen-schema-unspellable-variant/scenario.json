@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "gen schema fails closed when a node-keyed item variant has no Rust spelling: object Ship backs the differently named nodes ship and self, so each reads as its own variant named after its node, and self spells Self, which is no Rust identifier. The schema itself vets green, generation exits 1 naming the variant, its node, and the reason before anything is emitted, and the scratch check proves nothing was written into the output directory",
+  "args": ["gen", "schema", "schema.kdl", "--crate", "dock-proc", "--out", "out"],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": [
+      "kdlith: gen schema: the item variant `Self` of `self` has no Rust spelling in a generated crate: it is no Rust identifier\n"
+    ],
+    "scratch-check": {
+      "plant": [{ "path": "planted-foreign.txt", "kind": "file" }]
+    }
+  }
+}

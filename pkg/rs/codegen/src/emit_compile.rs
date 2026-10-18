@@ -41,6 +41,7 @@ impl Emission<'_> {
         let glues: Vec<(String, catalog::Glue)> = self
             .items
             .iter()
+            .filter(|item| item.declares_variant)
             .map(|item| {
                 catalog::glue(&item.ty)
                     .map(|glue| (item.ty.clone(), glue))

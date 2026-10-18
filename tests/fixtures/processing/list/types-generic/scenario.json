@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "list types spells a generic declaration with its type parameters and lists the instance a type expression instantiates under its monomorphized name, both as objects, sorted by name; stdout is pinned byte for byte and stderr is empty",
+  "args": [
+    "list",
+    "types",
+    "--schema",
+    "{fx-suite}/processing/bind/generic-types/schema.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

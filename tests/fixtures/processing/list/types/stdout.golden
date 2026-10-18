@@ -1,6 +1,4 @@
 Bin object
-BinRef codec
-Pair<T> object
 Slug string
 Tone enum
 Widget object

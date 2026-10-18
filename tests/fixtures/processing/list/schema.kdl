@@ -1,9 +1,12 @@
 // The schema the list scenarios share. Every collection is declared out
 // of name order, so a sorted listing proves the order is chosen rather
-// than inherited from declaration order: types of each declaration kind
-// (one generic), root nodes of four roles plus a record admitted under
-// two parents, and two profiles (one binding a discovery grammar and
-// root types, one admitting every root).
+// than inherited from declaration order: types of several declaration
+// kinds, root nodes of four roles plus a record admitted under two
+// parents, and two profiles (one binding a discovery grammar and root
+// types, one admitting every root and selected by default). It is also
+// the entrypoint codegen/gen-schema-node-keyed generates from: three
+// differently named nodes bind Widget, so each reads as its own item
+// variant, which is why it declares only kinds a generated crate spells.
 schema shop version="1" {
     types {
         object Widget {
@@ -14,20 +17,11 @@ schema shop version="1" {
             member warm
             member cool
         }
-        object Pair {
-            parameter T
-            field left T
-            field right T
-        }
         string Slug {
             format kebab-case
         }
         object Bin {
             field name String
-        }
-        codec BinRef output=Bin {
-            match "^([a-z]+)$"
-            capture name String
         }
     }
     discovery found {
@@ -37,9 +31,11 @@ schema shop version="1" {
     node widget role=record type=Widget {
         field id arg=0
         field tone property=tone
+        children part
     }
     node bin role=declaration type=Bin {
         field name arg=0
+        children part
     }
     node gadget role=record type=Widget {
         field id arg=0
@@ -59,5 +55,5 @@ schema shop version="1" {
             allow Bin
         }
     }
-    profile retail
+    profile retail default=#true
 }

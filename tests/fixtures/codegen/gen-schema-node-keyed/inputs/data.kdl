@@ -1,0 +1,7 @@
+widget "w1" tone=warm {
+    part "p1" tone=cool
+}
+gadget "g1" tone=cool
+bin "b1" {
+    part "p2" tone=warm
+}

@@ -1,0 +1,3 @@
+Mode enum
+Pair<T, U> object
+Pair<String, Mode> object
