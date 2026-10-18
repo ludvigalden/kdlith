@@ -239,7 +239,7 @@ impl Emission<'_> {
         // needs no dependency beyond the generated crate.
         if self.kind == DefinitionKind::Schema {
             out.line("pub use kdlith_engine::{");
-            out.line("    CheckScope, Extensions, ItemVariant, LinkOutcome, LinkReport,");
+            out.line("    CheckScope, Extensions, ItemVariant, LinkOutcome, LinkReport, Origin,");
             out.line("    ReadOptions, Reading, Ref, ResolveError, TypedItem, UnmetQualifier,");
             out.line("};");
             out.line("pub use kdlith_model::Location;");
