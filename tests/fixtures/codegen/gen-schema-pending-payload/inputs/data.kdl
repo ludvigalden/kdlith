@@ -1,0 +1,4 @@
+setting "s1" text="a"
+put-text "s1" "b"
+put-text "s1" "c" "d"
+put-text "s9" "e"

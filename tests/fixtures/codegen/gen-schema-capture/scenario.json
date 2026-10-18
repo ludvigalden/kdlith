@@ -1,0 +1,42 @@
+{
+  "binary": "kdlith",
+  "kind": "codegen-oracle",
+  "description": "Context capture on typed documents through a generated crate: gen schema generates the committed processing/bind/import-projection schema itself, read by suite path, whose last-wins locale slot an import projects, twice into scratch trees the harness requires byte-identical; the generated crate compiles inside a scratch workspace materialized from this scenario's committed template. The compiled processor, naming every type it spells through the generated crate alone, loads the schema with the digest the reference CLI reports and reads the committed data document from the suite root twice through its typed reader: unarmed, each document item carries no captured slot; asked to capture locale, each document item carries the slot as that document's first node binds under it — unset at the entry document, whose own first node sets it, and en-gb at the imported document, the value the import projected — while every stamp record carries the value vet data binds with its document's shown path and the line the origins view reports. A reader capturing a slot the schema does not declare fails before any document is read. The reference CLI's context view on the same input is the twin: it reports the entry's context as the document left it, so the two agree on the slot's value, en-gb, not on the point in the document it is taken at",
+  "form": "schema",
+  "entrypoint": "{fx-suite}/processing/bind/import-projection/schema.kdl",
+  "crate": "imports-proc",
+  "steps": [
+    { "generate": "ws/rs/imports-proc" },
+    { "generate": "gen-again" },
+    { "determinism": ["ws/rs/imports-proc", "gen-again"] },
+    {
+      "compile": {
+        "workspace": "ws",
+        "copy": {
+          "crates": ["diagnostic", "engine", "model", "parse", "runtime", "superproc"],
+          "kdl": true
+        },
+        "command": ["cargo", "build", "--offline", "--manifest-path", "ws/rs/imports-proc/Cargo.toml"]
+      }
+    },
+    {
+      "exercise": {
+        "command": ["cargo", "run", "--offline", "--quiet", "--manifest-path", "ws/rs/exercise/Cargo.toml", "--", "processing/bind/import-projection/schema.kdl", "processing/bind/import-projection/data.kdl"],
+        "stdout-contains": [
+          "schema ok digest=2e971c3cbf612165\n",
+          "read plain failed=false\ndocument processing/bind/import-projection/data.kdl context=[]\ndocument processing/bind/import-projection/part.kdl context=[]\nstamp at=en-gb site=processing/bind/import-projection/part.kdl:1\nstamp at=en-gb site=processing/bind/import-projection/data.kdl:5\n",
+          "read capturing failed=false\ndocument processing/bind/import-projection/data.kdl context=[locale=unset]\ndocument processing/bind/import-projection/part.kdl context=[locale=en-gb]\nstamp at=en-gb site=processing/bind/import-projection/part.kdl:1\nstamp at=en-gb site=processing/bind/import-projection/data.kdl:5\n",
+          "unknown-slot error=the definition declares no context slot profile items=0\n"
+        ]
+      }
+    },
+    {
+      "exercise": {
+        "command": ["sh", "-c", "cd \"$KDLITH_FX_SUITE\" && exec \"$KDLITH_FX_KDLITH\" inspect data --schema processing/bind/import-projection/schema.kdl --view context processing/bind/import-projection/data.kdl"],
+        "stdout-contains": [
+          "{\"item\":\"context\",\"data\":{\"entry\":\"processing/bind/import-projection/data.kdl\",\"slots\":[{\"name\":\"locale\",\"value\":{\"kind\":\"string\",\"value\":\"en-gb\"},\"layer\":null}]}}\n"
+        ]
+      }
+    }
+  ]
+}

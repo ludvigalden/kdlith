@@ -1,0 +1,33 @@
+{
+  "binary": "kdlith",
+  "kind": "codegen-oracle",
+  "description": "Pending payload validation through a generated crate: gen schema generates a committed self-contained schema whose contribution payload binds against the text member of the referenced setting under fixture-value, a known binding codec no processor installs, twice into scratch trees the harness requires byte-identical; the generated crate compiles inside a scratch workspace materialized from this scenario's committed template. The compiled processor, naming every kdlith type it spells through the generated crate alone, collects a committed data document as a reading linked under complete scope through its generated reader: each payload streams as a pending item with its raw value, the one fitting its String member passes, the two values for that member fail KDLITH-REF005, and the payload whose reference resolves to nothing fails KDLITH-REF001 alone, its payload never validated, the link diagnostic before the payload diagnostic, and the reading fails; linked under local scope the same diagnostics are reported and the reading does not fail, each as vet data reports it on the same input",
+  "form": "schema",
+  "entrypoint": "inputs/settings.kdl",
+  "crate": "settings-proc",
+  "steps": [
+    { "generate": "ws/rs/settings-proc" },
+    { "generate": "gen-again" },
+    { "determinism": ["ws/rs/settings-proc", "gen-again"] },
+    {
+      "compile": {
+        "workspace": "ws",
+        "copy": {
+          "crates": ["diagnostic", "engine", "model", "parse", "runtime", "superproc"],
+          "kdl": true
+        },
+        "command": ["cargo", "build", "--offline", "--manifest-path", "ws/rs/settings-proc/Cargo.toml"]
+      }
+    },
+    {
+      "exercise": {
+        "command": ["cargo", "run", "--offline", "--quiet", "--manifest-path", "ws/rs/exercise/Cargo.toml", "--", "inputs/settings.kdl", "inputs/data.kdl"],
+        "stdout-contains": [
+          "schema ok digest=8dc7e7e91bc37cce\n",
+          "linked complete failed=true pending=3 diagnostics=2\npending against=s1 raw={\"kind\":\"string\",\"value\":\"b\"}\npending against=s1 raw={\"kind\":\"list\",\"value\":[{\"kind\":\"string\",\"value\":\"c\"},{\"kind\":\"string\",\"value\":\"d\"}]}\npending against=s9 raw={\"kind\":\"string\",\"value\":\"e\"}\ndiag KDLITH-REF001 4:10 reference s9 in Setting does not resolve\ndiag KDLITH-REF005 3:10 pending payload of put-text under codec fixture-value does not match String: found 2 values\n",
+          "linked local failed=false pending=3 diagnostics=2\npending against=s1 raw={\"kind\":\"string\",\"value\":\"b\"}\npending against=s1 raw={\"kind\":\"list\",\"value\":[{\"kind\":\"string\",\"value\":\"c\"},{\"kind\":\"string\",\"value\":\"d\"}]}\npending against=s9 raw={\"kind\":\"string\",\"value\":\"e\"}\ndiag KDLITH-REF001 4:10 reference s9 in Setting does not resolve\ndiag KDLITH-REF005 3:10 pending payload of put-text under codec fixture-value does not match String: found 2 values\n"
+        ]
+      }
+    }
+  ]
+}

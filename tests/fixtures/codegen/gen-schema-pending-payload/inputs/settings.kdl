@@ -1,0 +1,27 @@
+// A self-contained schema whose contribution payload binds against the
+// text member of the referenced setting through fixture-value, a known
+// binding codec no processor installs, so each payload stays pending
+// until a linked reading validates it against that member's type.
+schema settings version="1" {
+    types {
+        object Setting {
+            field name String
+            field text String
+        }
+        codec SettingName output=String {
+            match #"(?<name>[a-z0-9-]+)"#
+            capture name String
+        }
+    }
+    node setting role=declaration type=Setting {
+        field name arg=0
+        field text property=text
+    }
+    node put-text role=contribution {
+        field target "ref<Setting>" arg=0
+        value codec=fixture-value {
+            against target=target member=text
+        }
+    }
+    reference SettingRef target=Setting codec=SettingName qualification=explicit
+}

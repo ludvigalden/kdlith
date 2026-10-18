@@ -5,8 +5,10 @@
 //! its lookup domain, name segments, qualifiers, spelling, and site; then
 //! collect each document as a linked reading and print the link stage's
 //! outcome for every reference, its diagnostics, and what `resolve` and
-//! `settled` return for each record's reference. Every name the exercise
-//! spells comes from the generated crate alone.
+//! `settled` return for each record's reference; finally read each
+//! document again and print every declaration's provenance: its shown
+//! path and line, and the alias of the import that loaded it. Every name
+//! the exercise spells comes from the generated crate alone.
 
 use std::path::{Path, PathBuf};
 
@@ -15,8 +17,8 @@ use linking_proc::types::{
     ToolDef, ToolRef, Use,
 };
 use linking_proc::{
-    CheckScope, DiagnosticRecord, Extensions, Item, ItemVariant, LinkOutcome, Location, Reading,
-    Ref, ResolveError, TypedItem, load, reader,
+    CheckScope, DiagnosticRecord, Extensions, Item, ItemVariant, LinkOutcome, Location, Origin,
+    Reading, Ref, ResolveError, TypedItem, load, reader,
 };
 
 fn main() {
@@ -93,6 +95,49 @@ fn main() {
             local.diagnostics().len()
         );
     }
+
+    // Each declaration's provenance: the document it was read from as the
+    // reading shows it, the line it was written at, and the alias of the
+    // import that loaded its document. Read by suite-relative path from
+    // the suite root, so the shown path is the one `vet data` reports
+    // there.
+    if let Err(error) = std::env::set_current_dir(&suite) {
+        fail("entering the suite root", &error);
+    }
+    for document in data {
+        let mut lines: Vec<String> = Vec::new();
+        let mut sink = |item: TypedItem<Item>| {
+            if let TypedItem::Declaration {
+                identity,
+                type_name,
+                site,
+                origin,
+                ..
+            } = item
+            {
+                let name = identity.name.0.join(".");
+                lines.push(provenance(&type_name, &name, site, &origin));
+            }
+        };
+        if let Err(error) = reading.read(&[document.as_path()], &mut sink) {
+            fail("provenance read", &error);
+        }
+        println!("provenance {} declarations={}", document.display(), lines.len());
+        for line in &lines {
+            println!("{line}");
+        }
+    }
+}
+
+/// One declaration's provenance line: `path:line` of where it was
+/// written, and the import alias of its document (`-` for none).
+fn provenance(type_name: &str, name: &str, site: Option<Location>, origin: &Origin) -> String {
+    let line = site.map_or("?".to_owned(), |site| site.span.start.line.to_string());
+    format!(
+        "declaration {type_name} {name} at={}:{line} alias={}",
+        origin.path,
+        origin.alias.as_deref().unwrap_or("-"),
+    )
 }
 
 /// The reference a record holds, matched through the type-level

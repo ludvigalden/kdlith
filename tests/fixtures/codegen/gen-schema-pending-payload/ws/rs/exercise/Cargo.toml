@@ -1,0 +1,9 @@
+[package]
+name = "pending-payload-exercise"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+
+[dependencies]
+settings-proc = { path = "../settings-proc" }
+serde_json = { workspace = true }
