@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "gen schema fails closed when a type instantiates a generic declaration (object Pair with parameters T and U, instantiated as Pair<String, Mode> by a record case): the schema itself vets green, generation exits 1 naming the instance, its document, and the generic declaration before anything is emitted, and the scratch check proves nothing was written into the output directory",
+  "args": ["gen", "schema", "schema.kdl", "--crate", "couples-proc", "--out", "out"],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": [
+      "kdlith: gen schema: the type `Pair<String, Mode>` of `schema.kdl` instantiates the generic declaration `Pair`; a generated crate cannot spell generic instantiations"
+    ],
+    "scratch-check": {
+      "plant": [{ "path": "planted-foreign.txt", "kind": "file" }]
+    }
+  }
+}

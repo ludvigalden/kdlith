@@ -1,5 +1,10 @@
 option mode
 option size
 setting mode light layer=base
-setting mode dark layer=user
+setting mode dark layer=user {
+    tag contrast "high"
+}
 setting size large layer=base
+metadata {
+    pair origin "fixture"
+}

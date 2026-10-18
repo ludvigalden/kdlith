@@ -100,7 +100,10 @@ pub fn generate(
     let tree = match tree {
         Ok(tree) => tree,
         Err(codegen::Error::DefinitionRejected { records }) => return report_all(&records),
-        Err(error) => return failed(form, &error),
+        Err(error) => match error.diagnostic() {
+            Some(record) => return report_all(&[record]),
+            None => return failed(form, &error),
+        },
     };
     match mode {
         GenMode::DryRun => {

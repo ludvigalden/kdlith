@@ -5,7 +5,8 @@
 use std::collections::BTreeMap;
 
 use kdlith_engine::{
-    CheckScope, Definition, DefinitionKind, Names, NodeDecl, Role, SlotDecl, TypeDecl, TypeKind,
+    CheckScope, Definition, DefinitionKind, Names, NodeDecl, ReferenceDecl, Role, SlotDecl,
+    TypeDecl, TypeKind,
 };
 
 use crate::Error;
@@ -22,6 +23,8 @@ pub(crate) struct Document<'d> {
     pub module: String,
     /// The document's declared types, in contribution order.
     pub types: Vec<&'d TypeDecl>,
+    /// The document's reference types, in contribution order.
+    pub references: Vec<&'d ReferenceDecl>,
     /// The document's node declarations, in contribution order.
     pub nodes: Vec<&'d NodeDecl>,
     /// The document's context slots, in contribution order.
@@ -35,8 +38,8 @@ pub(crate) struct Document<'d> {
 /// with a reading role and the type it reads into.
 pub(crate) struct ItemNode<'d> {
     pub node: &'d NodeDecl,
-    /// The Rust type, and `Item` variant, the node's items read as: the
-    /// logical type's name, or a typeless node's local type.
+    /// The Rust type the node's items read as: the logical type's name,
+    /// or a typeless node's local type.
     pub ty: String,
     /// The type name the node's items carry: the logical type's name,
     /// or a typeless node's own name.
@@ -46,6 +49,18 @@ pub(crate) struct ItemNode<'d> {
     /// Whether the node is bound without `type=`, so its Rust type is
     /// node-local rather than a declared logical type.
     pub local: bool,
+    /// The `Item` variant the node's items read as: the type's name, or
+    /// the node's own name when the type backs several nodes.
+    pub variant: String,
+    /// Whether the variant is keyed by the node rather than the type, so
+    /// the node's handler is registered for the node alone.
+    pub keyed: bool,
+    /// Whether this node is the first to spell its variant, and so the
+    /// one that declares it in the `Item` enum.
+    pub declares_variant: bool,
+    /// Whether this node is the first to need its handler: same-named
+    /// nodes under different parents share one.
+    pub declares_handler: bool,
 }
 
 /// The model every emitted file is rendered from.
@@ -135,9 +150,14 @@ impl<'d> Emission<'d> {
 
         // Group each catalog's declarations under their document, in
         // contribution order: catalog iteration order is declaration
-        // order, so per-document grouping preserves it.
+        // order, so per-document grouping preserves it. A generic
+        // declaration is a template, never spelled itself; its
+        // monomorphized instances carry the declarations.
         let mut type_groups: BTreeMap<usize, Vec<&TypeDecl>> = BTreeMap::new();
         for (_, decl) in definition.types.iter() {
+            if !decl.parameters.is_empty() {
+                continue;
+            }
             if let Some(site) = decl.site {
                 type_groups.entry(site.document).or_default().push(decl);
             }
@@ -155,6 +175,14 @@ impl<'d> Emission<'d> {
                 .entry(slot.site.document)
                 .or_default()
                 .push(slot);
+        }
+
+        let mut reference_groups: BTreeMap<usize, Vec<&ReferenceDecl>> = BTreeMap::new();
+        for reference in &definition.references {
+            reference_groups
+                .entry(reference.site.document)
+                .or_default()
+                .push(reference);
         }
 
         let mut documents = Vec::new();
@@ -180,6 +208,7 @@ impl<'d> Emission<'d> {
                 file_name,
                 module,
                 types: type_groups.remove(&at).unwrap_or_default(),
+                references: reference_groups.remove(&at).unwrap_or_default(),
                 nodes: node_groups.remove(&at).unwrap_or_default(),
                 slots: slot_groups.remove(&at).unwrap_or_default(),
                 locals: Vec::new(),
@@ -196,11 +225,17 @@ impl<'d> Emission<'d> {
         let declared: Vec<&str> = definition
             .types
             .iter()
+            .filter(|(_, decl)| decl.parameters.is_empty())
             .map(|(_, decl)| names.resolve(decl.name))
+            .chain(
+                definition
+                    .references
+                    .iter()
+                    .map(|decl| names.resolve(decl.name)),
+            )
             .chain(["Item", "Ref", "OrderedMap"])
             .collect();
         let mut items = Vec::new();
-        let mut bound: BTreeMap<String, String> = BTreeMap::new();
         for document in &mut documents {
             for node in &document.nodes {
                 let role = match node.role {
@@ -232,23 +267,19 @@ impl<'d> Emission<'d> {
                         (ty, node_name.clone(), true)
                     }
                 };
-                if let Some(first) = bound.get(&ty) {
-                    return Err(Error::DuplicateItemBinding {
-                        ty: ty.clone(),
-                        first: first.clone(),
-                        second: node_name,
-                    });
-                }
-                bound.insert(ty.clone(), node_name);
                 if local {
                     document.locals.push(node);
                 }
                 items.push(ItemNode {
                     node,
+                    variant: ty.clone(),
                     ty,
                     item_name,
                     record: role == Role::Record,
                     local,
+                    keyed: false,
+                    declares_variant: true,
+                    declares_handler: true,
                 });
             }
         }
@@ -256,6 +287,7 @@ impl<'d> Emission<'d> {
         if items.is_empty() {
             return Err(Error::NoItems);
         }
+        key_variants(&mut items, names, definition.kind)?;
 
         let emission = Self {
             names,
@@ -294,6 +326,14 @@ impl<'d> Emission<'d> {
                 if UNQUALIFIED.contains(&name) {
                     return Err(unspellable("type", &doc.file_name, name, SHADOWS));
                 }
+                // Only a monomorphized instance renders as `Head<Args>`.
+                if let Some((generic, _)) = name.split_once('<') {
+                    return Err(Error::UnsupportedGeneric {
+                        name: name.to_owned(),
+                        document: doc.file_name.clone(),
+                        generic: generic.trim().to_owned(),
+                    });
+                }
                 match &decl.kind {
                     TypeKind::Enum(enumeration) => {
                         let members = enumeration.members.iter().map(|m| m.name.as_str());
@@ -313,6 +353,20 @@ impl<'d> Emission<'d> {
                     _ => {}
                 }
             }
+            for decl in &doc.references {
+                let name = self.names.resolve(decl.name);
+                if !is_identifier(name) {
+                    return Err(unspellable(
+                        "reference type",
+                        &doc.file_name,
+                        name,
+                        "it is no Rust identifier",
+                    ));
+                }
+                if UNQUALIFIED.contains(&name) {
+                    return Err(unspellable("reference type", &doc.file_name, name, SHADOWS));
+                }
+            }
             for node in &doc.locals {
                 let name = self.names.resolve(node.name);
                 let keys = node.fields.iter().map(|f| self.names.resolve(f.name));
@@ -322,12 +376,12 @@ impl<'d> Emission<'d> {
         Ok(())
     }
 
-    /// The documents that declared types or typeless item nodes, in
-    /// contribution order.
+    /// The documents that declared types, reference types, or typeless
+    /// item nodes, in contribution order.
     pub(crate) fn type_documents(&self) -> impl Iterator<Item = &Document<'d>> + '_ {
-        self.documents
-            .iter()
-            .filter(|doc| !doc.types.is_empty() || !doc.locals.is_empty())
+        self.documents.iter().filter(|doc| {
+            !doc.types.is_empty() || !doc.references.is_empty() || !doc.locals.is_empty()
+        })
     }
 
     /// The documents that declared nodes, in contribution order.
@@ -356,6 +410,72 @@ impl<'d> Emission<'d> {
             .iter()
             .map(|doc| Ok((doc.file_name.clone(), include_path(&doc.path)?)))
     }
+}
+
+/// Name each item's `Item` variant: after its type, unless differently
+/// named nodes of a schema bind the type, when each node keys its own
+/// variant. Two nodes spelling one variant for different items fail.
+fn key_variants(
+    items: &mut [ItemNode<'_>],
+    names: &Names,
+    kind: DefinitionKind,
+) -> Result<(), Error> {
+    let node_name = |item: &ItemNode<'_>| names.resolve(item.node.name);
+    let mut shared: Vec<&str> = Vec::new();
+    if kind == DefinitionKind::Schema {
+        for item in items.iter() {
+            let several = items
+                .iter()
+                .any(|other| other.ty == item.ty && node_name(other) != node_name(item));
+            if several && !shared.contains(&item.ty.as_str()) {
+                shared.push(&item.ty);
+            }
+        }
+    }
+    let shared: Vec<String> = shared.into_iter().map(str::to_owned).collect();
+
+    // Each variant, with the node name and type of the items it reads.
+    let mut spelled: BTreeMap<String, (String, String)> = BTreeMap::new();
+    let mut handlers: Vec<(bool, String, Option<String>)> = Vec::new();
+    for item in items.iter_mut() {
+        let node = node_name(item).to_owned();
+        if shared.contains(&item.ty) {
+            item.keyed = true;
+            item.variant = pascal(&node);
+            if !is_identifier(&item.variant) || item.variant == "Self" {
+                return Err(Error::UnspellableName {
+                    what: "item variant",
+                    owner: node,
+                    name: item.variant.clone(),
+                    reason: "it is no Rust identifier",
+                });
+            }
+        }
+        match spelled.get(&item.variant) {
+            // A same-named node under another parent reads the same
+            // items, unless its items are its own node-local type.
+            Some((first, ty)) if *first == node && *ty == item.ty && !item.local => {
+                item.declares_variant = false;
+            }
+            Some((first, _)) => {
+                return Err(Error::ItemVariantCollision {
+                    variant: item.variant.clone(),
+                    node,
+                    other: first.clone(),
+                });
+            }
+            None => {
+                spelled.insert(item.variant.clone(), (node.clone(), item.ty.clone()));
+            }
+        }
+        let handler = (item.record, item.ty.clone(), item.keyed.then_some(node));
+        if handlers.contains(&handler) {
+            item.declares_handler = false;
+        } else {
+            handlers.push(handler);
+        }
+    }
+    Ok(())
 }
 
 /// Whether a role makes a node an item of the processor's stream.

@@ -1,7 +1,7 @@
 {
   "binary": "kdlith",
   "kind": "codegen-oracle",
-  "description": "The shipped contribution resolver in a generated crate: gen schema generates a committed self-contained schema whose resolution policy names the shipped layered resolver, twice into scratch trees the harness requires byte-identical; the generated crate compiles inside a scratch workspace materialized from this scenario's committed template beside a consumer crate that installs the resolver statically, with no plugin loader. The exercise pins that loading without the resolver installed fails closed with the resolver-not-installed code, that the plain generated reader leaves contributions as records, that reader_with_contribution_resolver settles each target under the declared layer precedence into resolution items after the documents, and that a record naming a target no record contributes fails the reading with the resolution-failed code and no resolution item",
+  "description": "The shipped contribution resolver in a generated crate: gen schema generates a committed self-contained schema whose resolution policy names the shipped layered resolver, twice into scratch trees the harness requires byte-identical; the generated crate compiles inside a scratch workspace materialized from this scenario's committed template beside a consumer crate that installs the resolver statically, with no plugin loader. The exercise pins that loading without the resolver installed fails closed with the resolver-not-installed code, that the plain generated reader leaves contributions as records, that reader_with_contribution_resolver settles each target under the declared layer precedence into resolution items after the documents, that an ordered map nested in an optional object field and one in a node-local record field compile and decode through the generated types, and that a record naming a target no record contributes fails the reading with the resolution-failed code and no resolution item",
   "form": "schema",
   "entrypoint": "inputs/settings.kdl",
   "crate": "settings-proc",
@@ -24,11 +24,14 @@
         "command": ["cargo", "run", "--offline", "--quiet", "--manifest-path", "ws/rs/exercise/Cargo.toml", "--", "inputs/settings.kdl", "inputs/data.kdl", "inputs/bad-data.kdl"],
         "stdout-contains": [
           "uninstalled rejected KDLITH-DLC006\n",
-          "schema ok digest=afecf485f98ca218\n",
+          "schema ok digest=3fa1d1ef5b8e953c\n",
           "plain failed=false contributions=3 resolutions=0\n",
           "layered failed=false contributions=3 resolutions=2\n",
           "resolved target=mode value=dark layers=user\n",
           "resolved target=size value=large layers=base\n",
+          "metadata pairs origin=fixture\n",
+          "tags target=mode contrast=high\n",
+          "tags target=size -\n",
           "refused failed=true resolutions=0 codes=KDLITH-DLC010\n"
         ]
       }

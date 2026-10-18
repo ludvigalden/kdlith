@@ -2,13 +2,16 @@
 //! from the consuming side: the schema names the shipped `layered`
 //! resolver, the program installs it statically through the generated
 //! reader_with_contribution_resolver, and the run reports what each
-//! settled target resolved to and how a refused reading fails.
+//! settled target resolved to, the ordered maps the settled settings and
+//! the node-local metadata record decode to, and how a refused reading
+//! fails.
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use kdlith_engine::{CheckScope, Extensions, TypedItem};
+use kdlith_engine::{CheckScope, Extensions, FromValue, TypedItem};
 use kdlith_model::Value;
+use settings_proc::types::Setting;
 use settings_proc::{
     Item, LAYERED, Layered, load, reader, reader_with_contribution_resolver,
 };
@@ -55,6 +58,9 @@ fn main() {
     for line in &tally.resolutions {
         println!("{line}");
     }
+    for line in &tally.maps {
+        println!("{line}");
+    }
 
     let (failed, tally) = read(&layered, invalid);
     println!(
@@ -68,6 +74,7 @@ fn main() {
 struct Tally {
     contributions: usize,
     resolutions: Vec<String>,
+    maps: Vec<String>,
     codes: Vec<String>,
 }
 
@@ -75,11 +82,25 @@ fn read(reading: &kdlith_engine::TypedReader<'_, Item>, path: &Path) -> (bool, T
     let mut tally = Tally::default();
     let mut sink = |item: TypedItem<Item>| match item {
         TypedItem::Contribution(_) => tally.contributions += 1,
-        TypedItem::Resolution(resolved) => tally.resolutions.push(format!(
-            "resolved target={} value={} layers={}",
-            resolved.target.written,
-            entry(&resolved.value, "value"),
-            resolved.layers.join(",")
+        TypedItem::Resolution(resolved) => {
+            tally.resolutions.push(format!(
+                "resolved target={} value={} layers={}",
+                resolved.target.written,
+                entry(&resolved.value, "value"),
+                resolved.layers.join(",")
+            ));
+            tally.maps.push(format!(
+                "tags target={} {}",
+                resolved.target.written,
+                setting_tags(&resolved.value)
+            ));
+        }
+        TypedItem::Record {
+            value: Item::Metadata(metadata),
+            ..
+        } => tally.maps.push(format!(
+            "metadata pairs {}",
+            pairs(metadata.pairs.iter().map(|(key, tag)| (key, &tag.text)))
         )),
         TypedItem::Diagnostic(record) => tally.codes.push(record.code.clone()),
         _ => {}
@@ -102,6 +123,26 @@ fn entry(value: &Value, key: &str) -> String {
         Some(Value::String(text)) => text.clone(),
         _ => "-".to_owned(),
     }
+}
+
+/// The settled value read as the generated `Setting`, rendering its
+/// optional ordered tag map, or `-` when the setting carries no tags.
+fn setting_tags(value: &Value) -> String {
+    let setting = Setting::from_value(value).unwrap_or_else(|mismatch| {
+        eprintln!("layered-exercise: a settled value is not a Setting: {mismatch}");
+        std::process::exit(1);
+    });
+    match &setting.tags {
+        Some(tags) => pairs(tags.iter().map(|(key, tag)| (key, &tag.text))),
+        None => "-".to_owned(),
+    }
+}
+
+fn pairs<'a>(entries: impl Iterator<Item = (&'a String, &'a String)>) -> String {
+    entries
+        .map(|(key, text)| format!("{key}={text}"))
+        .collect::<Vec<_>>()
+        .join(",")
 }
 
 fn codes(records: &[kdlith_diagnostic::DiagnosticRecord]) -> String {

@@ -30,7 +30,7 @@ pub const COMMENT_MARKER: &str = concat!(
 
 use std::path::{Path, PathBuf};
 
-use kdlith_diagnostic::DiagnosticRecord;
+use kdlith_diagnostic::{DiagnosticRecord, registry};
 use kdlith_engine::{CheckScope, Definition, Extensions};
 
 /// Why a definition cannot generate a crate.
@@ -63,6 +63,13 @@ pub enum Error {
     /// A declared type whose kind has no Rust rendering this version
     /// defines.
     UnsupportedTypeKind { name: String, kind: &'static str },
+    /// A type instantiates a generic declaration; a generated crate
+    /// spells no generic instantiations.
+    UnsupportedGeneric {
+        name: String,
+        document: String,
+        generic: String,
+    },
     /// The item type `{ty}` has no compile glue; only the canonical
     /// definition vocabulary generates a definition loader.
     UnsupportedItem { name: String },
@@ -78,11 +85,12 @@ pub enum Error {
         name: String,
         reason: &'static str,
     },
-    /// The item type `{ty}` is bound by more than one reading node.
-    DuplicateItemBinding {
-        ty: String,
-        first: String,
-        second: String,
+    /// Two reading nodes spell one `Item` variant for different items:
+    /// `KDLITH-GEN004`.
+    ItemVariantCollision {
+        variant: String,
+        node: String,
+        other: String,
     },
     /// A seed document outside the repository's `pkg/` tree cannot be
     /// spelled as the pinned layout's relative include path.
@@ -130,6 +138,15 @@ impl std::fmt::Display for Error {
                 f,
                 "the declared type `{name}` of kind `{kind}` has no Rust rendering"
             ),
+            Self::UnsupportedGeneric {
+                name,
+                document,
+                generic,
+            } => write!(
+                f,
+                "the type `{name}` of `{document}` instantiates the generic declaration \
+                 `{generic}`; a generated crate cannot spell generic instantiations"
+            ),
             Self::UnsupportedItem { name } => write!(
                 f,
                 "the item type `{name}` has no compile glue; only the canonical \
@@ -149,10 +166,11 @@ impl std::fmt::Display for Error {
                 f,
                 "the {what} `{name}` of `{owner}` has no Rust spelling in a generated crate: {reason}"
             ),
-            Self::DuplicateItemBinding { ty, first, second } => write!(
-                f,
-                "the item type `{ty}` is bound by both `{first}` and `{second}`"
-            ),
+            Self::ItemVariantCollision {
+                variant,
+                node,
+                other,
+            } => f.write_str(&variant_collision(variant, node, other)),
             Self::SeedOutsidePkg { path } => write!(
                 f,
                 "the seed document `{path}` does not sit under the repository's \
@@ -170,6 +188,32 @@ impl std::fmt::Display for Error {
 }
 
 impl std::error::Error for Error {}
+
+impl Error {
+    /// The registered diagnostic a refusal reports as, for the refusals
+    /// the code registry names.
+    pub fn diagnostic(&self) -> Option<DiagnosticRecord> {
+        match self {
+            Self::ItemVariantCollision {
+                variant,
+                node,
+                other,
+            } => DiagnosticRecord::from_code(VARIANT_COLLISION).map(|record| {
+                record
+                    .with_message(variant_collision(variant, node, other))
+                    .with_origin("codegen")
+            }),
+            _ => None,
+        }
+    }
+}
+
+const VARIANT_COLLISION: &str = "KDLITH-GEN004";
+
+fn variant_collision(variant: &str, node: &str, other: &str) -> String {
+    let template = registry::lookup(VARIANT_COLLISION).map_or("", |code| code.message_template);
+    registry::render(template, &[other, node, variant])
+}
 
 /// Generate the processor crate for `definition`, published as
 /// `crate_name`: deterministic bytes, nothing from the working tree.

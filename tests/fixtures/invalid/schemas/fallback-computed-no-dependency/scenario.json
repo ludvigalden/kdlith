@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A computed fallback selects the dialect's ComputedDefault type through its case dispatch, whose dependencies field is required: a computed fallback without any dependency child is missing it",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

@@ -1,0 +1,12 @@
+schema conf version="1" {
+    types {
+        object Conf {
+            field retries "optional<Integer>" {
+                fallback computed=#true
+            }
+        }
+    }
+    node conf role=record type=Conf {
+        field retries property=retries
+    }
+}

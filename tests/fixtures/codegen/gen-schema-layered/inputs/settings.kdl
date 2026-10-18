@@ -2,17 +2,23 @@
 // declarations are the targets setting contributions name, each setting
 // binds its layer from the `layer` property, and the policy ranks user
 // over base under the default arms (replace, reject duplicates, reject
-// missing targets).
+// missing targets). Setting tags nest an ordered map inside an optional,
+// and the typeless metadata record holds an ordered map in a node-local
+// field, so the generated crate must import the map type for both.
 schema settings version="1" {
     types {
         object Choice {
             field name String
+        }
+        object Tag {
+            field text String
         }
         object Setting {
             field target "ref<Choice>"
             field value String
             field follows "optional<ref<Choice>>"
             field layer "optional<String>"
+            field tags "optional<ordered-map<String, Tag>>"
         }
     }
     node option role=declaration type=Choice {
@@ -23,6 +29,26 @@ schema settings version="1" {
         field value arg=1
         field follows property=follows
         field layer property=layer
+        field tags {
+            from {
+                entries tag key="arg(0)" value=Tag
+            }
+            duplicate-keys reject
+        }
+    }
+    node tag type=Tag parent=setting {
+        field text arg=1
+    }
+    node metadata role=record {
+        field pairs "ordered-map<String, Tag>" {
+            from {
+                entries pair key="arg(0)" value=Tag
+            }
+            duplicate-keys reject
+        }
+    }
+    node pair type=Tag parent=metadata {
+        field text arg=1
     }
     resolution resolver=layered {
         layers user base
