@@ -111,8 +111,8 @@ pub struct IndexedDeclaration {
     pub node: NodeId,
     pub identity: Identity,
     /// The alias namespace the declaration registers under, when an
-    /// aliased import loaded its document: it is reachable through the
-    /// alias and not by its unqualified name.
+    /// aliased import loaded its document: other documents reach it
+    /// through the alias and not by its unqualified name.
     pub alias: Option<String>,
     /// The identity field each name segment came from, outermost first;
     /// empty when the composition is not known.
@@ -161,7 +161,8 @@ impl IdentityIndex {
 /// their composed identities. Only domains an identity block or a
 /// declared reference type names are indexed. A declaration from a
 /// document `aliases` attributes to an alias namespace registers under
-/// that namespace only. Two declarations composing one identity in one
+/// that namespace, which gates every other document's view of it. Two
+/// declarations composing one identity in one
 /// domain and namespace are a duplicate; the first stays indexed.
 pub fn index_identities(
     definition: &Definition,
@@ -325,8 +326,9 @@ pub struct Lookup {
 /// context captured where the reference bound, and leave any further
 /// missing segment open, so a partial name may match several
 /// declarations. `imported-or-context` also admits an alias namespace as
-/// the name's first segment; declarations under an alias are reachable
-/// in no other way.
+/// the name's first segment. A declaration under an alias is reachable
+/// by its unqualified name from its own document only; every other
+/// document reaches it through the alias namespace or not at all.
 pub fn derive_candidates(index: &IdentityIndex, bound: &[BoundReference]) -> Vec<Lookup> {
     bound
         .iter()
@@ -337,22 +339,18 @@ pub fn derive_candidates(index: &IdentityIndex, bound: &[BoundReference]) -> Vec
             let mut candidates = Vec::new();
             let mut gated = BTreeSet::new();
             for entry in index.domain(&reference.domain) {
+                let plain = matches(entry, segments, reference, policy);
                 match &entry.alias {
-                    None => {
-                        if matches(entry, segments, reference, policy) {
-                            candidates.push(entry.clone());
-                        }
+                    None if plain => candidates.push(entry.clone()),
+                    None => {}
+                    Some(_) if plain && own_document(entry, reference) => {
+                        candidates.push(entry.clone());
                     }
                     Some(alias) => {
-                        let prefixed = segments.split_first().filter(|(first, rest)| {
-                            *first == alias
-                                && !rest.is_empty()
-                                && matches(entry, rest, reference, policy)
-                        });
-                        if prefixed.is_some() && policy == Qualification::ImportedOrContext {
+                        let prefixed = through_alias(entry, reference, policy).is_some();
+                        if prefixed && policy == Qualification::ImportedOrContext {
                             candidates.push(entry.clone());
-                        } else if prefixed.is_some() || matches(entry, segments, reference, policy)
-                        {
+                        } else if prefixed || plain {
                             gated.insert(alias.clone());
                         }
                     }
@@ -707,6 +705,27 @@ fn matches(
     derive(entry, segments, reference, policy).is_some()
 }
 
+/// Whether a reference is written in the document that holds a
+/// declaration: an aliased import namespaces other documents' view of
+/// its declarations, never their own.
+fn own_document(entry: &IndexedDeclaration, reference: &Reference) -> bool {
+    entry.node.source == reference.site.source
+}
+
+/// The name segments after a reference's first, when that first segment
+/// is the declaration's alias namespace and the rest match it.
+fn through_alias<'r>(
+    entry: &IndexedDeclaration,
+    reference: &'r Reference,
+    policy: Qualification,
+) -> Option<&'r [String]> {
+    let (first, rest) = reference.name.0.split_first()?;
+    (entry.alias.as_ref() == Some(first)
+        && !rest.is_empty()
+        && matches(entry, rest, reference, policy))
+    .then_some(rest)
+}
+
 /// The segments a reference supplies for a declaration's identity, by
 /// position, when they agree with it; see [`derive_candidates`] for the
 /// filling order. An open position is supplied by nothing.
@@ -756,9 +775,11 @@ fn unmet_qualifiers(
 ) -> Vec<UnmetQualifier> {
     let reference = &bound.reference;
     let policy = bound.declared.qualification;
+    let plain = reference.name.0.as_slice();
+    let unqualified = own_document(target, reference) && matches(target, plain, reference, policy);
     let segments = match &target.alias {
-        Some(_) => reference.name.0.get(1..).unwrap_or_default(),
-        None => reference.name.0.as_slice(),
+        Some(_) if !unqualified => through_alias(target, reference, policy).unwrap_or_default(),
+        _ => plain,
     };
     let derived = derive(target, segments, reference, policy).unwrap_or_default();
     bound

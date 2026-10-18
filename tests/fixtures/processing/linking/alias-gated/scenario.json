@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "Alias gating is observable: a declaration an aliased import contributes is not reachable by its unqualified name, and the unresolved reference's message names the alias namespace that holds it",
+  "description": "Alias gating is observable: a declaration an aliased import contributes is not reachable by its unqualified name from the importing document, and the unresolved reference's message names the alias namespace that holds it",
   "args": [
     "vet",
     "data",

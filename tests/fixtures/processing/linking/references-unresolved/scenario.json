@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "The references view renders an unresolved link whose only match an aliased import gated: no candidate, the alias namespace listed as gated, and the run fails KDLITH-REF001 naming that namespace after the view has printed",
+  "description": "The references view renders an unresolved link whose only match an aliased import gated from the importing document: no candidate, the alias namespace listed as gated, and the run fails KDLITH-REF001 naming that namespace after the view has printed",
   "args": [
     "inspect",
     "data",

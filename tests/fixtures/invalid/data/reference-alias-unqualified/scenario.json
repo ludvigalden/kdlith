@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "A declaration an aliased import contributes is reachable only through the alias namespace: the unqualified name does not resolve",
+  "description": "A declaration an aliased import contributes is reachable from the importing document only through the alias namespace: the importer's unqualified name does not resolve",
   "args": [
     "vet",
     "data",

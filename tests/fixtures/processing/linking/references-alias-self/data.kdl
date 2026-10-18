@@ -1,0 +1,3 @@
+import "pack.kdl" as=go
+import "sibling.kdl"
+takes "go.go-code"

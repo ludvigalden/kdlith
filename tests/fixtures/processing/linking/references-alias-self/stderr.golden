@@ -1,0 +1,2 @@
+error[KDLITH-REF001]: reference go-code in input-sets (declared only under the alias namespace go) does not resolve
+  --> sibling.kdl:1:7
