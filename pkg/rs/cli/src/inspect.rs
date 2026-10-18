@@ -464,6 +464,9 @@ fn reference_lines(linked: &Linked<'_>) -> Vec<serde_json::Value> {
                         "gated": link.gated,
                         "outcome": outcome_name(&link.outcome),
                     });
+                    if link.key {
+                        line["key"] = json!(true);
+                    }
                     if let LinkOutcome::UnmetQualifier(reasons) = &link.outcome {
                         line["reasons"] = reasons
                             .iter()

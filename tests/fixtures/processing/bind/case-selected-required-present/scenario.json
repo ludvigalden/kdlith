@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A case-selected instance supplying every required field of its selected type binds valid as that type: circle with a radius binds as Circle and square with a side as Square",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/constraints-schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

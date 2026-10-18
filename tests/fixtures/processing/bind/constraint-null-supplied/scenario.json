@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "Absent, null, and an empty list are distinct states under object constraints: #null is a supplied value, so a=#null without b fails requires and all-or-none (KDLITH-BND011), while a=#null b=#null satisfies both and binds valid, and a node supplying neither field binds valid",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/constraints-schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

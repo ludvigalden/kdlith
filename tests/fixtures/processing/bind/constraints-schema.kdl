@@ -1,0 +1,59 @@
+// The schema the object-constraint and case-required scenarios share:
+// a record whose type states requires and all-or-none over two nullable
+// fields, a record whose collected list is supplied even when empty, and
+// a record whose case dispatch selects a type with a required field.
+schema constraints version="1" {
+    types {
+        object Item {
+            field a "optional<nullable<String>>"
+            field b "optional<nullable<String>>"
+            constraints {
+                requires a b
+                all-or-none a b
+            }
+        }
+        object Tagged {
+            field tags "list<String>"
+            field note "optional<String>"
+            constraints {
+                requires tags note
+            }
+        }
+        object Shape {
+            field shape String
+            field radius "optional<U64>"
+            field side "optional<U64>"
+        }
+        object Circle {
+            field shape String
+            field radius U64
+        }
+        object Square {
+            field shape String
+            field side U64
+        }
+    }
+    node item role=record type=Item {
+        field a property=a
+        field b property=b
+    }
+    node tagged role=record type=Tagged {
+        field tags {
+            from {
+                children tag {
+                    argument 0
+                }
+            }
+        }
+        field note property=note
+    }
+    node g role=record type=Shape {
+        field shape property=shape
+        field radius property=radius
+        field side property=side
+        cases {
+            case property=shape equals=circle type=Circle
+            case property=shape equals=square type=Square
+        }
+    }
+}

@@ -1,0 +1,2 @@
+error[KDLITH-BND011]: tagged violates requires tags note of Tagged: tags is supplied but note is absent
+  --> data.kdl:1:1

@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A map key decoding to a value that is neither a string nor a reference is rejected with the unsupported-map-key code rather than dropped",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/linking/refkey-schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

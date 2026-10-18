@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "An object's requires and all-or-none constraints are enforced at scope completion: a supplies a value while b is absent, so each constraint fails with KDLITH-BND011 at the node, quoting the constraint, its type, the field that triggered it, and the absent field; the record is not emitted and the run exits 1",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/constraints-schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

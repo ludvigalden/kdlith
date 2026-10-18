@@ -607,6 +607,26 @@ pub const CODES: &[CodeDefinition] = &[
         correction: "Supply the value through the registered resolver's source, or write it in the document",
         retired: false,
     },
+    CodeDefinition {
+        code: "KDLITH-BND010",
+        label: "unsupported-map-key",
+        severity: Severity::Error,
+        exit_class: 1,
+        trigger: "an entries envelope's key decodes, under its map's declared key type, to a value that is neither a string nor a reference, so no map entry can carry it; a key the type rejects is KDLITH-BND003",
+        message_template: "key <key> of <field> decodes under <type> to <found>, which no map key holds",
+        correction: "Declare the map's key type as a string type, a codec yielding a string, or a reference type",
+        retired: false,
+    },
+    CodeDefinition {
+        code: "KDLITH-BND011",
+        label: "object-constraint-violated",
+        severity: Severity::Error,
+        exit_class: 1,
+        trigger: "a bound node breaks an object constraint of a type it binds as: requires F G with F holding a value and G none, or all-or-none with some but not all of its fields holding one; #null and an empty collection are values, only a field holding none is absent",
+        message_template: "<node> violates <constraint>: <field> is supplied but <missing> is absent",
+        correction: "Supply the absent field, or remove the field that requires it",
+        retired: false,
+    },
     // CTX
     CodeDefinition {
         code: "KDLITH-CTX001",
@@ -709,6 +729,16 @@ pub const CODES: &[CodeDefinition] = &[
         correction: "Spell the required qualifier with the value its target declares, or reference a declaration that carries it",
         retired: false,
     },
+    CodeDefinition {
+        code: "KDLITH-REF005",
+        label: "pending-payload-type",
+        severity: Severity::Error,
+        exit_class: 1,
+        trigger: "a pending typed binding whose payload fails its resolved declaration's member type at complete scope",
+        message_template: "pending payload of <node> under codec <codec> does not match <expected>: found <found>",
+        correction: "Write the payload as the referenced declaration's member type declares it: a list member takes zero or more values, any other member exactly one, and an optional member none or one",
+        retired: false,
+    },
     // GEN
     CodeDefinition {
         code: "KDLITH-GEN001",
@@ -738,6 +768,16 @@ pub const CODES: &[CodeDefinition] = &[
         trigger: "a typed processor's declared types, nodes, slots, or handlers disagree with the compiled definition it reads",
         message_template: "processor <processor> disagrees with its definition: <subject>: <reason>",
         correction: "Regenerate the processor from its definition, or bring its declarations in line",
+        retired: false,
+    },
+    CodeDefinition {
+        code: "KDLITH-GEN004",
+        label: "item-variant-collision",
+        severity: Severity::Error,
+        exit_class: 1,
+        trigger: "two reading nodes of a definition spell the same generated item variant for different items",
+        message_template: "the nodes <first> and <second> both read as the item variant <variant>",
+        correction: "Rename one of the nodes, or bind the nodes that share a type under names that spell distinct variants",
         retired: false,
     },
     // EXP

@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A case dispatch's selected type is checked for its required fields like the node's own type: shape=circle selects Circle, whose radius is required and unwritten, so the node fails with KDLITH-BND004 naming Circle.radius and the record is not emitted",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/constraints-schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

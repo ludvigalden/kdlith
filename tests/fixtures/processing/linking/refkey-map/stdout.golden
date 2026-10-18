@@ -1,0 +1,4 @@
+{"item":"document","data":{"source":0,"path":"data.kdl"}}
+{"item":"declaration","data":{"node":{"source":0,"index":0},"identity":{"domain":"attrs","name":["width"]},"type_name":"Attr","fields":[{"name":"name","value":{"kind":"string","value":"width"},"origin":0}],"origin":0,"validation":"valid"}}
+{"item":"record","data":{"node":{"source":0,"index":1},"type_name":"Unordered","fields":[{"name":"name","value":{"kind":"string","value":"u"},"origin":1},{"name":"values","value":{"kind":"map","value":[{"key":"width","reference":{"domain":"attrs","name":["width"],"qualifiers":[],"written":"width","site":{"source":0,"span":{"start":{"offset":31,"line":3,"column":7},"end":{"offset":37,"line":3,"column":13}}}},"value":{"kind":"map","value":[{"key":"value","value":{"kind":"string","value":"12"}}]}}]},"origin":1}],"origin":1,"validation":"provisional"}}
+{"item":"scope-complete","data":{"source":0,"scope":null}}

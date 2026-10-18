@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A field of an all-or-none constraint supplied without the others is rejected with the object-constraint code, even when the supplied value is #null",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/constraints-schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

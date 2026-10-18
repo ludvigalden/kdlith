@@ -1,0 +1,10 @@
+{
+  "binary": "kdlith",
+  "description": "An ordered map keyed by a declared reference type binds every entries-envelope entry, each key carrying the reference it spells beside its written form and the record staying provisional, and under the default complete scope every key links to its one declaration: the run exits 0 with no diagnostic, never a silently empty map",
+  "args": ["vet", "data", "--schema", "{fx-suite}/processing/linking/refkey-schema.kdl", "data.kdl"],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

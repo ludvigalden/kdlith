@@ -329,7 +329,7 @@ impl<K: FromValue, V: FromValue> FromValue for OrderedMap<K, V> {
 }
 
 fn keyed<K: FromValue, V: FromValue>(entry: &Entry) -> Result<(K, V), Mismatch> {
-    let key = K::from_value(&Value::String(entry.key.clone()))?;
+    let key = K::from_value(&entry.key_value())?;
     Ok((key, V::from_value(&entry.value)?))
 }
 

@@ -1,0 +1,10 @@
+{
+  "binary": "kdlith",
+  "description": "A map key whose reference names no declaration binds its entry and fails linking under complete scope with KDLITH-REF001 at the key, the message naming the map field the key belongs to; the resolving key beside it reports nothing and the run exits 1",
+  "args": ["vet", "data", "--schema", "{fx-suite}/processing/linking/refkey-schema.kdl", "data.kdl"],
+  "expect": {
+    "exit": 1,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

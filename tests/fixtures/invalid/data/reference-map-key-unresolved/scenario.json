@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A reference-typed map key naming no declaration is unresolved under the default complete scope",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/linking/refkey-schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

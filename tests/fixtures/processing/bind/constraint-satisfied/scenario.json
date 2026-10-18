@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "Supplied pairs satisfy the object constraints: a and b both written, both #null, or neither present all bind valid under requires a b and all-or-none a b, as does an empty tag list beside its required note",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/constraints-schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

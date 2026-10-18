@@ -450,18 +450,19 @@ fn decl_info(def: &Definition, id: NodeDeclId, decl: &NodeDecl) -> DeclInfo {
 }
 
 /// The declared reference type a field's type names, through any
-/// optional, nullable, or list wrapper.
+/// optional, nullable, or list wrapper, or as its map's key type.
 fn reference_type(def: &Definition, ty: &TypeExpr) -> Option<ReferenceDecl> {
     match ty {
         TypeExpr::Named(name) => def.symbols.reference(*name).cloned(),
         TypeExpr::Optional(inner) | TypeExpr::Nullable(inner) | TypeExpr::List(inner) => {
             reference_type(def, inner)
         }
+        TypeExpr::Map(key, _) | TypeExpr::OrderedMap(key, _) => reference_type(def, key),
         _ => None,
     }
 }
 
-fn optional(ty: &TypeExpr) -> bool {
+pub(crate) fn optional(ty: &TypeExpr) -> bool {
     matches!(ty, TypeExpr::Optional(_))
 }
 

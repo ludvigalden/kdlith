@@ -23,6 +23,11 @@ pub enum Value {
 #[non_exhaustive]
 pub struct Entry {
     pub key: String,
+    /// The reference the key spells, when the map's key type is a
+    /// reference type; `key` is then its written form. Binding never
+    /// resolves it; linking does.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reference: Option<Reference>,
     pub value: Value,
 }
 
@@ -30,7 +35,25 @@ impl Entry {
     pub fn new(key: impl Into<String>, value: Value) -> Self {
         Self {
             key: key.into(),
+            reference: None,
             value,
+        }
+    }
+
+    /// An entry keyed by a reference, under the key as written.
+    pub fn referenced(reference: Reference, value: Value) -> Self {
+        Self {
+            key: reference.written.clone(),
+            reference: Some(reference),
+            value,
+        }
+    }
+
+    /// The key as a bound value: its reference when it holds one.
+    pub fn key_value(&self) -> Value {
+        match &self.reference {
+            Some(reference) => Value::Reference(reference.clone()),
+            None => Value::String(self.key.clone()),
         }
     }
 }

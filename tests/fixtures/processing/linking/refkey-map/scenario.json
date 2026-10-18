@@ -1,0 +1,10 @@
+{
+  "binary": "kdlith",
+  "description": "A map keyed by a declared reference type binds and links its entries exactly as the ordered-map spelling does: the entry's key carries its reference and resolves under complete scope, and the run exits 0",
+  "args": ["vet", "data", "--schema", "{fx-suite}/processing/linking/refkey-schema.kdl", "data.kdl"],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

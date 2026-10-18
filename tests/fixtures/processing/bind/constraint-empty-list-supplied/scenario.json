@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "An empty collected list is a supplied value, not an absent field: a node with no tag children still holds tags as an empty list, so requires tags note fails (KDLITH-BND011) until note is written",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/constraints-schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

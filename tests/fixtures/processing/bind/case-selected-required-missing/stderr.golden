@@ -1,0 +1,2 @@
+error[KDLITH-BND004]: g is missing required Circle.radius
+  --> data.kdl:1:1

@@ -1,0 +1,4 @@
+error[KDLITH-BND011]: item violates requires a b of Item: a is supplied but b is absent
+  --> data.kdl:1:1
+error[KDLITH-BND011]: item violates all-or-none a b of Item: a is supplied but b is absent
+  --> data.kdl:1:1

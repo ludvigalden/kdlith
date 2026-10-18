@@ -1,0 +1,10 @@
+{
+  "binary": "kdlith",
+  "description": "The references view reports each map key a reference type looks up as a link of the field holding the map, marked as a key, with its one candidate and the resolved outcome, in stream order",
+  "args": ["inspect", "data", "--view", "references", "--schema", "{fx-suite}/processing/linking/refkey-schema.kdl", "data.kdl"],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

@@ -1,0 +1,71 @@
+// The schema the reference-keyed map scenarios share: attributes declared
+// by name, records holding an ordered map and a map keyed by a reference
+// to them, and a record whose map key codec decodes to a number, a key
+// shape no map entry holds.
+schema refkeys version="0" {
+    types {
+        codec Name output=String {
+            match #"(?:(?<alias>[a-z][a-z0-9]*)\.)?(?<name>[a-z][a-z0-9]*)"#
+            capture alias String
+            capture name String
+        }
+        codec Port output=U64 {
+            match #"(?<number>[0-9]+)"#
+            capture number U64
+        }
+        object Attr {
+            field name String
+        }
+        object Ev {
+            field value String
+        }
+        object Ordered {
+            field name String
+            field values "ordered-map<AttrRef, Ev>"
+        }
+        object Unordered {
+            field name String
+            field values "map<AttrRef, Ev>"
+        }
+        object Ports {
+            field name String
+            field values "map<Port, Ev>"
+        }
+    }
+    node attr role=declaration type=Attr {
+        field name arg=0
+        identity {
+            domain attrs
+            compose qualified-name name
+        }
+    }
+    node ordered role=record type=Ordered {
+        field name arg=0
+        field values {
+            from {
+                entries e key="arg(0)" value=Ev
+            }
+        }
+    }
+    node unordered role=record type=Unordered {
+        field name arg=0
+        field values {
+            from {
+                entries e key="arg(0)" value=Ev
+            }
+        }
+    }
+    node ports role=record type=Ports {
+        field name arg=0
+        field values {
+            from {
+                entries e key="arg(0)" value=Ev
+            }
+        }
+    }
+    node e type=Ev {
+        parents ordered unordered ports
+        field value arg=1
+    }
+    reference AttrRef target=Attr codec=Name lookup=attrs qualification=explicit
+}

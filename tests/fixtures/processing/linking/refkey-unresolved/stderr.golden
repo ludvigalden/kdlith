@@ -1,0 +1,2 @@
+error[KDLITH-REF001]: reference height in attrs as a key of values does not resolve
+  --> data.kdl:4:7

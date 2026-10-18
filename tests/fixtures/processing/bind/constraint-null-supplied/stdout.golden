@@ -1,0 +1,6 @@
+{"item":"document","data":{"source":0,"path":"data.kdl"}}
+{"item":"record","data":{"node":{"source":0,"index":0},"type_name":"Item","fields":[],"origin":0,"validation":"valid"}}
+{"item":"diagnostic","data":{"code":"KDLITH-BND011","severity":"error","source_path":"data.kdl","span":{"start":5,"end":9},"line":2,"col":1,"origin":"data-document","labels":[],"related":[],"correction":"Supply the absent field, or remove the field that requires it","message":"item violates requires a b of Item: a is supplied but b is absent"}}
+{"item":"diagnostic","data":{"code":"KDLITH-BND011","severity":"error","source_path":"data.kdl","span":{"start":5,"end":9},"line":2,"col":1,"origin":"data-document","labels":[],"related":[],"correction":"Supply the absent field, or remove the field that requires it","message":"item violates all-or-none a b of Item: a is supplied but b is absent"}}
+{"item":"record","data":{"node":{"source":0,"index":2},"type_name":"Item","fields":[{"name":"a","value":{"kind":"null"},"origin":2},{"name":"b","value":{"kind":"null"},"origin":2}],"origin":2,"validation":"valid"}}
+{"item":"scope-complete","data":{"source":0,"scope":null}}

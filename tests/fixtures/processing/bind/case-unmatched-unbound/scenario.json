@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "Unbound-case rejection is unchanged by the selected-type checks: a node whose cases match none and that has no otherwise is rejected as unbound (KDLITH-BND001) before any selected type's required fields or constraints are consulted, while its matching sibling binds as its selected type",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/constraints-schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

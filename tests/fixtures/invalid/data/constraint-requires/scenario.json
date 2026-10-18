@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A field supplied without the field its type's requires constraint names is rejected with the object-constraint code",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/constraints-schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

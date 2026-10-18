@@ -16,7 +16,7 @@ use kdlith_model::{
     ExpansionRequest, Field, Identity, ImportRequest, Location, Origin, OriginId, PendingBinding,
     QualifiedName, Reference, Repeated, ScopeCompletion, SourceId, Trace, ValidationState, Value,
 };
-use kdlith_parse::{Locator, Parser};
+use kdlith_parse::{Event, Locator, Parser};
 use kdlith_runtime::{
     Completion, Context, ContextEffect, ContextTarget, Cx, Disposition, FollowingEffects,
     HandlerCall, HandlerEffect, Handlers, HeaderEffects, Processor, ResolvedStream, Session,
@@ -24,7 +24,7 @@ use kdlith_runtime::{
 };
 
 use crate::bindings::{
-    BindingCodec, ChildPlan, ContextPolicy, DependentBinding, NodeDeclId, Role, SetFrom,
+    BindingCodec, ChildPlan, ContextPolicy, DependentBinding, NodeDeclId, Role, ScopeId, SetFrom,
 };
 use crate::decode::{self, Decoder, Mismatch};
 use crate::definition::{
@@ -40,14 +40,16 @@ use crate::overlap;
 use crate::plan::EffectStep;
 use crate::structure::{ScopeRules, ScopeState, Violation};
 use crate::summary;
-use crate::types::{OutputPolicy, Sensitivity, TypeExpr, TypeKind, Variant};
+use crate::types::{
+    Constraint, ObjectType, OutputPolicy, Sensitivity, TypeExpr, TypeKind, Variant,
+};
 use crate::value_resolver::{ResolutionCall, SharedResolver};
 
 pub use frame::BindFrame;
 pub use source::ParseEvents;
 
 use frame::{Kind, Opened, Sibling, Supplied};
-use tables::{Bind, Collect, FieldInfo, IdentityBind, Mode, SlotInfo, Tables};
+use tables::{Bind, Collect, FieldInfo, IdentityBind, Mode, SlotInfo, Tables, optional};
 
 const COLLISION: &str = "KDLITH-BND007";
 const DUPLICATE_PROPERTY: &str = "KDLITH-SYN003";
@@ -57,6 +59,8 @@ const SLOT_DUPLICATE: &str = "KDLITH-CTX006";
 const HANDLER_UNDECLARED: &str = "KDLITH-CTX005";
 const PROFILE_NOT_SELECTED: &str = "KDLITH-SCH011";
 const UNRESOLVED_VALUE: &str = "KDLITH-BND009";
+const UNSUPPORTED_KEY: &str = "KDLITH-BND010";
+const CONSTRAINT_VIOLATED: &str = "KDLITH-BND011";
 
 const DOCUMENT_ROOT: &str = "the document root";
 
@@ -200,6 +204,9 @@ pub struct Binder<'d, 's> {
     /// The context the document's root level left, captured as the
     /// stream ends and before its scope restores the entry context.
     left: Option<Vec<Option<SlotValue>>>,
+    /// When one node is bound alone, the scope its parent dispatches
+    /// it in; the document's root rules then do not apply to it.
+    window: Option<ScopeId>,
     errors: u64,
 }
 
@@ -304,6 +311,7 @@ impl<'d, 's> Binder<'d, 's> {
             consulted: false,
             resolved: ResolvedStream::new(),
             left: None,
+            window: None,
             resolved_secret: false,
             errors: 0,
         }
@@ -1108,10 +1116,118 @@ impl<'d, 's> Binder<'d, 's> {
         }
     }
 
-    /// Validate a node's dependent payload against the member type its
-    /// `against` target references, with no scalar-to-list promotion. A
-    /// payload whose codec is not installed, or whose target type this
-    /// reading does not define, is kept as a pending typed binding.
+    /// The object type `name` declares, when it declares one.
+    fn object_type(&self, name: Sym) -> Option<&'d ObjectType> {
+        let def = self.def;
+        let id = def.types.lookup(name)?;
+        match &def.types.get(id)?.kind {
+            TypeKind::Object(object) => Some(object),
+            _ => None,
+        }
+    }
+
+    /// A case-selected type's required fields, checked as the node's own
+    /// are: one the node holds no value for is missing (`KDLITH-BND004`).
+    /// The record carries the node's fields, so the selected type's
+    /// fallbacks supply nothing.
+    fn selected_required(
+        &mut self,
+        cx: &mut Cx<'_>,
+        frame: &BindFrame,
+        values: &[Option<Value>],
+        typed_as: Option<Sym>,
+    ) {
+        let own = self.def.bindings.get(frame.owner).and_then(|decl| decl.ty);
+        let Some(selected) = typed_as.filter(|selected| Some(*selected) != own) else {
+            return;
+        };
+        let Some(object) = self.object_type(selected) else {
+            return;
+        };
+        for field in object.fields.iter().filter(|f| !optional(&f.ty)) {
+            if self.held(frame, values, field.name) {
+                continue;
+            }
+            let node = self.name(frame.name);
+            let missing = format!("{}.{}", self.name(selected), self.name(field.name));
+            self.diagnose(cx, MISSING_FIELD, frame.span, &[node, &missing]);
+        }
+    }
+
+    /// Whether the node holds a value for the field named `name`. `#null`
+    /// and an empty collection are values; only a field holding none is
+    /// absent.
+    fn held(&self, frame: &BindFrame, values: &[Option<Value>], name: Sym) -> bool {
+        self.tables.decls[frame.owner.index()]
+            .fields
+            .iter()
+            .position(|info| info.name == name)
+            .and_then(|at| values.get(at))
+            .is_some_and(Option::is_some)
+    }
+
+    /// Enforce the object constraints of every type the node binds as —
+    /// its own declared type and the type a case selected
+    /// (`KDLITH-BND011`): `requires F G` fails when F holds a value and G
+    /// none, and `all-or-none` fails for each listed field left absent
+    /// while another holds a value.
+    fn constraints(
+        &mut self,
+        cx: &mut Cx<'_>,
+        frame: &BindFrame,
+        values: &[Option<Value>],
+        typed_as: Option<Sym>,
+    ) {
+        let own = self.def.bindings.get(frame.owner).and_then(|decl| decl.ty);
+        let mut types = own.into_iter().collect::<Vec<_>>();
+        if let Some(selected) = typed_as.filter(|selected| Some(*selected) != own) {
+            types.push(selected);
+        }
+        for ty in types {
+            let Some(object) = self.object_type(ty) else {
+                continue;
+            };
+            for constraint in &object.constraints {
+                let (spelled, unmet) = match constraint {
+                    Constraint::Requires { field, required } => {
+                        let spelled =
+                            format!("requires {} {}", self.name(*field), self.name(*required));
+                        let unmet = (self.held(frame, values, *field)
+                            && !self.held(frame, values, *required))
+                        .then(|| (*field, vec![*required]));
+                        (spelled, unmet)
+                    }
+                    Constraint::AllOrNone(fields) => {
+                        let names: Vec<&str> = fields.iter().map(|f| self.name(*f)).collect();
+                        let spelled = format!("all-or-none {}", names.join(" "));
+                        let (held, absent): (Vec<Sym>, Vec<Sym>) = fields
+                            .iter()
+                            .partition(|field| self.held(frame, values, **field));
+                        let unmet = held
+                            .first()
+                            .filter(|_| !absent.is_empty())
+                            .map(|first| (*first, absent));
+                        (spelled, unmet)
+                    }
+                };
+                let Some((trigger, absent)) = unmet else {
+                    continue;
+                };
+                let node = self.name(frame.name);
+                let constraint = format!("{spelled} of {}", self.name(ty));
+                let trigger = self.name(trigger);
+                for missing in absent {
+                    let missing = self.name(missing);
+                    let values = [node, constraint.as_str(), trigger, missing];
+                    self.diagnose(cx, CONSTRAINT_VIOLATED, frame.span, &values);
+                }
+            }
+        }
+    }
+
+    /// Validate a node's dependent payload against its `against` target's
+    /// member type, never promoting a scalar to a list. A payload whose
+    /// codec or target type this reading lacks stays a pending binding.
     fn dependent_payload(
         &mut self,
         cx: &mut Cx<'_>,
@@ -1201,7 +1317,11 @@ impl<'d, 's> Binder<'d, 's> {
         };
         let node = cx.node();
         let field = self.name(dep.target);
-        PendingBinding::new(node, field, against.clone(), raw, OriginId(node.index))
+        PendingBinding::new(node, field, against.clone(), raw, OriginId(node.index)).with_dependent(
+            self.name(frame.name),
+            self.name(dep.member),
+            dep.codec.name(),
+        )
     }
 
     /// Resolve effect steps into runtime effects, in declared order:
@@ -1761,16 +1881,20 @@ impl<'d, 's> Binder<'d, 's> {
             })
             .collect();
         let node_site = self.location(frame.span);
+        let node_name = self.name(frame.name);
         let item = match role {
             Role::Record => BoundItem::Record(
-                BoundRecord::new(node, type_name, fields, origin, validation, frame.span)
-                    .with_site(node_site),
+                BoundRecord::new(
+                    node, node_name, type_name, fields, origin, validation, frame.span,
+                )
+                .with_site(node_site),
             ),
             Role::Declaration => {
                 let identity = identity.expect("a declaration composes its identity above");
                 BoundItem::Declaration(
                     BoundDeclaration::new(
-                        node, identity, type_name, fields, origin, validation, frame.span,
+                        node, node_name, identity, type_name, fields, origin, validation,
+                        frame.span,
                     )
                     .with_site(node_site),
                 )
@@ -1937,7 +2061,8 @@ impl<'d, 's> Binder<'d, 's> {
         if self.overlapping(cx, frame, &values) {
             return;
         }
-        if self.root_without_version(cx, frame, &values, parent.is_none()) {
+        let root = parent.is_none() && self.window.is_none();
+        if self.root_without_version(cx, frame, &values, root) {
             return;
         }
         // A case dispatch selects the type a node binds as on every
@@ -1952,6 +2077,19 @@ impl<'d, 's> Binder<'d, 's> {
             CaseSelection::None => (None, None),
             CaseSelection::Unmatched => unreachable!("an unmatched case returned above"),
         };
+        let errors = self.errors;
+        self.selected_required(cx, frame, &values, typed_as);
+        self.constraints(cx, frame, &values, typed_as);
+        if self.errors > errors {
+            let bind = parent
+                .as_deref()
+                .and_then(|p| p.table(&self.tables))
+                .and_then(|t| t.child(frame.name));
+            if let (Some(parent), Some(bind)) = (parent, bind) {
+                parent.rejected.push(bind.field);
+            }
+            return;
+        }
         let role = def.bindings.get(owner).and_then(|decl| decl.role);
         if let Some(role) = role {
             let pending = self.dependent_payload(cx, frame, &values);
@@ -2029,11 +2167,23 @@ impl<'d, 's> Binder<'d, 's> {
             };
             let ty = self.key_type(parent.owner, bind).cloned();
             let what = format!("the key of {}", self.name(frame.name));
-            let Some(Value::String(key)) = self.check(cx, ty, &what, Value::String(key), span)
-            else {
-                return;
+            let entry = match self.check(cx, ty.clone(), &what, Value::String(key.clone()), span) {
+                None => return,
+                Some(Value::String(key)) => Entry::new(key, value),
+                // The link stage resolves a referenced key like any
+                // reference a field holds.
+                Some(Value::Reference(reference)) => Entry::referenced(reference, value),
+                Some(other) => {
+                    let field = self.field_label(parent.owner, bind.field);
+                    let expected =
+                        ty.map_or_else(String::new, |ty| summary::expr(&self.def.names, &ty));
+                    let found = decode::found(&other);
+                    let values = [key.as_str(), field.as_str(), &expected, &found];
+                    self.diagnose(cx, UNSUPPORTED_KEY, span, &values);
+                    return;
+                }
             };
-            value = Value::Map(vec![Entry::new(key, value)]);
+            value = Value::Map(vec![entry]);
         }
         let span = frame.span;
         self.route(cx, parent, bind, value, span);
@@ -2185,7 +2335,7 @@ impl<'s> Processor for Binder<'_, 's> {
         };
         let scope = match parent.as_ref() {
             Some(frame) => frame.scope,
-            None => Some(def.bindings.root_scope()),
+            None => Some(self.window.unwrap_or(def.bindings.root_scope())),
         };
         if parent.is_none() && self.root_name.is_none() {
             self.root_name = Some(node.name.to_string());
@@ -2214,6 +2364,7 @@ impl<'s> Processor for Binder<'_, 's> {
                 Some(state) => scope.rules.admit(state, sym),
                 None => Ok(()),
             },
+            None if self.window.is_some() => Ok(()),
             None => scope.rules.admit(&mut self.root, sym),
         };
         if let Err(violation) = admitted {
@@ -2247,6 +2398,7 @@ impl<'s> Processor for Binder<'_, 's> {
             let declared = def.bindings.get(decl);
             if declared.is_some_and(|d| d.profile.is_some_and(|p| !self.profile_chain.contains(&p)))
                 || (parent.is_none()
+                    && self.window.is_none()
                     && self.profile_roots.as_ref().is_some_and(|roots| {
                         declared
                             .and_then(|d| d.ty)
@@ -2458,6 +2610,9 @@ impl<'s> Processor for Binder<'_, 's> {
 
     fn finish(&mut self, cx: &mut Cx<'_>) {
         self.left = Some(cx.context().snapshot_values());
+        if self.window.is_some() {
+            return;
+        }
         let def = self.def;
         if let Some(scope) = def.bindings.scope(def.bindings.root_scope()) {
             let span = cx.span();
@@ -2469,6 +2624,43 @@ impl<'s> Processor for Binder<'_, 's> {
             }
         }
     }
+}
+
+/// The scope the `node`th node of `text`, in document order, is
+/// dispatched in: its parent's children scope, or the document's root
+/// scope. `None` when the text holds fewer nodes, or the node sits where
+/// nothing binds.
+pub(crate) fn dispatch_scope(def: &Definition, text: &str, node: u32) -> Option<ScopeId> {
+    let mut parser = Parser::new(text);
+    let mut open: Vec<Option<ScopeId>> = Vec::new();
+    let mut seen: u32 = 0;
+    while let Ok(Some(event)) = parser.next_event() {
+        match event.item {
+            Event::Node { name, .. } => {
+                let parent = match open.last() {
+                    Some(scope) => *scope,
+                    None => Some(def.bindings.root_scope()),
+                };
+                if seen == node {
+                    return parent;
+                }
+                seen = seen.saturating_add(1);
+                let inner = parent.zip(def.names.get(&name)).and_then(|(scope, sym)| {
+                    match def.bindings.child(scope, sym)? {
+                        ChildPlan::Declared { decl, .. } => def.bindings.decl_scope(decl),
+                        ChildPlan::Nested(inner) => Some(inner),
+                        ChildPlan::Scalar => None,
+                    }
+                });
+                open.push(inner);
+            }
+            Event::End => {
+                open.pop();
+            }
+            _ => {}
+        }
+    }
+    None
 }
 
 /// The admission an active selection composes: every active profile
@@ -2710,6 +2902,31 @@ impl<'d, 's> BindingSession<'d, 's> {
         Self {
             session: Session::with_context(source, events, binder, context),
             pending,
+            ended: false,
+            stopped: false,
+        }
+    }
+
+    /// Bind only the `node`th node of `text` in document order, with its
+    /// subtree, starting from a restored `context` and dispatched in
+    /// `scope`, its parent's scope. Source-context values are not
+    /// applied again: the restored context already holds them. The node
+    /// keeps the source id and node index it had in its whole document.
+    pub(crate) fn restored(
+        def: &'d Definition,
+        (source, path, text): (SourceId, &str, &'s str),
+        context: Context,
+        selection: &ProfileSelection,
+        handlers: Handlers,
+        (node, scope): (u32, ScopeId),
+    ) -> Self {
+        let events = ParseEvents::new(Parser::new(text), text, path).windowed(node);
+        let mut binder = Binder::with_selection(def, source, path, text, selection, None);
+        binder.handlers = handlers;
+        binder.window = Some(scope);
+        Self {
+            session: Session::with_context(source, events, binder, context).starting_at(node),
+            pending: Vec::new(),
             ended: false,
             stopped: false,
         }

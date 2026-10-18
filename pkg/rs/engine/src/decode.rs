@@ -172,10 +172,10 @@ impl Decoder {
                 Value::Map(entries) => entries
                     .iter()
                     .map(|entry| {
-                        let key_value = Value::String(entry.key.clone());
-                        self.decode_at(types, names, key, &key_value, at)?;
-                        let value = self.decode_at(types, names, inner, &entry.value, at)?;
-                        Some(Entry::new(entry.key.clone(), value))
+                        self.decode_at(types, names, key, &entry.key_value(), at)?;
+                        let mut decoded = entry.clone();
+                        decoded.value = self.decode_at(types, names, inner, &entry.value, at)?;
+                        Some(decoded)
                     })
                     .collect::<Option<Vec<_>>>()
                     .map(Value::Map),

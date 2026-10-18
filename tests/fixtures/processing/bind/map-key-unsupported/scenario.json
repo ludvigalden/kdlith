@@ -1,0 +1,10 @@
+{
+  "binary": "kdlith",
+  "description": "A map key whose key type decodes it to a number, which no map entry holds, fails binding with KDLITH-BND010 at the key, quoting the key, the map field, its key type, and the decoded value; the record is not emitted and the run exits 1, never a silently empty map",
+  "args": ["vet", "data", "--schema", "{fx-suite}/processing/linking/refkey-schema.kdl", "data.kdl"],
+  "expect": {
+    "exit": 1,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

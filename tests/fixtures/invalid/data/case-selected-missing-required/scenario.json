@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A node whose case dispatch selects a type with a required field the node does not write is missing that field",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/constraints-schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}
