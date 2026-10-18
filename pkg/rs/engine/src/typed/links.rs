@@ -5,18 +5,20 @@
 use std::fmt;
 use std::marker::PhantomData;
 
-use kdlith_model::{Identity, Value};
+use kdlith_model::{Identity, Location, Value};
 
 use crate::typed::read::TypedItem;
 use crate::typed::value::{FromValue, LogicalType, Mismatch};
 
 /// A `ref<T>` value: a symbolic reference, as bound, to a declaration
 /// whose identity domain is the logical type `T`. Reading it never
-/// resolves it; [`Links::resolve`] does.
+/// resolves it; a linked [`Reading`](crate::Reading) does.
 pub struct Ref<T> {
     domain: String,
     name: Vec<String>,
     written: String,
+    qualifiers: Vec<(String, String)>,
+    site: Location,
     target: PhantomData<fn() -> T>,
 }
 
@@ -35,6 +37,16 @@ impl<T> Ref<T> {
     pub fn written(&self) -> &str {
         &self.written
     }
+
+    /// The qualifiers the spelling carried, by name, in capture order.
+    pub fn qualifiers(&self) -> &[(String, String)] {
+        &self.qualifiers
+    }
+
+    /// Where the reference was written.
+    pub fn site(&self) -> Location {
+        self.site
+    }
 }
 
 impl<T> Clone for Ref<T> {
@@ -43,6 +55,8 @@ impl<T> Clone for Ref<T> {
             domain: self.domain.clone(),
             name: self.name.clone(),
             written: self.written.clone(),
+            qualifiers: self.qualifiers.clone(),
+            site: self.site,
             target: PhantomData,
         }
     }
@@ -54,13 +68,19 @@ impl<T> fmt::Debug for Ref<T> {
             .field("domain", &self.domain)
             .field("name", &self.name)
             .field("written", &self.written)
+            .field("qualifiers", &self.qualifiers)
+            .field("site", &self.site)
             .finish()
     }
 }
 
 impl<T> PartialEq for Ref<T> {
     fn eq(&self, other: &Self) -> bool {
-        self.domain == other.domain && self.name == other.name && self.written == other.written
+        self.domain == other.domain
+            && self.name == other.name
+            && self.written == other.written
+            && self.qualifiers == other.qualifiers
+            && self.site == other.site
     }
 }
 
@@ -69,19 +89,27 @@ impl<T> Eq for Ref<T> {}
 /// A bound reference whose domain is `T`'s logical type.
 impl<T: LogicalType> FromValue for Ref<T> {
     fn from_value(value: &Value) -> Result<Self, Mismatch> {
-        let domain = T::expression();
-        match value {
-            Value::Reference(reference) if reference.domain == domain => Ok(Self {
-                domain,
-                name: reference.name.0.clone(),
-                written: reference.written.clone(),
-                target: PhantomData,
-            }),
-            other => Err(Mismatch::expected(
-                &format!("a reference to {domain}"),
-                other,
-            )),
-        }
+        reference_value(value, &T::expression())
+    }
+}
+
+/// A bound reference looking up in `domain`: a declared reference type
+/// decodes into its lookup domain, which need not be its target's name.
+/// Anything else, including a spelling no codec decoded, is a mismatch.
+pub fn reference_value<T>(value: &Value, domain: &str) -> Result<Ref<T>, Mismatch> {
+    match value {
+        Value::Reference(reference) if reference.domain == domain => Ok(Ref {
+            domain: reference.domain.clone(),
+            name: reference.name.0.clone(),
+            written: reference.written.clone(),
+            qualifiers: reference.qualifiers.clone(),
+            site: reference.site,
+            target: PhantomData,
+        }),
+        other => Err(Mismatch::expected(
+            &format!("a reference to {domain}"),
+            other,
+        )),
     }
 }
 
@@ -133,11 +161,17 @@ impl std::error::Error for Unresolved {}
 
 /// The declarations of a typed reading, by identity, in reading order:
 /// the linked graph a `ref<T>` value resolves against.
+#[deprecated(
+    note = "matches names only, without alias gating, qualifiers, or duplicate checks; \
+            collect a linked reading and use `Reading::resolve` or `Reading::settled`"
+)]
 #[derive(Clone, Debug)]
 pub struct Links<T> {
     declarations: Vec<(Identity, T)>,
 }
 
+// The deprecated type's own impls are its definition, not a use of it.
+#[allow(deprecated)]
 impl<T> Default for Links<T> {
     fn default() -> Self {
         Self {
@@ -146,6 +180,7 @@ impl<T> Default for Links<T> {
     }
 }
 
+#[allow(deprecated)]
 impl<T> Links<T> {
     pub fn new() -> Self {
         Self::default()
@@ -184,6 +219,7 @@ impl<T> Links<T> {
     }
 }
 
+#[allow(deprecated)]
 impl<T: Clone> Links<T> {
     /// Register the item when it is a declaration; every other item
     /// passes untouched, so a reading's sink can observe its whole

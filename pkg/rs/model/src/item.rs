@@ -23,6 +23,10 @@ pub enum ValidationState {
 pub struct BoundRecord {
     pub node: NodeId,
     pub type_name: String,
+    /// The declared node that bound the record, by name: several nodes
+    /// may bind one type. Not part of the item's serialized form.
+    #[serde(skip)]
+    pub node_name: String,
     pub fields: Vec<Field>,
     pub origin: OriginId,
     pub validation: ValidationState,
@@ -44,6 +48,10 @@ pub struct BoundDeclaration {
     pub node: NodeId,
     pub identity: Identity,
     pub type_name: String,
+    /// The declared node that bound the declaration, by name: several
+    /// nodes may bind one type. Not part of the item's serialized form.
+    #[serde(skip)]
+    pub node_name: String,
     pub fields: Vec<Field>,
     pub origin: OriginId,
     pub validation: ValidationState,
@@ -161,6 +169,18 @@ pub struct PendingBinding {
     pub against: Reference,
     pub raw: Value,
     pub origin: OriginId,
+    /// The node the payload belongs to, as written; not part of the
+    /// item's serialized form.
+    #[serde(skip)]
+    pub node_name: String,
+    /// The member of the referenced declaration's type that carries the
+    /// expected payload type; not part of the item's serialized form.
+    #[serde(skip)]
+    pub member: String,
+    /// The binding codec the payload awaits; not part of the item's
+    /// serialized form.
+    #[serde(skip)]
+    pub codec: String,
 }
 
 /// An unresolved reference to a reusable declaration group, emitted at
@@ -225,6 +245,7 @@ pub struct ScopeCompletion {
 impl BoundRecord {
     pub fn new(
         node: NodeId,
+        node_name: impl Into<String>,
         type_name: impl Into<String>,
         fields: Vec<Field>,
         origin: OriginId,
@@ -234,6 +255,7 @@ impl BoundRecord {
         Self {
             node,
             type_name: type_name.into(),
+            node_name: node_name.into(),
             fields,
             origin,
             validation,
@@ -253,6 +275,7 @@ impl BoundRecord {
 impl BoundDeclaration {
     pub fn new(
         node: NodeId,
+        node_name: impl Into<String>,
         identity: Identity,
         type_name: impl Into<String>,
         fields: Vec<Field>,
@@ -264,6 +287,7 @@ impl BoundDeclaration {
             node,
             identity,
             type_name: type_name.into(),
+            node_name: node_name.into(),
             fields,
             origin,
             validation,
@@ -357,7 +381,24 @@ impl PendingBinding {
             against,
             raw,
             origin,
+            node_name: String::new(),
+            member: String::new(),
+            codec: String::new(),
         }
+    }
+
+    /// The binding this payload awaits: the node's name, the referenced
+    /// type's member, and the codec.
+    pub fn with_dependent(
+        mut self,
+        node_name: impl Into<String>,
+        member: impl Into<String>,
+        codec: impl Into<String>,
+    ) -> Self {
+        self.node_name = node_name.into();
+        self.member = member.into();
+        self.codec = codec.into();
+        self
     }
 }
 

@@ -1,0 +1,4 @@
+error[KDLITH-REF001]: reference nothere in input-sets does not resolve
+  --> a.kdl:1:7
+error[KDLITH-REF001]: reference nothere in input-sets does not resolve
+  --> b.kdl:1:7

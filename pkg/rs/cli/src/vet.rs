@@ -10,8 +10,7 @@ use std::sync::Arc;
 
 use kdlith_engine::{
     CheckScope, DataReader, Definition, EntryContext, Extensions, Handlers, LAYERED, Layered,
-    LinkInputs, LinkReport, ReadOptions, SharedResolver, bind_references, derive_candidates,
-    index_identities, link,
+    LinkInputs, LinkReport, ReadOptions, SharedResolver, link_reading,
 };
 use kdlith_model::{Item, SourceId};
 use kdlith_superproc::{load_dialect, load_schema_anchored, seed};
@@ -399,16 +398,6 @@ pub(crate) fn stream_data_then(
         documents: &inputs.documents,
     });
     finish(Some(&definition), &contexts, linked, status)
-}
-
-/// Link one reading: its identity index, its references bound to their
-/// declared reference types, the candidates each one's lookup policy
-/// derives, and the linked outcomes with their diagnostics.
-fn link_reading(definition: &Definition, inputs: &LinkInputs) -> LinkReport {
-    let index = index_identities(definition, &inputs.items, &inputs.aliases);
-    let bound = bind_references(definition, &inputs.items);
-    let lookups = derive_candidates(&index, &bound);
-    link(definition, &index, lookups, &inputs.documents)
 }
 
 pub(crate) fn write_item(out: &mut impl std::io::Write, item: &Item) -> std::io::Result<()> {

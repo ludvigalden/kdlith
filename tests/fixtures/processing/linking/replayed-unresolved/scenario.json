@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "A byte-identical second document replays the first's bound result, and each replayed reference keeps its own document's site: b.kdl repeats a.kdl's unresolved reference byte for byte, its record streams with its own source, and the run fails KDLITH-REF001 once at a.kdl:1:7 and once at b.kdl:1:7, never twice at the first document",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "{fx-suite}/processing/linking/schema.kdl",
+    "a.kdl",
+    "b.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}
