@@ -896,7 +896,7 @@ A tool needs only the generated schema crate: it re-exports the reading,
 linking, and diagnostic types a reader returns (`CheckScope`,
 `Extensions`, `ReadOptions`, `TypedItem`, `ItemVariant`, `Ref`,
 `Reading`, `LinkReport`, `LinkOutcome`, `UnmetQualifier`,
-`ResolveError`, `Location`, and `DiagnosticRecord`). The reader's
+`ResolveError`, `Origin`, `Location`, and `DiagnosticRecord`). The reader's
 `link(CheckScope)` builder links each reading the way `vet data` does
 (see Linking data), and `collect` keeps a whole reading: its items in
 stream order, pending typed bindings among them, the link report, and
@@ -911,6 +911,28 @@ the reading; under local scope the same diagnostics are reported and the
 reading does not fail. A generated reference type holds its reference
 as `.0`, so `reading.resolve(&record.target.0)` resolves a record's
 field.
+
+Every typed record and declaration carries where it was written: its
+`site`, the location the binder recorded (absent only where the binder
+recorded none), and its `origin`, the document it was read from — the
+document's path as the reading shows it, the same spelling `vet data`
+prints on its document item (the entry as given, an imported document
+as its import spelled it) — with the alias of the import that loaded
+that document, or none for an entry document or an unaliased import. A
+document's items keep its origin after a nested import completes, and
+a document replayed from the cache carries its own path and sites. The
+reader's `capturing(&[slot, …])` builder names context slots every
+document item then carries, in that order, each with its value as the
+document's first node binds under it — the context its importer
+projected, with the document's source-context values applied — or
+none where the slot is unset. Capture is opt-in; a name the schema
+declares no slot for fails the reading before any document is read.
+`inspect data --view context` reports the same slot values at a
+different point, each entry's context as the entry left it: a slot an
+entry sets after its first node reads unset in the entry's capture and
+set in the view. None of these fields is part of
+an item's serialized form, so `vet data` output and exports are
+unchanged.
 
 ## Linking data
 
