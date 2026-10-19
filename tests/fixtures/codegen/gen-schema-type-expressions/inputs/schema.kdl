@@ -1,0 +1,95 @@
+// Each type expression the generator renders beyond plain names: an
+// Integer and a Decimal field, a nullable field and an optional nullable
+// one, an inline union on an object field and on a node-local field, a
+// declared map, a map keyed by a declared reference type, a string-keyed
+// map, and context slots holding a nullable and a map.
+schema expressions version="1" {
+    types {
+        codec Name output=String {
+            match #"(?:(?<alias>[a-z][a-z0-9]*)\.)?(?<name>[a-z][a-z0-9]*)"#
+            capture alias String
+            capture name String
+        }
+        string Day {
+            format zero-padded width=2
+        }
+        object Note {
+            field text String
+        }
+        map Notes {
+            key-type Day
+            value-type Note
+        }
+        object Attr {
+            field name String
+        }
+        object Ev {
+            field value String
+        }
+        object Rec {
+            field name String
+            field count Integer
+            field price Decimal
+            field ratio "nullable<Decimal>"
+            field note "optional<nullable<String>>"
+            field pick "union<U64, String>"
+            field notes "optional<Notes>"
+        }
+        object Keyed {
+            field name String
+            field values "map<AttrRef, Ev>"
+            field plain "map<String, Ev>"
+        }
+    }
+    context {
+        slot rate "nullable<Decimal>"
+        slot tags "map<String, String>"
+    }
+    node attr role=declaration type=Attr {
+        field name arg=0
+        identity {
+            domain attrs
+            compose qualified-name name
+        }
+    }
+    node rec role=record type=Rec {
+        field name arg=0
+        field count property=count
+        field price property=price
+        field ratio property=ratio
+        field note property=note
+        field pick property=pick
+        field notes {
+            from {
+                entries day key="arg(0)" value=Note
+            }
+        }
+    }
+    node day type=Note parent=rec {
+        field text arg=1
+    }
+    node keyed role=record type=Keyed {
+        field name arg=0
+        field values {
+            from {
+                entries e key="arg(0)" value=Ev
+            }
+        }
+        field plain {
+            from {
+                entries p key="arg(0)" value=Ev
+            }
+        }
+    }
+    node e type=Ev parent=keyed {
+        field value arg=1
+    }
+    node p type=Ev parent=keyed {
+        field value arg=1
+    }
+    node tally role=record {
+        field n Integer arg=0
+        field v "union<Bool, String>" arg=1
+    }
+    reference AttrRef target=Attr codec=Name lookup=attrs qualification=explicit
+}

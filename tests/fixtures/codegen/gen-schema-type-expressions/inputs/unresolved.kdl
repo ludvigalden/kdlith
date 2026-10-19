@@ -1,0 +1,5 @@
+attr color
+keyed u {
+    e shape "X"
+    e color "C"
+}

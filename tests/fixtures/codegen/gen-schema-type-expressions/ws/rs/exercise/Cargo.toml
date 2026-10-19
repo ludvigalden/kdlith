@@ -1,0 +1,10 @@
+[package]
+name = "type-expressions-exercise"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+
+[dependencies]
+expressions-proc = { path = "../expressions-proc" }
+kdlith-engine = { path = "../engine" }
+serde_json = { workspace = true }

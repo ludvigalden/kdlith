@@ -1,0 +1,2 @@
+plan tier=premium start="03" end="17" owner="ana" contact="ana@example.org"
+plan tier=basic owner="bo"

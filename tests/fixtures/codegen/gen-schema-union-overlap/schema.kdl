@@ -1,0 +1,16 @@
+// An inline union whose members accept the same bound value: a string
+// that is no zero-padded Day binds as String, but a typed reader trying
+// the members in order would read every string as a Day.
+schema picks version="1" {
+    types {
+        string Day {
+            format zero-padded width=2
+        }
+        object Choice {
+            field pick "union<Day, String>"
+        }
+    }
+    node choice role=record type=Choice {
+        field pick arg=0
+    }
+}

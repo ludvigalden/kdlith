@@ -1,0 +1,55 @@
+{
+  "binary": "kdlith",
+  "kind": "codegen-oracle",
+  "description": "The type-expression generation fixture: gen schema generates a committed schema holding each type expression the generator renders beyond plain names twice into two scratch trees the harness requires byte-identical, and the generated crate compiles inside a scratch workspace materialized from this scenario's committed template: Integer renders as i64, Decimal as the engine's spelling-preserving decimal, nullable<T> as the engine's Nullable<T>, map<K, V> as a BTreeMap, a declared map type as a newtype over one carrying a map shape, and an inline union as an enum named after its owner and field, on an object field and on a node-local one. The compiled processor loads the schema with the digest the reference CLI reports, prints the declared map's shape and each inline union's expression as inspect schema declares them, and reads a committed data document through its own typed reader, printing every decoded value as vet data binds it: integers in hexadecimal and underscore-separated spellings as their values, decimals keeping their written spelling (serialized as that text), a nullable field holding #null and a value, an optional nullable field absent, explicitly #null, and holding a value, printed distinctly and serialized as an omitted key or a null, each inline union on every member it holds, and the declared map's, the string-keyed map's, and the reference-keyed map's entries one per line: every entry of the reference-keyed map decodes with its key as a reference in the attrs domain with its site, none dropped. It then collects that document and a committed one naming an undeclared key as readings linked under complete and local scope, printing each key's link, the reading's diagnostics, and what each key resolves to, as vet data and inspect data --view references report them: every key of the first resolves to its declaration, and the undeclared key is KDLITH-REF001 at its site, an error and never a default, failing the reading under complete scope only",
+  "form": "schema",
+  "entrypoint": "inputs/schema.kdl",
+  "crate": "expressions-proc",
+  "steps": [
+    { "generate": "ws/rs/expressions-proc" },
+    { "generate": "gen-again" },
+    { "determinism": ["ws/rs/expressions-proc", "gen-again"] },
+    {
+      "compile": {
+        "workspace": "ws",
+        "copy": {
+          "crates": ["diagnostic", "engine", "model", "parse", "runtime", "superproc"],
+          "kdl": true
+        },
+        "command": ["cargo", "build", "--offline", "--manifest-path", "ws/rs/expressions-proc/Cargo.toml"]
+      }
+    },
+    {
+      "exercise": {
+        "command": ["cargo", "run", "--offline", "--quiet", "--manifest-path", "ws/rs/exercise/Cargo.toml", "--", "inputs/schema.kdl", "inputs/data.kdl", "inputs/unresolved.kdl"],
+        "stdout-contains": [
+          "schema ok digest=3cd8c5e3f24422b4\n",
+          "map-type Notes key=Day value=Note\n",
+          "inline-unions Rec.pick=union<U64, String> Tally.v=union<Bool, String>\n",
+          "read errors=false lines=14\n",
+          "attr name=color\nattr name=size\n",
+          "rec name=a count=-31 price=1.50e3 ratio=null note=null pick=u64:12 notes=2 serialized-note=null serialized-price=\"1.50e3\"\n",
+          "rec name=a notes-entry 01=first\n",
+          "rec name=a notes-entry 09=ninth\n",
+          "rec name=b count=7 price=-0.10 ratio=value:0.25 note=absent pick=string:x notes=0 serialized-note=omitted serialized-price=\"-0.10\"\n",
+          "rec name=c count=1000 price=3 ratio=value:2.0 note=value:hi pick=u64:0 notes=0 serialized-note=\"hi\" serialized-price=\"3\"\n",
+          "keyed name=k values=2 plain=2\n",
+          "keyed name=k values-entry key=size domain=attrs name=size site=10:7 value=S\n",
+          "keyed name=k values-entry key=color domain=attrs name=color site=11:7 value=C\n",
+          "keyed name=k plain-entry zeta=Z\n",
+          "keyed name=k plain-entry alpha=A\n",
+          "tally n=-5 v=bool:true\ntally n=0 v=string:s\n",
+          "linked data.kdl failed=false links=2 diagnostics=0\nlink AttrRef written=size field=values key=true site=data.kdl:10:7 outcome=resolved candidates=1\nlink AttrRef written=color field=values key=true site=data.kdl:11:7 outcome=resolved candidates=1\n",
+          "resolve key size site=data.kdl:10:7 -> Attr size\n",
+          "resolve key color site=data.kdl:11:7 -> Attr color\n",
+          "linked-local data.kdl failed=false diagnostics=0\n",
+          "linked unresolved.kdl failed=true links=2 diagnostics=1\nlink AttrRef written=shape field=values key=true site=unresolved.kdl:3:7 outcome=unresolved candidates=0\nlink AttrRef written=color field=values key=true site=unresolved.kdl:4:7 outcome=resolved candidates=1\ndiag KDLITH-REF001 unresolved.kdl:3:7\n",
+          "resolve key shape site=unresolved.kdl:3:7 -> error KDLITH-REF001 unresolved\n",
+          "resolve key color site=unresolved.kdl:4:7 -> Attr color\n",
+          "linked-local unresolved.kdl failed=false diagnostics=1\n"
+        ],
+        "stdout-not-contains": ["=other", "outcome=unknown"]
+      }
+    }
+  ]
+}

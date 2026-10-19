@@ -1,0 +1,12 @@
+// Two members of one inline union rendering as the same Rust type: the
+// union's enum would declare the variant String twice.
+schema picks version="1" {
+    types {
+        object Choice {
+            field pick "union<String, String>"
+        }
+    }
+    node choice role=record type=Choice {
+        field pick arg=0
+    }
+}

@@ -1,0 +1,27 @@
+// A map keyed by an enum type: binding admits the key as a string,
+// but the generated map needs an ordered key, and an enum renders
+// without an order.
+schema tiers version="1" {
+    types {
+        enum Tier {
+            member basic
+            member premium
+        }
+        object Price {
+            field amount String
+        }
+        object Prices {
+            field by-tier "map<Tier, Price>"
+        }
+    }
+    node prices role=record type=Prices {
+        field by-tier {
+            from {
+                entries price key="arg(0)" value=Price
+            }
+        }
+    }
+    node price type=Price parent=prices {
+        field amount arg=1
+    }
+}

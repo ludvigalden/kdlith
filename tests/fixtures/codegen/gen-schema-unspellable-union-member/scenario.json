@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "gen schema fails closed when two members of one inline union render as the same Rust type (union<String, String> on the field pick of Choice, whose enum ChoicePick would declare the variant String twice): the schema itself vets green, generation exits 1 naming the member, the union's enum, and the reason, and the scratch check proves nothing was written into the output directory",
+  "args": ["gen", "schema", "schema.kdl", "--crate", "picks-proc", "--out", "out"],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": [
+      "kdlith: gen schema: the union member `String` of `ChoicePick` has no Rust spelling in a generated crate: another one in the same declaration spells the same identifier\n"
+    ],
+    "scratch-check": {
+      "plant": [{ "path": "planted-foreign.txt", "kind": "file" }]
+    }
+  }
+}

@@ -1,0 +1,16 @@
+attr color
+attr size
+rec a count=-0x1F price=1.50e3 ratio=#null note=#null pick=12 {
+    day "09" "ninth"
+    day "01" "first"
+}
+rec b count=7 price=-0.10 ratio=0.25 pick="x"
+rec c count=1_000 price=3 ratio=2.0 note="hi" pick=0
+keyed k {
+    e size "S"
+    e color "C"
+    p zeta "Z"
+    p alpha "A"
+}
+tally -5 #true
+tally 0 "s"

@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "gen schema fails closed on a map whose key type is neither String, a string type, nor a reference (map<Tier, Price> with Tier an enum): the generated map orders its keys and an enum renders without an order, so the expression has no rendering; the schema itself vets green, generation exits 1 naming the expression, and the scratch check proves nothing was written into the output directory",
+  "args": ["gen", "schema", "schema.kdl", "--crate", "tiers-proc", "--out", "out"],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": [
+      "kdlith: gen schema: the type expression `map<Tier, Price>` has no Rust rendering\n"
+    ],
+    "scratch-check": {
+      "plant": [{ "path": "planted-foreign.txt", "kind": "file" }]
+    }
+  }
+}

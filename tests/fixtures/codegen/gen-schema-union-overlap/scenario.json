@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "gen schema fails closed on an inline union whose members accept the same bound value shape (union<Day, String>, both reading a string): binding records the value and not the member it fit, so a typed reader re-selecting the first member that fits would read a string binding left as String as a Day; the schema itself vets green, generation exits 1 naming the expression, and the scratch check proves nothing was written into the output directory",
+  "args": ["gen", "schema", "schema.kdl", "--crate", "picks-proc", "--out", "out"],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": [
+      "kdlith: gen schema: the type expression `union<Day, String>` has no Rust rendering\n"
+    ],
+    "scratch-check": {
+      "plant": [{ "path": "planted-foreign.txt", "kind": "file" }]
+    }
+  }
+}

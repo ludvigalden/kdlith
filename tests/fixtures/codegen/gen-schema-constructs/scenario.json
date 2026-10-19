@@ -1,0 +1,35 @@
+{
+  "binary": "kdlith",
+  "kind": "codegen-oracle",
+  "description": "The constructs generation fixture: gen schema generates the committed schemas/inspect/constructs schema itself, read by suite path, whose declared map type Labels had no Rust rendering before, twice into two scratch trees the harness requires byte-identical; the generated crate declares Labels as a newtype over a BTreeMap from Day to Label carrying a map shape, and compiles inside a scratch workspace materialized from this scenario's committed template. The compiled processor loads the schema with the digest vet schema reports, prints the map type's shape and the enum type's members as inspect schema declares them, builds its typed reader (which checks every generated shape, the map's included, against the compiled definition), and reads a committed data document through it, printing each plan's enum field and its optional day and text fields, present and absent, as vet data binds them. No field of the schema holds Labels, so no document can bind its entries; the decoded entries of a declared map are pinned by codegen/gen-schema-type-expressions",
+  "form": "schema",
+  "entrypoint": "{fx-suite}/schemas/inspect/constructs/schema.kdl",
+  "crate": "constructs-proc",
+  "steps": [
+    { "generate": "ws/rs/constructs-proc" },
+    { "generate": "gen-again" },
+    { "determinism": ["ws/rs/constructs-proc", "gen-again"] },
+    {
+      "compile": {
+        "workspace": "ws",
+        "copy": {
+          "crates": ["diagnostic", "engine", "model", "parse", "runtime", "superproc"],
+          "kdl": true
+        },
+        "command": ["cargo", "build", "--offline", "--manifest-path", "ws/rs/constructs-proc/Cargo.toml"]
+      }
+    },
+    {
+      "exercise": {
+        "command": ["cargo", "run", "--offline", "--quiet", "--manifest-path", "ws/rs/exercise/Cargo.toml", "--", "schemas/inspect/constructs/schema.kdl", "inputs/data.kdl"],
+        "stdout-contains": [
+          "schema ok digest=d823f637992bb97f\n",
+          "map-type Labels expression=Labels key=Day value=Label\n",
+          "enum-type Tier members=[basic,premium]\n",
+          "read errors=false plans=2\n",
+          "plan tier=premium start=03 end=17 owner=ana contact=ana@example.org\nplan tier=basic start=- end=- owner=bo contact=-\n"
+        ]
+      }
+    }
+  ]
+}
