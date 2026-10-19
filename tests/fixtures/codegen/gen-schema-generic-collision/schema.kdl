@@ -1,0 +1,34 @@
+schema pairs version="1" {
+    types {
+        enum Mode {
+            member fast
+            member slow
+        }
+        string Slug {
+            format kebab-case
+        }
+        object Pair {
+            parameter T
+            parameter U
+            field shape String
+            field left T
+            field right U
+        }
+    }
+    node couple role=record {
+        field shape String property=shape
+        field left String arg=0
+        field right Mode arg=1
+        cases {
+            case property=shape equals="pair" type="Pair<String, Mode>"
+        }
+    }
+    node tagged role=record {
+        field shape String property=shape
+        field left Slug arg=0
+        field right Mode arg=1
+        cases {
+            case property=shape equals="slug" type="Pair<Slug, Mode>"
+        }
+    }
+}

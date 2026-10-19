@@ -1,0 +1,3 @@
+couple "a" fast shape=pair
+tagged "left-hand" slow shape=slug
+couple "b" slow shape=pair

@@ -1,0 +1,39 @@
+schema clash version="1" {
+    types {
+        object A {
+            field name String
+        }
+        object BC {
+            field name String
+        }
+        object AB {
+            field name String
+        }
+        object C {
+            field name String
+        }
+        object Pair {
+            parameter T
+            parameter U
+            field shape String
+            field left T
+            field right U
+        }
+    }
+    node split-late role=record {
+        field shape String property=shape
+        field left A arg=0
+        field right BC arg=1
+        cases {
+            case property=shape equals="late" type="Pair<A, BC>"
+        }
+    }
+    node split-early role=record {
+        field shape String property=shape
+        field left AB arg=0
+        field right C arg=1
+        cases {
+            case property=shape equals="early" type="Pair<AB, C>"
+        }
+    }
+}

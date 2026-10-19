@@ -864,12 +864,21 @@ identifier, two of one declaration's spell the same identifier, a
 document's module name is no identifier, or a declared or node-local
 type takes a name the generated crate spells unqualified (`Option`,
 `Item`, `Ref`, and the engine items its modules import). A generic
-declaration (one naming `parameter`s) is never spelled itself, and a
-type instantiating one (`Pair<String, Mode>`) fails generation closed
-the same way — under `--dry-run` and `--check` too — naming the
-instance, its document, and the generic declaration. Such a
-definition still vets: the limit is the generated crate's, not the
-dialect's.
+declaration (one naming `parameter`s) is never spelled itself; each
+instance of it (`Pair<String, Mode>`) generates as its own type under
+a mangled Rust name, the instantiation's words joined, each first
+letter capitalized and the punctuation dropped (`PairStringMode`),
+while its shape and logical expression still spell the instantiation
+(`Pair<String, Mode>`, and `optional<Pair<String, Mode>>` under
+`optional`) and its fields carry the substituted body. Two instances
+of one declaration with different arguments are two types. Because
+the mangle drops punctuation, two instantiations can spell one name
+(`Pair<A, BC>` and `Pair<AB, C>` both spell `PairABC`), and a mangled
+name can take a declared or node-local type's name or one the crate
+spells unqualified; generation then fails closed the same way — under
+`--dry-run` and `--check` too — naming the instance and its mangled
+name, never inventing a suffix. Such a definition still vets: the
+limit is the generated crate's, not the dialect's.
 
 Each reading node's items stream as a variant of the crate's `Item`
 enum, named after the node's type. When differently named nodes of a

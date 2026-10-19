@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "gen schema fails closed when two instances of one generic declaration mangle to the same Rust name (Pair<A, BC> and Pair<AB, C>, each selected by its own record node's case dispatch, both spell PairABC): the schema itself vets green, generation exits 1 naming the later instance, its mangled name, and the reason rather than inventing a disambiguating suffix, and the scratch check proves nothing was written into the output directory",
+  "args": ["gen", "schema", "schema.kdl", "--crate", "clash-proc", "--out", "out"],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": [
+      "kdlith: gen schema: the generic instance `PairABC` of `Pair<AB, C>` has no Rust spelling in a generated crate: it takes the name of another type the generated crate declares"
+    ],
+    "scratch-check": {
+      "plant": [{ "path": "planted-foreign.txt", "kind": "file" }]
+    }
+  }
+}

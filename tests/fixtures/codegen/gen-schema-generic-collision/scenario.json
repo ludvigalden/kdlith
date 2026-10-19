@@ -1,0 +1,37 @@
+{
+  "binary": "kdlith",
+  "kind": "codegen-oracle",
+  "description": "The two-instance generic generation fixture: gen schema generates a committed schema instantiating one generic object Pair (parameters T and U) with two argument sets, Pair<String, Mode> and Pair<Slug, Mode>, each selected by its own record node's case dispatch, twice into two scratch trees the harness requires byte-identical, and the generated crate compiles inside a scratch workspace materialized from this scenario's committed template: the two instances of one head coexist as two distinct mangled Rust types, PairStringMode and PairSlugMode, each with its own shape whose name and expression spell its instantiation as inspect schema and vet data name it and whose fields carry its own substituted body. The compiled processor loads the schema with the digest the reference CLI reports, its reader conforms (each instance's handler satisfies the node whose case selects it), and it reads a committed data document interleaving both nodes' records, each as its own instance type, each value as vet data binds it",
+  "form": "schema",
+  "entrypoint": "schema.kdl",
+  "crate": "pairs-proc",
+  "steps": [
+    { "generate": "ws/rs/pairs-proc" },
+    { "generate": "gen-again" },
+    { "determinism": ["ws/rs/pairs-proc", "gen-again"] },
+    {
+      "compile": {
+        "workspace": "ws",
+        "copy": {
+          "crates": ["diagnostic", "engine", "model", "parse", "runtime", "superproc"],
+          "kdl": true
+        },
+        "command": ["cargo", "build", "--offline", "--manifest-path", "ws/rs/pairs-proc/Cargo.toml"]
+      }
+    },
+    {
+      "exercise": {
+        "command": ["cargo", "run", "--offline", "--quiet", "--manifest-path", "ws/rs/exercise/Cargo.toml", "--", "schema.kdl", "data.kdl"],
+        "stdout-contains": [
+          "schema ok digest=958a0cfb561f0324\n",
+          "shape Pair<String, Mode> fields=[shape: String, left: String, right: Mode]\nexpression Pair<String, Mode> optional=optional<Pair<String, Mode>>\n",
+          "shape Pair<Slug, Mode> fields=[shape: String, left: Slug, right: Mode]\nexpression Pair<Slug, Mode> optional=optional<Pair<Slug, Mode>>\n",
+          "reader ok\n",
+          "read errors=false lines=3\n",
+          "string-pair left=a right=Fast json={\"shape\":\"pair\",\"left\":\"a\",\"right\":\"fast\"}\nslug-pair left=left-hand right=Slow json={\"shape\":\"slug\",\"left\":\"left-hand\",\"right\":\"slow\"}\nstring-pair left=b right=Slow json={\"shape\":\"pair\",\"left\":\"b\",\"right\":\"slow\"}\n"
+        ],
+        "stdout-not-contains": ["diagnostic ", "other"]
+      }
+    }
+  ]
+}
