@@ -1,0 +1,9 @@
+{
+  "binary": "kdlith",
+  "description": "inner scenario the enclosing negative control runs: its only assertion forbids a substring the help output carries, so the harness must fail it",
+  "args": ["--help"],
+  "expect": {
+    "exit": 0,
+    "stdout-not-contains": ["Usage: kdlith"]
+  }
+}

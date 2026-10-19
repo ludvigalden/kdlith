@@ -102,6 +102,7 @@ pub(crate) enum OracleStep {
     Exercise {
         command: Vec<String>,
         stdout_contains: Vec<String>,
+        stdout_not_contains: Vec<String>,
         stderr_contains: Vec<String>,
     },
 }
@@ -171,11 +172,12 @@ impl PlantKind {
 /// made here.
 #[derive(Debug)]
 pub(crate) enum Expectation {
-    /// Positive control: exact exit code, stream substrings, and the
-    /// optional byte-exact goldens.
+    /// Positive control: exact exit code, stream substrings (required
+    /// and forbidden), and the optional byte-exact goldens.
     Positive {
         exit: i32,
         stdout_contains: Vec<String>,
+        stdout_not_contains: Vec<String>,
         stderr_contains: Vec<String>,
         goldens: Goldens,
     },
@@ -468,13 +470,22 @@ fn oracle_step(index: usize, value: &Value) -> Result<OracleStep, String> {
         .ok_or_else(|| mismatch("exercise", "an object"))?;
     check_keys(
         obj,
-        &["command", "stdout-contains", "stderr-contains"],
+        &[
+            "command",
+            "stdout-contains",
+            "stdout-not-contains",
+            "stderr-contains",
+        ],
         &format!("{what} exercise"),
     )?;
     let command = required_command(obj, &format!("{what} exercise"))?;
     let stdout_contains = match obj.get("stdout-contains") {
         None => Vec::new(),
         Some(v) => string_array(v, &format!("{what} exercise stdout-contains"))?,
+    };
+    let stdout_not_contains = match obj.get("stdout-not-contains") {
+        None => Vec::new(),
+        Some(v) => string_array(v, &format!("{what} exercise stdout-not-contains"))?,
     };
     let stderr_contains = match obj.get("stderr-contains") {
         None => Vec::new(),
@@ -483,6 +494,7 @@ fn oracle_step(index: usize, value: &Value) -> Result<OracleStep, String> {
     Ok(OracleStep::Exercise {
         command,
         stdout_contains,
+        stdout_not_contains,
         stderr_contains,
     })
 }
@@ -524,8 +536,9 @@ fn required_command(obj: &Map<String, Value>, what: &str) -> Result<Vec<String>,
     Ok(command)
 }
 
-/// Parse the positive control `expect`: exit code, stream substrings,
-/// byte-exact goldens, and an optional scratch check.
+/// Parse the positive control `expect`: exit code, required and
+/// forbidden stream substrings, byte-exact goldens, and an optional
+/// scratch check.
 fn positive(dir: &Path, value: &Value) -> Result<(Expectation, Option<ScratchCheck>), String> {
     let obj = value
         .as_object()
@@ -535,6 +548,7 @@ fn positive(dir: &Path, value: &Value) -> Result<(Expectation, Option<ScratchChe
         &[
             "exit",
             "stdout-contains",
+            "stdout-not-contains",
             "stderr-contains",
             "stdout-golden",
             "stderr-golden",
@@ -555,6 +569,10 @@ fn positive(dir: &Path, value: &Value) -> Result<(Expectation, Option<ScratchChe
         None => Vec::new(),
         Some(v) => string_array(v, "expect.stdout-contains")?,
     };
+    let stdout_not_contains = match obj.get("stdout-not-contains") {
+        None => Vec::new(),
+        Some(v) => string_array(v, "expect.stdout-not-contains")?,
+    };
     let stderr_contains = match obj.get("stderr-contains") {
         None => Vec::new(),
         Some(v) => string_array(v, "expect.stderr-contains")?,
@@ -568,6 +586,7 @@ fn positive(dir: &Path, value: &Value) -> Result<(Expectation, Option<ScratchChe
         Expectation::Positive {
             exit,
             stdout_contains,
+            stdout_not_contains,
             stderr_contains,
             goldens,
         },

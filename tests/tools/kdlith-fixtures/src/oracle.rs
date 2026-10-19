@@ -94,10 +94,12 @@ fn run_step(
         OracleStep::Exercise {
             command,
             stdout_contains,
+            stdout_not_contains,
             stderr_contains,
         } => exercise(
             command,
             stdout_contains,
+            stdout_not_contains,
             stderr_contains,
             cwd,
             env,
@@ -293,6 +295,7 @@ fn compile(
 fn exercise(
     command: &[String],
     stdout_contains: &[String],
+    stdout_not_contains: &[String],
     stderr_contains: &[String],
     cwd: &Path,
     env: &RunEnv<'_>,
@@ -307,6 +310,14 @@ fn exercise(
         if !stdout.contains(needle.as_str()) {
             return Err(format!(
                 "stdout does not contain {needle:?}\n--- stdout ---\n{}",
+                cap(&stdout)
+            ));
+        }
+    }
+    for needle in stdout_not_contains {
+        if stdout.contains(needle.as_str()) {
+            return Err(format!(
+                "stdout contains forbidden {needle:?}\n--- stdout ---\n{}",
                 cap(&stdout)
             ));
         }

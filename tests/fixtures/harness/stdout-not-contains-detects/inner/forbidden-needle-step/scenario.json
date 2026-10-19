@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "kind": "codegen-oracle",
+  "description": "inner scenario the enclosing negative control runs: no generate step runs (the entrypoint and crate keys the kind requires go unused); its one exercise step forbids the very line its command prints, so the harness must fail the step",
+  "entrypoint": "unused.kdl",
+  "crate": "unused",
+  "steps": [
+    {
+      "exercise": {
+        "command": ["sh", "-c", "echo forbidden-marker"],
+        "stdout-not-contains": ["forbidden-marker"]
+      }
+    }
+  ]
+}

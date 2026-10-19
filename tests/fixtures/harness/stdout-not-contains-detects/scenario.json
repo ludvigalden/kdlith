@@ -1,0 +1,27 @@
+{
+  "binary": "kdlith",
+  "kind": "codegen-oracle",
+  "description": "negative control for the stdout-not-contains needle at both levels: no generate step runs (the entrypoint and crate keys the kind requires go unused); the one exercise step runs the harness itself, through its fx-env link under a harness name, over the materialized copy of this scenario's committed inner suite. Each inner scenario forbids a substring its run prints — one in a positive expect over the help output, one in a codegen-oracle exercise step — so the inner run must exit 1, fail both scenarios with the forbidden-needle report, and report no other failure",
+  "entrypoint": "unused.kdl",
+  "crate": "unused",
+  "steps": [
+    {
+      "exercise": {
+        "command": ["sh", "-c", "ln \"$(command -v fx-env)\" kdlith-fixtures || exit 2; ./kdlith-fixtures --fx-suite inner --fx-kdlith \"$KDLITH_FX_KDLITH\" --fx-scratch-root inner-scratch --test-threads 1 2>&1; status=$?; echo \"inner exit=$status\"; test \"$status\" -eq 1"],
+        "stdout-contains": [
+          "---- forbidden-needle ----\n  - stdout contains forbidden \"Usage: kdlith\"\n",
+          "---- forbidden-needle-step ----\noracle step 1 (exercise): stdout contains forbidden \"forbidden-marker\"\n",
+          "test result: FAILED. 0 passed; 2 failed",
+          "inner exit=1\n"
+        ],
+        "stdout-not-contains": [
+          "stdout does not contain",
+          "exit: expected",
+          "exited",
+          "scenario load error",
+          "materialization error"
+        ]
+      }
+    }
+  ]
+}

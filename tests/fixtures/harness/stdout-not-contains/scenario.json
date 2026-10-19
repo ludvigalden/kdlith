@@ -1,0 +1,10 @@
+{
+  "binary": "kdlith",
+  "description": "the stdout-not-contains needle passes when its substrings are absent: the help output names the verb tree and no create, update, delete, or promote lifecycle command",
+  "args": ["--help"],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": ["Usage: kdlith", "\n  gen "],
+    "stdout-not-contains": ["\n  create ", "\n  update ", "\n  delete ", "\n  promote "]
+  }
+}

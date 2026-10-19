@@ -423,8 +423,9 @@ Each entry of `steps` is an object carrying exactly one step kind:
   into `<ws>/kdl/`, then run the declared command; a nonzero exit fails
   the scenario with the command's streams in the report.
 - `{ "exercise": { "command": [...], "stdout-contains": [...],
-  "stderr-contains": [...] } }` — run the declared command and judge its
-  exit and stream substrings, as a positive control does.
+  "stdout-not-contains": [...], "stderr-contains": [...] } }` — run the
+  declared command and judge its exit and stream substrings, as a
+  positive control does.
 
 The `{fx-repo}` placeholder expands to the repository root above the
 suite (also exported as `KDLITH_FX_REPO` to the run's subprocesses), so
@@ -451,6 +452,7 @@ and any consumer crate the exercise step runs.
 | ----------------- | ------- | ----------------------------------------- |
 | `exit`            | `0`     | The exact exit code the run must produce  |
 | `stdout-contains` | `[]`    | Substrings that must all appear in stdout |
+| `stdout-not-contains` | `[]` | Substrings none of which may appear in stdout |
 | `stderr-contains` | `[]`    | Substrings that must all appear in stderr |
 | `stdout-golden`   | absent  | A committed file the whole of stdout must equal byte for byte |
 | `stderr-golden`   | absent  | A committed file the whole of stderr must equal byte for byte |

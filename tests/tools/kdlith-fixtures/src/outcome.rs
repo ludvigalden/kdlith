@@ -80,6 +80,7 @@ fn judge(expectation: &Expectation, output: &Output) -> Vec<String> {
         Expectation::Positive {
             exit,
             stdout_contains,
+            stdout_not_contains,
             stderr_contains,
             ..
         } => {
@@ -89,6 +90,11 @@ fn judge(expectation: &Expectation, output: &Output) -> Vec<String> {
             for needle in stdout_contains {
                 if !stdout.contains(needle.as_str()) {
                     failures.push(format!("stdout does not contain {needle:?}"));
+                }
+            }
+            for needle in stdout_not_contains {
+                if stdout.contains(needle.as_str()) {
+                    failures.push(format!("stdout contains forbidden {needle:?}"));
                 }
             }
             for needle in stderr_contains {

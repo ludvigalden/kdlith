@@ -30,8 +30,8 @@ target/debug/kdlith-fixtures --fx-suite tests/fixtures --fx-kdlith target/debug/
 then diffing the listed names (all except `parse/kdl-spec/*`) against the
 scenario names occurring in this file, in both directions.
 
-Suite state at the time of writing: 929 scenarios — 243 `parse/kdl-spec`,
-686 others — all green.
+Suite state at the time of writing: 931 scenarios — 243 `parse/kdl-spec`,
+688 others — all green.
 
 ## Construct census
 
@@ -270,6 +270,8 @@ under test.
 | Protection | Exercised by | State |
 | --- | --- | --- |
 | Fail-closed scratch classification of a planted violation (symlink and foreign file reported as foreign entries by the harness, link never followed, neither silently deleted) | harness/scratch-fail-closed | covered — doubles as the detection meta-fixture: neutralizing the classification fails the scenario |
+| Absence pin: `stdout-not-contains` passes when none of its substrings appears in stdout | harness/stdout-not-contains | covered — the help output carries the verb tree and none of the create, update, delete, or promote lifecycle commands |
+| Absence pin detection: `stdout-not-contains` fails a run whose stdout carries a forbidden substring, in a positive `expect` and in a codegen-oracle `exercise` step | harness/stdout-not-contains-detects | covered — the detection meta-fixture: the scenario runs the harness itself over its committed inner suite, whose two scenarios each forbid a substring their run prints, and requires the inner run to exit 1 with exactly those two forbidden-needle failures and no other failure; neutralizing either check level fails the scenario |
 | Teardown of a kept failure (`--fx-keep-failed`): a foreign file beside the kept scenario or beside its category directory is printed as a `leftover: foreign file ... left in place (not deleted)` line and survives byte-identical, while passing subtrees are removed | — | not exercised by the committed suite — the branch needs a failing scenario, which the committed suite cannot carry without failing itself; it is verified by a deliberate out-of-suite run of the built harness over a stub processor that plants both files and fails, and neutralizing the branch (silently deleting the file) fails that run |
 
 ## Verb-contract census
