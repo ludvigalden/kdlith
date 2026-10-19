@@ -166,7 +166,7 @@ macro_rules! object_type {
             fn from_fields(
                 _: &mut $crate::Fields<'_>,
             ) -> ::core::result::Result<Self, $crate::Mismatch> {
-                Ok(Self {})
+                ::core::result::Result::Ok(Self {})
             }
         }
 
@@ -178,7 +178,7 @@ macro_rules! object_type {
                 serializer: S,
             ) -> ::core::result::Result<S::Ok, S::Error> {
                 use $crate::__private::serde::ser::SerializeMap as _;
-                serializer.serialize_map(Some(0))?.end()
+                serializer.serialize_map(::core::option::Option::Some(0))?.end()
             }
         }
     };
@@ -199,7 +199,7 @@ macro_rules! object_type {
             fn from_fields(
                 fields: &mut $crate::Fields<'_>,
             ) -> ::core::result::Result<Self, $crate::Mismatch> {
-                Ok(Self {
+                ::core::result::Result::Ok(Self {
                     $($field: fields.take::<$ty>($key)?),+
                 })
             }
@@ -213,7 +213,7 @@ macro_rules! object_type {
                 serializer: S,
             ) -> ::core::result::Result<S::Ok, S::Error> {
                 use $crate::__private::serde::ser::SerializeMap as _;
-                let mut map = serializer.serialize_map(None)?;
+                let mut map = serializer.serialize_map(::core::option::Option::None)?;
                 $(
                     if !$crate::LogicalType::is_absent(&self.$field) {
                         map.serialize_entry($key, &self.$field)?;
@@ -261,7 +261,7 @@ macro_rules! union_type {
                     $($node => <$ty as $crate::FromValue>::from_value(inner)
                         .map(Self::$variant)
                         .map_err(|mismatch| mismatch.within($node)),)+
-                    other => Err($crate::Mismatch::new(::std::format!(
+                    other => ::core::result::Result::Err($crate::Mismatch::new(::std::format!(
                         "{other} is not a variant of {}",
                         $spelled
                     ))),
@@ -288,7 +288,7 @@ macro_rules! union_type {
                 serializer: S,
             ) -> ::core::result::Result<S::Ok, S::Error> {
                 use $crate::__private::serde::ser::SerializeMap as _;
-                let mut map = serializer.serialize_map(Some(1))?;
+                let mut map = serializer.serialize_map(::core::option::Option::Some(1))?;
                 match self {
                     $(Self::$variant(inner) => map.serialize_entry($node, inner)?,)+
                 }

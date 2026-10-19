@@ -146,6 +146,10 @@ struct GenSchemaArgs {
         value_parser = handlers::parse_anchor
     )]
     anchors: Vec<(String, PathBuf)>,
+    /// A built-in context handler the schema may name, by name
+    /// (repeatable); generation admits the name and never runs it
+    #[arg(long = "handler", value_name = "NAME", value_parser = handlers::parse_handler)]
+    handlers: Vec<String>,
 }
 
 /// `kdlith vet dialect|schema|data`.

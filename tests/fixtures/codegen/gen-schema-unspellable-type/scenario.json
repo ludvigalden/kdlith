@@ -1,14 +1,44 @@
 {
   "binary": "kdlith",
-  "description": "gen schema fails closed when a declared type takes a name the generated crate spells unqualified (object Option beside an optional<String> field, which renders as Rust's Option): the schema itself vets green, generation exits 1 naming the type and the reason, and the scratch check proves nothing was written into the output directory",
-  "args": ["gen", "schema", "schema.kdl", "--crate", "shadow-proc", "--out", "out"],
-  "expect": {
-    "exit": 1,
-    "stderr-contains": [
-      "kdlith: gen schema: the type `Option` of `schema.kdl` has no Rust spelling in a generated crate: it shadows a name the generated crate spells unqualified"
-    ],
-    "scratch-check": {
-      "plant": [{ "path": "planted-foreign.txt", "kind": "file" }]
+  "kind": "codegen-oracle",
+  "description": "gen schema generates a schema declaring a type named Option beside an optional<String> field, which a schema crate spells by path as ::core::option::Option: the schema vets green and gen schema generates it twice into two scratch trees the harness requires byte-identical; the generated type module declares the local Option and spells the field's option and the shape table's engine items by path, so neither shadows the other, and the generated crate compiles inside a scratch workspace materialized from this scenario's committed template. The compiled processor loads the schema with the digest the reference CLI reports and reads a committed data document, each value as vet data binds it: the Option declaration, an entry whose optional pick is set, and one whose pick is absent",
+  "form": "schema",
+  "entrypoint": "schema.kdl",
+  "crate": "shadow-proc",
+  "steps": [
+    { "generate": "ws/rs/shadow-proc" },
+    { "generate": "gen-again" },
+    { "determinism": ["ws/rs/shadow-proc", "gen-again"] },
+    {
+      "exercise": {
+        "command": ["cat", "ws/rs/shadow-proc/src/types/schema_kdl.rs"],
+        "stdout-contains": [
+          "object_type! {\n    pub struct Option {\n        \"name\" => name: String,\n    }\n}\n",
+          "        \"pick\" => pick: ::core::option::Option<String>,\n",
+          "pub(crate) const TYPES: &[::kdlith_engine::TypeShape] = &[\n    <Option as ::kdlith_engine::Shaped>::SHAPE,\n    <Entry as ::kdlith_engine::Shaped>::SHAPE,\n];\n"
+        ]
+      }
+    },
+    {
+      "compile": {
+        "workspace": "ws",
+        "copy": {
+          "crates": ["diagnostic", "engine", "model", "parse", "runtime", "superproc"],
+          "kdl": true
+        },
+        "command": ["cargo", "build", "--offline", "--manifest-path", "ws/rs/shadow-proc/Cargo.toml"]
+      }
+    },
+    {
+      "exercise": {
+        "command": ["cargo", "run", "--offline", "--quiet", "--manifest-path", "ws/rs/exercise/Cargo.toml", "--", "schema.kdl", "data.kdl"],
+        "stdout-contains": [
+          "schema ok digest=e3c217131cb38584\n",
+          "read errors=false lines=3\n",
+          "option name=first\nentry pick=x\nentry pick=absent\n"
+        ],
+        "stdout-not-contains": ["diagnostic "]
+      }
     }
-  }
+  ]
 }

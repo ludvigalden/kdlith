@@ -4,7 +4,7 @@
 
 use std::collections::BTreeMap;
 
-use kdlith_engine::{Names, TypeExpr};
+use kdlith_engine::{DefinitionKind, Names, TypeExpr};
 
 use crate::Error;
 
@@ -127,6 +127,40 @@ pub fn named_references(expr: &TypeExpr, names: &Names) -> Vec<String> {
     }
 }
 
+/// How a generated file spells the names it does not declare itself.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Spelling {
+    /// Bare, through the file's imports: the dialect form, byte-equal to
+    /// the reference processor.
+    Imported,
+    /// By absolute path, so no declared type can shadow the spelling: the
+    /// schema form, whose type names the schema author chooses.
+    Qualified,
+}
+
+impl Spelling {
+    /// The spelling a definition of `kind` generates under.
+    pub fn of(kind: DefinitionKind) -> Self {
+        match kind {
+            DefinitionKind::Dialect => Self::Imported,
+            _ => Self::Qualified,
+        }
+    }
+
+    /// `name`, which `path` exports, as this spelling writes it.
+    pub fn path(self, path: &str, name: &str) -> String {
+        match self {
+            Self::Imported => name.to_owned(),
+            Self::Qualified => format!("::{path}::{name}"),
+        }
+    }
+
+    /// An engine item, as this spelling writes it.
+    pub fn engine(self, name: &str) -> String {
+        self.path("kdlith_engine", name)
+    }
+}
+
 /// The Rust type a type expression renders to, or the reason it cannot:
 /// exactly the set the engine's decoding supports, everything else
 /// fails closed. A generic instance renders under its mangled name in
@@ -137,8 +171,9 @@ pub fn rust_type(
     names: &Names,
     instances: &BTreeMap<String, String>,
     union: Option<&str>,
+    spelling: Spelling,
 ) -> Result<String, Error> {
-    let render = |inner: &TypeExpr, union| rust_type(inner, names, instances, union);
+    let render = |inner: &TypeExpr, union| rust_type(inner, names, instances, union, spelling);
     match expr {
         TypeExpr::Named(sym) => {
             let name = names.resolve(*sym);
@@ -147,24 +182,38 @@ pub fn rust_type(
                 "Bool" => "bool".to_owned(),
                 "U64" => "u64".to_owned(),
                 "Integer" => "i64".to_owned(),
-                "Decimal" => "Decimal".to_owned(),
-                "ValueExpr" => "ValueExpr".to_owned(),
+                "Decimal" => spelling.engine("Decimal"),
+                "ValueExpr" => spelling.engine("ValueExpr"),
                 declared => instances
                     .get(declared)
                     .cloned()
                     .unwrap_or_else(|| declared.to_owned()),
             })
         }
-        TypeExpr::Optional(inner) => Ok(format!("Option<{}>", render(inner, union)?)),
-        TypeExpr::Nullable(inner) => Ok(format!("Nullable<{}>", render(inner, union)?)),
-        TypeExpr::List(inner) => Ok(format!("Vec<{}>", render(inner, union)?)),
+        TypeExpr::Optional(inner) => Ok(format!(
+            "{}<{}>",
+            spelling.path("core::option", "Option"),
+            render(inner, union)?
+        )),
+        TypeExpr::Nullable(inner) => Ok(format!(
+            "{}<{}>",
+            spelling.engine("Nullable"),
+            render(inner, union)?
+        )),
+        TypeExpr::List(inner) => Ok(format!(
+            "{}<{}>",
+            spelling.path("std::vec", "Vec"),
+            render(inner, union)?
+        )),
         TypeExpr::OrderedMap(key, value) => Ok(format!(
-            "OrderedMap<{}, {}>",
+            "{}<{}, {}>",
+            spelling.engine("OrderedMap"),
             render(key, union)?,
             render(value, union)?
         )),
         TypeExpr::Map(key, value) => Ok(format!(
-            "BTreeMap<{}, {}>",
+            "{}<{}, {}>",
+            spelling.path("std::collections", "BTreeMap"),
             render(key, union)?,
             render(value, union)?
         )),
@@ -172,7 +221,11 @@ pub fn rust_type(
         // against the reading's declarations by linking, never by
         // reading; linking admits only a declared type name inside it.
         TypeExpr::Ref(inner) => match inner.as_ref() {
-            TypeExpr::Named(_) => Ok(format!("Ref<{}>", render(inner, None)?)),
+            TypeExpr::Named(_) => Ok(format!(
+                "{}<{}>",
+                spelling.engine("Ref"),
+                render(inner, None)?
+            )),
             _ => Err(Error::UnsupportedExpression {
                 spelling: expression_text(expr, names),
             }),

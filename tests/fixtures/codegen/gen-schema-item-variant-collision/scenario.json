@@ -1,11 +1,11 @@
 {
   "binary": "kdlith",
-  "description": "gen schema fails closed with KDLITH-GEN004 when two reading nodes would spell one generated item variant for different items: object Ship backs the differently named nodes ship and tender, so each reads as its own node-keyed variant, and tender's variant Tender is the variant the node launch already reads as through its type Tender. The schema itself vets green, generation exits 1 naming both nodes and the variant before anything is emitted, and the scratch check proves nothing was written into the output directory",
+  "description": "gen schema fails closed when two reading nodes would spell one generated item variant for different items: object Ship backs the differently named nodes ship and tender, so each reads as its own node-keyed variant, and tender's variant Tender is the variant the node launch already reads as through its type Tender. The schema itself vets green, generation exits 1 naming both nodes and the variant before anything is emitted, and the scratch check proves nothing was written into the output directory",
   "args": ["gen", "schema", "schema.kdl", "--crate", "fleet-proc", "--out", "out"],
   "expect": {
     "exit": 1,
     "stderr-contains": [
-      "error[KDLITH-GEN004]: the nodes tender and launch both read as the item variant Tender\n"
+      "kdlith: gen schema: the nodes tender and launch both read as the item variant Tender\n"
     ],
     "scratch-check": {
       "plant": [{ "path": "planted-foreign.txt", "kind": "file" }]

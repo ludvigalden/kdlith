@@ -11,7 +11,7 @@ use crate::catalog;
 use crate::manifest::{MANIFEST_NAME, manifest_text};
 use crate::model::{Document, Emission, InlineUnion, ItemNode, kind_name};
 use crate::render::{
-    engine_names, field_name, inline_union_name, named_references, pascal, rust_type,
+    Spelling, engine_names, field_name, inline_union_name, named_references, pascal, rust_type,
     spells_btree_map,
 };
 
@@ -249,7 +249,10 @@ impl Emission<'_> {
             out.line("pub use kdlith_diagnostic::DiagnosticRecord;");
         }
         out.line("pub use processors::{");
-        out.line("    DECLARATIONS, Item, reader, reader_with_contribution_resolver, reader_with_resolver,");
+        out.line(&format!(
+            "    DECLARATIONS, {}, reader, reader_with_contribution_resolver, reader_with_resolver,",
+            self.item_enum
+        ));
         out.line("};");
         rust_file(&out.finish())
     }
@@ -275,8 +278,10 @@ impl Emission<'_> {
         );
         let shaped = !doc.types.is_empty() || !doc.references.is_empty();
         // A document contributing only node-local item types has no
-        // shape table, so it names neither shape item.
-        let mut engine: Vec<String> = if !shaped {
+        // shape table, so it names neither shape item. A qualified file
+        // imports only the declaration macros, which no type can shadow.
+        let imported = self.spelling == Spelling::Imported;
+        let mut engine: Vec<String> = if !shaped || !imported {
             Vec::new()
         } else {
             vec!["Shaped".into(), "TypeShape".into()]
@@ -328,7 +333,10 @@ impl Emission<'_> {
             references.push(self.names.resolve(decl.target).to_owned());
             push_unique(&mut macros, "reference_type");
         }
-        if references.iter().any(|name| name == "ValueExpr")
+        if !imported {
+            engine.clear();
+            btree_map = false;
+        } else if references.iter().any(|name| name == "ValueExpr")
             && !engine.iter().any(|name| name == "ValueExpr")
         {
             engine.push("ValueExpr".to_owned());
@@ -382,14 +390,23 @@ impl Emission<'_> {
         if shaped {
             out.blank();
             out.line("/// The shapes of this document's types, in declaration order.");
-            out.line("pub(crate) const TYPES: &[TypeShape] = &[");
+            out.line(&format!(
+                "pub(crate) const TYPES: &[{}] = &[",
+                self.spelling.engine("TypeShape")
+            ));
             let shapes = doc
                 .types
                 .iter()
                 .map(|decl| decl.name)
                 .chain(doc.references.iter().map(|decl| decl.name));
             for name in shapes {
-                out.line(&format!("    {}::SHAPE,", self.rust_name(name)));
+                let name = self.rust_name(name);
+                match self.spelling {
+                    Spelling::Imported => out.line(&format!("    {name}::SHAPE,")),
+                    Spelling::Qualified => {
+                        out.line(&format!("    <{name} as ::kdlith_engine::Shaped>::SHAPE,"));
+                    }
+                }
             }
             out.line("];");
         }
@@ -434,7 +451,8 @@ impl Emission<'_> {
                     ty,
                     self.names,
                     &self.instances,
-                    Some(&inline_union_name(name, key))
+                    Some(&inline_union_name(name, key)),
+                    self.spelling
                 )?
             ));
         }
@@ -515,7 +533,8 @@ impl Emission<'_> {
                                 &field.ty,
                                 self.names,
                                 &self.instances,
-                                Some(&inline_union_name(&name, key))
+                                Some(&inline_union_name(&name, key)),
+                                self.spelling
                             )?
                         ));
                     }
@@ -535,7 +554,13 @@ impl Emission<'_> {
                         "        \"{}\" => {}({}),",
                         discriminator,
                         pascal(discriminator),
-                        rust_type(&variant.ty, self.names, &self.instances, None)?
+                        rust_type(
+                            &variant.ty,
+                            self.names,
+                            &self.instances,
+                            None,
+                            self.spelling
+                        )?
                     ));
                 }
                 out.line("    }");
@@ -548,8 +573,8 @@ impl Emission<'_> {
                 }
                 out.line(&format!(
                     "    pub struct {name}({} => {});",
-                    rust_type(&map.key, self.names, &self.instances, None)?,
-                    rust_type(&map.value, self.names, &self.instances, None)?
+                    rust_type(&map.key, self.names, &self.instances, None, self.spelling)?,
+                    rust_type(&map.value, self.names, &self.instances, None, self.spelling)?
                 ));
                 out.line("}");
             }
@@ -560,7 +585,13 @@ impl Emission<'_> {
                 }
                 out.line(&format!(
                     "    pub struct {name}({});",
-                    rust_type(&codec.output, self.names, &self.instances, None)?
+                    rust_type(
+                        &codec.output,
+                        self.names,
+                        &self.instances,
+                        None,
+                        self.spelling
+                    )?
                 ));
                 out.line("}");
             }
@@ -628,14 +659,21 @@ impl Emission<'_> {
             out.line(&format!("mod {module};"));
         }
         out.blank();
-        out.line("use kdlith_engine::TypeShape;");
-        out.blank();
+        // The glob re-exports bring declared types into scope, which a
+        // qualified file never lets shadow an engine item.
+        if self.spelling == Spelling::Imported {
+            out.line("use kdlith_engine::TypeShape;");
+            out.blank();
+        }
         for module in &sorted {
             out.line(&format!("pub use {module}::*;"));
         }
         out.blank();
         out.line("/// Every type's shape, by contributing document.");
-        out.line("pub(crate) const TYPES: &[&[TypeShape]] = &[");
+        out.line(&format!(
+            "pub(crate) const TYPES: &[&[{}]] = &[",
+            self.spelling.engine("TypeShape")
+        ));
         for module in &modules {
             out.line(&format!("    {module}::TYPES,"));
         }
@@ -795,10 +833,14 @@ impl Emission<'_> {
         // Every slot spells its expression through the `LogicalType`
         // trait, plainly or qualified, so the file imports it, and the
         // engine carriers its types render through.
-        let mut engine = vec!["SlotShape".to_owned(), "LogicalType".to_owned()];
-        for slot in &doc.slots {
-            for name in engine_names(&slot.ty, self.names) {
-                push_unique(&mut engine, name);
+        let imported = self.spelling == Spelling::Imported;
+        let mut engine = Vec::new();
+        if imported {
+            engine = vec!["SlotShape".to_owned(), "LogicalType".to_owned()];
+            for slot in &doc.slots {
+                for name in engine_names(&slot.ty, self.names) {
+                    push_unique(&mut engine, name);
+                }
             }
         }
         engine.sort();
@@ -809,28 +851,35 @@ impl Emission<'_> {
             doc.file_name
         )]);
         out.blank();
-        if doc.slots.iter().any(|slot| spells_btree_map(&slot.ty)) {
+        if imported && doc.slots.iter().any(|slot| spells_btree_map(&slot.ty)) {
             out.line("use std::collections::BTreeMap;");
             out.blank();
         }
         out.use_list("kdlith_engine", &engine);
         if !types.is_empty() {
-            out.blank();
+            if imported {
+                out.blank();
+            }
             out.use_list("crate::types", &types);
         }
-        out.blank();
-        out.line("pub(crate) const SLOTS: &[SlotShape] = &[");
+        if imported || !types.is_empty() {
+            out.blank();
+        }
+        let slot_shape = self.spelling.engine("SlotShape");
+        out.line(&format!("pub(crate) const SLOTS: &[{slot_shape}] = &["));
         for slot in &doc.slots {
             let name = self.names.resolve(slot.name);
             // A slot owns no inline union's enum, so one in its type
             // fails closed.
-            let ty = rust_type(&slot.ty, self.names, &self.instances, None)?;
-            let expression = if ty.contains('<') {
+            let ty = rust_type(&slot.ty, self.names, &self.instances, None, self.spelling)?;
+            let expression = if !imported {
+                format!("<{ty} as ::kdlith_engine::LogicalType>::expression")
+            } else if ty.contains('<') {
                 format!("<{ty} as LogicalType>::expression")
             } else {
                 format!("{ty}::expression")
             };
-            let mut segments = vec![format!("SlotShape::new(\"{name}\", {expression})")];
+            let mut segments = vec![format!("{slot_shape}::new(\"{name}\", {expression})")];
             if let Some(namespace) = slot.namespace {
                 segments.push(format!(
                     ".in_namespace(\"{}\")",
@@ -883,13 +932,19 @@ impl Emission<'_> {
             out.line(&format!("mod {module};"));
         }
         out.blank();
-        out.line("use kdlith_diagnostic::DiagnosticRecord;");
-        out.line("use kdlith_engine::{");
-        out.line(
-            "    Declarations, Definition, DefinitionKind, Handler, SharedContributionResolver, SharedResolver,",
-        );
-        out.line("    TypedReader, item_type,");
-        out.line("};");
+        let spelling = self.spelling;
+        let item = self.item_enum;
+        if spelling == Spelling::Imported {
+            out.line("use kdlith_diagnostic::DiagnosticRecord;");
+            out.line("use kdlith_engine::{");
+            out.line(
+                "    Declarations, Definition, DefinitionKind, Handler, SharedContributionResolver, SharedResolver,",
+            );
+            out.line("    TypedReader, item_type,");
+            out.line("};");
+        } else {
+            out.line("use kdlith_engine::item_type;");
+        }
         out.blank();
         out.use_list("crate::types", &sorted);
         out.line("use crate::{bindings, contexts, types};");
@@ -901,7 +956,7 @@ impl Emission<'_> {
             }
             _ => out.line("    /// A record or declaration of a document written in the schema."),
         }
-        out.line("    pub enum Item {");
+        out.line(&format!("    pub enum {item} {{"));
         for line in self.item_variants() {
             out.line(&format!("        {line},"));
         }
@@ -909,7 +964,8 @@ impl Emission<'_> {
         out.line("}");
         out.blank();
         out.line("/// Every handler, by contributing document.");
-        out.line("const HANDLERS: &[&[Handler<Item>]] = &[");
+        let handler = spelling.engine("Handler");
+        out.line(&format!("const HANDLERS: &[&[{handler}<{item}>]] = &["));
         for module in &modules {
             out.line(&format!("    {module}::HANDLERS,"));
         }
@@ -922,10 +978,15 @@ impl Emission<'_> {
         out.line(&format!(
             "/// Everything this processor declares about the {kind_word} it reads."
         ));
-        out.line("pub static DECLARATIONS: Declarations<Item> =");
+        let declarations = spelling.engine("Declarations");
         out.line(&format!(
-            "    Declarations::new(DefinitionKind::{kind_path}, \"{}\", \"{}\")",
-            self.name, self.version
+            "pub static DECLARATIONS: {declarations}<{item}> ="
+        ));
+        out.line(&format!(
+            "    {declarations}::new({}::{kind_path}, \"{}\", \"{}\")",
+            spelling.engine("DefinitionKind"),
+            self.name,
+            self.version
         ));
         out.line("        .types(types::TYPES)");
         out.line("        .nodes(bindings::NODES)");
@@ -936,11 +997,26 @@ impl Emission<'_> {
             DefinitionKind::Dialect => ("dialect", "definitions written in the compiled dialect"),
             _ => ("schema", "documents written under the compiled schema"),
         };
+        let definition = spelling.engine("Definition");
+        let typed_reader = spelling.engine("TypedReader");
+        let returns = format!(
+            "{}<{typed_reader}<'_, {item}>, {}<{}>>",
+            spelling.path("core::result", "Result"),
+            spelling.path("std::vec", "Vec"),
+            spelling.path("kdlith_diagnostic", "DiagnosticRecord")
+        );
         out.line(&format!("/// A reader of {reads} `{param}`."));
-        out.line(&format!(
-            "pub fn reader({param}: &Definition) -> Result<TypedReader<'_, Item>, Vec<DiagnosticRecord>> {{"
-        ));
-        out.line(&format!("    TypedReader::new({param}, &DECLARATIONS)"));
+        match spelling {
+            Spelling::Imported => out.line(&format!(
+                "pub fn reader({param}: &{definition}) -> {returns} {{"
+            )),
+            Spelling::Qualified => {
+                out.line("pub fn reader(");
+                out.line(&format!("    {param}: &{definition},"));
+                out.line(&format!(") -> {returns} {{"));
+            }
+        }
+        out.line(&format!("    {typed_reader}::new({param}, &DECLARATIONS)"));
         out.line("}");
         out.blank();
         out.line(&format!("/// A reader of {reads} `{param}`"));
@@ -948,9 +1024,12 @@ impl Emission<'_> {
         out.line("/// value resolver `resolver`, which receives the declared descriptors");
         out.line("/// as data.");
         out.line("pub fn reader_with_resolver(");
-        out.line(&format!("    {param}: &Definition,"));
-        out.line("    resolver: SharedResolver,");
-        out.line(") -> Result<TypedReader<'_, Item>, Vec<DiagnosticRecord>> {");
+        out.line(&format!("    {param}: &{definition},"));
+        out.line(&format!(
+            "    resolver: {},",
+            spelling.engine("SharedResolver")
+        ));
+        out.line(&format!(") -> {returns} {{"));
         out.line(&format!(
             "    reader({param}).map(|typed| typed.with_resolver(resolver))"
         ));
@@ -960,9 +1039,12 @@ impl Emission<'_> {
         out.line("/// whose contributions resolve through the processor's contribution");
         out.line("/// resolver `resolver` under the declared resolution policy.");
         out.line("pub fn reader_with_contribution_resolver(");
-        out.line(&format!("    {param}: &Definition,"));
-        out.line("    resolver: SharedContributionResolver,");
-        out.line(") -> Result<TypedReader<'_, Item>, Vec<DiagnosticRecord>> {");
+        out.line(&format!("    {param}: &{definition},"));
+        out.line(&format!(
+            "    resolver: {},",
+            spelling.engine("SharedContributionResolver")
+        ));
+        out.line(&format!(") -> {returns} {{"));
         out.line(&format!(
             "    reader({param}).map(|typed| typed.with_contribution_resolver(resolver))"
         ));
@@ -1013,13 +1095,19 @@ impl Emission<'_> {
             )]),
         }
         out.blank();
-        if keyed {
-            out.line("use kdlith_engine::{Handler, read_fields};");
-        } else {
-            out.line("use kdlith_engine::Handler;");
+        let spelling = self.spelling;
+        let item_enum = self.item_enum;
+        let handler_path = spelling.engine("Handler");
+        let read_fields = spelling.engine("read_fields");
+        if spelling == Spelling::Imported {
+            if keyed {
+                out.line("use kdlith_engine::{Handler, read_fields};");
+            } else {
+                out.line("use kdlith_engine::Handler;");
+            }
+            out.blank();
         }
-        out.blank();
-        out.line("use super::Item;");
+        out.line(&format!("use super::{item_enum};"));
         out.use_list("crate::types", &types);
         out.blank();
         let handlers: Vec<String> = items
@@ -1030,11 +1118,12 @@ impl Emission<'_> {
                     let node = self.names.resolve(item.node.name);
                     let variant = &item.variant;
                     return format!(
-                        "Handler::{role}_with::<{ty}>(|fields| read_fields(fields).map(Item::{variant}))\
+                        "{handler_path}::{role}_with::<{ty}>(|fields| \
+                         {read_fields}(fields).map({item_enum}::{variant}))\
                          .node(\"{node}\")"
                     );
                 }
-                let handler = format!("Handler::{role}::<{ty}>()");
+                let handler = format!("{handler_path}::{role}::<{ty}>()");
                 // A typeless node's items carry the node's name.
                 if item.local {
                     format!("{handler}.named(\"{}\")", item.item_name)
@@ -1044,13 +1133,15 @@ impl Emission<'_> {
             })
             .collect();
         let single = format!(
-            "pub(crate) const HANDLERS: &[Handler<Item>] = &[{}];",
+            "pub(crate) const HANDLERS: &[{handler_path}<{item_enum}>] = &[{}];",
             handlers.join(", ")
         );
         if single.len() <= LIST_WIDTH {
             out.line(&single);
         } else {
-            out.line("pub(crate) const HANDLERS: &[Handler<Item>] = &[");
+            out.line(&format!(
+                "pub(crate) const HANDLERS: &[{handler_path}<{item_enum}>] = &["
+            ));
             for handler in &handlers {
                 out.line(&format!("    {handler},"));
             }

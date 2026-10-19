@@ -73,8 +73,9 @@ pub enum Error {
     /// name a declared logical type already takes.
     LocalTypeCollision { node: String, ty: String },
     /// A name the definition admits has no spelling in the generated
-    /// crate: it is no Rust identifier, it shadows a name the crate
-    /// spells unqualified, or it maps onto a sibling's spelling.
+    /// crate: it is no Rust identifier, it shadows a name a dialect
+    /// crate spells unqualified, it takes another declared type's name,
+    /// or it maps onto a sibling's spelling.
     UnspellableName {
         what: &'static str,
         owner: String,
@@ -181,25 +182,6 @@ impl std::fmt::Display for Error {
 }
 
 impl std::error::Error for Error {}
-
-impl Error {
-    /// The registered diagnostic a refusal reports as, for the refusals
-    /// the code registry names.
-    pub fn diagnostic(&self) -> Option<DiagnosticRecord> {
-        match self {
-            Self::ItemVariantCollision {
-                variant,
-                node,
-                other,
-            } => DiagnosticRecord::from_code(VARIANT_COLLISION).map(|record| {
-                record
-                    .with_message(variant_collision(variant, node, other))
-                    .with_origin("codegen")
-            }),
-            _ => None,
-        }
-    }
-}
 
 const VARIANT_COLLISION: &str = "KDLITH-GEN004";
 

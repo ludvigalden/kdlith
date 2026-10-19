@@ -12,7 +12,7 @@ use kdlith_engine::{
 use crate::Error;
 use crate::emit::declaration_expressions;
 use crate::render::{
-    expression_text, field_name, include_path, inline_union_name, is_identifier, mangle,
+    Spelling, expression_text, field_name, include_path, inline_union_name, is_identifier, mangle,
     normalize_path, pascal, rust_type, subexpressions, variant_name,
 };
 
@@ -103,6 +103,11 @@ pub(crate) struct Emission<'d> {
     /// Each monomorphized generic instance's rendered name, with the
     /// Rust name it reads under.
     pub instances: BTreeMap<String, String>,
+    /// How the generated files spell the names they do not declare.
+    pub spelling: Spelling,
+    /// The processor's item enum: `Item`, or `ItemKind` when a type the
+    /// crate declares takes `Item`.
+    pub item_enum: &'static str,
 }
 
 impl<'d> Emission<'d> {
@@ -172,11 +177,9 @@ impl<'d> Emission<'d> {
             mark(&mut contributing, context.site);
         }
 
-        // Group each catalog's declarations under their document, in
-        // contribution order: catalog iteration order is declaration
-        // order, so per-document grouping preserves it. A generic
-        // declaration is a template, never spelled itself; each of its
-        // monomorphized instances is a declaration of its own.
+        // Catalog iteration order is declaration order, so grouping by
+        // document keeps contribution order. A generic declaration is a
+        // template, never spelled; each instance is its own declaration.
         let mut type_groups: BTreeMap<usize, Vec<&TypeDecl>> = BTreeMap::new();
         for (_, decl) in definition.types.iter() {
             if !decl.parameters.is_empty() {
@@ -259,7 +262,6 @@ impl<'d> Emission<'d> {
                     .iter()
                     .map(|decl| names.resolve(decl.name)),
             )
-            .chain(["Item", "Ref", "OrderedMap"])
             .collect();
         // Monomorphization names an instance by its rendering, which no
         // Rust identifier spells; it reads under the mangled name.
@@ -297,12 +299,12 @@ impl<'d> Emission<'d> {
                                 ty,
                             });
                         }
-                        if UNQUALIFIED.contains(&ty.as_str()) {
+                        if let Some(reason) = unspellable_name(definition.kind, &ty) {
                             return Err(Error::UnspellableName {
                                 what: "node-local type",
                                 owner: node_name,
                                 name: ty,
-                                reason: SHADOWS,
+                                reason,
                             });
                         }
                         (ty, node_name.clone(), true)
@@ -339,6 +341,8 @@ impl<'d> Emission<'d> {
             documents,
             items,
             instances,
+            spelling: Spelling::of(definition.kind),
+            item_enum: "Item",
         };
         emission.check_spellings()?;
         emission.check_map_keys(definition)?;
@@ -358,12 +362,13 @@ impl<'d> Emission<'d> {
                     .map(|node| pascal(names.resolve(node.name))),
             );
         }
-        check_instances(&emission.instances, &mut taken)?;
+        check_instances(definition.kind, &emission.instances, &mut taken)?;
         for at in 0..emission.documents.len() {
             let doc = &emission.documents[at];
-            let unions = inline_unions(doc, names, definition, &emission.instances, &mut taken)?;
+            let unions = inline_unions(doc, &emission, definition, &mut taken)?;
             emission.documents[at].unions = unions;
         }
+        emission.item_enum = item_enum(&definition.name, &taken)?;
         Ok(emission)
     }
 
@@ -450,8 +455,12 @@ impl<'d> Emission<'d> {
             }
             for decl in &doc.types {
                 let name = self.names.resolve(decl.name);
-                if UNQUALIFIED.contains(&name) {
-                    return Err(unspellable("type", &doc.file_name, name, SHADOWS));
+                // A generic instance's mangled name is checked with the
+                // other instances'.
+                if !self.instances.contains_key(name)
+                    && let Some(reason) = unspellable_name(self.kind, name)
+                {
+                    return Err(unspellable("type", &doc.file_name, name, reason));
                 }
                 match &decl.kind {
                     TypeKind::Enum(enumeration) => {
@@ -474,16 +483,8 @@ impl<'d> Emission<'d> {
             }
             for decl in &doc.references {
                 let name = self.names.resolve(decl.name);
-                if !is_identifier(name) {
-                    return Err(unspellable(
-                        "reference type",
-                        &doc.file_name,
-                        name,
-                        "it is no Rust identifier",
-                    ));
-                }
-                if UNQUALIFIED.contains(&name) {
-                    return Err(unspellable("reference type", &doc.file_name, name, SHADOWS));
+                if let Some(reason) = unspellable_name(self.kind, name) {
+                    return Err(unspellable("reference type", &doc.file_name, name, reason));
                 }
             }
             for node in &doc.locals {
@@ -645,23 +646,16 @@ fn case_type(
     Ok(Some((ty, rendered.to_owned())))
 }
 
-/// Check each instance's mangled name is an identifier, shadows nothing,
-/// and is not `taken`. `Pair<x-y, z>` and `Pair<x, y-z>` both mangle to
-/// `PairXYZ`, so a collision fails closed; a suffix would not be pure.
+/// Check each instance's mangled name is spellable and is not `taken`.
+/// `Pair<x-y, z>` and `Pair<x, y-z>` both mangle to `PairXYZ`, so a
+/// collision fails closed; a suffix would not be pure.
 fn check_instances(
+    kind: DefinitionKind,
     instances: &BTreeMap<String, String>,
     taken: &mut Vec<String>,
 ) -> Result<(), Error> {
     for (rendered, name) in instances {
-        let reason = if !is_identifier(name) {
-            Some("it is no Rust identifier")
-        } else if UNQUALIFIED.contains(&name.as_str()) {
-            Some(SHADOWS)
-        } else if taken.contains(name) {
-            Some("it takes the name of another type the generated crate declares")
-        } else {
-            None
-        };
+        let reason = unspellable_name(kind, name).or_else(|| taken.contains(name).then_some(TAKEN));
         if let Some(reason) = reason {
             return Err(Error::UnspellableName {
                 what: "generic instance",
@@ -685,11 +679,11 @@ pub(crate) fn reading_role(role: Option<Role>) -> bool {
 /// closed, as does a field writing more than one union.
 fn inline_unions(
     doc: &Document<'_>,
-    names: &Names,
+    emission: &Emission<'_>,
     definition: &Definition,
-    instances: &BTreeMap<String, String>,
     taken: &mut Vec<String>,
 ) -> Result<Vec<InlineUnion>, Error> {
+    let (names, instances) = (emission.names, &emission.instances);
     let mut owned: Vec<(String, Sym, &TypeExpr)> = Vec::new();
     for decl in &doc.types {
         if let TypeKind::Object(object) = &decl.kind {
@@ -731,15 +725,8 @@ fn inline_unions(
         };
         let key = names.resolve(key);
         let name = inline_union_name(&owner, key);
-        let reason = if !is_identifier(&name) {
-            Some("it is no Rust identifier")
-        } else if UNQUALIFIED.contains(&name.as_str()) {
-            Some(SHADOWS)
-        } else if taken.contains(&name) {
-            Some("it takes the name of another type the generated crate declares")
-        } else {
-            None
-        };
+        let reason = unspellable_name(emission.kind, &name)
+            .or_else(|| taken.contains(&name).then_some(TAKEN));
         if let Some(reason) = reason {
             return Err(Error::UnspellableName {
                 what: "inline union",
@@ -748,14 +735,20 @@ fn inline_unions(
                 reason,
             });
         }
-        let renderings = members
-            .iter()
-            .map(|member| rust_type(member, names, instances, None))
-            .collect::<Result<Vec<_>, _>>()?;
+        // A member's variant is named after its plain rendering, whatever
+        // path the file spells its type under.
+        let render = |spelling| {
+            members
+                .iter()
+                .map(|member| rust_type(member, names, instances, None, spelling))
+                .collect::<Result<Vec<_>, _>>()
+        };
+        let plain = render(Spelling::Imported)?;
+        let renderings = render(emission.spelling)?;
         variants(
             "union member",
             &name,
-            renderings.iter().map(String::as_str),
+            plain.iter().map(String::as_str),
             variant_name,
         )?;
         // The binder keeps the bound value, not the member it fit, so
@@ -777,9 +770,10 @@ fn inline_unions(
             owner,
             key: key.to_owned(),
             name,
-            members: renderings
-                .into_iter()
-                .map(|rendering| (variant_name(&rendering), rendering))
+            members: plain
+                .iter()
+                .map(|rendering| variant_name(rendering))
+                .zip(renderings)
                 .collect(),
         });
     }
@@ -846,12 +840,46 @@ pub(crate) fn kind_name(kind: &TypeKind) -> &'static str {
     }
 }
 
-/// The names a generated crate spells unqualified beside the declared
-/// types: the Rust prelude items its renderings use, `Self`, the engine
-/// items its modules import, and the standard library's `BTreeMap`. A
-/// declared or node-local type taking one would shadow it, so the crate
-/// would not compile.
-const UNQUALIFIED: [&str; 27] = [
+/// Why a type the crate declares under `name` has no spelling, if it
+/// has none. `Self` is a keyword, never a type name. A schema crate
+/// spells every name it does not declare by absolute path, so nothing
+/// can shadow it; a dialect crate stays byte-equal to the reference
+/// processor, which spells the names in `SHADOWED_IN_DIALECT` bare.
+fn unspellable_name(kind: DefinitionKind, name: &str) -> Option<&'static str> {
+    if !is_identifier(name) || name == "Self" {
+        Some(NOT_IDENTIFIER)
+    } else if kind == DefinitionKind::Dialect && SHADOWED_IN_DIALECT.contains(&name) {
+        Some(SHADOWS)
+    } else {
+        None
+    }
+}
+
+/// The processor's item enum: `Item`, else `ItemKind` when a declared
+/// type takes `Item`; both taken fails closed rather than inventing a
+/// third spelling.
+fn item_enum(owner: &str, taken: &[String]) -> Result<&'static str, Error> {
+    let free = |name: &str| !taken.iter().any(|other| other == name);
+    if free("Item") {
+        return Ok("Item");
+    }
+    if free("ItemKind") {
+        return Ok("ItemKind");
+    }
+    Err(Error::UnspellableName {
+        what: "processor enum",
+        owner: owner.to_owned(),
+        name: "ItemKind".to_owned(),
+        reason: TAKEN,
+    })
+}
+
+/// The names a dialect crate spells bare beside its declared types: the
+/// Rust prelude items its renderings use, `Self`, the engine items its
+/// modules import, and the standard library's `BTreeMap`. A declared or
+/// node-local type taking one would shadow it, so the crate would not
+/// compile.
+const SHADOWED_IN_DIALECT: [&str; 27] = [
     "BTreeMap",
     "Decimal",
     "Declarations",
@@ -882,6 +910,8 @@ const UNQUALIFIED: [&str; 27] = [
 ];
 
 const SHADOWS: &str = "it shadows a name the generated crate spells unqualified";
+const NOT_IDENTIFIER: &str = "it is no Rust identifier";
+const TAKEN: &str = "it takes the name of another type the generated crate declares";
 
 /// Check that each of `owner`'s `what`s spells as a distinct Rust
 /// identifier under `spell`.
