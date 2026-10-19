@@ -270,7 +270,7 @@ macro_rules! reference_type {
         }
     ) => {
         $(#[$meta])*
-        #[derive(Clone, Debug, PartialEq, Eq)]
+        #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
         $vis struct $name(pub $crate::Ref<$target>);
 
         impl $name {
@@ -356,12 +356,110 @@ macro_rules! codec_type {
     };
 }
 
-/// What a processor yields for its items: one variant per item type,
-/// named after it, each converting from that type. The grouped form
-/// `Type => VariantA | VariantB` names the variants apart from the type,
-/// so one type can back several variants; only a type backing exactly
-/// one variant converts into the item, and projecting onto a type
-/// matches every variant it backs.
+/// A declared map type: a newtype over the `map<Key, Value>` carrier,
+/// spelled as the declaration names it.
+#[macro_export]
+macro_rules! map_type {
+    ($(#[$meta:meta])* $vis:vis struct $name:ident($key:ty => $value:ty);) => {
+        $(#[$meta])*
+        #[derive(Clone, Debug, PartialEq, Eq)]
+        $vis struct $name(pub ::std::collections::BTreeMap<$key, $value>);
+
+        impl $crate::FromValue for $name {
+            fn from_value(
+                value: &$crate::__private::Value,
+            ) -> ::core::result::Result<Self, $crate::Mismatch> {
+                <::std::collections::BTreeMap<$key, $value> as $crate::FromValue>::from_value(
+                    value,
+                )
+                .map(Self)
+            }
+        }
+
+        impl $crate::LogicalType for $name {
+            fn expression() -> ::std::string::String {
+                ::std::string::String::from(stringify!($name))
+            }
+        }
+
+        impl $crate::Shaped for $name {
+            const SHAPE: $crate::TypeShape = $crate::TypeShape::map(
+                stringify!($name),
+                <$key as $crate::LogicalType>::expression,
+                <$value as $crate::LogicalType>::expression,
+            );
+        }
+
+        impl $crate::__private::serde::Serialize for $name {
+            fn serialize<S: $crate::__private::serde::Serializer>(
+                &self,
+                serializer: S,
+            ) -> ::core::result::Result<S::Ok, S::Error> {
+                $crate::__private::serde::Serialize::serialize(&self.0, serializer)
+            }
+        }
+    };
+}
+
+/// An inline `union<…>` a field's type expression writes: one Rust
+/// variant per member, in member order. A value reads as the first
+/// member it fits, as binding checks it, and serializes as that member.
+#[macro_export]
+macro_rules! inline_union_type {
+    (
+        $(#[$meta:meta])* $vis:vis enum $name:ident {
+            $($(#[$vmeta:meta])* $variant:ident($ty:ty)),+ $(,)?
+        }
+    ) => {
+        $(#[$meta])*
+        #[derive(Clone, Debug, PartialEq, Eq)]
+        #[non_exhaustive]
+        $vis enum $name {
+            $($(#[$vmeta])* $variant($ty)),+
+        }
+
+        impl $crate::FromValue for $name {
+            fn from_value(
+                value: &$crate::__private::Value,
+            ) -> ::core::result::Result<Self, $crate::Mismatch> {
+                $(if let ::core::result::Result::Ok(read) =
+                    <$ty as $crate::FromValue>::from_value(value)
+                {
+                    return ::core::result::Result::Ok(Self::$variant(read));
+                })+
+                ::core::result::Result::Err($crate::Mismatch::expected(
+                    &<Self as $crate::LogicalType>::expression(),
+                    value,
+                ))
+            }
+        }
+
+        impl $crate::LogicalType for $name {
+            fn expression() -> ::std::string::String {
+                let members: &[::std::string::String] =
+                    &[$(<$ty as $crate::LogicalType>::expression()),+];
+                ::std::format!("union<{}>", members.join(", "))
+            }
+        }
+
+        impl $crate::__private::serde::Serialize for $name {
+            fn serialize<S: $crate::__private::serde::Serializer>(
+                &self,
+                serializer: S,
+            ) -> ::core::result::Result<S::Ok, S::Error> {
+                match self {
+                    $(Self::$variant(inner) => {
+                        $crate::__private::serde::Serialize::serialize(inner, serializer)
+                    })+
+                }
+            }
+        }
+    };
+}
+
+/// What a processor yields for its items: one variant per item type.
+/// The grouped form `Type => A | B` lets one type back several
+/// variants; only a one-variant type converts into the item.
 #[macro_export]
 macro_rules! item_type {
     (@from $name:ident $ty:ident $only:ident) => {

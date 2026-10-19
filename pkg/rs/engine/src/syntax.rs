@@ -119,6 +119,29 @@ fn convert(value: KdlValue<'_>) -> Value {
 /// A non-negative integer spelled in any KDL radix, with separators.
 pub(crate) fn parse_u64(text: &str) -> Option<u64> {
     let text = text.strip_prefix('+').unwrap_or(text);
+    let (digits, radix) = radix_digits(text)?;
+    u64::from_str_radix(&digits, radix).ok()
+}
+
+/// A signed integer spelled in any KDL radix, with separators.
+pub(crate) fn parse_i64(text: &str) -> Option<i64> {
+    let (negative, unsigned) = match text.strip_prefix('-') {
+        Some(rest) => (true, rest),
+        None => (false, text.strip_prefix('+').unwrap_or(text)),
+    };
+    let (digits, radix) = radix_digits(unsigned)?;
+    // The sign joins the digits before parsing, so `i64::MIN` parses.
+    let signed = if negative {
+        format!("-{digits}")
+    } else {
+        digits
+    };
+    i64::from_str_radix(&signed, radix).ok()
+}
+
+/// An unsigned spelling's digits without radix prefix or separators, and
+/// its radix; `None` when a digit does not belong to the radix.
+fn radix_digits(text: &str) -> Option<(String, u32)> {
     let (digits, radix) = if let Some(rest) = text.strip_prefix("0x") {
         (rest, 16)
     } else if let Some(rest) = text.strip_prefix("0o") {
@@ -132,5 +155,5 @@ pub(crate) fn parse_u64(text: &str) -> Option<u64> {
     if cleaned.is_empty() || !cleaned.chars().all(|ch| ch.is_digit(radix)) {
         return None;
     }
-    u64::from_str_radix(&cleaned, radix).ok()
+    Some((cleaned, radix))
 }

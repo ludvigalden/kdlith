@@ -46,6 +46,12 @@ pub enum TypeShape {
         name: &'static str,
         output: Expression,
     },
+    /// A declared map type: the expressions of its key and value types.
+    Map {
+        name: &'static str,
+        key: Expression,
+        value: Expression,
+    },
 }
 
 impl TypeShape {
@@ -83,6 +89,10 @@ impl TypeShape {
         Self::Codec { name, output }
     }
 
+    pub const fn map(name: &'static str, key: Expression, value: Expression) -> Self {
+        Self::Map { name, key, value }
+    }
+
     pub const fn name(&self) -> &'static str {
         match self {
             Self::String { name }
@@ -90,7 +100,8 @@ impl TypeShape {
             | Self::Object { name, .. }
             | Self::Union { name, .. }
             | Self::Reference { name, .. }
-            | Self::Codec { name, .. } => name,
+            | Self::Codec { name, .. }
+            | Self::Map { name, .. } => name,
         }
     }
 }

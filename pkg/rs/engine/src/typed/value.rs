@@ -2,12 +2,13 @@
 //! binder has checked every value already, so a failure here means the
 //! processor and the definition disagree.
 
+use std::collections::BTreeMap;
 use std::fmt;
 
 use kdlith_model::{Entry, Field, Value};
 
-use crate::decode::found;
-use crate::syntax::parse_u64;
+use crate::decode::{Class, class, found};
+use crate::syntax::{parse_i64, parse_u64};
 
 /// `ValueExpr`: any single KDL scalar, kept as bound.
 pub type ValueExpr = Value;
@@ -231,6 +232,94 @@ impl LogicalType for u64 {
     }
 }
 
+/// `Integer`: an integer spelling in any radix. One the definition admits
+/// but `i64` cannot hold is a mismatch, never a wrapped value.
+impl FromValue for i64 {
+    fn from_value(value: &Value) -> Result<Self, Mismatch> {
+        match value {
+            Value::Number(spelled) => {
+                parse_i64(spelled).ok_or_else(|| Mismatch::expected("an Integer", value))
+            }
+            other => Err(Mismatch::expected("an Integer", other)),
+        }
+    }
+}
+
+impl LogicalType for i64 {
+    fn expression() -> String {
+        "Integer".to_owned()
+    }
+}
+
+/// `Decimal`: a finite number, kept exactly as the document spelled it,
+/// so no binary rounding touches it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Decimal(String);
+
+impl Decimal {
+    /// The number as the document spelled it.
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl FromValue for Decimal {
+    fn from_value(value: &Value) -> Result<Self, Mismatch> {
+        match value {
+            Value::Number(spelled) if class(spelled) != Class::Special => Ok(Self(spelled.clone())),
+            other => Err(Mismatch::expected("a Decimal", other)),
+        }
+    }
+}
+
+impl LogicalType for Decimal {
+    fn expression() -> String {
+        "Decimal".to_owned()
+    }
+}
+
+/// A decimal serializes as its spelling.
+impl serde::Serialize for Decimal {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(&self.0)
+    }
+}
+
+/// `nullable<T>`: a value or an explicit null. Absence stays distinct:
+/// `optional<nullable<T>>` reads absence as `None`, null as
+/// `Some(Nullable::Null)`.
+// Exhaustive: a nullable field holds only these two states.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Nullable<T> {
+    Null,
+    Value(T),
+}
+
+impl<T: FromValue> FromValue for Nullable<T> {
+    fn from_value(value: &Value) -> Result<Self, Mismatch> {
+        match value {
+            Value::Null => Ok(Self::Null),
+            other => T::from_value(other).map(Self::Value),
+        }
+    }
+}
+
+impl<T: LogicalType> LogicalType for Nullable<T> {
+    fn expression() -> String {
+        format!("nullable<{}>", T::expression())
+    }
+}
+
+/// A null serializes as null; a value as itself.
+impl<T: serde::Serialize> serde::Serialize for Nullable<T> {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match self {
+            Self::Null => serializer.serialize_none(),
+            Self::Value(value) => serializer.serialize_some(value),
+        }
+    }
+}
+
 /// `ValueExpr`: any single KDL scalar, kept as bound.
 impl FromValue for Value {
     fn from_value(value: &Value) -> Result<Self, Mismatch> {
@@ -325,6 +414,32 @@ impl<K: FromValue, V: FromValue> FromValue for OrderedMap<K, V> {
             .map(|entry| keyed(entry).map_err(|m| m.within(entry.key.as_str())))
             .collect::<Result<_, _>>()?;
         Ok(Self { entries })
+    }
+}
+
+/// `map<K, V>`: unique keys, ordered by key. A reference key keeps the
+/// reference it spells. Two entries whose keys decode equal fail rather
+/// than one silently replacing the other.
+impl<K: FromValue + Ord, V: FromValue> FromValue for BTreeMap<K, V> {
+    fn from_value(value: &Value) -> Result<Self, Mismatch> {
+        let Value::Map(entries) = value else {
+            return Err(Mismatch::expected("a keyed collection", value));
+        };
+        let mut map = BTreeMap::new();
+        for entry in entries {
+            let (key, value) = keyed(entry).map_err(|m| m.within(entry.key.as_str()))?;
+            if map.insert(key, value).is_some() {
+                let repeated = Mismatch::new("the key repeats an earlier key");
+                return Err(repeated.within(entry.key.as_str()));
+            }
+        }
+        Ok(map)
+    }
+}
+
+impl<K: LogicalType + Ord, V: LogicalType> LogicalType for BTreeMap<K, V> {
+    fn expression() -> String {
+        format!("map<{}, {}>", K::expression(), V::expression())
     }
 }
 

@@ -127,8 +127,9 @@ pub fn named_references(expr: &TypeExpr, names: &Names) -> Vec<String> {
 
 /// The Rust type a type expression renders to, or the reason it cannot:
 /// exactly the set the engine's decoding supports, everything else
-/// fails closed.
-pub fn rust_type(expr: &TypeExpr, names: &Names) -> Result<String, Error> {
+/// fails closed. An inline `union<…>` renders as `union`, the enum its
+/// owner's field declares; where no field owns it, it fails closed.
+pub fn rust_type(expr: &TypeExpr, names: &Names, union: Option<&str>) -> Result<String, Error> {
     match expr {
         TypeExpr::Named(sym) => {
             let name = names.resolve(*sym);
@@ -136,43 +137,101 @@ pub fn rust_type(expr: &TypeExpr, names: &Names) -> Result<String, Error> {
                 "String" => "String".to_owned(),
                 "Bool" => "bool".to_owned(),
                 "U64" => "u64".to_owned(),
+                "Integer" => "i64".to_owned(),
+                "Decimal" => "Decimal".to_owned(),
                 "ValueExpr" => "ValueExpr".to_owned(),
-                "Integer" | "Decimal" => {
-                    return Err(Error::UnsupportedExpression {
-                        spelling: name.to_owned(),
-                    });
-                }
                 declared => declared.to_owned(),
             })
         }
-        TypeExpr::Optional(inner) => Ok(format!("Option<{}>", rust_type(inner, names)?)),
-        TypeExpr::List(inner) => Ok(format!("Vec<{}>", rust_type(inner, names)?)),
+        TypeExpr::Optional(inner) => Ok(format!("Option<{}>", rust_type(inner, names, union)?)),
+        TypeExpr::Nullable(inner) => Ok(format!("Nullable<{}>", rust_type(inner, names, union)?)),
+        TypeExpr::List(inner) => Ok(format!("Vec<{}>", rust_type(inner, names, union)?)),
         TypeExpr::OrderedMap(key, value) => Ok(format!(
             "OrderedMap<{}, {}>",
-            rust_type(key, names)?,
-            rust_type(value, names)?
+            rust_type(key, names, union)?,
+            rust_type(value, names, union)?
+        )),
+        TypeExpr::Map(key, value) => Ok(format!(
+            "BTreeMap<{}, {}>",
+            rust_type(key, names, union)?,
+            rust_type(value, names, union)?
         )),
         // A reference reads as the engine's symbolic `Ref`, resolved
         // against the reading's declarations by linking, never by
         // reading; linking admits only a declared type name inside it.
         TypeExpr::Ref(inner) => match inner.as_ref() {
-            TypeExpr::Named(_) => Ok(format!("Ref<{}>", rust_type(inner, names)?)),
+            TypeExpr::Named(_) => Ok(format!("Ref<{}>", rust_type(inner, names, None)?)),
             _ => Err(Error::UnsupportedExpression {
                 spelling: expression_text(expr, names),
             }),
         },
-        TypeExpr::Nullable(_)
-        | TypeExpr::Map(_, _)
-        | TypeExpr::Union(_)
-        | TypeExpr::Instantiation(_, _) => Err(Error::UnsupportedExpression {
-            spelling: expression_text(expr, names),
-        }),
-        // A constructor this version does not know cannot decode; it
+        TypeExpr::Union(_) => match union {
+            Some(name) => Ok(name.to_owned()),
+            None => Err(Error::UnsupportedExpression {
+                spelling: expression_text(expr, names),
+            }),
+        },
+        // A generic instantiation surviving to generation, or a
+        // constructor this version does not know, cannot decode; it
         // fails closed rather than emitting a type that cannot read.
         _ => Err(Error::UnsupportedExpression {
             spelling: expression_text(expr, names),
         }),
     }
+}
+
+/// The name of the enum an inline union in `owner`'s field `key`
+/// renders as.
+pub fn inline_union_name(owner: &str, key: &str) -> String {
+    format!("{owner}{}", pascal(key))
+}
+
+/// The variant an inline union member reads as: the words of its Rust
+/// rendering, each capitalized, joined — `u64` as `U64`, `Vec<String>`
+/// as `VecString`.
+pub fn variant_name(rendering: &str) -> String {
+    rendering
+        .split(|c: char| !(c.is_ascii_alphanumeric() || c == '_'))
+        .flat_map(|word| {
+            let mut characters = word.chars();
+            characters
+                .next()
+                .map(|first| first.to_ascii_uppercase())
+                .into_iter()
+                .chain(characters)
+        })
+        .collect()
+}
+
+/// Every sub-expression of a type expression, itself first, in
+/// pre-order.
+pub fn subexpressions(expr: &TypeExpr) -> Vec<&TypeExpr> {
+    let mut found = vec![expr];
+    match expr {
+        TypeExpr::Optional(inner)
+        | TypeExpr::Nullable(inner)
+        | TypeExpr::List(inner)
+        | TypeExpr::Ref(inner) => found.extend(subexpressions(inner)),
+        TypeExpr::Map(key, value) | TypeExpr::OrderedMap(key, value) => {
+            found.extend(subexpressions(key));
+            found.extend(subexpressions(value));
+        }
+        TypeExpr::Instantiation(_, arguments) | TypeExpr::Union(arguments) => {
+            for argument in arguments {
+                found.extend(subexpressions(argument));
+            }
+        }
+        _ => {}
+    }
+    found
+}
+
+/// Whether a type expression's rendering spells the standard library's
+/// `BTreeMap`, which the file must import.
+pub fn spells_btree_map(expr: &TypeExpr) -> bool {
+    subexpressions(expr)
+        .into_iter()
+        .any(|sub| matches!(sub, TypeExpr::Map(_, _)))
 }
 
 /// The engine names a type expression's Rust rendering spells, beyond
@@ -191,7 +250,11 @@ fn collect_engine_names(expr: &TypeExpr, names: &Names, found: &mut Vec<&'static
         }
     };
     match expr {
-        TypeExpr::Named(sym) if names.resolve(*sym) == "ValueExpr" => push("ValueExpr", found),
+        TypeExpr::Named(sym) => match names.resolve(*sym) {
+            "ValueExpr" => push("ValueExpr", found),
+            "Decimal" => push("Decimal", found),
+            _ => {}
+        },
         TypeExpr::Ref(inner) => {
             push("Ref", found);
             collect_engine_names(inner, names, found);
@@ -201,7 +264,11 @@ fn collect_engine_names(expr: &TypeExpr, names: &Names, found: &mut Vec<&'static
             collect_engine_names(key, names, found);
             collect_engine_names(value, names, found);
         }
-        TypeExpr::Optional(inner) | TypeExpr::List(inner) | TypeExpr::Nullable(inner) => {
+        TypeExpr::Nullable(inner) => {
+            push("Nullable", found);
+            collect_engine_names(inner, names, found);
+        }
+        TypeExpr::Optional(inner) | TypeExpr::List(inner) => {
             collect_engine_names(inner, names, found);
         }
         TypeExpr::Map(key, value) => {

@@ -20,6 +20,6 @@ pub use shape::{
     VariantShape,
 };
 pub use value::{
-    Fields, FromFields, FromValue, LogicalType, Mismatch, OrderedMap, ValueExpr, member_value,
-    object_value, read_fields, text_value, variant_value,
+    Decimal, Fields, FromFields, FromValue, LogicalType, Mismatch, Nullable, OrderedMap, ValueExpr,
+    member_value, object_value, read_fields, text_value, variant_value,
 };

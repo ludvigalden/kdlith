@@ -5,7 +5,7 @@
 use std::fmt;
 use std::marker::PhantomData;
 
-use kdlith_model::{Identity, Location, Value};
+use kdlith_model::{Identity, Location, Position, SourceId, Value};
 
 use crate::typed::read::TypedItem;
 use crate::typed::value::{FromValue, LogicalType, Mismatch};
@@ -85,6 +85,31 @@ impl<T> PartialEq for Ref<T> {
 }
 
 impl<T> Eq for Ref<T> {}
+
+/// References order component-wise — domain, name segments, spelling,
+/// qualifiers, site — so a map keyed by references iterates the same
+/// way on every reading.
+impl<T> Ord for Ref<T> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.domain
+            .cmp(&other.domain)
+            .then_with(|| self.name.cmp(&other.name))
+            .then_with(|| self.written.cmp(&other.written))
+            .then_with(|| self.qualifiers.cmp(&other.qualifiers))
+            .then_with(|| site_key(self.site).cmp(&site_key(other.site)))
+    }
+}
+
+impl<T> PartialOrd for Ref<T> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+/// A site's ordering key, agreeing with its equality.
+fn site_key(site: Location) -> (SourceId, Position, Position) {
+    (site.source, site.span.start, site.span.end)
+}
 
 /// A bound reference whose domain is `T`'s logical type.
 impl<T: LogicalType> FromValue for Ref<T> {

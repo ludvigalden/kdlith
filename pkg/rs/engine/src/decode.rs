@@ -449,7 +449,7 @@ fn builtin_accepts(builtin: Builtin, value: &Value) -> bool {
 }
 
 #[derive(PartialEq, Eq)]
-enum Class {
+pub(crate) enum Class {
     Integer,
     Fraction,
     /// `#inf`, `#-inf`, or `#nan`.
@@ -457,7 +457,7 @@ enum Class {
 }
 
 /// The lexical class of a number spelling as the parser keeps it.
-fn class(text: &str) -> Class {
+pub(crate) fn class(text: &str) -> Class {
     if text.starts_with('#') {
         return Class::Special;
     }

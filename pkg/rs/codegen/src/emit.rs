@@ -9,8 +9,11 @@ use kdlith_engine::{DefinitionKind, Names, ReferenceDecl, Role, TypeDecl, TypeEx
 use crate::Error;
 use crate::catalog;
 use crate::manifest::{MANIFEST_NAME, manifest_text};
-use crate::model::{Document, Emission, ItemNode, kind_name};
-use crate::render::{engine_names, field_name, named_references, pascal, rust_type};
+use crate::model::{Document, Emission, InlineUnion, ItemNode, kind_name};
+use crate::render::{
+    engine_names, field_name, inline_union_name, named_references, pascal, rust_type,
+    spells_btree_map,
+};
 
 /// Width a `use` list or other greedy-wrapped list fills to.
 const LIST_WIDTH: usize = 100;
@@ -280,6 +283,7 @@ impl Emission<'_> {
         };
         let mut references: Vec<String> = Vec::new();
         let mut macros: Vec<String> = Vec::new();
+        let mut btree_map = false;
         for node in &doc.locals {
             for field in &node.fields {
                 if let Some(ty) = &field.ty {
@@ -287,6 +291,7 @@ impl Emission<'_> {
                         push_unique(&mut engine, name);
                     }
                     references.extend(named_references(ty, self.names));
+                    btree_map |= spells_btree_map(ty);
                 }
             }
             push_unique(&mut macros, "object_type");
@@ -298,12 +303,14 @@ impl Emission<'_> {
                     push_unique(&mut engine, name);
                 }
                 references.extend(named_references(expr, self.names));
+                btree_map |= spells_btree_map(expr);
             }
             match &decl.kind {
                 TypeKind::String(_) => push_unique(&mut macros, "string_type"),
                 TypeKind::Enum(_) => push_unique(&mut macros, "enum_type"),
                 TypeKind::Object(_) => push_unique(&mut macros, "object_type"),
                 TypeKind::Union(_) => push_unique(&mut macros, "union_type"),
+                TypeKind::Map(_) => push_unique(&mut macros, "map_type"),
                 TypeKind::Codec(_) => push_unique(&mut macros, "codec_type"),
                 TypeKind::Builtin(_) => unreachable!("built-ins carry no site"),
                 kind => {
@@ -313,6 +320,9 @@ impl Emission<'_> {
                     });
                 }
             }
+        }
+        if !doc.unions.is_empty() {
+            push_unique(&mut macros, "inline_union_type");
         }
         for decl in &doc.references {
             references.push(self.names.resolve(decl.target).to_owned());
@@ -346,6 +356,10 @@ impl Emission<'_> {
             )]),
         }
         out.blank();
+        if btree_map {
+            out.line("use std::collections::BTreeMap;");
+            out.blank();
+        }
         out.use_list("kdlith_engine", &engine);
         if !super_names.is_empty() {
             out.blank();
@@ -354,6 +368,7 @@ impl Emission<'_> {
         for decl in &doc.types {
             out.blank();
             self.type_declaration(&mut out, decl)?;
+            self.owned_unions(&mut out, doc, self.names.resolve(decl.name));
         }
         for decl in &doc.references {
             out.blank();
@@ -362,6 +377,7 @@ impl Emission<'_> {
         for (node, name) in doc.locals.iter().zip(&locals) {
             out.blank();
             self.local_declaration(&mut out, node, name)?;
+            self.owned_unions(&mut out, doc, name);
         }
         if shaped {
             out.blank();
@@ -414,12 +430,21 @@ impl Emission<'_> {
                 "        \"{}\" => {}: {},",
                 key,
                 field_name(key),
-                rust_type(ty, self.names)?
+                rust_type(ty, self.names, Some(&inline_union_name(name, key)))?
             ));
         }
         out.line("    }");
         out.line("}");
         Ok(())
+    }
+
+    /// The enums the inline unions of `owner`'s fields render as, each
+    /// right after its owner, in field order.
+    fn owned_unions(&self, out: &mut Out, doc: &Document<'_>, owner: &str) {
+        for union in doc.unions.iter().filter(|union| union.owner == owner) {
+            out.blank();
+            inline_union_declaration(out, union);
+        }
     }
 
     /// One declared type, as its declaration macro spells it.
@@ -471,7 +496,7 @@ impl Emission<'_> {
                             "        \"{}\" => {}: {},",
                             key,
                             field_name(key),
-                            rust_type(&field.ty, self.names)?
+                            rust_type(&field.ty, self.names, Some(&inline_union_name(&name, key)))?
                         ));
                     }
                     out.line("    }");
@@ -490,10 +515,22 @@ impl Emission<'_> {
                         "        \"{}\" => {}({}),",
                         discriminator,
                         pascal(discriminator),
-                        rust_type(&variant.ty, self.names)?
+                        rust_type(&variant.ty, self.names, None)?
                     ));
                 }
                 out.line("    }");
+                out.line("}");
+            }
+            TypeKind::Map(map) => {
+                out.line("map_type! {");
+                for line in doc.unwrap_or(&[]) {
+                    out.line(&format!("    /// {line}"));
+                }
+                out.line(&format!(
+                    "    pub struct {name}({} => {});",
+                    rust_type(&map.key, self.names, None)?,
+                    rust_type(&map.value, self.names, None)?
+                ));
                 out.line("}");
             }
             TypeKind::Codec(codec) => {
@@ -503,7 +540,7 @@ impl Emission<'_> {
                 }
                 out.line(&format!(
                     "    pub struct {name}({});",
-                    rust_type(&codec.output, self.names)?
+                    rust_type(&codec.output, self.names, None)?
                 ));
                 out.line("}");
             }
@@ -752,6 +789,10 @@ impl Emission<'_> {
             doc.file_name
         )]);
         out.blank();
+        if doc.slots.iter().any(|slot| spells_btree_map(&slot.ty)) {
+            out.line("use std::collections::BTreeMap;");
+            out.blank();
+        }
         out.use_list("kdlith_engine", &engine);
         if !types.is_empty() {
             out.blank();
@@ -761,7 +802,9 @@ impl Emission<'_> {
         out.line("pub(crate) const SLOTS: &[SlotShape] = &[");
         for slot in &doc.slots {
             let name = self.names.resolve(slot.name);
-            let ty = rust_type(&slot.ty, self.names)?;
+            // A slot owns no inline union's enum, so one in its type
+            // fails closed.
+            let ty = rust_type(&slot.ty, self.names, None)?;
             let expression = if ty.contains('<') {
                 format!("<{ty} as LogicalType>::expression")
             } else {
@@ -775,12 +818,13 @@ impl Emission<'_> {
                 ));
             }
             let single = format!("    {},", segments.join(""));
-            if single.len() <= CHAIN_WIDTH {
+            if single.len() <= CHAIN_WIDTH || segments.len() == 1 {
                 out.line(&single);
             } else {
                 out.line(&format!("    {}", segments[0]));
-                for segment in &segments[1..] {
-                    out.line(&format!("        {segment}"));
+                for (at, segment) in segments.iter().enumerate().skip(1) {
+                    let comma = if at + 1 == segments.len() { "," } else { "" };
+                    out.line(&format!("        {segment}{comma}"));
                 }
             }
         }
@@ -997,14 +1041,30 @@ impl Emission<'_> {
 }
 
 /// Every type expression a declaration references: an object's fields,
-/// a union's variants; the other kinds reference none.
-fn declaration_expressions(decl: &TypeDecl) -> Vec<&TypeExpr> {
+/// a union's variants, a codec's output, a map's key and value.
+pub(crate) fn declaration_expressions(decl: &TypeDecl) -> Vec<&TypeExpr> {
     match &decl.kind {
         TypeKind::Object(object) => object.fields.iter().map(|field| &field.ty).collect(),
         TypeKind::Union(union) => union.variants.iter().map(|variant| &variant.ty).collect(),
         TypeKind::Codec(codec) => vec![&codec.output],
+        TypeKind::Map(map) => vec![&map.key, &map.value],
         _ => Vec::new(),
     }
+}
+
+/// One inline union's enum, its variants in member order.
+fn inline_union_declaration(out: &mut Out, union: &InlineUnion) {
+    out.line("inline_union_type! {");
+    out.line(&format!(
+        "    /// The inline union `{}.{}` holds.",
+        union.owner, union.key
+    ));
+    out.line(&format!("    pub enum {} {{", union.name));
+    for (variant, ty) in &union.members {
+        out.line(&format!("        {variant}({ty}),"));
+    }
+    out.line("    }");
+    out.line("}");
 }
 
 fn push_unique(values: &mut Vec<String>, value: &str) {

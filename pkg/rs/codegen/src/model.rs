@@ -5,12 +5,16 @@
 use std::collections::BTreeMap;
 
 use kdlith_engine::{
-    CheckScope, Definition, DefinitionKind, Names, NodeDecl, ReferenceDecl, Role, SlotDecl,
-    TypeDecl, TypeKind,
+    CheckScope, Definition, DefinitionKind, Names, NodeDecl, ReferenceDecl, Role, SlotDecl, Sym,
+    TypeDecl, TypeExpr, TypeKind,
 };
 
 use crate::Error;
-use crate::render::{field_name, include_path, is_identifier, normalize_path, pascal};
+use crate::emit::declaration_expressions;
+use crate::render::{
+    expression_text, field_name, include_path, inline_union_name, is_identifier, normalize_path,
+    pascal, rust_type, subexpressions, variant_name,
+};
 
 /// One contributing document and what it declares.
 pub(crate) struct Document<'d> {
@@ -32,6 +36,22 @@ pub(crate) struct Document<'d> {
     /// The document's item nodes bound without `type=`, each read as a
     /// node-local Rust type built from its inline field types.
     pub locals: Vec<&'d NodeDecl>,
+    /// The inline unions its objects' and node-local types' fields
+    /// write, in contribution order.
+    pub unions: Vec<InlineUnion>,
+}
+
+/// An inline `union<…>` one field's type writes: the enum it renders as,
+/// declared beside the field's owner.
+pub(crate) struct InlineUnion {
+    /// The Rust type owning the field.
+    pub owner: String,
+    /// The field's key.
+    pub key: String,
+    /// The enum's name, `<Owner><Field>`.
+    pub name: String,
+    /// Each member's variant and Rust type, in member order.
+    pub members: Vec<(String, String)>,
 }
 
 /// One item of the generated processor's `Item` enum: a node declaration
@@ -212,6 +232,7 @@ impl<'d> Emission<'d> {
                 nodes: node_groups.remove(&at).unwrap_or_default(),
                 slots: slot_groups.remove(&at).unwrap_or_default(),
                 locals: Vec::new(),
+                unions: Vec::new(),
             });
         }
 
@@ -289,7 +310,7 @@ impl<'d> Emission<'d> {
         }
         key_variants(&mut items, names, definition.kind)?;
 
-        let emission = Self {
+        let mut emission = Self {
             names,
             crate_name: crate_name.to_owned(),
             kind: definition.kind,
@@ -299,7 +320,75 @@ impl<'d> Emission<'d> {
             items,
         };
         emission.check_spellings()?;
+        emission.check_map_keys(definition)?;
+        // Every type the crate declares is taken: an inline union's enum
+        // must not take a declared, node-local, or reference type's name.
+        let mut taken: Vec<String> = declared.iter().map(|name| (*name).to_owned()).collect();
+        for document in &emission.documents {
+            taken.extend(
+                document
+                    .locals
+                    .iter()
+                    .map(|node| pascal(names.resolve(node.name))),
+            );
+        }
+        for at in 0..emission.documents.len() {
+            let unions = inline_unions(&emission.documents[at], names, definition, &mut taken)?;
+            emission.documents[at].unions = unions;
+        }
         Ok(emission)
+    }
+
+    /// A `map<K, V>` renders as a `BTreeMap`, so its key must order:
+    /// binding admits only string and reference keys, so `String`, a
+    /// string type, or a reference. Any other key fails closed.
+    fn check_map_keys(&self, definition: &Definition) -> Result<(), Error> {
+        let names = self.names;
+        let orderable = |key: &TypeExpr| match key {
+            TypeExpr::Named(name) => {
+                names.resolve(*name) == "String"
+                    || definition.symbols.reference(*name).is_some()
+                    || definition
+                        .types
+                        .lookup(*name)
+                        .and_then(|id| definition.types.get(id))
+                        .is_some_and(|decl| matches!(decl.kind, TypeKind::String(_)))
+            }
+            TypeExpr::Ref(inner) => matches!(inner.as_ref(), TypeExpr::Named(_)),
+            _ => false,
+        };
+        let refuse = |key: &TypeExpr, value: &TypeExpr| Error::UnsupportedExpression {
+            spelling: format!(
+                "map<{}, {}>",
+                expression_text(key, names),
+                expression_text(value, names)
+            ),
+        };
+        for doc in &self.documents {
+            let mut expressions: Vec<&TypeExpr> = Vec::new();
+            for decl in &doc.types {
+                if let TypeKind::Map(map) = &decl.kind
+                    && !orderable(&map.key)
+                {
+                    return Err(refuse(&map.key, &map.value));
+                }
+                expressions.extend(declaration_expressions(decl));
+            }
+            for node in &doc.locals {
+                expressions.extend(node.fields.iter().filter_map(|field| field.ty.as_ref()));
+            }
+            expressions.extend(doc.slots.iter().map(|slot| &slot.ty));
+            for expr in expressions {
+                for sub in subexpressions(expr) {
+                    if let TypeExpr::Map(key, value) = sub
+                        && !orderable(key)
+                    {
+                        return Err(refuse(key, value));
+                    }
+                }
+            }
+        }
+        Ok(())
     }
 
     /// Every name the crate spells as a Rust identifier must have one:
@@ -483,6 +572,156 @@ pub(crate) fn reading_role(role: Option<Role>) -> bool {
     matches!(role, Some(Role::Declaration | Role::Record))
 }
 
+/// The inline unions `doc`'s objects and node-local types write, one
+/// enum per field, named `<Owner><Field>`. A name already `taken` fails
+/// closed, as does a field writing more than one union.
+fn inline_unions(
+    doc: &Document<'_>,
+    names: &Names,
+    definition: &Definition,
+    taken: &mut Vec<String>,
+) -> Result<Vec<InlineUnion>, Error> {
+    let mut owned: Vec<(String, Sym, &TypeExpr)> = Vec::new();
+    for decl in &doc.types {
+        if let TypeKind::Object(object) = &decl.kind {
+            let owner = names.resolve(decl.name);
+            owned.extend(
+                object
+                    .fields
+                    .iter()
+                    .map(|f| (owner.to_owned(), f.name, &f.ty)),
+            );
+        }
+    }
+    for node in &doc.locals {
+        let owner = pascal(names.resolve(node.name));
+        for field in &node.fields {
+            if let Some(ty) = &field.ty {
+                owned.push((owner.clone(), field.name, ty));
+            }
+        }
+    }
+    let mut unions = Vec::new();
+    for (owner, key, ty) in owned {
+        let found: Vec<&Vec<TypeExpr>> = subexpressions(ty)
+            .into_iter()
+            .filter_map(|sub| match sub {
+                TypeExpr::Union(members) => Some(members),
+                _ => None,
+            })
+            .collect();
+        let members = match found.as_slice() {
+            [] => continue,
+            [members] => *members,
+            _ => {
+                return Err(Error::UnsupportedExpression {
+                    spelling: expression_text(ty, names),
+                });
+            }
+        };
+        let key = names.resolve(key);
+        let name = inline_union_name(&owner, key);
+        let reason = if !is_identifier(&name) {
+            Some("it is no Rust identifier")
+        } else if UNQUALIFIED.contains(&name.as_str()) {
+            Some(SHADOWS)
+        } else if taken.contains(&name) {
+            Some("it takes the name of another type the generated crate declares")
+        } else {
+            None
+        };
+        if let Some(reason) = reason {
+            return Err(Error::UnspellableName {
+                what: "inline union",
+                owner: format!("{owner}.{key}"),
+                name,
+                reason,
+            });
+        }
+        let renderings = members
+            .iter()
+            .map(|member| rust_type(member, names, None))
+            .collect::<Result<Vec<_>, _>>()?;
+        variants(
+            "union member",
+            &name,
+            renderings.iter().map(String::as_str),
+            variant_name,
+        )?;
+        // The binder keeps the bound value, not the member it fit, so
+        // reading re-selects the first member that fits; that agrees
+        // with binding only when no two members accept one value shape.
+        let mut seen = 0;
+        for member in members {
+            let accepted = shapes(definition, member);
+            if accepted & seen != 0 {
+                let union = TypeExpr::Union(members.clone());
+                return Err(Error::UnsupportedExpression {
+                    spelling: expression_text(&union, names),
+                });
+            }
+            seen |= accepted;
+        }
+        taken.push(name.clone());
+        unions.push(InlineUnion {
+            owner,
+            key: key.to_owned(),
+            name,
+            members: renderings
+                .into_iter()
+                .map(|rendering| (variant_name(&rendering), rendering))
+                .collect(),
+        });
+    }
+    Ok(unions)
+}
+
+const STRING: u8 = 1;
+const BOOL: u8 = 1 << 1;
+const NUMBER: u8 = 1 << 2;
+const NULL: u8 = 1 << 3;
+const REFERENCE: u8 = 1 << 4;
+const LIST: u8 = 1 << 5;
+const MAP: u8 = 1 << 6;
+const ANY: u8 = STRING | BOOL | NUMBER | NULL | REFERENCE | LIST | MAP;
+
+/// The bound value shapes a type's reading accepts: binding has already
+/// decoded a reference type's or `ref<T>`'s spelling into a reference,
+/// and a codec's into its output.
+fn shapes(definition: &Definition, ty: &TypeExpr) -> u8 {
+    match ty {
+        TypeExpr::Named(name) => match definition.names.resolve(*name) {
+            "String" => STRING,
+            "Bool" => BOOL,
+            "U64" | "Integer" | "Decimal" => NUMBER,
+            "ValueExpr" => STRING | BOOL | NUMBER | NULL,
+            _ if definition.symbols.reference(*name).is_some() => REFERENCE,
+            _ => {
+                let decl = definition
+                    .types
+                    .lookup(*name)
+                    .and_then(|id| definition.types.get(id));
+                match decl.map(|decl| &decl.kind) {
+                    Some(TypeKind::String(_) | TypeKind::Enum(_)) => STRING,
+                    Some(TypeKind::Object(_) | TypeKind::Map(_)) => MAP,
+                    Some(TypeKind::Union(_)) => STRING | MAP,
+                    Some(TypeKind::Codec(codec)) => shapes(definition, &codec.output),
+                    _ => ANY,
+                }
+            }
+        },
+        TypeExpr::Optional(inner) => shapes(definition, inner),
+        TypeExpr::Nullable(inner) => NULL | shapes(definition, inner),
+        TypeExpr::List(_) => LIST,
+        TypeExpr::Map(_, _) | TypeExpr::OrderedMap(_, _) => MAP,
+        TypeExpr::Ref(_) => REFERENCE,
+        TypeExpr::Union(members) => members
+            .iter()
+            .fold(0, |all, member| all | shapes(definition, member)),
+        _ => ANY,
+    }
+}
+
 /// The kind name a type declaration renders as.
 pub(crate) fn kind_name(kind: &TypeKind) -> &'static str {
     match kind {
@@ -498,10 +737,13 @@ pub(crate) fn kind_name(kind: &TypeKind) -> &'static str {
 }
 
 /// The names a generated crate spells unqualified beside the declared
-/// types: the Rust prelude items its renderings use, `Self`, and the
-/// engine items its modules import. A declared or node-local type
-/// taking one would shadow it, so the crate would not compile.
-const UNQUALIFIED: [&str; 24] = [
+/// types: the Rust prelude items its renderings use, `Self`, the engine
+/// items its modules import, and the standard library's `BTreeMap`. A
+/// declared or node-local type taking one would shadow it, so the crate
+/// would not compile.
+const UNQUALIFIED: [&str; 27] = [
+    "BTreeMap",
+    "Decimal",
     "Declarations",
     "Definition",
     "DefinitionKind",
@@ -512,6 +754,7 @@ const UNQUALIFIED: [&str; 24] = [
     "LogicalType",
     "NodeShape",
     "None",
+    "Nullable",
     "Ok",
     "Option",
     "OrderedMap",

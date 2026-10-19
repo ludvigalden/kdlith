@@ -203,6 +203,10 @@ fn type_shape(names: &Names, kind: &TypeKind, shape: &TypeShape) -> Option<Strin
             let theirs = [expr(names, &codec.output)];
             differ("output", &theirs, &[output()])
         }
+        (TypeKind::Map(map), TypeShape::Map { key, value, .. }) => {
+            let theirs = [expr(names, &map.key), expr(names, &map.value)];
+            differ("key and value", &theirs, &[key(), value()])
+        }
         (kind, _) => Some(format!(
             "declared as {}, read as {}",
             kind_name(kind),
@@ -243,6 +247,7 @@ fn shape_kind(shape: &TypeShape) -> &'static str {
         TypeShape::Union { .. } => "a union",
         TypeShape::Reference { .. } => "a reference",
         TypeShape::Codec { .. } => "a codec",
+        TypeShape::Map { .. } => "a map type",
     }
 }
 
