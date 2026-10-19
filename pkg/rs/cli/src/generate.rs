@@ -6,7 +6,7 @@
 use std::path::{Path, PathBuf};
 
 use kdlith_codegen as codegen;
-use kdlith_codegen::WriteError;
+use kdlith_codegen::{Packaging, WriteError};
 use kdlith_diagnostic::ExitStatus;
 use kdlith_engine::Extensions;
 
@@ -25,6 +25,7 @@ pub(crate) fn run(command: GenCommand) -> ExitStatus {
             mode_of(args.dry_run, args.check),
             &[],
             &definition_extensions(),
+            Packaging::Sibling,
         ),
         // Generation admits the named handlers' names and never runs
         // them: the generated processor installs its own.
@@ -35,12 +36,23 @@ pub(crate) fn run(command: GenCommand) -> ExitStatus {
             mode_of(args.form.dry_run, args.form.check),
             &args.anchors,
             &definition_extensions().with_installed_handlers(&registry(&args.handlers)),
+            packaging_of(args.kdlith_path, args.kdlith_version),
         ),
     }
 }
 
 fn paths(files: &[PathBuf]) -> Vec<&Path> {
     files.iter().map(PathBuf::as_path).collect()
+}
+
+/// The packaging flags decide how the manifest names the kdlith
+/// crates; clap has already refused both together.
+fn packaging_of(path: Option<String>, version: Option<String>) -> Packaging {
+    match (path, version) {
+        (Some(root), _) => Packaging::Path(root),
+        (None, Some(version)) => Packaging::Registry(version),
+        (None, None) => Packaging::Sibling,
+    }
 }
 
 /// The mode flags decide what the run does with the generated tree;
@@ -88,7 +100,8 @@ pub enum GenMode {
 /// `KDLITH-GEN002`, both through the standard diagnostic surface. A
 /// schema's own import expressions expand against `anchors`; a dialect
 /// root binds no discovery grammar, so a dialect's imports are literal
-/// and take none. The definition loads under `extensions`.
+/// and take none. The definition loads under `extensions`, and the
+/// manifest names the kdlith crates by `packaging`.
 pub fn generate(
     target: GenTarget,
     entries: &[&Path],
@@ -96,14 +109,17 @@ pub fn generate(
     mode: GenMode,
     anchors: &[(String, PathBuf)],
     extensions: &Extensions,
+    packaging: Packaging,
 ) -> ExitStatus {
     let form = match target {
         GenTarget::Dialect => "dialect",
         GenTarget::Schema => "schema",
     };
     let tree = match target {
-        GenTarget::Dialect => codegen::generate_dialect(entries, extensions, crate_name),
-        GenTarget::Schema => codegen::generate_schema(entries, extensions, crate_name, anchors),
+        GenTarget::Dialect => codegen::generate_dialect(entries, extensions, crate_name, packaging),
+        GenTarget::Schema => {
+            codegen::generate_schema(entries, extensions, crate_name, anchors, packaging)
+        }
     };
     let tree = match tree {
         Ok(tree) => tree,

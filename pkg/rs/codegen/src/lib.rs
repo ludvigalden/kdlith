@@ -190,11 +190,32 @@ fn variant_collision(variant: &str, node: &str, other: &str) -> String {
     registry::render(template, &[other, node, variant])
 }
 
+/// How the generated manifest names the kdlith crates it depends on.
+/// Every value is written verbatim: generation never inspects the
+/// filesystem, so the manifest stays a pure function of its inputs.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum Packaging {
+    /// Path dependencies on the sibling crates (`../<crate>`), the
+    /// in-checkout layout the oracles pin.
+    Sibling,
+    /// Path dependencies rooted at the given directory; each kdlith
+    /// crate hangs off it by its directory name.
+    Path(String),
+    /// Registry dependencies at the given version requirement.
+    Registry(String),
+}
+
 /// Generate the processor crate for `definition`, published as
-/// `crate_name`: deterministic bytes, nothing from the working tree.
-/// Write it with [`write`] or compare it with [`check`].
-pub fn generate(definition: &Definition, crate_name: &str) -> Result<GeneratedTree, Error> {
-    model::Emission::new(definition, crate_name)?.emit()
+/// `crate_name`, its manifest naming the kdlith crates by `packaging`:
+/// deterministic bytes, nothing from the working tree. Write it with
+/// [`write`] or compare it with [`check`].
+pub fn generate(
+    definition: &Definition,
+    crate_name: &str,
+    packaging: Packaging,
+) -> Result<GeneratedTree, Error> {
+    model::Emission::new(definition, crate_name, packaging)?.emit()
 }
 
 /// Compile the dialect named by `entries` and generate its processor
@@ -204,10 +225,11 @@ pub fn generate_dialect(
     entries: &[&Path],
     extensions: &Extensions,
     crate_name: &str,
+    packaging: Packaging,
 ) -> Result<GeneratedTree, Error> {
     let definition = kdlith_superproc::load_dialect(entries, extensions, CheckScope::Complete)
         .map_err(|records| Error::DefinitionRejected { records })?;
-    generate(&definition, crate_name)
+    generate(&definition, crate_name, packaging)
 }
 
 /// Compile the schema named by `entries`, under the canonical dialect,
@@ -218,6 +240,7 @@ pub fn generate_schema(
     extensions: &Extensions,
     crate_name: &str,
     anchors: &[(String, PathBuf)],
+    packaging: Packaging,
 ) -> Result<GeneratedTree, Error> {
     let dialect = kdlith_superproc::seed(extensions)
         .map_err(|records| Error::DefinitionRejected { records })?;
@@ -225,5 +248,5 @@ pub fn generate_schema(
     let definition =
         kdlith_superproc::load_schema_anchored(&dialect, entries, extensions, scope, anchors)
             .map_err(|records| Error::DefinitionRejected { records })?;
-    generate(&definition, crate_name)
+    generate(&definition, crate_name, packaging)
 }

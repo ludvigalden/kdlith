@@ -9,12 +9,12 @@ use kdlith_engine::{
     TypeDecl, TypeExpr, TypeKind,
 };
 
-use crate::Error;
 use crate::emit::declaration_expressions;
 use crate::render::{
     Spelling, expression_text, field_name, include_path, inline_union_name, is_identifier, mangle,
     normalize_path, pascal, rust_type, subexpressions, variant_name,
 };
+use crate::{Error, Packaging};
 
 /// One contributing document and what it declares.
 pub(crate) struct Document<'d> {
@@ -108,10 +108,16 @@ pub(crate) struct Emission<'d> {
     /// The processor's item enum: `Item`, or `ItemKind` when a type the
     /// crate declares takes `Item`.
     pub item_enum: &'static str,
+    /// How the manifest names the kdlith crates it depends on.
+    pub packaging: Packaging,
 }
 
 impl<'d> Emission<'d> {
-    pub(crate) fn new(definition: &'d Definition, crate_name: &str) -> Result<Self, Error> {
+    pub(crate) fn new(
+        definition: &'d Definition,
+        crate_name: &str,
+        packaging: Packaging,
+    ) -> Result<Self, Error> {
         if crate_name.is_empty()
             || !crate_name
                 .chars()
@@ -343,6 +349,7 @@ impl<'d> Emission<'d> {
             instances,
             spelling: Spelling::of(definition.kind),
             item_enum: "Item",
+            packaging,
         };
         emission.check_spellings()?;
         emission.check_map_keys(definition)?;

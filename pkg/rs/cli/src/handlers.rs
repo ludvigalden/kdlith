@@ -137,3 +137,23 @@ pub(crate) fn parse_handler(value: &str) -> Result<String, String> {
         ))
     }
 }
+
+/// Validate one `--kdlith-path` value: any non-empty path, kept
+/// verbatim; whether it exists is the build's question.
+pub(crate) fn parse_kdlith_path(value: &str) -> Result<String, String> {
+    non_empty(value, "kdlith-path takes a non-empty path")
+}
+
+/// Validate one `--kdlith-version` value: any non-empty version
+/// requirement, kept verbatim; Cargo parses it.
+pub(crate) fn parse_kdlith_version(value: &str) -> Result<String, String> {
+    non_empty(value, "kdlith-version takes a non-empty version")
+}
+
+fn non_empty(value: &str, refusal: &str) -> Result<String, String> {
+    if value.is_empty() {
+        Err(refusal.to_owned())
+    } else {
+        Ok(value.to_owned())
+    }
+}

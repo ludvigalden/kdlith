@@ -6,7 +6,6 @@ use std::fmt::Write as _;
 
 use kdlith_engine::{DefinitionKind, Names, ReferenceDecl, Role, TypeDecl, TypeExpr, TypeKind};
 
-use crate::Error;
 use crate::catalog;
 use crate::manifest::{MANIFEST_NAME, manifest_text};
 use crate::model::{Document, Emission, InlineUnion, ItemNode, kind_name};
@@ -14,6 +13,7 @@ use crate::render::{
     Spelling, engine_names, field_name, inline_union_name, named_references, pascal, rust_type,
     spells_btree_map,
 };
+use crate::{Error, Packaging};
 
 /// Width a `use` list or other greedy-wrapped list fills to.
 const LIST_WIDTH: usize = 100;
@@ -173,9 +173,8 @@ impl Emission<'_> {
         Ok(GeneratedTree { files })
     }
 
-    /// The crate manifest: standalone, no workspace inheritance, path
-    /// dependencies on the sibling engine crates under the pinned
-    /// layout.
+    /// The crate manifest: standalone, no workspace inheritance, its
+    /// kdlith dependencies named by the emission's packaging.
     fn cargo_toml(&self) -> String {
         let mut out = Out::new();
         out.line(crate::COMMENT_MARKER);
@@ -191,17 +190,18 @@ impl Emission<'_> {
         out.line("all = { level = \"warn\", priority = -1 }");
         out.blank();
         out.line("[dependencies]");
-        out.line("kdlith-diagnostic = { path = \"../diagnostic\" }");
-        out.line("kdlith-engine = { path = \"../engine\" }");
+        let mut crates = vec!["diagnostic", "engine"];
         match self.kind {
-            DefinitionKind::Dialect => {
-                out.line("kdlith-runtime = { path = \"../runtime\" }");
-            }
-            DefinitionKind::Schema => {
-                out.line("kdlith-model = { path = \"../model\" }");
-                out.line("kdlith-superproc = { path = \"../superproc\" }");
-            }
+            DefinitionKind::Dialect => crates.push("runtime"),
+            DefinitionKind::Schema => crates.extend(["model", "superproc"]),
             _ => {}
+        }
+        for dir in crates {
+            out.line(&match &self.packaging {
+                Packaging::Sibling => format!("kdlith-{dir} = {{ path = \"../{dir}\" }}"),
+                Packaging::Path(root) => format!("kdlith-{dir} = {{ path = \"{root}/{dir}\" }}"),
+                Packaging::Registry(version) => format!("kdlith-{dir} = \"{version}\""),
+            });
         }
         out.finish()
     }

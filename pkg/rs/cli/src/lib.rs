@@ -150,6 +150,23 @@ struct GenSchemaArgs {
     /// (repeatable); generation admits the name and never runs it
     #[arg(long = "handler", value_name = "NAME", value_parser = handlers::parse_handler)]
     handlers: Vec<String>,
+    /// The directory the generated manifest roots its kdlith path
+    /// dependencies at, written verbatim (default: the sibling layout)
+    #[arg(
+        long = "kdlith-path",
+        value_name = "PATH",
+        conflicts_with = "kdlith_version",
+        value_parser = handlers::parse_kdlith_path
+    )]
+    kdlith_path: Option<String>,
+    /// The version the generated manifest requests the kdlith crates at
+    /// from the registry, written verbatim
+    #[arg(
+        long = "kdlith-version",
+        value_name = "VER",
+        value_parser = handlers::parse_kdlith_version
+    )]
+    kdlith_version: Option<String>,
 }
 
 /// `kdlith vet dialect|schema|data`.
