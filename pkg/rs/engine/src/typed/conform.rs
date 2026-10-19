@@ -9,7 +9,7 @@ use crate::definition::{Definition, ReferenceDecl};
 use crate::names::Names;
 use crate::summary::expr;
 use crate::typed::shape::{Declarations, NodeShape, TypeShape};
-use crate::types::{TypeDecl, TypeKind};
+use crate::types::{TypeDecl, TypeExpr, TypeKind};
 
 /// One point where a processor's declarations and its definition differ.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -69,10 +69,12 @@ fn root<T>(found: &mut Vec<Disagreement>, def: &Definition, declarations: &Decla
 fn types<T>(found: &mut Vec<Disagreement>, def: &Definition, declarations: &Declarations<T>) {
     let names = &def.names;
     let shapes: Vec<&TypeShape> = declarations.types.iter().flat_map(|t| t.iter()).collect();
+    // A generic declaration is a template no value reads as; each of its
+    // instances is declared on its own.
     let declared: Vec<&TypeDecl> = def
         .types
         .iter()
-        .filter(|(_, decl)| decl.site.is_some())
+        .filter(|(_, decl)| decl.site.is_some() && decl.parameters.is_empty())
         .map(|(_, decl)| decl)
         .collect();
     // Reference types are declared apart from the type catalog, so their
@@ -357,12 +359,13 @@ fn handlers<T>(found: &mut Vec<Disagreement>, def: &Definition, declarations: &D
         let Some(role @ (Role::Record | Role::Declaration)) = decl.role else {
             continue;
         };
-        let ty = names.resolve(decl.ty.unwrap_or(decl.name));
         let node = names.resolve(decl.name);
-        match wanted.iter_mut().find(|(r, t, _)| (*r, *t) == (role, ty)) {
-            Some((_, _, nodes)) if !nodes.contains(&node) => nodes.push(node),
-            Some(_) => {}
-            None => wanted.push((role, ty, vec![node])),
+        for ty in item_types(names, decl) {
+            match wanted.iter_mut().find(|(r, t, _)| (*r, *t) == (role, ty)) {
+                Some((_, _, nodes)) if !nodes.contains(&node) => nodes.push(node),
+                Some(_) => {}
+                None => wanted.push((role, ty, vec![node])),
+            }
         }
     }
     let count = |role: Role, ty: &str, node: Option<&str>| {
@@ -419,4 +422,26 @@ fn handlers<T>(found: &mut Vec<Disagreement>, def: &Definition, declarations: &D
             }
         }
     }
+}
+
+/// The type names a node's items carry, as binding emits them: the type
+/// a case or `otherwise` selects, else the node's own. A node no case
+/// matches is rejected, so its own name needs no handler.
+fn item_types<'n>(names: &'n Names, decl: &NodeDecl) -> Vec<&'n str> {
+    let own = names.resolve(decl.ty.unwrap_or(decl.name));
+    if decl.cases.is_empty() {
+        return vec![own];
+    }
+    let selected = decl.cases.iter().map(|case| &case.ty);
+    let mut types = Vec::new();
+    for ty in selected.chain(&decl.otherwise) {
+        let name = match ty {
+            TypeExpr::Named(name) => names.resolve(*name),
+            _ => own,
+        };
+        if !types.contains(&name) {
+            types.push(name);
+        }
+    }
+    types
 }

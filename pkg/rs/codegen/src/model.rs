@@ -12,8 +12,8 @@ use kdlith_engine::{
 use crate::Error;
 use crate::emit::declaration_expressions;
 use crate::render::{
-    expression_text, field_name, include_path, inline_union_name, is_identifier, normalize_path,
-    pascal, rust_type, subexpressions, variant_name,
+    expression_text, field_name, include_path, inline_union_name, is_identifier, mangle,
+    normalize_path, pascal, rust_type, subexpressions, variant_name,
 };
 
 /// One contributing document and what it declares.
@@ -58,11 +58,12 @@ pub(crate) struct InlineUnion {
 /// with a reading role and the type it reads into.
 pub(crate) struct ItemNode<'d> {
     pub node: &'d NodeDecl,
-    /// The Rust type the node's items read as: the logical type's name,
-    /// or a typeless node's local type.
+    /// The Rust type the node's items read as: the logical type's name
+    /// (a generic instance's mangled), the type its cases select, or a
+    /// typeless node's local type.
     pub ty: String,
     /// The type name the node's items carry: the logical type's name,
-    /// or a typeless node's own name.
+    /// the type its cases select, or a typeless node's own name.
     pub item_name: String,
     /// Whether the node's role is record rather than declaration.
     pub record: bool,
@@ -99,6 +100,9 @@ pub(crate) struct Emission<'d> {
     pub documents: Vec<Document<'d>>,
     /// Every item node, in contribution order across documents.
     pub items: Vec<ItemNode<'d>>,
+    /// Each monomorphized generic instance's rendered name, with the
+    /// Rust name it reads under.
+    pub instances: BTreeMap<String, String>,
 }
 
 impl<'d> Emission<'d> {
@@ -171,8 +175,8 @@ impl<'d> Emission<'d> {
         // Group each catalog's declarations under their document, in
         // contribution order: catalog iteration order is declaration
         // order, so per-document grouping preserves it. A generic
-        // declaration is a template, never spelled itself; its
-        // monomorphized instances carry the declarations.
+        // declaration is a template, never spelled itself; each of its
+        // monomorphized instances is a declaration of its own.
         let mut type_groups: BTreeMap<usize, Vec<&TypeDecl>> = BTreeMap::new();
         for (_, decl) in definition.types.iter() {
             if !decl.parameters.is_empty() {
@@ -243,6 +247,7 @@ impl<'d> Emission<'d> {
         let names = &definition.names;
         // Built-ins are in the type catalog too, so a local type can
         // shadow neither a declared type nor a built-in's Rust spelling.
+        // Generic declarations are left out: they are never spelled.
         let declared: Vec<&str> = definition
             .types
             .iter()
@@ -256,6 +261,13 @@ impl<'d> Emission<'d> {
             )
             .chain(["Item", "Ref", "OrderedMap"])
             .collect();
+        // Monomorphization names an instance by its rendering, which no
+        // Rust identifier spells; it reads under the mangled name.
+        let instances: BTreeMap<String, String> = declared
+            .iter()
+            .filter(|name| name.contains('<'))
+            .map(|name| ((*name).to_owned(), mangle(name)))
+            .collect();
         let mut items = Vec::new();
         for document in &mut documents {
             for node in &document.nodes {
@@ -264,12 +276,20 @@ impl<'d> Emission<'d> {
                     _ => continue,
                 };
                 let node_name = names.resolve(node.name).to_owned();
-                let (ty, item_name, local) = match node.ty {
-                    Some(ty) => {
-                        let ty = names.resolve(ty).to_owned();
-                        (ty.clone(), ty, false)
+                let selected = case_type(node, definition, &instances)?;
+                let (ty, item_name, local) = match (selected, node.ty) {
+                    // Binding retypes a case node's items as the type
+                    // its cases select, never its own.
+                    (Some((ty, rendered)), _) => (ty, rendered, false),
+                    (None, Some(ty)) => {
+                        let rendered = names.resolve(ty).to_owned();
+                        let ty = instances
+                            .get(&rendered)
+                            .cloned()
+                            .unwrap_or_else(|| rendered.clone());
+                        (ty, rendered, false)
                     }
-                    None => {
+                    (None, None) => {
                         let ty = pascal(&node_name);
                         if declared.contains(&ty.as_str()) {
                             return Err(Error::LocalTypeCollision {
@@ -318,12 +338,18 @@ impl<'d> Emission<'d> {
             version,
             documents,
             items,
+            instances,
         };
         emission.check_spellings()?;
         emission.check_map_keys(definition)?;
-        // Every type the crate declares is taken: an inline union's enum
-        // must not take a declared, node-local, or reference type's name.
-        let mut taken: Vec<String> = declared.iter().map(|name| (*name).to_owned()).collect();
+        // Every type the crate declares is taken: a generic instance's
+        // mangled name or an inline union's enum must not take a
+        // declared, node-local, reference, or another instance's name.
+        let mut taken: Vec<String> = declared
+            .iter()
+            .filter(|name| !emission.instances.contains_key(**name))
+            .map(|name| (*name).to_owned())
+            .collect();
         for document in &emission.documents {
             taken.extend(
                 document
@@ -332,11 +358,23 @@ impl<'d> Emission<'d> {
                     .map(|node| pascal(names.resolve(node.name))),
             );
         }
+        check_instances(&emission.instances, &mut taken)?;
         for at in 0..emission.documents.len() {
-            let unions = inline_unions(&emission.documents[at], names, definition, &mut taken)?;
+            let doc = &emission.documents[at];
+            let unions = inline_unions(doc, names, definition, &emission.instances, &mut taken)?;
             emission.documents[at].unions = unions;
         }
         Ok(emission)
+    }
+
+    /// The Rust name the declared type `name` takes: a generic
+    /// instance's mangled name, else its own.
+    pub(crate) fn rust_name(&self, name: Sym) -> String {
+        let name = self.names.resolve(name);
+        self.instances
+            .get(name)
+            .cloned()
+            .unwrap_or_else(|| name.to_owned())
     }
 
     /// A `map<K, V>` renders as a `BTreeMap`, so its key must order:
@@ -414,14 +452,6 @@ impl<'d> Emission<'d> {
                 let name = self.names.resolve(decl.name);
                 if UNQUALIFIED.contains(&name) {
                     return Err(unspellable("type", &doc.file_name, name, SHADOWS));
-                }
-                // Only a monomorphized instance renders as `Head<Args>`.
-                if let Some((generic, _)) = name.split_once('<') {
-                    return Err(Error::UnsupportedGeneric {
-                        name: name.to_owned(),
-                        document: doc.file_name.clone(),
-                        generic: generic.trim().to_owned(),
-                    });
                 }
                 match &decl.kind {
                     TypeKind::Enum(enumeration) => {
@@ -567,6 +597,84 @@ fn key_variants(
     Ok(())
 }
 
+/// The Rust and rendered names of the one object type every case and
+/// `otherwise` of a dispatching node select; any other dispatch fails
+/// closed, since one item reads as one type.
+fn case_type(
+    node: &NodeDecl,
+    definition: &Definition,
+    instances: &BTreeMap<String, String>,
+) -> Result<Option<(String, String)>, Error> {
+    if node.cases.is_empty() {
+        return Ok(None);
+    }
+    let names = &definition.names;
+    let mut selected: Vec<&TypeExpr> = Vec::new();
+    for ty in node
+        .cases
+        .iter()
+        .map(|case| &case.ty)
+        .chain(&node.otherwise)
+    {
+        if !selected.contains(&ty) {
+            selected.push(ty);
+        }
+    }
+    let object = match selected.as_slice() {
+        [TypeExpr::Named(name)] => definition
+            .types
+            .lookup(*name)
+            .and_then(|id| definition.types.get(id))
+            .filter(|decl| matches!(decl.kind, TypeKind::Object(_)))
+            .map(|_| names.resolve(*name)),
+        _ => None,
+    };
+    let Some(rendered) = object else {
+        return Err(Error::UnsupportedCaseNode {
+            node: names.resolve(node.name).to_owned(),
+            types: selected
+                .iter()
+                .map(|ty| expression_text(ty, names))
+                .collect(),
+        });
+    };
+    let ty = instances
+        .get(rendered)
+        .cloned()
+        .unwrap_or_else(|| rendered.to_owned());
+    Ok(Some((ty, rendered.to_owned())))
+}
+
+/// Check each instance's mangled name is an identifier, shadows nothing,
+/// and is not `taken`. `Pair<x-y, z>` and `Pair<x, y-z>` both mangle to
+/// `PairXYZ`, so a collision fails closed; a suffix would not be pure.
+fn check_instances(
+    instances: &BTreeMap<String, String>,
+    taken: &mut Vec<String>,
+) -> Result<(), Error> {
+    for (rendered, name) in instances {
+        let reason = if !is_identifier(name) {
+            Some("it is no Rust identifier")
+        } else if UNQUALIFIED.contains(&name.as_str()) {
+            Some(SHADOWS)
+        } else if taken.contains(name) {
+            Some("it takes the name of another type the generated crate declares")
+        } else {
+            None
+        };
+        if let Some(reason) = reason {
+            return Err(Error::UnspellableName {
+                what: "generic instance",
+                owner: rendered.clone(),
+                name: name.clone(),
+                reason,
+            });
+        }
+        taken.push(name.clone());
+    }
+    Ok(())
+}
+
 /// Whether a role makes a node an item of the processor's stream.
 pub(crate) fn reading_role(role: Option<Role>) -> bool {
     matches!(role, Some(Role::Declaration | Role::Record))
@@ -579,12 +687,14 @@ fn inline_unions(
     doc: &Document<'_>,
     names: &Names,
     definition: &Definition,
+    instances: &BTreeMap<String, String>,
     taken: &mut Vec<String>,
 ) -> Result<Vec<InlineUnion>, Error> {
     let mut owned: Vec<(String, Sym, &TypeExpr)> = Vec::new();
     for decl in &doc.types {
         if let TypeKind::Object(object) = &decl.kind {
             let owner = names.resolve(decl.name);
+            let owner = instances.get(owner).map_or(owner, String::as_str);
             owned.extend(
                 object
                     .fields
@@ -640,7 +750,7 @@ fn inline_unions(
         }
         let renderings = members
             .iter()
-            .map(|member| rust_type(member, names, None))
+            .map(|member| rust_type(member, names, instances, None))
             .collect::<Result<Vec<_>, _>>()?;
         variants(
             "union member",

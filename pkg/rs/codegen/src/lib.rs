@@ -63,13 +63,9 @@ pub enum Error {
     /// A declared type whose kind has no Rust rendering this version
     /// defines.
     UnsupportedTypeKind { name: String, kind: &'static str },
-    /// A type instantiates a generic declaration; a generated crate
-    /// spells no generic instantiations.
-    UnsupportedGeneric {
-        name: String,
-        document: String,
-        generic: String,
-    },
+    /// A reading node's cases select more than one type, or a type no
+    /// object declares; an item reads as one object type.
+    UnsupportedCaseNode { node: String, types: Vec<String> },
     /// The item type `{ty}` has no compile glue; only the canonical
     /// definition vocabulary generates a definition loader.
     UnsupportedItem { name: String },
@@ -138,14 +134,11 @@ impl std::fmt::Display for Error {
                 f,
                 "the declared type `{name}` of kind `{kind}` has no Rust rendering"
             ),
-            Self::UnsupportedGeneric {
-                name,
-                document,
-                generic,
-            } => write!(
+            Self::UnsupportedCaseNode { node, types } => write!(
                 f,
-                "the type `{name}` of `{document}` instantiates the generic declaration \
-                 `{generic}`; a generated crate cannot spell generic instantiations"
+                "the node `{node}` dispatches its items to `{}`; a generated item \
+                 reads as exactly one object type",
+                types.join("`, `")
             ),
             Self::UnsupportedItem { name } => write!(
                 f,

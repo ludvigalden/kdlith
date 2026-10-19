@@ -6,6 +6,11 @@
 #[macro_export]
 macro_rules! string_type {
     ($(#[$meta:meta])* $vis:vis struct $name:ident;) => {
+        $crate::string_type! { as stringify!($name); $(#[$meta])* $vis struct $name; }
+    };
+    // Each declaration macro's `as "Pair<String, Mode>";` arm spells a
+    // generic instance its Rust name (`PairStringMode`) cannot.
+    (as $spelled:expr; $(#[$meta:meta])* $vis:vis struct $name:ident;) => {
         $(#[$meta])*
         #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
         $vis struct $name(::std::string::String);
@@ -26,12 +31,12 @@ macro_rules! string_type {
 
         impl $crate::LogicalType for $name {
             fn expression() -> ::std::string::String {
-                ::std::string::String::from(stringify!($name))
+                ::std::string::String::from($spelled)
             }
         }
 
         impl $crate::Shaped for $name {
-            const SHAPE: $crate::TypeShape = $crate::TypeShape::string(stringify!($name));
+            const SHAPE: $crate::TypeShape = $crate::TypeShape::string($spelled);
         }
 
         impl $crate::__private::serde::Serialize for $name {
@@ -49,6 +54,17 @@ macro_rules! string_type {
 #[macro_export]
 macro_rules! enum_type {
     (
+        $(#[$meta:meta])* $vis:vis enum $name:ident {
+            $($(#[$vmeta:meta])* $member:literal => $variant:ident),+ $(,)?
+        }
+    ) => {
+        $crate::enum_type! {
+            as stringify!($name);
+            $(#[$meta])* $vis enum $name { $($(#[$vmeta])* $member => $variant),+ }
+        }
+    };
+    (
+        as $spelled:expr;
         $(#[$meta:meta])* $vis:vis enum $name:ident {
             $($(#[$vmeta:meta])* $member:literal => $variant:ident),+ $(,)?
         }
@@ -82,13 +98,13 @@ macro_rules! enum_type {
 
         impl $crate::LogicalType for $name {
             fn expression() -> ::std::string::String {
-                ::std::string::String::from(stringify!($name))
+                ::std::string::String::from($spelled)
             }
         }
 
         impl $crate::Shaped for $name {
             const SHAPE: $crate::TypeShape =
-                $crate::TypeShape::enumeration(stringify!($name), &[$($member),+]);
+                $crate::TypeShape::enumeration($spelled, &[$($member),+]);
         }
 
         impl $crate::__private::serde::Serialize for $name {
@@ -105,7 +121,7 @@ macro_rules! enum_type {
 /// An object type: one Rust field per logical field, read by its name.
 #[macro_export]
 macro_rules! object_type {
-    (@logical $name:ident { $($key:literal: $ty:ty),* }) => {
+    (@logical $spelled:expr, $name:ident { $($key:literal: $ty:ty),* }) => {
         impl $crate::FromValue for $name {
             fn from_value(
                 value: &$crate::__private::Value,
@@ -116,18 +132,31 @@ macro_rules! object_type {
 
         impl $crate::LogicalType for $name {
             fn expression() -> ::std::string::String {
-                ::std::string::String::from(stringify!($name))
+                ::std::string::String::from($spelled)
             }
         }
 
         impl $crate::Shaped for $name {
             const SHAPE: $crate::TypeShape = $crate::TypeShape::object(
-                stringify!($name),
+                $spelled,
                 &[$($crate::FieldShape::new($key, <$ty as $crate::LogicalType>::expression)),*],
             );
         }
     };
     ($(#[$meta:meta])* $vis:vis struct $name:ident {}) => {
+        $crate::object_type! { as stringify!($name); $(#[$meta])* $vis struct $name {} }
+    };
+    (
+        $(#[$meta:meta])* $vis:vis struct $name:ident {
+            $($(#[$fmeta:meta])* $key:literal => $field:ident: $ty:ty),+ $(,)?
+        }
+    ) => {
+        $crate::object_type! {
+            as stringify!($name);
+            $(#[$meta])* $vis struct $name { $($(#[$fmeta])* $key => $field: $ty),+ }
+        }
+    };
+    (as $spelled:expr; $(#[$meta:meta])* $vis:vis struct $name:ident {}) => {
         $(#[$meta])*
         #[derive(Clone, Debug, PartialEq, Eq)]
         #[non_exhaustive]
@@ -141,7 +170,7 @@ macro_rules! object_type {
             }
         }
 
-        $crate::object_type!(@logical $name {});
+        $crate::object_type!(@logical $spelled, $name {});
 
         impl $crate::__private::serde::Serialize for $name {
             fn serialize<S: $crate::__private::serde::Serializer>(
@@ -154,6 +183,7 @@ macro_rules! object_type {
         }
     };
     (
+        as $spelled:expr;
         $(#[$meta:meta])* $vis:vis struct $name:ident {
             $($(#[$fmeta:meta])* $key:literal => $field:ident: $ty:ty),+ $(,)?
         }
@@ -175,7 +205,7 @@ macro_rules! object_type {
             }
         }
 
-        $crate::object_type!(@logical $name { $($key: $ty),+ });
+        $crate::object_type!(@logical $spelled, $name { $($key: $ty),+ });
 
         impl $crate::__private::serde::Serialize for $name {
             fn serialize<S: $crate::__private::serde::Serializer>(
@@ -204,6 +234,17 @@ macro_rules! union_type {
             $($(#[$vmeta:meta])* $node:literal => $variant:ident($ty:ty)),+ $(,)?
         }
     ) => {
+        $crate::union_type! {
+            as stringify!($name);
+            $(#[$meta])* $vis enum $name { $($(#[$vmeta])* $node => $variant($ty)),+ }
+        }
+    };
+    (
+        as $spelled:expr;
+        $(#[$meta:meta])* $vis:vis enum $name:ident {
+            $($(#[$vmeta:meta])* $node:literal => $variant:ident($ty:ty)),+ $(,)?
+        }
+    ) => {
         $(#[$meta])*
         #[derive(Clone, Debug, PartialEq, Eq)]
         #[non_exhaustive]
@@ -222,7 +263,7 @@ macro_rules! union_type {
                         .map_err(|mismatch| mismatch.within($node)),)+
                     other => Err($crate::Mismatch::new(::std::format!(
                         "{other} is not a variant of {}",
-                        stringify!($name)
+                        $spelled
                     ))),
                 }
             }
@@ -230,13 +271,13 @@ macro_rules! union_type {
 
         impl $crate::LogicalType for $name {
             fn expression() -> ::std::string::String {
-                ::std::string::String::from(stringify!($name))
+                ::std::string::String::from($spelled)
             }
         }
 
         impl $crate::Shaped for $name {
             const SHAPE: $crate::TypeShape = $crate::TypeShape::union(
-                stringify!($name),
+                $spelled,
                 &[$($crate::VariantShape::new($node, <$ty as $crate::LogicalType>::expression)),+],
             );
         }
@@ -320,6 +361,9 @@ macro_rules! reference_type {
 #[macro_export]
 macro_rules! codec_type {
     ($(#[$meta:meta])* $vis:vis struct $name:ident($output:ty);) => {
+        $crate::codec_type! { as stringify!($name); $(#[$meta])* $vis struct $name($output); }
+    };
+    (as $spelled:expr; $(#[$meta:meta])* $vis:vis struct $name:ident($output:ty);) => {
         $(#[$meta])*
         #[derive(Clone, Debug, PartialEq, Eq)]
         $vis struct $name(pub $output);
@@ -334,13 +378,13 @@ macro_rules! codec_type {
 
         impl $crate::LogicalType for $name {
             fn expression() -> ::std::string::String {
-                ::std::string::String::from(stringify!($name))
+                ::std::string::String::from($spelled)
             }
         }
 
         impl $crate::Shaped for $name {
             const SHAPE: $crate::TypeShape = $crate::TypeShape::codec(
-                stringify!($name),
+                $spelled,
                 <$output as $crate::LogicalType>::expression,
             );
         }
@@ -361,6 +405,9 @@ macro_rules! codec_type {
 #[macro_export]
 macro_rules! map_type {
     ($(#[$meta:meta])* $vis:vis struct $name:ident($key:ty => $value:ty);) => {
+        $crate::map_type! { as stringify!($name); $(#[$meta])* $vis struct $name($key => $value); }
+    };
+    (as $spelled:expr; $(#[$meta:meta])* $vis:vis struct $name:ident($key:ty => $value:ty);) => {
         $(#[$meta])*
         #[derive(Clone, Debug, PartialEq, Eq)]
         $vis struct $name(pub ::std::collections::BTreeMap<$key, $value>);
@@ -378,13 +425,13 @@ macro_rules! map_type {
 
         impl $crate::LogicalType for $name {
             fn expression() -> ::std::string::String {
-                ::std::string::String::from(stringify!($name))
+                ::std::string::String::from($spelled)
             }
         }
 
         impl $crate::Shaped for $name {
             const SHAPE: $crate::TypeShape = $crate::TypeShape::map(
-                stringify!($name),
+                $spelled,
                 <$key as $crate::LogicalType>::expression,
                 <$value as $crate::LogicalType>::expression,
             );

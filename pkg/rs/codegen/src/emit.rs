@@ -262,16 +262,16 @@ impl Emission<'_> {
             .iter()
             .map(|node| pascal(self.names.resolve(node.name)))
             .collect();
-        let mut declared: Vec<&str> = doc
+        let mut declared: Vec<String> = doc
             .types
             .iter()
-            .map(|decl| self.names.resolve(decl.name))
+            .map(|decl| self.rust_name(decl.name))
             .collect();
-        declared.extend(locals.iter().map(String::as_str));
+        declared.extend(locals.iter().cloned());
         declared.extend(
             doc.references
                 .iter()
-                .map(|decl| self.names.resolve(decl.name)),
+                .map(|decl| self.names.resolve(decl.name).to_owned()),
         );
         let shaped = !doc.types.is_empty() || !doc.references.is_empty();
         // A document contributing only node-local item types has no
@@ -290,7 +290,7 @@ impl Emission<'_> {
                     for name in engine_names(ty, self.names) {
                         push_unique(&mut engine, name);
                     }
-                    references.extend(named_references(ty, self.names));
+                    references.extend(self.references(ty));
                     btree_map |= spells_btree_map(ty);
                 }
             }
@@ -302,7 +302,7 @@ impl Emission<'_> {
                 for name in engine_names(expr, self.names) {
                     push_unique(&mut engine, name);
                 }
-                references.extend(named_references(expr, self.names));
+                references.extend(self.references(expr));
                 btree_map |= spells_btree_map(expr);
             }
             match &decl.kind {
@@ -337,7 +337,7 @@ impl Emission<'_> {
         engine.sort();
         let mut super_names: Vec<String> = references
             .iter()
-            .filter(|name| !BUILTINS.contains(&name.as_str()) && !declared.contains(&name.as_str()))
+            .filter(|name| !BUILTINS.contains(&name.as_str()) && !declared.contains(name))
             .cloned()
             .collect();
         super_names.sort();
@@ -368,7 +368,7 @@ impl Emission<'_> {
         for decl in &doc.types {
             out.blank();
             self.type_declaration(&mut out, decl)?;
-            self.owned_unions(&mut out, doc, self.names.resolve(decl.name));
+            self.owned_unions(&mut out, doc, &self.rust_name(decl.name));
         }
         for decl in &doc.references {
             out.blank();
@@ -389,7 +389,7 @@ impl Emission<'_> {
                 .map(|decl| decl.name)
                 .chain(doc.references.iter().map(|decl| decl.name));
             for name in shapes {
-                out.line(&format!("    {}::SHAPE,", self.names.resolve(name)));
+                out.line(&format!("    {}::SHAPE,", self.rust_name(name)));
             }
             out.line("];");
         }
@@ -430,7 +430,12 @@ impl Emission<'_> {
                 "        \"{}\" => {}: {},",
                 key,
                 field_name(key),
-                rust_type(ty, self.names, Some(&inline_union_name(name, key)))?
+                rust_type(
+                    ty,
+                    self.names,
+                    &self.instances,
+                    Some(&inline_union_name(name, key))
+                )?
             ));
         }
         out.line("    }");
@@ -447,13 +452,23 @@ impl Emission<'_> {
         }
     }
 
-    /// One declared type, as its declaration macro spells it.
+    /// One declared type, as its declaration macro spells it. A generic
+    /// instance spells its rendered name through the macro's `as` arm,
+    /// declared under its mangled Rust name.
     fn type_declaration(&self, out: &mut Out, decl: &TypeDecl) -> Result<(), Error> {
-        let name = self.names.resolve(decl.name).to_owned();
-        let doc = catalog::type_doc(&name);
+        let logical = self.names.resolve(decl.name);
+        let name = self.rust_name(decl.name);
+        let doc = catalog::type_doc(logical);
+        let spelled = (name != logical).then(|| format!("    as {logical:?};"));
+        let open = |out: &mut Out, invocation: &str| {
+            out.line(invocation);
+            if let Some(spelled) = &spelled {
+                out.line(spelled);
+            }
+        };
         match &decl.kind {
             TypeKind::String(_) => {
-                out.line("string_type! {");
+                open(out, "string_type! {");
                 for line in doc.unwrap_or(&[]) {
                     out.line(&format!("    /// {line}"));
                 }
@@ -461,7 +476,7 @@ impl Emission<'_> {
                 out.line("}");
             }
             TypeKind::Enum(enumeration) => {
-                out.line("enum_type! {");
+                open(out, "enum_type! {");
                 for line in doc.unwrap_or(&[]) {
                     out.line(&format!("    /// {line}"));
                 }
@@ -477,7 +492,7 @@ impl Emission<'_> {
                 out.line("}");
             }
             TypeKind::Object(object) => {
-                out.line("object_type! {");
+                open(out, "object_type! {");
                 for line in doc.unwrap_or(&[]) {
                     out.line(&format!("    /// {line}"));
                 }
@@ -487,7 +502,7 @@ impl Emission<'_> {
                     out.line(&format!("    pub struct {name} {{"));
                     for field in &object.fields {
                         let key = self.names.resolve(field.name);
-                        if let Some(lines) = catalog::field_comment(&name, key) {
+                        if let Some(lines) = catalog::field_comment(logical, key) {
                             for line in lines {
                                 out.line(&format!("        // {line}"));
                             }
@@ -496,7 +511,12 @@ impl Emission<'_> {
                             "        \"{}\" => {}: {},",
                             key,
                             field_name(key),
-                            rust_type(&field.ty, self.names, Some(&inline_union_name(&name, key)))?
+                            rust_type(
+                                &field.ty,
+                                self.names,
+                                &self.instances,
+                                Some(&inline_union_name(&name, key))
+                            )?
                         ));
                     }
                     out.line("    }");
@@ -504,7 +524,7 @@ impl Emission<'_> {
                 out.line("}");
             }
             TypeKind::Union(union) => {
-                out.line("union_type! {");
+                open(out, "union_type! {");
                 for line in doc.unwrap_or(&[]) {
                     out.line(&format!("    /// {line}"));
                 }
@@ -515,32 +535,32 @@ impl Emission<'_> {
                         "        \"{}\" => {}({}),",
                         discriminator,
                         pascal(discriminator),
-                        rust_type(&variant.ty, self.names, None)?
+                        rust_type(&variant.ty, self.names, &self.instances, None)?
                     ));
                 }
                 out.line("    }");
                 out.line("}");
             }
             TypeKind::Map(map) => {
-                out.line("map_type! {");
+                open(out, "map_type! {");
                 for line in doc.unwrap_or(&[]) {
                     out.line(&format!("    /// {line}"));
                 }
                 out.line(&format!(
                     "    pub struct {name}({} => {});",
-                    rust_type(&map.key, self.names, None)?,
-                    rust_type(&map.value, self.names, None)?
+                    rust_type(&map.key, self.names, &self.instances, None)?,
+                    rust_type(&map.value, self.names, &self.instances, None)?
                 ));
                 out.line("}");
             }
             TypeKind::Codec(codec) => {
-                out.line("codec_type! {");
+                open(out, "codec_type! {");
                 for line in doc.unwrap_or(&[]) {
                     out.line(&format!("    /// {line}"));
                 }
                 out.line(&format!(
                     "    pub struct {name}({});",
-                    rust_type(&codec.output, self.names, None)?
+                    rust_type(&codec.output, self.names, &self.instances, None)?
                 ));
                 out.line("}");
             }
@@ -763,7 +783,7 @@ impl Emission<'_> {
     fn contexts_doc_rs(&self, doc: &Document<'_>) -> Result<String, Error> {
         let mut references: Vec<String> = Vec::new();
         for slot in &doc.slots {
-            references.extend(named_references(&slot.ty, self.names));
+            references.extend(self.references(&slot.ty));
         }
         let mut types: Vec<String> = references
             .into_iter()
@@ -804,7 +824,7 @@ impl Emission<'_> {
             let name = self.names.resolve(slot.name);
             // A slot owns no inline union's enum, so one in its type
             // fails closed.
-            let ty = rust_type(&slot.ty, self.names, None)?;
+            let ty = rust_type(&slot.ty, self.names, &self.instances, None)?;
             let expression = if ty.contains('<') {
                 format!("<{ty} as LogicalType>::expression")
             } else {
@@ -1037,6 +1057,15 @@ impl Emission<'_> {
             out.line("];");
         }
         rust_file(&out.finish())
+    }
+
+    /// Every named type an expression references, spelled as the
+    /// generated crate declares it.
+    fn references(&self, expr: &TypeExpr) -> Vec<String> {
+        named_references(expr, self.names)
+            .into_iter()
+            .map(|name| self.instances.get(&name).cloned().unwrap_or(name))
+            .collect()
     }
 }
 

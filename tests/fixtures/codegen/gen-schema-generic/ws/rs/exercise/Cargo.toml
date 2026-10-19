@@ -1,0 +1,10 @@
+[package]
+name = "generic-exercise"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+
+[dependencies]
+couples-proc = { path = "../couples-proc" }
+kdlith-engine = { path = "../engine" }
+serde_json = { workspace = true }

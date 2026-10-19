@@ -2,6 +2,8 @@
 //! spellings become Rust identifiers, Rust type spellings, and the
 //! pinned layout's include paths. Every function is pure.
 
+use std::collections::BTreeMap;
+
 use kdlith_engine::{Names, TypeExpr};
 
 use crate::Error;
@@ -127,9 +129,16 @@ pub fn named_references(expr: &TypeExpr, names: &Names) -> Vec<String> {
 
 /// The Rust type a type expression renders to, or the reason it cannot:
 /// exactly the set the engine's decoding supports, everything else
-/// fails closed. An inline `union<…>` renders as `union`, the enum its
+/// fails closed. A generic instance renders under its mangled name in
+/// `instances`. An inline `union<…>` renders as `union`, the enum its
 /// owner's field declares; where no field owns it, it fails closed.
-pub fn rust_type(expr: &TypeExpr, names: &Names, union: Option<&str>) -> Result<String, Error> {
+pub fn rust_type(
+    expr: &TypeExpr,
+    names: &Names,
+    instances: &BTreeMap<String, String>,
+    union: Option<&str>,
+) -> Result<String, Error> {
+    let render = |inner: &TypeExpr, union| rust_type(inner, names, instances, union);
     match expr {
         TypeExpr::Named(sym) => {
             let name = names.resolve(*sym);
@@ -140,27 +149,30 @@ pub fn rust_type(expr: &TypeExpr, names: &Names, union: Option<&str>) -> Result<
                 "Integer" => "i64".to_owned(),
                 "Decimal" => "Decimal".to_owned(),
                 "ValueExpr" => "ValueExpr".to_owned(),
-                declared => declared.to_owned(),
+                declared => instances
+                    .get(declared)
+                    .cloned()
+                    .unwrap_or_else(|| declared.to_owned()),
             })
         }
-        TypeExpr::Optional(inner) => Ok(format!("Option<{}>", rust_type(inner, names, union)?)),
-        TypeExpr::Nullable(inner) => Ok(format!("Nullable<{}>", rust_type(inner, names, union)?)),
-        TypeExpr::List(inner) => Ok(format!("Vec<{}>", rust_type(inner, names, union)?)),
+        TypeExpr::Optional(inner) => Ok(format!("Option<{}>", render(inner, union)?)),
+        TypeExpr::Nullable(inner) => Ok(format!("Nullable<{}>", render(inner, union)?)),
+        TypeExpr::List(inner) => Ok(format!("Vec<{}>", render(inner, union)?)),
         TypeExpr::OrderedMap(key, value) => Ok(format!(
             "OrderedMap<{}, {}>",
-            rust_type(key, names, union)?,
-            rust_type(value, names, union)?
+            render(key, union)?,
+            render(value, union)?
         )),
         TypeExpr::Map(key, value) => Ok(format!(
             "BTreeMap<{}, {}>",
-            rust_type(key, names, union)?,
-            rust_type(value, names, union)?
+            render(key, union)?,
+            render(value, union)?
         )),
         // A reference reads as the engine's symbolic `Ref`, resolved
         // against the reading's declarations by linking, never by
         // reading; linking admits only a declared type name inside it.
         TypeExpr::Ref(inner) => match inner.as_ref() {
-            TypeExpr::Named(_) => Ok(format!("Ref<{}>", rust_type(inner, names, None)?)),
+            TypeExpr::Named(_) => Ok(format!("Ref<{}>", render(inner, None)?)),
             _ => Err(Error::UnsupportedExpression {
                 spelling: expression_text(expr, names),
             }),
@@ -184,6 +196,14 @@ pub fn rust_type(expr: &TypeExpr, names: &Names, union: Option<&str>) -> Result<
 /// renders as.
 pub fn inline_union_name(owner: &str, key: &str) -> String {
     format!("{owner}{}", pascal(key))
+}
+
+/// The Rust name a monomorphized generic instance takes: the words of
+/// its rendered name, each capitalized, joined — `Pair<String, Mode>` as
+/// `PairStringMode`. Distinct instances can mangle alike, so a caller
+/// checks every mangled name for collisions.
+pub fn mangle(rendered: &str) -> String {
+    variant_name(rendered)
 }
 
 /// The variant an inline union member reads as: the words of its Rust
