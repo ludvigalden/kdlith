@@ -273,26 +273,30 @@ impl BoundRecord {
 }
 
 impl BoundDeclaration {
-    pub fn new(
-        node: NodeId,
-        node_name: impl Into<String>,
-        identity: Identity,
-        type_name: impl Into<String>,
-        fields: Vec<Field>,
-        origin: OriginId,
-        validation: ValidationState,
-        span: ByteSpan,
-    ) -> Self {
-        Self {
+    /// The declaration a bound node forms once its identity is composed:
+    /// a declaration carries everything a record does, plus the identity
+    /// it registers.
+    pub fn from_record(record: BoundRecord, identity: Identity) -> Self {
+        let BoundRecord {
             node,
-            identity,
-            type_name: type_name.into(),
-            node_name: node_name.into(),
+            type_name,
+            node_name,
             fields,
             origin,
             validation,
             span,
-            site: None,
+            site,
+        } = record;
+        Self {
+            node,
+            identity,
+            type_name,
+            node_name,
+            fields,
+            origin,
+            validation,
+            span,
+            site,
         }
     }
 

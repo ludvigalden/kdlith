@@ -1892,9 +1892,11 @@ impl<'d, 's> Binder<'d, 's> {
             Role::Declaration => {
                 let identity = identity.expect("a declaration composes its identity above");
                 BoundItem::Declaration(
-                    BoundDeclaration::new(
-                        node, node_name, identity, type_name, fields, origin, validation,
-                        frame.span,
+                    BoundDeclaration::from_record(
+                        BoundRecord::new(
+                            node, node_name, type_name, fields, origin, validation, frame.span,
+                        ),
+                        identity,
                     )
                     .with_site(node_site),
                 )
