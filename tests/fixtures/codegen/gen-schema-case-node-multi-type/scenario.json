@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "gen schema fails closed when a reading node's case dispatch selects more than one object type: the record node shaped has no type of its own and its cases select Small and Large, which the dialect admits and the schema vets green, but a generated item reads as exactly one object type. Generation exits 1 naming the node and the types it dispatches to before anything is emitted, and the scratch check proves nothing was written into the output directory",
+  "args": ["gen", "schema", "schema.kdl", "--crate", "shapes-proc", "--out", "out"],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": [
+      "kdlith: gen schema: the node `shaped` dispatches its items to `Small`, `Large`; a generated item reads as exactly one object type\n"
+    ],
+    "scratch-check": {
+      "plant": [{ "path": "planted-foreign.txt", "kind": "file" }]
+    }
+  }
+}

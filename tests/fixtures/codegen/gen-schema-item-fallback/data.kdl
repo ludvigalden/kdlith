@@ -1,0 +1,12 @@
+locale en-gb
+group shelves {
+    label a "Alpha"
+}
+section "S" {
+    public
+    item one kind=book group=shelves title="Dune"
+    override fr-fr {
+        item two kind=film region=se
+    }
+    stamp
+}

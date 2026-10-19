@@ -1,0 +1,20 @@
+// A record node whose case dispatch selects two distinct object types:
+// the schema vets, but a generated item reads as exactly one type, so
+// generation refuses the node before anything is written.
+schema shapes version="1" {
+    types {
+        object Small {
+            field kind String
+        }
+        object Large {
+            field kind String
+        }
+    }
+    node shaped role=record {
+        field kind String property=kind
+        cases {
+            case property=kind equals="small" type=Small
+            case property=kind equals="large" type=Large
+        }
+    }
+}

@@ -1,0 +1,51 @@
+{
+  "binary": "kdlith",
+  "kind": "codegen-oracle",
+  "description": "gen schema generates the committed processing/bind schema itself, read by suite path, which declares an object type named Item: the generated crate names its processor enum ItemKind instead of Item, so the declared record type and the enum coexist, and a schema crate spells the prelude and engine names it uses by path (::core::option::Option, ::std::vec::Vec, ::kdlith_engine::Ref, ::kdlith_engine::OrderedMap). It generates twice into two scratch trees the harness requires byte-identical, the generated text pins the ItemKind enum, its re-export, the local Item struct, and the qualified field spellings, and the generated crate compiles inside a scratch workspace materialized from this scenario's committed template. The compiled processor loads the schema with the digest the reference CLI reports and reads a committed data document from the suite root, printing each declaration and record under its ItemKind variant with each value as vet data binds it: the group declaration with its ordered labels, an item record of the declared Item type with its context-supplied locale and its reference to the group, an item under a children override with its fixed region, and the typeless stamp record reading its locale from context",
+  "form": "schema",
+  "entrypoint": "{fx-suite}/processing/bind/schema.kdl",
+  "crate": "bind-proc",
+  "steps": [
+    { "generate": "ws/rs/bind-proc" },
+    { "generate": "gen-again" },
+    { "determinism": ["ws/rs/bind-proc", "gen-again"] },
+    {
+      "exercise": {
+        "command": ["cat", "ws/rs/bind-proc/src/processors/mod.rs", "ws/rs/bind-proc/src/lib.rs", "ws/rs/bind-proc/src/types/schema_kdl.rs"],
+        "stdout-contains": [
+          "use crate::types::{Group, Item, Stamp};\n",
+          "item_type! {\n    /// A record or declaration of a document written in the schema.\n    pub enum ItemKind {\n        Group,\n        Item,\n        Stamp,\n    }\n}\n",
+          "pub static DECLARATIONS: ::kdlith_engine::Declarations<ItemKind> =\n",
+          "pub use processors::{\n    DECLARATIONS, ItemKind, reader, reader_with_contribution_resolver, reader_with_resolver,\n};\n",
+          "object_type! {\n    pub struct Item {\n        \"id\" => id: String,\n",
+          "        \"region\" => region: ::core::option::Option<Locale>,\n",
+          "        \"tags\" => tags: ::std::vec::Vec<String>,\n",
+          "        \"group\" => group: ::core::option::Option<::kdlith_engine::Ref<Group>>,\n",
+          "        \"labels\" => labels: ::kdlith_engine::OrderedMap<String, Label>,\n"
+        ],
+        "stdout-not-contains": ["pub enum Item {"]
+      }
+    },
+    {
+      "compile": {
+        "workspace": "ws",
+        "copy": {
+          "crates": ["diagnostic", "engine", "model", "parse", "runtime", "superproc"],
+          "kdl": true
+        },
+        "command": ["cargo", "build", "--offline", "--manifest-path", "ws/rs/bind-proc/Cargo.toml"]
+      }
+    },
+    {
+      "exercise": {
+        "command": ["cargo", "run", "--offline", "--quiet", "--manifest-path", "ws/rs/exercise/Cargo.toml", "--", "processing/bind/schema.kdl", "codegen/gen-schema-item-fallback/data.kdl"],
+        "stdout-contains": [
+          "schema ok digest=c9bb73a4fea19f57\n",
+          "read errors=false lines=4\n",
+          "group name=shelves labels=[a:Alpha]\nitem id=one kind=book locale=en-gb region=absent title=Dune group=shelves\nitem id=two kind=film locale=fr-fr region=se title=absent group=absent\nstamp at=en-gb\n"
+        ],
+        "stdout-not-contains": ["diagnostic ", "other"]
+      }
+    }
+  ]
+}

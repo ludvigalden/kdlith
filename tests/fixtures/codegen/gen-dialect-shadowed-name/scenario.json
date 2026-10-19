@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "gen dialect fails closed when a dialect contribution declares a type taking a name a dialect-form generated crate spells unqualified: the definition imports the four canonical dialect documents and adds a string type named Ref. It vets green (the limit is the generated crate's, not the dialect's), and generation exits 1 naming the type, its document, and the reason before anything is emitted; the scratch check proves nothing was written into the output directory. A dialect cannot declare a reference type at all, so a declared type is the reachable carrier of this refusal on the dialect form",
+  "args": ["gen", "dialect", "{fx-suite}/codegen/gen-dialect-shadowed-name/dialect.kdl", "--crate", "shadow-dialect", "--out", "out"],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": [
+      "kdlith: gen dialect: the type `Ref` of `dialect.kdl` has no Rust spelling in a generated crate: it shadows a name the generated crate spells unqualified\n"
+    ],
+    "scratch-check": {
+      "plant": [{ "path": "planted-foreign.txt", "kind": "file" }]
+    }
+  }
+}

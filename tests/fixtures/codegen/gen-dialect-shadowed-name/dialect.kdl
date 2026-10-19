@@ -1,0 +1,14 @@
+// A contribution to the canonical dialect declaring a type named Ref, a
+// name a dialect-form generated crate spells unqualified: the dialect
+// vets, and generation refuses it before anything is written.
+dialect kdlith version="0" {
+    import "../../../../pkg/kdl/schemas/dialect/types.kdl"
+    import "../../../../pkg/kdl/schemas/dialect/bindings.kdl"
+    import "../../../../pkg/kdl/schemas/dialect/context.kdl"
+    import "../../../../pkg/kdl/schemas/dialect/documents.kdl"
+    types {
+        string Ref {
+            min-length 1
+        }
+    }
+}

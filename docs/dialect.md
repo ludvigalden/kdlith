@@ -861,9 +861,18 @@ node's local type alike. The dialect admits names Rust cannot spell, so
 generation checks them before writing anything and fails closed, naming
 the name and the reason, when a member, variant, or field key is no Rust
 identifier, two of one declaration's spell the same identifier, a
-document's module name is no identifier, or a declared or node-local
-type takes a name the generated crate spells unqualified (`Option`,
-`Item`, `Ref`, and the engine items its modules import). A generic
+document's module name is no identifier, or a declared, reference, or
+node-local type is named `Self`. A schema crate spells every prelude
+and engine name it uses by path (`::core::option::Option`,
+`::std::vec::Vec`, `::kdlith_engine::Ref`), so a schema may declare a
+type named `Option`, `Vec`, or `Ref` beside fields that use them. A
+dialect crate keeps the reference processor's unqualified spellings,
+so on the dialect form a declared type taking one of those names
+(`Option`, `Item`, `Ref`, and the engine items its modules import)
+fails closed instead. A dialect declares no reference types, and a
+schema's reference type names pass the dialect's type-name grammar at
+load, so on the schema form the only reference-type name generation
+refuses is `Self`. A generic
 declaration (one naming `parameter`s) is never spelled itself; each
 instance of it (`Pair<String, Mode>`) generates as its own type under
 a mangled Rust name, the instantiation's words joined, each first
@@ -874,24 +883,33 @@ while its shape and logical expression still spell the instantiation
 of one declaration with different arguments are two types. Because
 the mangle drops punctuation, two instantiations can spell one name
 (`Pair<A, BC>` and `Pair<AB, C>` both spell `PairABC`), and a mangled
-name can take a declared or node-local type's name or one the crate
-spells unqualified; generation then fails closed the same way — under
+name can take a declared or node-local type's name; generation then
+fails closed the same way — under
 `--dry-run` and `--check` too — naming the instance and its mangled
 name, never inventing a suffix. Such a definition still vets: the
 limit is the generated crate's, not the dialect's.
 
 Each reading node's items stream as a variant of the crate's `Item`
-enum, named after the node's type. When differently named nodes of a
+enum, named after the node's type. When any type the crate declares —
+declared, reference, node-local, generic-instance, or inline-union —
+is named `Item`, the enum is named `ItemKind` instead, at every site
+the crate spells it; when `ItemKind` is taken as well, generation fails
+closed rather than inventing a third name. A reading node reads as
+exactly one object type, so a node whose cases and `otherwise` do not
+select exactly one object type fails generation closed naming the node
+and the types it dispatches to; the schema still vets. When
+differently named nodes of a
 schema bind one type, each of those nodes reads as its own variant,
 named after the node instead (`widget`, `gadget`, and `part` binding
 `Widget` read as `Item::Widget`, `Item::Gadget`, and `Item::Part`,
 each holding a `Widget`), so a consumer tells them apart by variant
 while the type-level projection still matches all three. Nodes of one
 name under different parents share one variant. Generation fails
-closed with `KDLITH-GEN004`, before anything is written, when two
-nodes would spell one variant for different items, and the same way
-as other unspellable names when a node keys a variant that is no Rust
-identifier (a node named `self`).
+closed, before anything is written, when two nodes would spell one
+variant for different items, and the same way as other unspellable
+names when a node keys a variant that is no Rust identifier (a node
+named `self`). Every refusal of this section prints one line,
+`kdlith: gen <form>: <reason>`, and exits 1.
 
 A declared reference type generates as a newtype of its own name over
 the engine's symbolic reference to its target (`ConfigVarRef` holding a
@@ -920,6 +938,12 @@ anchors, output policy) in place of every option set before, and
 through. A document no rule or default selects a profile for fails
 with `KDLITH-SCH011` until a profile is named, and an anchor no grammar
 declares fails with `KDLITH-IMP005` before any document is read.
+`gen schema --handler NAME` admits a built-in handler a schema names,
+as the data verbs do; generation never runs it, so the consuming
+program installs the implementation on the reader with
+`with_handlers` and admits its name at load with
+`Extensions::with_installed_handlers`. Without the flag such a schema
+fails generation with `KDLITH-DLC006`.
 
 A tool needs only the generated schema crate: it re-exports the reading,
 linking, and diagnostic types a reader returns (`CheckScope`,
