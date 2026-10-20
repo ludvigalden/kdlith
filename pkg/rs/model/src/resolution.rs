@@ -1,6 +1,6 @@
 //! The descriptors of a declared contribution-resolution policy:
-//! per-target selection, duplicate treatment, and the missing-target
-//! requirement.
+//! per-target selection, duplicate treatment, the missing-target
+//! requirement, and per-field merge.
 
 /// How contributions to one target combine under the resolution policy.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -82,6 +82,30 @@ impl MissingRequirement {
         match self {
             MissingRequirement::Reject => "reject",
             MissingRequirement::Allow => "allow",
+        }
+    }
+}
+
+/// How a field shared by layered contributions combines.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum FieldMerge {
+    /// Refinements append list items to the lower layer's value.
+    #[default]
+    Union,
+}
+
+impl FieldMerge {
+    pub fn from_name(name: &str) -> Option<Self> {
+        Some(match name {
+            "union" => FieldMerge::Union,
+            _ => return None,
+        })
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            FieldMerge::Union => "union",
         }
     }
 }

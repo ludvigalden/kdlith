@@ -12,7 +12,7 @@ use crate::types::{
     MapType, ObjectType, Sensitivity, StringType, TypeDecl, TypeExpr, TypeKind, UnionType,
     ValidatorUse, Variant,
 };
-use kdlith_model::Value;
+use kdlith_model::{FieldMerge, Value};
 use regex::Regex;
 
 pub(crate) fn container(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) {
@@ -378,11 +378,19 @@ fn field_def(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) -> Option<FieldDef>
     let ty = part.string_arg(cx, 1, "field type");
     let description = part.string_prop(cx, "description");
     let sensitivity = part.string_prop(cx, "sensitivity");
+    let merge = part.string_prop(cx, "merge");
     part.finish(cx);
     let sensitivity = sensitivity.and_then(|value| match Sensitivity::from_name(&value) {
         Some(parsed) => Some(parsed),
         None => {
             cx.not_member(site, "field.sensitivity", "Sensitivity", &value);
+            None
+        }
+    });
+    let merge = merge.and_then(|value| match FieldMerge::from_name(&value) {
+        Some(parsed) => Some(parsed),
+        None => {
+            cx.not_member(site, "field.merge", "MergePolicy", &value);
             None
         }
     });
@@ -450,6 +458,7 @@ fn field_def(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) -> Option<FieldDef>
         documented_default,
         fallback,
         sensitivity,
+        merge,
     })
 }
 

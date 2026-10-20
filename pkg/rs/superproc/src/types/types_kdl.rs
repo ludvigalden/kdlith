@@ -75,6 +75,12 @@ enum_type! {
     }
 }
 
+enum_type! {
+    pub enum MergePolicy {
+        "union" => Union,
+    }
+}
+
 union_type! {
     /// A type declaration, discriminated by the declaring node's name.
     pub enum TypeDef {
@@ -130,6 +136,7 @@ object_type! {
         "documented-default" => documented_default: Option<ValueExpr>,
         "fallback" => fallback: Option<DefaultSpec>,
         "sensitivity" => sensitivity: Option<Sensitivity>,
+        "merge" => merge: Option<MergePolicy>,
     }
 }
 
@@ -216,6 +223,7 @@ pub(crate) const TYPES: &[TypeShape] = &[
     TypeConstructor::SHAPE,
     StringFormat::SHAPE,
     Sensitivity::SHAPE,
+    MergePolicy::SHAPE,
     TypeDef::SHAPE,
     StringType::SHAPE,
     EnumType::SHAPE,

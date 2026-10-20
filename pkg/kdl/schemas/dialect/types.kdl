@@ -93,6 +93,13 @@ dialect kdlith version="0" {
             member reference
         }
 
+        // How layered contributions combine a field they share: `union`
+        // appends a refinement's list items, skipping items equal by
+        // declared shape, instead of overwriting the lower layer's list.
+        enum MergePolicy {
+            member union
+        }
+
         // A type declaration, discriminated by the declaring node's name.
         union TypeDef {
             variant string StringType
@@ -150,6 +157,7 @@ dialect kdlith version="0" {
             field documented-default "optional<ValueExpr>"
             field fallback "optional<DefaultSpec>"
             field sensitivity "optional<Sensitivity>"
+            field merge "optional<MergePolicy>"
         }
 
         // A union selects one alternative by explicit discrimination: the
@@ -327,6 +335,7 @@ dialect kdlith version="0" {
         field documented-default child=documented-default
         field fallback child=fallback
         field sensitivity property=sensitivity
+        field merge property=merge
         children documented-default max-occurs=1
         children fallback max-occurs=1
     }

@@ -154,6 +154,7 @@ pub struct FieldInput {
     /// fallback value spells it.
     pub default: Option<DefaultInput>,
     pub sensitivity: Option<String>,
+    pub merge: Option<String>,
 }
 
 /// A declared default, as a reader holds it: a literal value, or a

@@ -376,6 +376,7 @@ fn declaration(value: Item) -> Option<Construct> {
                     // one is a descriptor the processor never computes.
                     default: field.fallback.as_ref().map(default),
                     sensitivity: field.sensitivity.map(|s| s.member().to_owned()),
+                    merge: field.merge.map(|m| m.member().to_owned()),
                 })
                 .collect(),
             constraints: constraints.iter().map(constraint).collect(),

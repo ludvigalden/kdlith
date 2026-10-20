@@ -3,7 +3,7 @@
 
 use std::collections::BTreeMap;
 
-use kdlith_model::{Entry, Value};
+use kdlith_model::{Entry, FieldMerge, Value};
 
 use crate::diag::Site;
 use crate::names::{Names, Sym};
@@ -258,6 +258,8 @@ pub struct FieldDef {
     /// Whether the field holds a resolved sensitive value or a locator
     /// for one; metadata that an output policy enforces.
     pub sensitivity: Option<Sensitivity>,
+    /// How layered contributions combine the field's values.
+    pub merge: Option<FieldMerge>,
 }
 
 /// A declared default: a literal value, or a computed descriptor. A

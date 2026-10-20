@@ -15,6 +15,6 @@ pub use item::{
     ValidationState,
 };
 pub use origin::{Derivation, Origin, OriginId, Trace};
-pub use resolution::{DuplicateTreatment, MissingRequirement, ResolutionSelection};
+pub use resolution::{DuplicateTreatment, FieldMerge, MissingRequirement, ResolutionSelection};
 pub use source::{DocumentRole, Location, Position, SourceDescriptor, SourceId, Span};
 pub use value::{Entry, Field, Value};

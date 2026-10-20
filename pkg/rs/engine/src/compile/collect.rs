@@ -2,7 +2,7 @@
 //! declaration, already validated by binding, so only the rules the
 //! dialect's declarations cannot state are checked here.
 
-use kdlith_model::Value;
+use kdlith_model::{FieldMerge, Value};
 use kdlith_runtime::Repeated;
 
 use crate::bindings::{
@@ -305,6 +305,16 @@ fn field_def(cx: &mut Cx<'_>, site: Site, field: &FieldInput) -> Option<FieldDef
                     None
                 }
             });
+    let merge = field
+        .merge
+        .as_deref()
+        .and_then(|value| match FieldMerge::from_name(value) {
+            Some(parsed) => Some(parsed),
+            None => {
+                cx.not_member(site, "field.merge", "MergePolicy", value);
+                None
+            }
+        });
     let fallback = field
         .default
         .as_ref()
@@ -316,6 +326,7 @@ fn field_def(cx: &mut Cx<'_>, site: Site, field: &FieldInput) -> Option<FieldDef
         documented_default: field.documented_default.clone(),
         fallback,
         sensitivity,
+        merge,
     })
 }
 

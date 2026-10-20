@@ -63,6 +63,7 @@
 {"item":"effective","data":{"section":"type","entry":{"name":"MatchText","parameters":[],"kind":"string"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"MemberName","parameters":[],"kind":"string"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"MergeDuplicates","parameters":[],"kind":"enum"}}}
+{"item":"effective","data":{"section":"type","entry":{"name":"MergePolicy","parameters":[],"kind":"enum"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"MissingRequirement","parameters":[],"kind":"enum"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"NamespaceName","parameters":[],"kind":"string"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"NodeDef","parameters":[],"kind":"object"}}}
