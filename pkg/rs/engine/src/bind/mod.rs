@@ -1227,7 +1227,8 @@ impl<'d, 's> Binder<'d, 's> {
 
     /// Validate a node's dependent payload against its `against` target's
     /// member type, never promoting a scalar to a list. A payload whose
-    /// codec or target type this reading lacks stays a pending binding.
+    /// codec or target type this reading lacks stays a pending binding;
+    /// an absent target field binds nothing.
     fn dependent_payload(
         &mut self,
         cx: &mut Cx<'_>,

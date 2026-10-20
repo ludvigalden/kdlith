@@ -429,8 +429,9 @@ fn slot_ref(cx: &mut Cx<'_>, site: Site, slot: Sym) {
     }
 }
 
-/// A dependent value's `against`: the target field exists, holds a
-/// reference, and the referenced type's member names the expected type.
+/// A dependent value's `against`: the target field exists and holds a
+/// reference to a type declaring the member field. Either shape broken
+/// is malformed: the binder could only drop the payload silently.
 fn dependent(
     cx: &mut Cx<'_>,
     node: &NodeDecl,
@@ -442,42 +443,34 @@ fn dependent(
         unresolved(cx, value.site, "field", &spelled);
         return;
     };
-    let ty = crate::plan::field_type(&cx.types, node, binding);
-    let Some(TypeExpr::Ref(inner)) = ty else {
-        let spelled = cx.names.resolve(value.target).to_owned();
-        cx.malformed(
-            value.site,
-            label,
-            &format!("against target {spelled} must hold a reference (ref<T>)"),
-        );
+    let construct = format!("value binding of node {label}");
+    let target = match crate::plan::field_type(&cx.types, node, binding) {
+        Some(TypeExpr::Ref(inner)) => match inner.as_ref() {
+            TypeExpr::Named(target) => Some(*target),
+            _ => None,
+        },
+        _ => None,
+    };
+    let Some(target) = target else {
+        let field = cx.names.resolve(value.target).to_owned();
+        let reason = format!("the target field {field} is not a reference type");
+        cx.malformed(value.site, &construct, &reason);
         return;
     };
-    let TypeExpr::Named(target) = inner.as_ref() else {
-        cx.malformed(
-            value.site,
-            label,
-            "against target must hold a reference (ref<T>)",
-        );
-        return;
-    };
-    let Some(decl) = cx.types.lookup(*target).and_then(|id| cx.types.get(id)) else {
-        let spelled = cx.names.resolve(*target).to_owned();
+    let Some(decl) = cx.types.lookup(target).and_then(|id| cx.types.get(id)) else {
+        let spelled = cx.names.resolve(target).to_owned();
         unresolved(cx, value.site, "type", &spelled);
         return;
     };
-    let TypeKind::Object(object) = &decl.kind else {
-        let spelled = cx.names.resolve(*target).to_owned();
-        cx.malformed(
-            value.site,
-            label,
-            &format!("against target type {spelled} is not an object type"),
-        );
-        return;
-    };
-    if !object.fields.iter().any(|f| f.name == value.member) {
-        let ty = cx.names.resolve(*target).to_owned();
-        let spelled = cx.names.resolve(value.member).to_owned();
-        unresolved(cx, value.site, "field", &format!("{spelled} of type {ty}"));
+    let declares = matches!(
+        &decl.kind,
+        TypeKind::Object(object) if object.fields.iter().any(|f| f.name == value.member)
+    );
+    if !declares {
+        let member = cx.names.resolve(value.member).to_owned();
+        let ty = cx.names.resolve(target).to_owned();
+        let reason = format!("the member field {member} is not declared by type {ty}");
+        cx.malformed(value.site, &construct, &reason);
     }
 }
 

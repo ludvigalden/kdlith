@@ -10,11 +10,12 @@ use kdlith_model::{
     Reference, SourceId, Value,
 };
 
+use crate::bindings::BindingCodec;
 use crate::decode::{Decoder, found};
 use crate::definition::{Definition, Qualification, ReferenceDecl};
 use crate::diag::record;
 use crate::summary;
-use crate::types::{TypeExpr, TypeKind};
+use crate::types::{Builtin, TypeExpr, TypeKind};
 
 const UNRESOLVED: &str = "KDLITH-REF001";
 const DUPLICATE: &str = "KDLITH-REF002";
@@ -446,11 +447,12 @@ impl LinkReport {
     }
 
     /// Validate each pending typed binding among `items`, in stream
-    /// order, against the member type of the one declaration its
-    /// reference resolved to, appending a `KDLITH-REF005` for each
-    /// payload that does not fit. A pending binding whose reference did
-    /// not resolve already has its link's diagnostic and is not
-    /// validated. Nothing executes a payload.
+    /// order, against the one declaration its reference resolved to —
+    /// its member type, or under `from-kind` the shape its member value
+    /// selects — appending a `KDLITH-REF005` for each payload that does
+    /// not fit. A pending binding whose reference did not resolve
+    /// already has its link's diagnostic and is not validated. Nothing
+    /// executes a payload.
     pub fn validate_pending(
         &mut self,
         definition: &Definition,
@@ -469,11 +471,16 @@ impl LinkReport {
             let Some(target) = self.resolved_target(&pending.against) else {
                 continue;
             };
-            let Some(expected) = member_type(definition, items, target, &pending.member) else {
-                continue;
+            let outcome = if pending.codec == BindingCodec::FromKind.name() {
+                kind_fits(&decoder, definition, items, target, pending)
+            } else {
+                let Some(expected) = member_type(definition, items, target, &pending.member) else {
+                    continue;
+                };
+                payload_fits(&decoder, definition, expected, pending)
+                    .map_err(|found| (summary::expr(&definition.names, expected), found))
             };
-            if let Err(found) = payload_fits(&decoder, definition, expected, pending) {
-                let expected = summary::expr(&definition.names, expected);
+            if let Err((expected, found)) = outcome {
                 let values = [
                     pending.node_name.as_str(),
                     pending.codec.as_str(),
@@ -563,6 +570,82 @@ fn payload_fits(
         (_, []) => Err("no value".to_owned()),
         (ty, [value]) => decodes(ty, value),
         (_, values) => Err(format!("{} values", values.len())),
+    }
+}
+
+/// Whether a `from-kind` payload fits the shape its declaration's
+/// member value selects: flag Bool, number U64, text String, choice one
+/// of its bound `choices`. Any other or missing kind fits no shape.
+fn kind_fits(
+    decoder: &Decoder,
+    definition: &Definition,
+    items: &[Item],
+    target: &IndexedDeclaration,
+    pending: &PendingBinding,
+) -> Result<(), (String, String)> {
+    let fields = items
+        .iter()
+        .find_map(|item| match item {
+            Item::Declaration(declaration) if declaration.node == target.node => {
+                Some(declaration.fields.as_slice())
+            }
+            _ => None,
+        })
+        .unwrap_or_default();
+    let bound = |name: &str| fields.iter().find(|field| field.name == name);
+    let member = pending.member.as_str();
+    let kind = match bound(member).map(|field| &field.value) {
+        Some(Value::String(kind)) => kind.clone(),
+        Some(Value::Null) | None => {
+            return Err((member.to_owned(), format!("no value for member {member}")));
+        }
+        Some(other) => found(other),
+    };
+    let builtin = match kind.as_str() {
+        "flag" => Builtin::Bool,
+        "number" => Builtin::U64,
+        "text" => Builtin::String,
+        "choice" => return choice_fits(bound("choices").map(|field| &field.value), pending),
+        _ => {
+            let found = format!("kind {kind} is not a kind the codec binds");
+            return Err((member.to_owned(), found));
+        }
+    };
+    let expected = definition
+        .names
+        .get(builtin.name())
+        .map(TypeExpr::Named)
+        .ok_or_else(|| (builtin.name().to_owned(), "no such type".to_owned()))?;
+    payload_fits(decoder, definition, &expected, pending)
+        .map_err(|found| (builtin.name().to_owned(), found))
+}
+
+/// Whether a `choice` payload is exactly one scalar equal, by spelling,
+/// to one of the declaration's bound choices.
+fn choice_fits(choices: Option<&Value>, pending: &PendingBinding) -> Result<(), (String, String)> {
+    let choices: Vec<&Value> = match choices {
+        Some(Value::List(choices)) => choices.iter().collect(),
+        _ => Vec::new(),
+    };
+    let spelled: Vec<String> = choices.iter().map(|choice| found(choice)).collect();
+    let expected = if spelled.is_empty() {
+        "one of no choices".to_owned()
+    } else {
+        format!("one of {}", spelled.join(", "))
+    };
+    let value = match &pending.raw {
+        Value::List(values) => match values.as_slice() {
+            [] => return Err((expected, "no value".to_owned())),
+            [value] => value,
+            values => return Err((expected, format!("{} values", values.len()))),
+        },
+        value => value,
+    };
+    let scalar = !matches!(value, Value::List(_) | Value::Map(_));
+    if scalar && choices.contains(&value) {
+        Ok(())
+    } else {
+        Err((expected, found(value)))
     }
 }
 
