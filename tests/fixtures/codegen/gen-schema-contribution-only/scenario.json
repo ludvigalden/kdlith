@@ -1,0 +1,34 @@
+{
+  "binary": "kdlith",
+  "kind": "codegen-oracle",
+  "description": "A contribution-only schema through a generated crate: gen schema generates a committed self-contained schema whose only nodes carry the contribution role — one typed by a declared object type, one untyped — twice into scratch trees the harness requires byte-identical; the generated crate compiles inside a scratch workspace materialized from this scenario's committed template beside a consumer crate that depends on the generated crate alone. The exercise pins that the schema loads under the standard extensions, that the generated reader's reading succeeds with the contributions as its meaningful items (the reading Item enum is empty), that the typed setting projects through the generated Contribution enum's variant, and that the untyped note's payload fails closed at the accessor with the named mismatch while the reading still succeeds",
+  "form": "schema",
+  "entrypoint": "inputs/only.kdl",
+  "crate": "only-proc",
+  "steps": [
+    { "generate": "ws/rs/only-proc" },
+    { "generate": "gen-again" },
+    { "determinism": ["ws/rs/only-proc", "gen-again"] },
+    {
+      "compile": {
+        "workspace": "ws",
+        "copy": {
+          "crates": ["diagnostic", "engine", "model", "parse", "runtime", "superproc"],
+          "kdl": true
+        },
+        "command": ["cargo", "build", "--offline", "--manifest-path", "ws/rs/only-proc/Cargo.toml"]
+      }
+    },
+    {
+      "exercise": {
+        "command": ["cargo", "run", "--offline", "--quiet", "--manifest-path", "ws/rs/exercise/Cargo.toml", "--", "inputs/only.kdl", "inputs/data.kdl"],
+        "stdout-contains": [
+          "schema ok digest=0bf445acd0488ca5\n",
+          "read failed=false contributions=2\n",
+          "typed target=mode value=dark\n",
+          "untyped mismatch the value fits no contribution type of Contribution\n"
+        ]
+      }
+    }
+  ]
+}

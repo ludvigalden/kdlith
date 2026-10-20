@@ -1,0 +1,22 @@
+// A self-contained schema whose only nodes contribute: the setting
+// node carries a declared object type, so its records stream through
+// the generated Contribution enum, while the note node declares no
+// type, so its records stay raw and a typed projection of them fails
+// closed. No record or declaration node exists, so the schema
+// generates only through the contribution-only admission and its
+// reading Item enum is empty.
+schema only version="1" {
+    types {
+        object Setting {
+            field target String
+            field value String
+        }
+    }
+    node setting role=contribution type=Setting {
+        field target arg=0
+        field value arg=1
+    }
+    node note role=contribution {
+        field text String arg=0
+    }
+}

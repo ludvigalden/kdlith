@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "gen schema refuses a definition that declares no record, declaration, or contribution nodes — nothing reading would stream, so a processor has no items — naming all three reading roles in the refusal. The refusal takes the gen one-line form, which carries no registered code, so the pinned expectation is the refusal line itself with exit 1, and the scratch check proves nothing was written into the output directory",
+  "args": ["gen", "schema", "input.kdl", "--crate", "bare-proc", "--out", "out"],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": [
+      "kdlith: gen schema: the definition declares no record, declaration, or contribution nodes; a processor has no items\n"
+    ],
+    "scratch-check": {
+      "plant": [{ "path": "planted-foreign.txt", "kind": "file" }]
+    }
+  }
+}

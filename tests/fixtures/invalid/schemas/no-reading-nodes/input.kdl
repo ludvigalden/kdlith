@@ -1,0 +1,8 @@
+schema bare version="1" {
+    types {
+        object Setting {
+            field target String
+            field value String
+        }
+    }
+}
