@@ -216,6 +216,7 @@ fn finish<'d>(
             mono::run(&mut cx);
         }
     }
+    collect::merge_policy(&mut cx);
     let bindings = scopes::build(&mut cx);
     let symbols = SymbolCatalog::build(&bindings, &cx.references);
     source_context_check(&mut cx);

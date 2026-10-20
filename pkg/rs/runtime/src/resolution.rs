@@ -5,8 +5,8 @@
 use std::collections::BTreeMap;
 
 use kdlith_model::{
-    BoundContribution, DuplicateTreatment, Entry, MissingRequirement, OriginId, QualifiedName,
-    Reference, ResolutionSelection, ResolvedContribution, Value,
+    BoundContribution, DuplicateTreatment, Entry, FieldMerge, MissingRequirement, OriginId,
+    QualifiedName, Reference, ResolutionSelection, ResolvedContribution, Value,
 };
 
 /// One preserved contribution record, as the resolver receives it:
@@ -38,8 +38,9 @@ impl ContributionRecord {
 
 /// The declared policy a resolver applies, as descriptors: the layer
 /// names in precedence order (highest first; empty when the schema
-/// declares none), per-target selection, duplicate treatment, and the
-/// missing-target requirement.
+/// declares none), per-target selection, duplicate treatment, the
+/// missing-target requirement, and the per-field merge policies of the
+/// contribution types, keyed by field name.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct ContributionPolicy {
@@ -47,6 +48,7 @@ pub struct ContributionPolicy {
     pub selection: ResolutionSelection,
     pub duplicates: DuplicateTreatment,
     pub missing: MissingRequirement,
+    pub merges: BTreeMap<String, FieldMerge>,
 }
 
 impl ContributionPolicy {
@@ -55,12 +57,14 @@ impl ContributionPolicy {
         selection: ResolutionSelection,
         duplicates: DuplicateTreatment,
         missing: MissingRequirement,
+        merges: BTreeMap<String, FieldMerge>,
     ) -> Self {
         Self {
             layers,
             selection,
             duplicates,
             missing,
+            merges,
         }
     }
 }
@@ -90,9 +94,11 @@ pub const LAYERED: &str = "layered";
 /// or `allow` for referenced targets no record contributes. Records
 /// partition by target and application scope, and layer precedence
 /// applies within each partition, so a target contributed under two
-/// scopes resolves once per scope. Partitions are resolved in sorted
-/// order and ties keep reading order, so equal inputs always give the
-/// same output.
+/// scopes resolves once per scope. Under `union`, a field whose policy
+/// is `merge=union` appends the higher layers' list items that are not
+/// shape-equal to one already held, instead of overwriting. Partitions
+/// are resolved in sorted order and ties keep reading order, so equal
+/// inputs always give the same output.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Layered;
 
@@ -169,11 +175,15 @@ impl Layered {
     }
 
     /// The resolved value of one target from its settled records,
-    /// highest first.
-    fn select(policy: &ContributionPolicy, settled: &[&ContributionRecord]) -> Value {
+    /// highest first. Lower layers are laid down first, so a merged
+    /// field holds the base's items before each refinement's.
+    fn select(
+        policy: &ContributionPolicy,
+        settled: &[&ContributionRecord],
+    ) -> Result<Value, String> {
         let all_maps = settled.iter().all(|r| matches!(r.value, Value::Map(_)));
         if policy.selection != ResolutionSelection::Union || !all_maps {
-            return settled[0].value.clone();
+            return Ok(settled[0].value.clone());
         }
         let mut merged: Vec<Entry> = Vec::new();
         for record in settled.iter().rev() {
@@ -181,13 +191,42 @@ impl Layered {
                 continue;
             };
             for entry in entries {
-                match merged.iter_mut().find(|held| held.key == entry.key) {
-                    Some(held) => held.value = entry.value.clone(),
-                    None => merged.push(entry.clone()),
+                let Some(held) = merged.iter_mut().find(|held| held.key == entry.key) else {
+                    merged.push(entry.clone());
+                    continue;
+                };
+                let Some(merge) = policy.merges.get(&entry.key) else {
+                    held.value = entry.value.clone();
+                    continue;
+                };
+                if *merge != FieldMerge::Union {
+                    return Err(format!(
+                        "field {} of a contribution to {} declares merge={}, which this resolver does not apply",
+                        entry.key,
+                        shown(&record.target),
+                        merge.name(),
+                    ));
+                }
+                // Compilation admits merge only on list-typed fields, so a
+                // schema-driven reading never lands in the refusal; a
+                // hand-built policy is refused rather than overwritten.
+                let (Value::List(items), Value::List(incoming)) = (&mut held.value, &entry.value)
+                else {
+                    return Err(format!(
+                        "field {} of a contribution to {} in {} merges by union but does not hold a list",
+                        entry.key,
+                        shown(&record.target),
+                        in_layer(record.layer.as_deref()),
+                    ));
+                };
+                for item in incoming {
+                    if !items.iter().any(|kept| same_shape(kept, item)) {
+                        items.push(item.clone());
+                    }
                 }
             }
         }
-        Value::Map(merged)
+        Ok(Value::Map(merged))
     }
 
     /// The layers whose records reached a value, highest first: the
@@ -209,6 +248,44 @@ impl Layered {
         }
         layers
     }
+}
+
+/// Declared-shape equality, the identity merged list items dedup by.
+/// It errs toward keeping both items: numbers compare by spelling,
+/// references by target identity plus the context they bound under
+/// (never by spelling or site), lists in order, and maps by content
+/// regardless of entry order. A union value's variant is its single
+/// map key, so equal payloads of different variants stay distinct.
+fn same_shape(a: &Value, b: &Value) -> bool {
+    match (a, b) {
+        (Value::Null, Value::Null) => true,
+        (Value::Bool(a), Value::Bool(b)) => a == b,
+        (Value::Number(a), Value::Number(b)) | (Value::String(a), Value::String(b)) => a == b,
+        (Value::Reference(a), Value::Reference(b)) => same_target(a, b),
+        (Value::List(a), Value::List(b)) => {
+            a.len() == b.len() && a.iter().zip(b).all(|(a, b)| same_shape(a, b))
+        }
+        (Value::Map(a), Value::Map(b)) => {
+            let within = |from: &[Entry], into: &[Entry]| {
+                from.iter().all(|entry| {
+                    into.iter().any(|other| {
+                        let same_key = match (&entry.reference, &other.reference) {
+                            (None, None) => other.key == entry.key,
+                            (Some(a), Some(b)) => same_target(a, b),
+                            _ => false,
+                        };
+                        same_key && same_shape(&entry.value, &other.value)
+                    })
+                })
+            };
+            a.len() == b.len() && within(a, b) && within(b, a)
+        }
+        _ => false,
+    }
+}
+
+fn same_target(a: &Reference, b: &Reference) -> bool {
+    key_of(a) == key_of(b) && a.context == b.context
 }
 
 /// Every reference a value holds, in value order.
@@ -267,7 +344,7 @@ impl ContributionResolver for Layered {
             let settled = Self::settle(policy, group)?;
             resolved.push(ResolvedContribution::new(
                 group[0].1.target.clone(),
-                Self::select(policy, &settled),
+                Self::select(policy, &settled)?,
                 Self::layers_of(policy, &settled),
                 group[0].1.scope.clone(),
             ));

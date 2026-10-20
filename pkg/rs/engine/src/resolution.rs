@@ -2,14 +2,17 @@
 //! and the routing surface that hands them to the registered resolver.
 //! The engine never resolves contributions itself.
 
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use kdlith_diagnostic::DiagnosticRecord;
 use kdlith_model::ResolvedContribution;
 use kdlith_runtime::{ContributionPolicy, ContributionRecord, ContributionResolver};
 
+use crate::bindings::Role;
 use crate::definition::{Definition, ResolutionPolicyDecl};
 use crate::diag::record;
+use crate::types::TypeKind;
 
 /// A registered contribution resolver, shared cheaply across readings.
 pub type SharedContributionResolver = Arc<dyn ContributionResolver>;
@@ -71,17 +74,37 @@ pub fn resolve(
         });
     }
     resolver
-        .resolve(&policy_of(policy), records)
+        .resolve(&policy_of(definition, policy), records)
         .map_err(ResolutionError::Failed)
 }
 
-/// The descriptors a resolver receives for a compiled policy.
-fn policy_of(policy: &ResolutionPolicyDecl) -> ContributionPolicy {
+/// The descriptors a resolver receives for a compiled policy. Records
+/// carry no contribution type, so merge policies are keyed by field
+/// name across every contribution type.
+fn policy_of(definition: &Definition, policy: &ResolutionPolicyDecl) -> ContributionPolicy {
+    let mut merges = BTreeMap::new();
+    for (_, decl) in definition.bindings.iter() {
+        if decl.role != Some(Role::Contribution) {
+            continue;
+        }
+        let Some(ty) = decl.ty.and_then(|name| definition.types.lookup(name)) else {
+            continue;
+        };
+        let Some(TypeKind::Object(object)) = definition.types.get(ty).map(|ty| &ty.kind) else {
+            continue;
+        };
+        for field in &object.fields {
+            if let Some(merge) = field.merge {
+                merges.insert(definition.names.resolve(field.name).to_owned(), merge);
+            }
+        }
+    }
     ContributionPolicy::new(
         policy.layers.clone(),
         policy.selection,
         policy.duplicates,
         policy.missing,
+        merges,
     )
 }
 

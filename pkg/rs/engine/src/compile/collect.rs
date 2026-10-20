@@ -73,6 +73,50 @@ pub(crate) fn all(cx: &mut Cx<'_>, input: &DefinitionInput) {
     }
 }
 
+/// A field declaring merge must hold a list, the only value a
+/// refinement can append to, and the declared resolution policy must
+/// combine values by `selection=union`, the only selection that merges.
+/// Called from `finish` after the expansion pass, so fields an
+/// `include` spliced in are checked with the declared ones and the
+/// policy is known wherever in the stream it was declared.
+pub(crate) fn merge_policy(cx: &mut Cx<'_>) {
+    let selection = cx.resolution.as_ref().map(|policy| policy.selection);
+    let mut reported: Vec<(Site, String, String)> = Vec::new();
+    for (_, decl) in cx.types.iter() {
+        let (TypeKind::Object(object), Some(site)) = (&decl.kind, decl.site) else {
+            continue;
+        };
+        for field in object.fields.iter().filter(|field| field.merge.is_some()) {
+            let label = format!("field {}", cx.names.resolve(field.name));
+            // A nullable list may hold null, which has nothing to append.
+            let list = match &field.ty {
+                TypeExpr::List(_) => true,
+                TypeExpr::Optional(inner) => matches!(**inner, TypeExpr::List(_)),
+                _ => false,
+            };
+            if !list {
+                let reason = "declares merge, which only a list-typed field can apply";
+                reported.push((site, label.clone(), reason.to_owned()));
+            }
+            if let Some(selection) = selection
+                && selection != ResolutionSelection::Union
+            {
+                let reason = format!(
+                    "declares merge, which only selection=union applies, and the resolution policy is selection={}",
+                    selection.name()
+                );
+                reported.push((site, label, reason));
+            }
+        }
+    }
+    for (at, (site, label, reason)) in reported.iter().enumerate() {
+        // A generic declaration's instantiations repeat its fields.
+        if !reported[..at].contains(&(*site, label.clone(), reason.clone())) {
+            cx.malformed(*site, label, reason);
+        }
+    }
+}
+
 /// Every construct with its site, in stream order. The sort is stable,
 /// so constructs sharing a position keep document order.
 fn stream(input: &DefinitionInput) -> Vec<(Site, &Located<Construct>)> {
