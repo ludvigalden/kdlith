@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "gen schema --kdlith-path roots the generated manifest's kdlith path dependencies at the flag's value verbatim: the relative value ../pkg/rs is spliced unchanged into each schema-form dependency line (no canonicalization, no trailing-slash trim, no existence check), [package] keeps the generator's version, and the written Cargo.toml is pinned byte for byte",
+  "args": ["gen", "schema", "schema.kdl", "--crate", "parts-proc", "--out", "out", "--kdlith-path", "../pkg/rs"],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": ["ok: generated schema crate parts-proc at out (11 owned files)\n"],
+    "files": {
+      "out/Cargo.toml": "cargo-toml.golden"
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "gen schema --kdlith-version writes the flag's value verbatim as the version requirement of every schema-form kdlith dependency line (no path = lines at all, no semver grammar imposed) and leaves [package] at the generator's version; the written Cargo.toml is pinned byte for byte",
+  "args": ["gen", "schema", "schema.kdl", "--crate", "parts-proc", "--out", "out", "--kdlith-version", "0.1.0"],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": ["ok: generated schema crate parts-proc at out (11 owned files)\n"],
+    "files": {
+      "out/Cargo.toml": "cargo-toml.golden"
+    }
+  }
+}

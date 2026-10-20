@@ -1,0 +1,58 @@
+{
+  "binary": "kdlith",
+  "kind": "codegen-oracle",
+  "description": "gen schema --kdlith-path ../ws/rs generates a schema crate whose manifest roots its kdlith path dependencies at the scenario's copied crates, outside the sibling layout the default assumes: the crate generates twice into two scratch trees the harness requires byte-identical (the harness's generate step passes no flags, so both runs are declared commands invoking the processor under test), compiles inside a scratch workspace materialized from this scenario's committed template with the repository's engine and reference-processor crates copied in at the pinned layout positions, and the compiled consumer — depending on nothing but the generated crate — loads the schema and reads the committed data document's records through the generated typed reader. Both misuse modes are pinned as declared commands: the two packaging flags together fail closed with the clap conflict usage error and write nothing, and an empty --kdlith-path value fails closed with the value parser's error and writes nothing",
+  "form": "schema",
+  "entrypoint": "inputs/schema.kdl",
+  "crate": "parts-proc",
+  "steps": [
+    {
+      "exercise": {
+        "command": ["sh", "-c", "\"$KDLITH_FX_KDLITH\" gen schema inputs/schema.kdl --crate parts-proc --out refused --kdlith-path ../ws/rs --kdlith-version 0.1.0; echo \"exit=$?\"; test -e refused || echo \"refused absent\""],
+        "stdout-contains": ["exit=2\nrefused absent\n"],
+        "stderr-contains": ["error[KDLITH-CLI002]: the argument '--kdlith-path <PATH>' cannot be used with '--kdlith-version <VER>'\n"]
+      }
+    },
+    {
+      "exercise": {
+        "command": ["sh", "-c", "\"$KDLITH_FX_KDLITH\" gen schema inputs/schema.kdl --crate parts-proc --out refused --kdlith-path \"\"; echo \"exit=$?\"; test -e refused || echo \"refused absent\""],
+        "stdout-contains": ["exit=2\nrefused absent\n"],
+        "stderr-contains": ["error[KDLITH-CLI001]: invalid value '' for '--kdlith-path <PATH>': kdlith-path takes a non-empty path\n"]
+      }
+    },
+    {
+      "exercise": {
+        "command": ["sh", "-c", "exec \"$KDLITH_FX_KDLITH\" gen schema inputs/schema.kdl --crate parts-proc --out gen --kdlith-path ../ws/rs"],
+        "stdout-contains": ["ok: generated schema crate parts-proc at gen (11 owned files)\n"]
+      }
+    },
+    {
+      "exercise": {
+        "command": ["sh", "-c", "exec \"$KDLITH_FX_KDLITH\" gen schema inputs/schema.kdl --crate parts-proc --out gen-again --kdlith-path ../ws/rs"],
+        "stdout-contains": ["ok: generated schema crate parts-proc at gen-again (11 owned files)\n"]
+      }
+    },
+    { "determinism": ["gen", "gen-again"] },
+    {
+      "compile": {
+        "workspace": "ws",
+        "copy": {
+          "crates": ["diagnostic", "engine", "model", "parse", "runtime", "superproc"],
+          "kdl": true
+        },
+        "command": ["cargo", "build", "--offline", "--manifest-path", "ws/rs/exercise/Cargo.toml"]
+      }
+    },
+    {
+      "exercise": {
+        "command": ["cargo", "run", "--offline", "--quiet", "--manifest-path", "ws/rs/exercise/Cargo.toml", "--", "inputs/schema.kdl", "inputs/data.kdl"],
+        "stdout-contains": [
+          "schema ok\n",
+          "read errors=false lines=2\n",
+          "part id=alpha count=3\n",
+          "part id=beta count=none\n"
+        ]
+      }
+    }
+  ]
+}

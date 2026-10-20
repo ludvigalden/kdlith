@@ -965,6 +965,25 @@ reading does not fail. A generated reference type holds its reference
 as `.0`, so `reading.resolve(&record.target.0)` resolves a record's
 field.
 
+The generated crate's `Cargo.toml` is standalone — no workspace
+inheritance — and by default names its kdlith dependencies as sibling
+paths (`kdlith-engine = { path = "../engine" }`, and so on), the layout
+of a generated crate placed beside the kdlith crates in this
+repository. `gen schema --kdlith-path PATH` roots those path
+dependencies at `PATH` instead (`{ path = "PATH/engine" }`), and
+`gen schema --kdlith-version VER` writes them as registry dependencies
+(`kdlith-engine = "VER"`). Either value is written verbatim — no
+canonicalization, no trailing-slash trimming, no existence check, no
+version grammar; Cargo judges the path or requirement when the crate
+builds — and only the kdlith dependency lines change: `[package]` keeps
+the generator's version. The two flags are mutually exclusive (both
+together is `KDLITH-CLI002`), neither repeats, and an empty value
+fails closed (`KDLITH-CLI001`), as does a value that is not UTF-8 and
+so cannot be written into the manifest; each exits 2 with nothing
+written. Without either flag the manifest keeps the sibling paths.
+`gen dialect` takes neither flag: the dialect form generates the
+reference processor, which lives in the sibling layout.
+
 Every typed record and declaration carries where it was written: its
 `site`, the location the binder recorded (absent only where the binder
 recorded none), and its `origin`, the document it was read from — the
