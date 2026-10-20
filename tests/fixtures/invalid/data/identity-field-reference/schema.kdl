@@ -1,0 +1,35 @@
+// An owner composes its identity from its name and a field typed with
+// a declared reference type. Identity segments are text, so the
+// reference value bound there is no segment.
+schema identref version="1" {
+    types {
+        codec Name output=String {
+            match #"(?:(?<alias>[a-z][a-z0-9]*)\.)?(?<name>[a-z][a-z0-9]*)"#
+            capture alias String
+            capture name String
+        }
+        object Attr {
+            field name String
+        }
+        object Owner {
+            field name String
+            field scope AttrRef
+        }
+    }
+    node attr role=declaration type=Attr {
+        field name arg=0
+        identity {
+            domain attrs
+            compose qualified-name name
+        }
+    }
+    node owner role=declaration type=Owner {
+        field name arg=0
+        field scope arg=1
+        identity {
+            domain owners
+            compose qualified-name name scope
+        }
+    }
+    reference AttrRef target=Attr codec=Name lookup=attrs qualification=explicit
+}

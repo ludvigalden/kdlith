@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "Export links the reading under the default complete scope: the explicit reference spelling only the local name resolves to no declaration, so the run fails with KDLITH-REF001 and atomic delivery publishes nothing; the same input exports under --scope local (processing/export/scope-local-unresolved)",
+  "args": [
+    "export",
+    "--schema",
+    "{fx-suite}/processing/linking/schema.kdl",
+    "{fx-suite}/processing/export/scope-local-unresolved/data.kdl",
+    "--emit",
+    "roots",
+    "--format",
+    "ndjson"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

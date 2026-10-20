@@ -693,6 +693,11 @@ struct ExportArgs {
     /// secret is redacted and a reference emitted
     #[arg(long, value_enum, value_name = "POLICY")]
     sensitive: Option<SensitiveArg>,
+    /// Bind the documents alone (local) or also link every reference a
+    /// declared reference type looks up, failing the run when one does
+    /// not resolve to exactly one declaration (complete)
+    #[arg(long, value_enum, default_value_t = ScopeArg::Complete)]
+    scope: ScopeArg,
     /// A discovery anchor the schema's and the data documents' import
     /// expressions expand against, as NAME=PATH (repeatable)
     #[arg(

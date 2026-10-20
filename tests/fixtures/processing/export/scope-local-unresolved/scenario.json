@@ -1,0 +1,27 @@
+{
+  "binary": "kdlith",
+  "description": "Under --scope local export still links the reading and reports the unresolved reference's KDLITH-REF001 on stderr, but the link diagnostic never decides the exit: every root exports with its reference as written and the run exits 0",
+  "args": [
+    "export",
+    "--schema",
+    "{fx-suite}/processing/linking/schema.kdl",
+    "data.kdl",
+    "--emit",
+    "roots",
+    "--format",
+    "ndjson",
+    "--scope",
+    "local"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden",
+    "stdout-contains": [
+      "\"written\":\"region\""
+    ],
+    "stderr-contains": [
+      "error[KDLITH-REF001]: reference region in config-vars does not resolve"
+    ]
+  }
+}

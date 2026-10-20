@@ -369,7 +369,13 @@ dialect for every processor, hand-written or generated:
    (`KDLITH-REF002`), and a reference its qualification and lookup
    policy resolves to no candidate is unresolved (`KDLITH-REF001`), to
    several is ambiguous (`KDLITH-REF003`), and to one that fails a
-   required qualifier is `KDLITH-REF004`. A declaration without an
+   required qualifier is `KDLITH-REF004`. Identity segments are
+   string-typed by construction: every field an `identity` block
+   composes must bind a string, so a composed identity field holding
+   any other value, a reference included, is rejected at binding
+   (`KDLITH-BND003`) and the declaration registers no identity;
+   compose identities from name-typed fields and reference the
+   declaration by its composed name. A declaration without an
    `identity` block takes its type as its domain and the value of its
    argument-0 field as its name, or is one of a kind in its scope when
    no field binds argument 0. That name must be a string: a field type
@@ -1194,8 +1200,8 @@ the referenced object type does not declare, are each
 
 ## Linking data
 
-`vet data` and `inspect data` take `--scope local|complete`, defaulting
-to `complete`. Local scope binds the documents and stops, except under
+`vet data`, `inspect data`, and `export` take `--scope local|complete`,
+defaulting to `complete`. Local scope binds the documents and stops, except under
 the `references` view of `inspect data`, whose report is the link
 stage's output. Complete scope then links the reading: every reference
 held by a field typed with a declared reference type, including each key
@@ -1219,6 +1225,14 @@ scope never changes standard output, only the exit: under local scope
 the `references` view still links and prints the same report, and its
 link diagnostics still reach standard error, but they do not decide
 the exit.
+
+`export` links the reading the same way, after its stream, whatever the
+scope. Under complete scope a link diagnostic fails the run like any
+other processing error: atomic delivery publishes nothing, and
+provisional delivery keeps the lines it already wrote with the
+`KDLITH-EXP002` warning naming their count. Under local scope the link
+diagnostics reach standard error, every selected item exports with its
+references as written, and the exit is decided without them.
 
 ## Inspect views
 

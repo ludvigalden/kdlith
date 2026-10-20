@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "Identity segments are text by construction: a composed identity field typed with a declared reference type binds a reference, not a string, so binding rejects it as KDLITH-BND003 and the declaration registers no identity",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

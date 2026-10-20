@@ -187,11 +187,17 @@ impl DataOptions {
 
     /// The same options checking the reading under `scope`: complete
     /// links the reading's references after binding, local does not.
-    /// Only `vet data` and `inspect data` link a reading.
+    /// Only the data verbs that link a reading (`vet data`, `inspect
+    /// data`, and `export`) carry a scope.
     #[must_use]
     pub fn with_scope(mut self, scope: CheckScope) -> Self {
         self.scope = scope;
         self
+    }
+
+    /// The checking scope these options carry.
+    pub(crate) fn scope(&self) -> CheckScope {
+        self.scope
     }
 
     /// The same options resolving computed defaults through `resolver`,

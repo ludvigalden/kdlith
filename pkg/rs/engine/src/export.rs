@@ -12,7 +12,8 @@ use kdlith_parse::{Event, Parser};
 use kdlith_runtime::{Delivery, ExportWriter, SourceRevisions, export_line};
 
 use crate::documents::read_text;
-use crate::{DataReader, Definition, OutputPolicy, ReadOptions, TypeKind};
+use crate::link::{LinkInputs, link_reading};
+use crate::{CheckScope, DataReader, Definition, OutputPolicy, ReadOptions, TypeKind};
 
 const ORIGIN: &str = "export";
 const INCOMPLETE: &str = "KDLITH-EXP002";
@@ -47,6 +48,10 @@ pub struct ExportOutcome {
     /// record type of the definition. The reason; its `KDLITH-EXP003`
     /// record is among `records`.
     pub rejected: Option<String>,
+    /// The reading's link diagnostics under local scope: reported, but
+    /// never deciding the run's failure. Under complete scope the link
+    /// diagnostics are among `records` instead and fail the run.
+    pub ungated: Vec<DiagnosticRecord>,
     /// The reading broke its own contract; an engine error, not a
     /// document diagnostic.
     pub broken: Option<String>,
@@ -72,7 +77,8 @@ pub fn export(
 /// each emitted field's origin in it. `policy` is the explicit output
 /// policy every sensitive field passes; `None` keeps each sensitivity's
 /// fail-closed default, so a secret is emitted only under an explicit
-/// `emit`. Error diagnostics in the documents, a broken reading, or an
+/// `emit`. Error diagnostics in the documents, a link diagnostic of the
+/// reading's complete-scope link composition, a broken reading, or an
 /// unwritable destination fail the run. Under atomic delivery a failing
 /// run publishes nothing; under provisional delivery a failing run that
 /// already emitted lines keeps them and carries the `KDLITH-EXP002`
@@ -97,6 +103,7 @@ pub fn export_under(
         delivery,
         output,
         &options,
+        CheckScope::Complete,
     )
 }
 
@@ -105,7 +112,11 @@ pub fn export_under(
 /// handlers the processor installed, and `options` the profile, the
 /// discovery anchors, and the explicit output policy. The type
 /// selection is checked against the reader's definition before any
-/// document is read.
+/// document is read. After the stream the reading is linked under
+/// `scope`'s complete arm — the same one link composition `vet data`
+/// runs — so under complete scope a link diagnostic fails the run like
+/// any processing failure; under local scope the link diagnostics land
+/// in `ungated` and never decide the run.
 pub fn export_read(
     reader: &DataReader<'_>,
     entries: &[&Path],
@@ -113,6 +124,7 @@ pub fn export_read(
     delivery: Delivery,
     output: Option<&Path>,
     options: &ReadOptions,
+    scope: CheckScope,
 ) -> ExportOutcome {
     let def = reader.definition();
     if let Emit::Type(name) = emit
@@ -146,8 +158,10 @@ pub fn export_read(
     let mut records: Vec<DiagnosticRecord> = Vec::new();
     let mut write_failed = false;
     let mut revisions = SourceRevisions::new();
+    let mut inputs = LinkInputs::new();
     let read = {
         let mut sink = |item: Item| {
+            inputs.observe(&item);
             revisions.observe(&item);
             match &item {
                 // Each entry's subtree closes with its own document-wide
@@ -193,7 +207,17 @@ pub fn export_read(
         ..ExportOutcome::default()
     };
     let processing_failed = match read {
-        Ok(failed) => failed,
+        Ok(failed) => {
+            let report = link_reading(def, &inputs);
+            if scope == CheckScope::Complete {
+                let failed = failed || report.has_errors();
+                outcome.records.extend(report.diagnostics.iter().cloned());
+                failed
+            } else {
+                outcome.ungated = report.diagnostics;
+                failed
+            }
+        }
         Err(error) => {
             outcome.broken = Some(error.to_string());
             true

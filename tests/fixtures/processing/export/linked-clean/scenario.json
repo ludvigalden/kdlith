@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "Under the default complete scope export links the reading after the stream: both references spell the declaration's composed identity and resolve, so the linked export delivers every root unchanged and exits 0",
+  "args": [
+    "export",
+    "--schema",
+    "{fx-suite}/processing/linking/schema.kdl",
+    "data.kdl",
+    "--emit",
+    "roots",
+    "--format",
+    "ndjson"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

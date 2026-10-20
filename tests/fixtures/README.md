@@ -203,12 +203,17 @@ override.
 roots` and `--emit <TYPE>` selection over an entry document that imports
 another, `--output`, the stream discipline (stdout carries only the data
 lines), both delivery modes including a provisional run that fails
-mid-stream, and the `--sensitive` policies. Each scenario carries its
-own input copies, so the provenance envelope's source paths and revision
-digests are stable, and pins its streams and written files byte for
-byte with committed goldens. Editing an input changes its revision
-digest, so regenerate the goldens with it. `invalid/export/` holds the
-`KDLITH-EXP001`-`003` negative controls.
+mid-stream, the `--sensitive` policies, and `--scope`: the reading is
+linked under both scopes, `linked-clean` over a fully-resolved input
+under the default and `scope-local-unresolved` pinning that under
+`local` the unresolved reference's REF001 reaches stderr without
+deciding the exit. Each scenario carries its own input copies, so the
+provenance envelope's source paths and revision digests are stable, and
+pins its streams and written files byte for byte with committed
+goldens. Editing an input changes its revision digest, so regenerate
+the goldens with it. `invalid/export/` holds the `KDLITH-EXP001`-`003`
+negative controls and the REF001 failure of the default complete
+scope.
 
 `processing/round-trip/` runs the full chain entrypoint to dialect to
 schema to data over the committed catalog schema: `vet data` and
