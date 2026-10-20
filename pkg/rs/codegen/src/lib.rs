@@ -43,8 +43,8 @@ use kdlith_engine::{CheckScope, Definition, Extensions};
 pub enum Error {
     /// The crate name is not a valid package name.
     InvalidCrateName { name: String },
-    /// The definition declares no reading nodes, so a generated
-    /// processor would have no items.
+    /// The definition declares no record, declaration, or contribution
+    /// nodes, so a generated processor would have no items.
     NoItems,
     /// The definition declares no version; a generated processor pins
     /// the declarations it makes about what it reads.
@@ -105,8 +105,8 @@ impl std::fmt::Display for Error {
             Self::NoItems => {
                 write!(
                     f,
-                    "the definition declares no record or declaration nodes; a \
-                     processor has no items"
+                    "the definition declares no record, declaration, or contribution \
+                     nodes; a processor has no items"
                 )
             }
             Self::MissingVersion => {

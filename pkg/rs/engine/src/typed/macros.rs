@@ -585,6 +585,23 @@ macro_rules! contribution_type {
 /// variants; only a one-variant type converts into the item.
 #[macro_export]
 macro_rules! item_type {
+    // A schema whose only nodes are contributions reads no records or
+    // declarations: its contributions stream as contribution items.
+    ($(#[$meta:meta])* $vis:vis enum $name:ident {}) => {
+        $(#[$meta])*
+        #[derive(Clone, Debug, PartialEq, Eq)]
+        #[non_exhaustive]
+        $vis enum $name {}
+
+        impl $crate::__private::serde::Serialize for $name {
+            fn serialize<S: $crate::__private::serde::Serializer>(
+                &self,
+                _serializer: S,
+            ) -> ::core::result::Result<S::Ok, S::Error> {
+                match *self {}
+            }
+        }
+    };
     (@from $name:ident $ty:ident $only:ident) => {
         impl ::core::convert::From<$ty> for $name {
             fn from(value: $ty) -> Self {

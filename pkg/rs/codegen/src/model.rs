@@ -287,6 +287,7 @@ impl<'d> Emission<'d> {
             .collect();
         let mut items = Vec::new();
         let mut contributions: Vec<String> = Vec::new();
+        let mut contributes = false;
         // The identity domain a declaring node registers in, as the
         // symbol catalog's descriptor spells it.
         let declaration_domain = |node: &NodeDecl| -> Option<&str> {
@@ -302,6 +303,7 @@ impl<'d> Emission<'d> {
                 let role = match node.role {
                     Some(role @ (Role::Declaration | Role::Record)) => role,
                     Some(Role::Contribution) => {
+                        contributes = true;
                         // A typed contribution names the type its value
                         // reads as; an untyped one keeps its raw record.
                         if let Some(ty) = node.ty {
@@ -373,7 +375,9 @@ impl<'d> Emission<'d> {
             }
         }
 
-        if items.is_empty() {
+        // Contributions stream as contribution items, never as `Item`
+        // variants, so a contribution-only schema reads an empty `Item`.
+        if items.is_empty() && !contributes {
             return Err(Error::NoItems);
         }
         key_variants(&mut items, names, definition.kind)?;
