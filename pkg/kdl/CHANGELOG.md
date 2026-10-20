@@ -84,6 +84,17 @@ published yet.
   reference before delivery — the stream is discarded atomically, or
   kept with a provisional-emission warning; under `local` the link
   report is printed and never decides the exit.
+- Generated schema crates whose definition declares contribution-role
+  nodes expose a typed `Contribution` enum and a `TypedItem::contribution`
+  accessor that projects each raw contribution or resolution payload to
+  the node's declared object type, failing closed with a named error
+  when a payload fits no declared contribution type.
+- Every generated type that backs a declaration-role node carries a
+  `DOMAIN` constant naming the identity domain its declarations
+  register in.
+- Definitions whose only nodes are contribution-role now generate a
+  processor where they were refused before; the no-items refusal names
+  record, declaration, and contribution nodes.
 
 ### Fixed
 
