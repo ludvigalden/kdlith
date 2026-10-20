@@ -1,0 +1,42 @@
+// A setting contribution whose application scope is a declared term:
+// data documents declare scopes with the `scope` node, and the
+// contribution's `scope` property is typed with the ScopeTerm reference
+// type, so the link stage resolves it like any declared reference. The
+// shipped `layered` resolver partitions resolution by scope, applying
+// layer precedence within each partition.
+schema settings version="1" {
+    types {
+        object ScopeDef {
+            field name String
+        }
+        object Option {
+            field name String
+        }
+        object Setting {
+            field target "ref<Option>"
+            field value String
+            field scope "optional<ScopeTerm>"
+            field layer "optional<String>"
+        }
+        codec ScopeSpelling output=String {
+            match #"(?<name>[a-z][a-z0-9-]*)"#
+            capture name String
+        }
+    }
+    node scope role=declaration type=ScopeDef {
+        field name arg=0
+    }
+    node option role=declaration type=Option {
+        field name arg=0
+    }
+    reference ScopeTerm target=ScopeDef codec=ScopeSpelling qualification=explicit
+    node setting role=contribution type=Setting {
+        field target arg=0
+        field value arg=1
+        field scope property=scope
+        field layer property=layer
+    }
+    resolution resolver=layered {
+        layers user base
+    }
+}

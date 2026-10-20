@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "Two scope declarations composing one identity in the scope domain are a duplicate, reported at the second with the first as a label, even though the contribution naming the scope binds",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/resolution/scope.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

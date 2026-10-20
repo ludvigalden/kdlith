@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "Scope partitions resolution within layer precedence: mode, contributed under the declared scopes dev and staging in both layers, resolves once per scope, each partition settled by the user-over-base layer order; the scope-less font resolves in its own partition with a null scope, and the partitions follow in sorted (target, scope) order after the documents; every scope reference links under the default complete scope",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/resolution/scope.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

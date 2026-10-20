@@ -48,6 +48,15 @@ published yet.
   drives the built command-line tool, including byte-exact goldens,
   isolated scratch directories, and a generate, compare, compile, and
   exercise oracle for generated crates.
+- A contribution-level application scope: the canonical dialect names
+  scope terms with the `ScopeName` vocabulary type, which changes the
+  canonical dialect digest. A schema types a contribution's `scope`
+  field with a reference type over its own scope declarations, so the
+  link stage resolves it and an unknown or duplicated scope fails
+  closed with the reference diagnostics.
+- The shipped `layered` resolver partitions resolution by scope: layer
+  precedence applies within each target-and-scope partition, and each
+  `resolution` item carries its scope.
 
 ### Fixed
 

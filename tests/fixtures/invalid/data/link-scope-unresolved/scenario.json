@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A contribution's scope typed with a declared reference type fails closed when no scope declaration matches its spelling: the link stage reports the scope reference unresolved under the default complete scope",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/resolution/scope.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

@@ -1,0 +1,34 @@
+// The contribution's scope field is declared before its target, so the
+// bound record must still take its target from the target field and
+// carry the scope reference only as its application scope.
+schema demo version="1" {
+    types {
+        object ScopeDef {
+            field name String
+        }
+        object Option {
+            field name String
+        }
+        object Setting {
+            field scope "optional<ScopeTerm>"
+            field target "ref<Option>"
+            field value String
+        }
+        codec ScopeSpelling output=String {
+            match #"(?<name>[a-z][a-z0-9-]*)"#
+            capture name String
+        }
+    }
+    node scope role=declaration type=ScopeDef {
+        field name arg=0
+    }
+    node option role=declaration type=Option {
+        field name arg=0
+    }
+    reference ScopeTerm target=ScopeDef codec=ScopeSpelling qualification=explicit
+    node setting role=contribution type=Setting {
+        field scope property=scope
+        field target arg=0
+        field value arg=1
+    }
+}

@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "A contribution whose scope field is typed with a declared reference type binds that scope as a reference in its value map and carries its written spelling as the record's scope, while the target still comes from the target field even though the scope field is declared first; a scope-less contribution carries a null scope, and the scope reference links to its declaration under the default complete scope",
+  "args": [
+    "inspect",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "--view",
+    "bound",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

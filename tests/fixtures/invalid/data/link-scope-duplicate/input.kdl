@@ -1,0 +1,4 @@
+scope dev
+scope dev
+option mode
+setting mode dark scope=dev layer=user

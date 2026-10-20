@@ -1,0 +1,4 @@
+scope dev
+option mode
+setting mode dark scope=dev
+setting mode light
