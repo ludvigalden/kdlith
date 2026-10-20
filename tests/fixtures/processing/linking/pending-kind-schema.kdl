@@ -1,0 +1,34 @@
+// The schema the from-kind pending scenarios share: settings declare a
+// kind and, for a choice, the choices it admits; contributions bind
+// their payload under from-kind, so each payload stays pending until
+// linking selects its shape from the kind the referenced setting holds:
+// flag a Bool, number a U64, text a String, choice one of its choices.
+schema pending-kind version="1" {
+    types {
+        object Setting {
+            field name String
+            field kind "optional<String>"
+            field choices "optional<list<String>>"
+        }
+        codec SettingName output=String {
+            match #"(?<name>[a-z0-9-]+)"#
+            capture name String
+        }
+    }
+    node setting role=declaration type=Setting {
+        field name arg=0
+        field kind property=kind
+        field choices {
+            from {
+                args
+            }
+        }
+    }
+    node put role=contribution {
+        field target "ref<Setting>" arg=0
+        value codec=from-kind {
+            against target=target member=kind
+        }
+    }
+    reference SettingRef target=Setting codec=SettingName qualification=explicit
+}

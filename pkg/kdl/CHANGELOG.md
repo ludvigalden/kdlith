@@ -66,6 +66,16 @@ published yet.
   declared shape is already held. A merge field under
   `selection=replace` or on a field that is not list-typed is rejected
   when the schema is compiled.
+- Kind-directed dependent payloads: the `from-kind` binding codec,
+  which changes the canonical dialect digest, defers a dependent
+  payload until its reference resolves and selects its shape from the
+  value the referenced declaration holds in the member field: `flag`
+  binds a Bool, `number` a U64, `text` a String, and `choice` one of
+  the declaration's bound choices. A payload outside the selected
+  shape, a missing kind, and an unknown kind fail at linking.
+- A dependent value binding whose target field is not a reference
+  type, or whose member the referenced type does not declare, is
+  rejected when the definition is compiled.
 
 ### Fixed
 

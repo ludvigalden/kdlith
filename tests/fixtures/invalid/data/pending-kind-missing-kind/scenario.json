@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A from-kind payload whose resolved setting holds no value for the kind member has no shape to fit, so linking under complete scope fails it closed with KDLITH-REF005 rather than admitting the payload unchecked",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "{fx-suite}/processing/linking/pending-kind-schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

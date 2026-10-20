@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A dependent value binding whose against target is a reference to an object type that does not declare the named member field has nothing to read the payload's shape from, so the definition fails closed with KDLITH-DLC005 when it compiles",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

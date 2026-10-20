@@ -1,0 +1,2 @@
+option "depth" kind=number
+put-num "depth" 3

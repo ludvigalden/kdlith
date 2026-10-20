@@ -1,0 +1,1 @@
+# expect-invalid: KDLITH-REF005

@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A from-kind payload whose reference resolves fails the shape its setting's kind selects, each with KDLITH-REF005 under complete scope: a Bool where a number setting selects U64, a string outside the choices a choice setting declares, and any payload for a setting whose kind is none the codec binds, since the kind map is exhaustive and an unknown kind fails closed",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "{fx-suite}/processing/linking/pending-kind-schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

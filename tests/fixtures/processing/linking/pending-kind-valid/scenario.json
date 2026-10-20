@@ -1,0 +1,23 @@
+{
+  "binary": "kdlith",
+  "description": "Linking validates each from-kind payload against the shape the kind of its resolved setting selects, and every payload here fits: a flag setting takes a Bool, a number setting a U64, a text setting a String, and a choice setting one scalar equal to one of the choices it declares; under complete scope the run exits 0 with no diagnostic",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "{fx-suite}/processing/linking/pending-kind-schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"raw\":{\"kind\":\"bool\",\"value\":true}",
+      "\"raw\":{\"kind\":\"number\",\"value\":\"3\"}",
+      "\"raw\":{\"kind\":\"string\",\"value\":\"main\"}",
+      "\"raw\":{\"kind\":\"string\",\"value\":\"slow\"}",
+      "\"item\":\"scope-complete\""
+    ]
+  }
+}

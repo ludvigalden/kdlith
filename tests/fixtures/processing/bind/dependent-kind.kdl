@@ -1,0 +1,27 @@
+// The schema the dependent-kind scenario reads: an option's kind member
+// is declared String, while its contribution binds the payload under
+// from-kind, so the shape the payload must fit is selected by the kind
+// value the referenced option holds, never by the member's own type.
+schema dependent-kind version="1" {
+    types {
+        object Option {
+            field name String
+            field kind String
+        }
+        codec OptionName output=String {
+            match #"(?<name>[a-z0-9-]+)"#
+            capture name String
+        }
+    }
+    node option role=declaration type=Option {
+        field name arg=0
+        field kind property=kind
+    }
+    node put-num role=contribution {
+        field target "ref<Option>" arg=0
+        value codec=from-kind {
+            against target=target member=kind
+        }
+    }
+    reference OptionRef target=Option codec=OptionName qualification=explicit
+}

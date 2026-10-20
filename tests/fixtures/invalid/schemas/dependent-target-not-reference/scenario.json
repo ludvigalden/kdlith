@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A dependent value binding whose against target is a field declared String rather than a reference type has no declaration to bind against, so the definition fails closed with KDLITH-DLC005 when it compiles, whatever the binding codec",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

@@ -1,0 +1,8 @@
+setting "verbose" kind=flag
+setting "depth" kind=number
+setting "label" kind=text
+setting "mode" kind=choice "fast" "slow"
+put "verbose" #true
+put "depth" 3
+put "label" "main"
+put "mode" "slow"

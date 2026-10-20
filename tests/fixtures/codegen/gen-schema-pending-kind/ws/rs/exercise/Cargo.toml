@@ -1,0 +1,9 @@
+[package]
+name = "pending-kind-exercise"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+
+[dependencies]
+kind-proc = { path = "../kind-proc" }
+serde_json = { workspace = true }

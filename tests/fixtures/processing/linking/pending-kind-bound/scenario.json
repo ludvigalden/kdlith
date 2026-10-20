@@ -1,0 +1,20 @@
+{
+  "binary": "kdlith",
+  "description": "The bound view admits every from-kind pending item with its raw payload unchanged: the four settings bind as declarations with their kind and choices, each contribution is followed by its pending typed-binding item carrying the reference and the raw value, and linking under complete scope validates each payload against the shape its setting's kind selects without rewriting it, so the run exits 0 and validation executes nothing",
+  "args": [
+    "inspect",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "{fx-suite}/processing/linking/pending-kind-schema.kdl",
+    "--view",
+    "bound",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

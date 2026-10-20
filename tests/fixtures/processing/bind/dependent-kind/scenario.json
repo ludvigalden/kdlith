@@ -1,0 +1,22 @@
+{
+  "binary": "kdlith",
+  "description": "A dependent value binding under from-kind selects the payload's shape from the value the referenced declaration holds in its member field, not from that member's declared type: the option's kind member is declared String but holds number, so the binder defers the numeric payload to a pending typed-binding item instead of checking it against String, and linking under complete scope validates it as U64 and passes; the same payload under argument-tail fails the String member inline",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "{fx-suite}/processing/bind/dependent-kind.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"item\":\"contribution\"",
+      "\"item\":\"pending-binding\"",
+      "\"raw\":{\"kind\":\"number\",\"value\":\"3\"}",
+      "\"item\":\"scope-complete\""
+    ]
+  }
+}
