@@ -87,9 +87,12 @@ pub const LAYERED: &str = "layered";
 
 /// The shipped resolver: declared layer precedence, `replace` or
 /// `union` selection, `reject` or `last-wins` duplicates, and `reject`
-/// or `allow` for referenced targets no record contributes. Targets are
-/// resolved in sorted order and ties keep reading order, so equal
-/// inputs always give the same output.
+/// or `allow` for referenced targets no record contributes. Records
+/// partition by target and application scope, and layer precedence
+/// applies within each partition, so a target contributed under two
+/// scopes resolves once per scope. Partitions are resolved in sorted
+/// order and ties keep reading order, so equal inputs always give the
+/// same output.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Layered;
 
@@ -230,11 +233,12 @@ impl ContributionResolver for Layered {
         policy: &ContributionPolicy,
         records: &[ContributionRecord],
     ) -> Result<Vec<ResolvedContribution>, String> {
-        let mut groups: BTreeMap<TargetKey, Vec<(usize, &ContributionRecord)>> = BTreeMap::new();
+        type Partition = (TargetKey, Option<String>);
+        let mut groups: BTreeMap<Partition, Vec<(usize, &ContributionRecord)>> = BTreeMap::new();
         for record in records {
             let rank = Self::rank(policy, record)?;
             groups
-                .entry(key_of(&record.target))
+                .entry((key_of(&record.target), record.scope.clone()))
                 .or_default()
                 .push((rank, record));
         }
@@ -245,8 +249,9 @@ impl ContributionResolver for Layered {
                 let mut held = Vec::new();
                 references(&record.value, &mut held);
                 for reference in held {
-                    let contributed = groups.keys().any(|key| key.0 == reference.domain);
-                    if contributed && !groups.contains_key(&key_of(reference)) {
+                    let target = key_of(reference);
+                    let contributed = groups.keys().any(|(key, _)| key.0 == reference.domain);
+                    if contributed && !groups.keys().any(|(key, _)| *key == target) {
                         return Err(format!(
                             "{} is referenced by a contribution to {} in {}, but no record contributes it",
                             shown(reference),
@@ -264,6 +269,7 @@ impl ContributionResolver for Layered {
                 group[0].1.target.clone(),
                 Self::select(policy, &settled),
                 Self::layers_of(policy, &settled),
+                group[0].1.scope.clone(),
             ));
         }
         Ok(resolved)

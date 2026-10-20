@@ -91,24 +91,32 @@ pub struct BoundContribution {
     pub members: Vec<Field>,
 }
 
-/// One contribution target as the registered resolver settled it: the
-/// target, its resolved value, and the layers whose records reached the
-/// value, highest precedence first. Derived from preserved records after
-/// a reading; never bound from a node of its own.
+/// One contribution target as the registered resolver settled it within
+/// one application scope: the target, its resolved value, the layers
+/// whose records reached the value, highest precedence first, and the
+/// scope the records shared (none for scope-less records). Derived from
+/// preserved records after a reading; never bound from a node of its own.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[non_exhaustive]
 pub struct ResolvedContribution {
     pub target: Reference,
     pub value: Value,
     pub layers: Vec<String>,
+    pub scope: Option<String>,
 }
 
 impl ResolvedContribution {
-    pub fn new(target: Reference, value: Value, layers: Vec<String>) -> Self {
+    pub fn new(
+        target: Reference,
+        value: Value,
+        layers: Vec<String>,
+        scope: Option<String>,
+    ) -> Self {
         Self {
             target,
             value,
             layers,
+            scope,
         }
     }
 }
