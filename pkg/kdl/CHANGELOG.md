@@ -76,9 +76,23 @@ published yet.
 - A dependent value binding whose target field is not a reference
   type, or whose member the referenced type does not declare, is
   rejected when the definition is compiled.
+- `inspect data --view plan` lists every field typed with a declared
+  reference type as a deferred reference-type entry, distinct from a
+  plain `ref<T>`.
+- `export` takes `--scope local|complete` (default `complete`): under
+  `complete` the export's link stage fails the run on an unresolved
+  reference before delivery — the stream is discarded atomically, or
+  kept with a provisional-emission warning; under `local` the link
+  report is printed and never decides the exit.
 
 ### Fixed
 
+- A fallback identity composed from a non-string field no longer
+  composes an empty identity silently: the compiler notes the field at
+  its declaration and the binder refuses the binding.
+- Under `missing=reject`, the contribution resolver's missing-target
+  check also refuses a reference held by a reference-typed map key,
+  matching the link stage.
 - Schema roots without a version are rejected on every reading path.
 - Overlapping argument bindings are reported on every definition
   path, with one diagnostic code per rejected construct.
