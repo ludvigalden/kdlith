@@ -26,7 +26,7 @@ use crate::typed::conform;
 use crate::typed::links::{ItemVariant, Ref};
 use crate::typed::origin::Origin;
 use crate::typed::shape::{Declarations, Handler};
-use crate::typed::value::Fields;
+use crate::typed::value::{Fields, FromValue, Mismatch};
 use crate::value_resolver::SharedResolver;
 
 const MISMATCH: &str = "KDLITH-GEN003";
@@ -102,6 +102,20 @@ pub enum TypedItem<T> {
     /// A contribution target the registered contribution resolver
     /// settled, after the reading's documents.
     Resolution(ResolvedContribution),
+}
+
+impl<T> TypedItem<T> {
+    /// A contribution's value, or a resolution's settled value, read as
+    /// `C`: the processor's contribution type, or one type its
+    /// contribution nodes declare. `None` for every other item.
+    pub fn contribution<C: FromValue>(&self) -> Option<Result<C, Mismatch>> {
+        let value = match self {
+            TypedItem::Contribution(contribution) => &contribution.value,
+            TypedItem::Resolution(resolved) => &resolved.value,
+            _ => return None,
+        };
+        Some(C::from_value(value))
+    }
 }
 
 /// Why a reading stopped short: never a document error, which is an

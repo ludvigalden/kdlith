@@ -504,6 +504,82 @@ macro_rules! inline_union_type {
     };
 }
 
+/// A contribution's value, or a resolution's settled value, as the
+/// type a contribution node declares. Neither payload names the node
+/// that wrote it, so a value reads as the one variant it fits; fitting
+/// none or several is a mismatch.
+#[macro_export]
+macro_rules! contribution_type {
+    (
+        $(#[$meta:meta])* $vis:vis enum $name:ident {
+            $($(#[$vmeta:meta])* $variant:ident($ty:ty)),+ $(,)?
+        }
+    ) => {
+        $(#[$meta])*
+        #[derive(Clone, Debug, PartialEq, Eq)]
+        #[non_exhaustive]
+        $vis enum $name {
+            $($(#[$vmeta])* $variant($ty)),+
+        }
+
+        impl $crate::FromValue for $name {
+            fn from_value(
+                value: &$crate::__private::Value,
+            ) -> ::core::result::Result<Self, $crate::Mismatch> {
+                let mut fits: ::std::vec::Vec<(&'static str, Self)> = ::std::vec::Vec::new();
+                $(if let ::core::result::Result::Ok(read) =
+                    <$ty as $crate::FromValue>::from_value(value)
+                {
+                    fits.push((stringify!($variant), Self::$variant(read)));
+                })+
+                let mut fits = fits.into_iter();
+                match (fits.next(), fits.next()) {
+                    (::core::option::Option::Some((_, one)), ::core::option::Option::None) => {
+                        ::core::result::Result::Ok(one)
+                    }
+                    (::core::option::Option::None, _) => {
+                        ::core::result::Result::Err($crate::Mismatch::new(::std::format!(
+                            "the value fits no contribution type of {}",
+                            stringify!($name)
+                        )))
+                    }
+                    (
+                        ::core::option::Option::Some((one, _)),
+                        ::core::option::Option::Some((other, _)),
+                    ) => ::core::result::Result::Err($crate::Mismatch::new(::std::format!(
+                        "the value fits both {one} and {other}"
+                    ))),
+                }
+            }
+        }
+
+        $(impl $crate::ItemVariant<$ty> for $name {
+            // A one-variant contribution type leaves the fallback arm
+            // unreachable.
+            #[allow(unreachable_patterns)]
+            fn variant(&self) -> ::core::option::Option<&$ty> {
+                match self {
+                    Self::$variant(inner) => ::core::option::Option::Some(inner),
+                    _ => ::core::option::Option::None,
+                }
+            }
+        })+
+
+        impl $crate::__private::serde::Serialize for $name {
+            fn serialize<S: $crate::__private::serde::Serializer>(
+                &self,
+                serializer: S,
+            ) -> ::core::result::Result<S::Ok, S::Error> {
+                match self {
+                    $(Self::$variant(inner) => {
+                        $crate::__private::serde::Serialize::serialize(inner, serializer)
+                    })+
+                }
+            }
+        }
+    };
+}
+
 /// What a processor yields for its items: one variant per item type.
 /// The grouped form `Type => A | B` lets one type back several
 /// variants; only a one-variant type converts into the item.
