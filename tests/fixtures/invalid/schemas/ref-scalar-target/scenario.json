@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A ref<T> whose target is a type no declaration can register, such as String, cannot resolve and fails linking",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

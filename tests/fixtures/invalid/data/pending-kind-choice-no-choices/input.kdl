@@ -1,0 +1,2 @@
+setting "mode" kind=choice
+put "mode" "fast"

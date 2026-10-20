@@ -1,0 +1,10 @@
+schema s version="1" {
+    types {
+        object Entry {
+            field label "ref<String>"
+        }
+    }
+    node entry role=record type=Entry {
+        field label arg=0
+    }
+}

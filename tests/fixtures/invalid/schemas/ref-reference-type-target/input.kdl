@@ -1,0 +1,21 @@
+schema s version="1" {
+    types {
+        object Group {
+            field name String
+        }
+        codec GroupName output=String {
+            match #"(?<name>[a-z0-9-]+)"#
+            capture name String
+        }
+        object Entry {
+            field group "ref<GroupRef>"
+        }
+    }
+    node group role=declaration type=Group {
+        field name arg=0
+    }
+    node entry role=record type=Entry {
+        field group arg=0
+    }
+    reference GroupRef target=Group codec=GroupName qualification=explicit
+}

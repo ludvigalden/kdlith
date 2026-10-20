@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A from-kind payload whose resolved setting binds #null for a nullable kind member has no shape to fit, the same as a kind never written, so linking under complete scope fails it closed with KDLITH-REF005",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

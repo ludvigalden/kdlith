@@ -1,0 +1,25 @@
+// The shared from-kind schema with a nullable kind member, so a written
+// #null binds as the setting's kind instead of failing at the setting.
+schema pending-kind version="1" {
+    types {
+        object Setting {
+            field name String
+            field kind "nullable<String>"
+        }
+        codec SettingName output=String {
+            match #"(?<name>[a-z0-9-]+)"#
+            capture name String
+        }
+    }
+    node setting role=declaration type=Setting {
+        field name arg=0
+        field kind property=kind
+    }
+    node put role=contribution {
+        field target "ref<Setting>" arg=0
+        value codec=from-kind {
+            against target=target member=kind
+        }
+    }
+    reference SettingRef target=Setting codec=SettingName qualification=explicit
+}

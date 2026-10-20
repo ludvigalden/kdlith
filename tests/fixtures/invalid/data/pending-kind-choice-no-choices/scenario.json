@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A from-kind payload whose resolved setting is a choice that binds no choices list admits no value, so linking under complete scope fails it closed with KDLITH-REF005 rather than accepting any string",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "{fx-suite}/processing/linking/pending-kind-schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}
