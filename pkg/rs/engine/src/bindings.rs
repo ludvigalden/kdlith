@@ -182,6 +182,9 @@ pub enum BindingCodec {
     ArgumentTail,
     /// The type-directed recursive form.
     FixtureValue,
+    /// The payload shape selected by the value the resolved declaration
+    /// holds in its member field.
+    FromKind,
 }
 
 impl BindingCodec {
@@ -189,6 +192,7 @@ impl BindingCodec {
         Some(match name {
             "argument-tail" => BindingCodec::ArgumentTail,
             "fixture-value" => BindingCodec::FixtureValue,
+            "from-kind" => BindingCodec::FromKind,
             _ => return None,
         })
     }
@@ -197,6 +201,7 @@ impl BindingCodec {
         match self {
             BindingCodec::ArgumentTail => "argument-tail",
             BindingCodec::FixtureValue => "fixture-value",
+            BindingCodec::FromKind => "from-kind",
         }
     }
 }

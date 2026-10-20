@@ -66,6 +66,7 @@ enum_type! {
     pub enum BindingCodec {
         "argument-tail" => ArgumentTail,
         "fixture-value" => FixtureValue,
+        "from-kind" => FromKind,
     }
 }
 

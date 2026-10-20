@@ -77,6 +77,7 @@ dialect kdlith version="0" {
         enum BindingCodec {
             member argument-tail description="The remaining arguments, typed per expected type, no scalar-to-list promotion"
             member fixture-value description="The type-directed recursive form"
+            member from-kind description="The payload shape is selected by the value the resolved declaration holds in its member field: flag binds Bool, number U64, choice the declaration's choices, text String"
         }
 
         // A case dispatch: the logical type a node binds as, selected by
