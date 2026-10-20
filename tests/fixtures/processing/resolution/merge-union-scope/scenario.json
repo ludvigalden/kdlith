@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "Per-field merge applies inside each scope partition: paths, refined under the declared scope dev in both layers, merges its match lists within that partition (suffix src once, the user layer's prefix tmp appended after the base items) while the staging contribution resolves alone with its own list; the effective view prints the declarations and one resolution per (target, scope) partition in sorted order",
+  "args": [
+    "inspect",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/resolution/merge-union-scope.kdl",
+    "--view",
+    "effective",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

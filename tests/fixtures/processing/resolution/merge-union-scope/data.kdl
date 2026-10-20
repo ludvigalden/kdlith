@@ -1,0 +1,14 @@
+scope dev
+scope staging
+option paths
+matcher paths scope=dev layer=base {
+    suffix src
+    suffix gen
+}
+matcher paths scope=staging layer=base {
+    suffix dist
+}
+matcher paths scope=dev layer=user {
+    suffix src
+    prefix tmp
+}

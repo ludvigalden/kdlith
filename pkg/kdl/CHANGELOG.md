@@ -57,6 +57,15 @@ published yet.
 - The shipped `layered` resolver partitions resolution by scope: layer
   precedence applies within each target-and-scope partition, and each
   `resolution` item carries its scope.
+- Per-field merge for contributions: a contribution type's list field
+  may declare `merge=union` with the `MergePolicy` vocabulary type,
+  which changes the canonical dialect digest. Under a union-selecting
+  policy the shipped `layered` resolver appends a higher layer's list
+  items after the lower layers' items instead of overwriting the list,
+  within each target-and-scope partition, skipping items whose
+  declared shape is already held. A merge field under
+  `selection=replace` or on a field that is not list-typed is rejected
+  when the schema is compiled.
 
 ### Fixed
 

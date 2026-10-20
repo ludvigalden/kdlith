@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "Per-field merge: the refiner's match list declares merge=union, so the user layer's refinement appends to the base layer's list instead of overwriting it; suffix src, held by both layers, appears once (declared-shape dedup), prefix core survives beside suffix core because the union variant is part of the shape, and the held base items precede the appended user items; the scalar layer field still overwrites and the resolution lists both layers, highest first",
+  "args": [
+    "read",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/resolution/merge-union.kdl",
+    "data.kdl",
+    "paths"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

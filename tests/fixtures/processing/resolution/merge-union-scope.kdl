@@ -1,0 +1,61 @@
+// The merge-union refiner under declared scopes: the shipped `layered`
+// resolver partitions resolution by (target, scope) and applies each
+// field's merge policy inside a partition, so refinements only append
+// to the lists contributed under the same scope.
+schema settings version="1" {
+    types {
+        object ScopeDef {
+            field name String
+        }
+        object Option {
+            field name String
+        }
+        union Matcher {
+            variant suffix Suffix
+            variant prefix Prefix
+        }
+        object Suffix {
+            field text String
+        }
+        object Prefix {
+            field text String
+        }
+        object Refiner {
+            field target "ref<Option>"
+            field match "optional<list<Matcher>>" merge=union
+            field scope "optional<ScopeTerm>"
+            field layer "optional<String>"
+        }
+        codec ScopeSpelling output=String {
+            match #"(?<name>[a-z][a-z0-9-]*)"#
+            capture name String
+        }
+    }
+    node scope role=declaration type=ScopeDef {
+        field name arg=0
+    }
+    node option role=declaration type=Option {
+        field name arg=0
+    }
+    reference ScopeTerm target=ScopeDef codec=ScopeSpelling qualification=explicit
+    node matcher role=contribution type=Refiner {
+        field target arg=0
+        field scope property=scope
+        field layer property=layer
+        field match {
+            from {
+                children suffix
+                children prefix
+            }
+        }
+    }
+    node suffix type=Suffix parent=matcher {
+        field text arg=0
+    }
+    node prefix type=Prefix parent=matcher {
+        field text arg=0
+    }
+    resolution resolver=layered selection=union {
+        layers user base
+    }
+}

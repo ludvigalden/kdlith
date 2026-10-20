@@ -1,0 +1,11 @@
+option paths
+matcher paths layer=base {
+    suffix src
+    suffix gen
+    suffix core
+}
+matcher paths layer=user {
+    suffix src
+    prefix core
+    prefix new
+}

@@ -1,0 +1,44 @@
+// A refiner contribution whose `match` list declares merge=union: a
+// higher layer's refinement appends matchers to the lower layer's list
+// instead of overwriting it, skipping items whose declared shape (the
+// union variant plus its fields) is already held. Matcher is a union,
+// so a suffix and a prefix with the same text stay distinct.
+schema settings version="1" {
+    import "settings.kdl"
+    types {
+        union Matcher {
+            variant suffix Suffix
+            variant prefix Prefix
+        }
+        object Suffix {
+            field text String
+        }
+        object Prefix {
+            field text String
+        }
+        object Refiner {
+            field target "ref<Option>"
+            field match "optional<list<Matcher>>" merge=union
+            field layer "optional<String>"
+        }
+    }
+    node matcher role=contribution type=Refiner {
+        field target arg=0
+        field layer property=layer
+        field match {
+            from {
+                children suffix
+                children prefix
+            }
+        }
+    }
+    node suffix type=Suffix parent=matcher {
+        field text arg=0
+    }
+    node prefix type=Prefix parent=matcher {
+        field text arg=0
+    }
+    resolution resolver=layered selection=union {
+        layers user base
+    }
+}

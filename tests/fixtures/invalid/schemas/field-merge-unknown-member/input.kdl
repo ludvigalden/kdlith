@@ -1,0 +1,35 @@
+schema s version="1" {
+    types {
+        object Option {
+            field name String
+        }
+        object Pattern {
+            field text String
+        }
+        object Refiner {
+            field target "ref<Option>"
+            field match "optional<list<Pattern>>" merge=overseas
+            field note "optional<String>"
+            field layer "optional<String>"
+        }
+    }
+    node option role=declaration type=Option {
+        field name arg=0
+    }
+    node refiner role=contribution type=Refiner {
+        field target arg=0
+        field note property=note
+        field layer property=layer
+        field match {
+            from {
+                children pattern
+            }
+        }
+    }
+    node pattern type=Pattern parent=refiner {
+        field text arg=0
+    }
+    resolution resolver=layered selection=union {
+        layers user base
+    }
+}
