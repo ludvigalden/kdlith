@@ -12,7 +12,7 @@ use kdlith_engine::Extensions;
 
 use crate::GenCommand;
 use crate::handlers::registry;
-use crate::report::report_all;
+use crate::report::{print_notes, report_all};
 use crate::vet::definition_extensions;
 
 /// Run a parsed `gen` subcommand.
@@ -126,6 +126,7 @@ pub fn generate(
         Err(codegen::Error::DefinitionRejected { records }) => return report_all(&records),
         Err(error) => return failed(form, &error),
     };
+    print_notes(tree.notes());
     match mode {
         GenMode::DryRun => {
             println!(

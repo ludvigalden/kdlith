@@ -215,7 +215,9 @@ pub fn generate(
     crate_name: &str,
     packaging: Packaging,
 ) -> Result<GeneratedTree, Error> {
-    model::Emission::new(definition, crate_name, packaging)?.emit()
+    let mut tree = model::Emission::new(definition, crate_name, packaging)?.emit()?;
+    tree.notes.clone_from(&definition.notes);
+    Ok(tree)
 }
 
 /// Compile the dialect named by `entries` and generate its processor

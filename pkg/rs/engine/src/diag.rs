@@ -29,6 +29,7 @@ pub(crate) const INSTANTIATION_CYCLE: &str = "KDLITH-SCH009";
 pub(crate) const DISPATCH_PREFIX: &str = "KDLITH-SCH010";
 pub(crate) const INHERITANCE_CYCLE: &str = "KDLITH-SCH012";
 pub(crate) const SECOND_DEFAULT: &str = "KDLITH-SCH013";
+pub(crate) const FALLBACK_IDENTITY: &str = "KDLITH-SCH014";
 pub(crate) const IMPORT_UNRESOLVED: &str = "KDLITH-IMP001";
 pub(crate) const IMPORT_CYCLE: &str = "KDLITH-IMP002";
 pub(crate) const IMPORT_REPEATED: &str = "KDLITH-IMP003";
@@ -68,6 +69,7 @@ pub(crate) struct Diagnostics<'d> {
     documents: &'d [ParsedDocument],
     origin: &'static str,
     records: Vec<DiagnosticRecord>,
+    notes: Vec<DiagnosticRecord>,
 }
 
 impl<'d> Diagnostics<'d> {
@@ -76,6 +78,7 @@ impl<'d> Diagnostics<'d> {
             documents,
             origin,
             records: Vec::new(),
+            notes: Vec::new(),
         }
     }
 
@@ -130,6 +133,17 @@ impl<'d> Diagnostics<'d> {
 
     pub(crate) fn has_errors(&self) -> bool {
         !self.records.is_empty()
+    }
+
+    /// An advisory condition: kept apart from the records, so it never
+    /// fails the compilation.
+    pub(crate) fn note(&mut self, code: &'static str, site: Site, values: &[&str]) {
+        let record = self.located(self.record(code, values), site);
+        self.notes.push(record);
+    }
+
+    pub(crate) fn take_notes(&mut self) -> Vec<DiagnosticRecord> {
+        std::mem::take(&mut self.notes)
     }
 
     /// The number of diagnostics so far, to tell whether a step added one.

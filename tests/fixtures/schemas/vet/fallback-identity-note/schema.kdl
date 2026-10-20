@@ -1,0 +1,21 @@
+// Declarations without an identity block name themselves by argument
+// 0's field. A ticket's is an integer, so the schema compiles with a
+// note; a label's is a string and draws none.
+schema desk version="1" {
+    types {
+        object Ticket {
+            field number Integer
+            field title String
+        }
+        object Label {
+            field name String
+        }
+    }
+    node ticket role=declaration type=Ticket {
+        field number arg=0
+        field title property=title
+    }
+    node label role=declaration type=Label {
+        field name arg=0
+    }
+}

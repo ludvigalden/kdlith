@@ -16,7 +16,7 @@ use kdlith_model::{Item, SourceId};
 use kdlith_superproc::{load_dialect, load_schema_anchored, seed};
 
 use crate::handlers;
-use crate::report::report_all;
+use crate::report::{print_notes, report_all};
 use crate::{ScopeArg, VetCommand};
 
 /// Run a parsed `vet` subcommand.
@@ -112,6 +112,7 @@ pub fn vet(
     };
     match loaded {
         Ok(definition) => {
+            print_notes(&definition.notes);
             println!("{}", summary_line(&definition));
             ExitStatus::Success
         }

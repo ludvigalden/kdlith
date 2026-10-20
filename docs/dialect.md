@@ -369,9 +369,16 @@ dialect for every processor, hand-written or generated:
    (`KDLITH-REF002`), and a reference its qualification and lookup
    policy resolves to no candidate is unresolved (`KDLITH-REF001`), to
    several is ambiguous (`KDLITH-REF003`), and to one that fails a
-   required qualifier is `KDLITH-REF004`. Data linking runs these
-   checks over a reading's declarations and references (see
-   [Linking data](#linking-data)).
+   required qualifier is `KDLITH-REF004`. A declaration without an
+   `identity` block takes its type as its domain and the value of its
+   argument-0 field as its name, or is one of a kind in its scope when
+   no field binds argument 0. That name must be a string: a field type
+   admitting any other value draws a note at the declaration
+   (`KDLITH-SCH014`), which never fails the compile, and binding
+   rejects a value that is not a string (`KDLITH-BND003`) instead of
+   registering an empty identity no reference could reach. Data
+   linking runs these checks over a reading's declarations and
+   references (see [Linking data](#linking-data)).
 5. **Enforce bindings.** Reject colliding sources, duplicate keys,
    overlapping bindings, unconsumed arguments, contradictory child
    ownership, and unpermitted children; check cardinality, exactly-one

@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A declaration without an identity block whose argument-0 field is typed Integer compiles with a KDLITH-SCH014 note at the declaration and exits 0, since binding rejects any identity value that is not a string; a string-typed argument-0 field draws no note",
+  "args": [
+    "vet",
+    "schema",
+    "schema.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "ok: schema desk version 1 scope=complete documents=1 types=2 nodes=2 "
+    ],
+    "stderr-golden": "stderr.golden"
+  }
+}

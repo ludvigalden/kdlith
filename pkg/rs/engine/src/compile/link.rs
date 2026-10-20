@@ -2,16 +2,19 @@
 //! definition references must be declared, prefixes must be
 //! unambiguous, and dependent targets must resolve.
 
-use crate::bindings::{BindingCatalog, Effect, EffectTarget, NodeDecl, Placement, SetFrom, Source};
+use crate::bindings::{
+    BindingCatalog, Effect, EffectTarget, NodeDecl, NodeDeclId, Placement, SetFrom, Source,
+};
 use crate::compile::Cx;
 use crate::definition::{DefinitionKind, SlotDuplicates};
 use crate::diag::{
-    DISPATCH_PREFIX, INHERITANCE_CYCLE, NOT_STREAMABLE, Site, TYPE_EXPRESSION, UNKNOWN_TYPE,
-    UNRESOLVED_DIALECT, UNRESOLVED_SCHEMA,
+    DISPATCH_PREFIX, FALLBACK_IDENTITY, INHERITANCE_CYCLE, NOT_STREAMABLE, Site, TYPE_EXPRESSION,
+    UNKNOWN_TYPE, UNRESOLVED_DIALECT, UNRESOLVED_SCHEMA,
 };
 use crate::names::Sym;
+use crate::summary::expr as expr_name;
 use crate::symbols::SymbolCatalog;
-use crate::types::{TypeExpr, TypeKind};
+use crate::types::{Builtin, TypeExpr, TypeKind};
 
 pub(crate) fn run(cx: &mut Cx<'_>, bindings: &BindingCatalog, symbols: &SymbolCatalog) {
     types(cx, symbols);
@@ -21,8 +24,9 @@ pub(crate) fn run(cx: &mut Cx<'_>, bindings: &BindingCatalog, symbols: &SymbolCa
     for slot in cx.slots.clone() {
         expr(cx, symbols, slot.site, &slot.ty, &[]);
     }
-    for (_, node) in bindings.iter() {
+    for (id, node) in bindings.iter() {
         node_refs(cx, bindings, symbols, node);
+        fallback_identity(cx, symbols, id, node);
     }
     profiles(cx);
     document_rule(cx, bindings);
@@ -379,6 +383,89 @@ fn node_refs(cx: &mut Cx<'_>, bindings: &BindingCatalog, symbols: &SymbolCatalog
                 Effect::Handler { .. } => {}
             }
         }
+    }
+}
+
+/// A declaration without an identity block names itself by argument 0's
+/// field; binding rejects any value of it that is not a string, so a
+/// field type admitting one is noted where the declaration is written.
+fn fallback_identity(cx: &mut Cx<'_>, symbols: &SymbolCatalog, id: NodeDeclId, node: &NodeDecl) {
+    let Some(declaration) = symbols.declaration(id) else {
+        return;
+    };
+    if declaration.identity.is_some() {
+        return;
+    }
+    let Some(field) = declaration.identity_fields.first().copied() else {
+        return;
+    };
+    let declared = node
+        .ty
+        .and_then(|ty| match &cx.types.get(cx.types.lookup(ty)?)?.kind {
+            TypeKind::Object(object) => object.fields.iter().find(|f| f.name == field),
+            _ => None,
+        });
+    let ty = match declared {
+        Some(declared) => Some(declared.ty.clone()),
+        None => node
+            .fields
+            .iter()
+            .find(|f| f.name == field)
+            .and_then(|f| f.ty.clone()),
+    };
+    if ty
+        .as_ref()
+        .is_some_and(|ty| admits_only_strings(cx, symbols, ty, 0))
+    {
+        return;
+    }
+    let spelled = ty.map_or_else(|| "untyped".to_owned(), |ty| expr_name(&cx.names, &ty));
+    let node_name = cx.names.resolve(node.name).to_owned();
+    let field_name = cx.names.resolve(field).to_owned();
+    cx.diags.note(
+        FALLBACK_IDENTITY,
+        node.site,
+        &[&node_name, &field_name, &spelled],
+    );
+}
+
+/// Whether every value `ty` decodes to is a string.
+fn admits_only_strings(cx: &Cx<'_>, symbols: &SymbolCatalog, ty: &TypeExpr, depth: u8) -> bool {
+    // A union or codec chain this deep is cyclic; leave it unnoted.
+    if depth > 32 {
+        return true;
+    }
+    let next = depth + 1;
+    match ty {
+        TypeExpr::Named(name) => {
+            if symbols.reference(*name).is_some() {
+                return false;
+            }
+            let Some(decl) = cx.types.lookup(*name).and_then(|id| cx.types.get(id)) else {
+                return true;
+            };
+            match &decl.kind {
+                TypeKind::Builtin(builtin) => *builtin == Builtin::String,
+                TypeKind::String(_) | TypeKind::Enum(_) => true,
+                TypeKind::Codec(codec) => admits_only_strings(cx, symbols, &codec.output, next),
+                TypeKind::Union(union) => union
+                    .variants
+                    .iter()
+                    .all(|variant| admits_only_strings(cx, symbols, &variant.ty, next)),
+                TypeKind::Object(_) | TypeKind::Map(_) => false,
+            }
+        }
+        TypeExpr::Optional(inner) => admits_only_strings(cx, symbols, inner, next),
+        TypeExpr::Union(members) => members
+            .iter()
+            .all(|member| admits_only_strings(cx, symbols, member, next)),
+        // Complete checking monomorphizes every instantiation first.
+        TypeExpr::Instantiation(..) => true,
+        TypeExpr::Nullable(_)
+        | TypeExpr::List(_)
+        | TypeExpr::Map(..)
+        | TypeExpr::OrderedMap(..)
+        | TypeExpr::Ref(_) => false,
     }
 }
 

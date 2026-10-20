@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A declaration without an identity block names itself by its argument-0 field; an integer there is no name, so binding rejects it as KDLITH-BND003 rather than registering an empty identity no reference could reach",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/schemas/vet/fallback-identity-note/schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

@@ -1,6 +1,7 @@
 //! A compiled dialect or schema definition: the catalogs plus the
 //! declarations later compile stages consume.
 
+use kdlith_diagnostic::DiagnosticRecord;
 pub use kdlith_model::{DuplicateTreatment, MissingRequirement, ResolutionSelection};
 use kdlith_runtime::Repeated;
 
@@ -96,6 +97,9 @@ pub struct Definition {
     pub document_rule: Option<DocumentRule>,
     /// The checks this definition passed.
     pub scope: CheckScope,
+    /// The advisory diagnostics its compilation raised, in detection
+    /// order. They never fail a compilation and stay out of the digest.
+    pub notes: Vec<DiagnosticRecord>,
 }
 
 impl Definition {

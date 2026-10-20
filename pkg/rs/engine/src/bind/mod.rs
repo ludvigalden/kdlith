@@ -1976,9 +1976,10 @@ impl<'d, 's> Binder<'d, 's> {
         cx.emit(item);
     }
 
-    /// A declaration's identity. An identity field left unbound or not
-    /// a string is reported and yields no identity, since a shortened
-    /// name could collide with another declaration's.
+    /// A declaration's identity. An identity field holding a value that
+    /// is not a string, or a composed field left unbound, is reported
+    /// and yields no identity, since a shortened name could collide
+    /// with another declaration's.
     fn compose_identity(
         &mut self,
         cx: &mut Cx<'_>,
@@ -1990,9 +1991,22 @@ impl<'d, 's> Binder<'d, 's> {
         let text = |at: Option<usize>| at.and_then(|at| values.get(at)?.as_ref());
         match &self.tables.decls[owner.index()].identity {
             IdentityBind::Fallback(at) => {
-                let name = match text(*at) {
-                    Some(Value::String(segment)) => vec![segment.clone()],
-                    _ => Vec::new(),
+                let written = at.and_then(|at| Some((at, values.get(at)?.as_ref()?)));
+                let name = match written {
+                    Some((_, Value::String(segment))) => vec![segment.clone()],
+                    Some((at, other)) => {
+                        let field = self.tables.decls[owner.index()]
+                            .fields
+                            .get(at)
+                            .map_or("", |field| self.name(field.name));
+                        let what = format!("{}.{field}", self.name(frame.name));
+                        let found = decode::found(other);
+                        self.diagnose(cx, VALUE_TYPE, frame.span, &[&what, "String", &found]);
+                        return None;
+                    }
+                    // No argument-0 field, or none written: one of a kind
+                    // in its scope.
+                    None => Vec::new(),
                 };
                 Some(Identity::new(type_name.to_owned(), QualifiedName(name)))
             }

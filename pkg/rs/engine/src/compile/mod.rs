@@ -255,6 +255,7 @@ fn finish<'d>(
         source_context: cx.source_context,
         document_rule: cx.document_rule,
         scope: cx.scope,
+        notes: cx.diags.take_notes(),
     };
     if cx.scope == CheckScope::Complete {
         let describing = governing.unwrap_or(&definition);

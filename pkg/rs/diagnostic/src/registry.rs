@@ -516,6 +516,16 @@ pub const CODES: &[CodeDefinition] = &[
         correction: "Mark at most one profile of the schema default=#true",
         retired: false,
     },
+    CodeDefinition {
+        code: "KDLITH-SCH014",
+        label: "fallback-identity-not-string",
+        severity: Severity::Note,
+        exit_class: 0,
+        trigger: "a declaration without an identity block takes its identity from argument 0's field, and the field's type admits values that are not strings, which binding rejects as KDLITH-BND003",
+        message_template: "declaration <node> takes its identity from argument 0's field <field>, whose type <type> admits values that are not strings",
+        correction: "Type the field as a string, or give the declaration an identity block",
+        retired: false,
+    },
     // BND
     CodeDefinition {
         code: "KDLITH-BND001",

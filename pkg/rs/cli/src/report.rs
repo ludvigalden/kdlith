@@ -12,10 +12,15 @@ pub(crate) fn report(record: &DiagnosticRecord) -> ExitStatus {
 
 /// Print every record in order and map them to one exit stratum.
 pub(crate) fn report_all(records: &[DiagnosticRecord]) -> ExitStatus {
+    print_notes(records);
+    ExitStatus::from_diagnostics(records.iter().map(|r| (r.code.as_str(), r.severity)), false)
+}
+
+/// Print records without deciding an exit, as advisory records are.
+pub(crate) fn print_notes(records: &[DiagnosticRecord]) {
     for record in records {
         eprintln!("{}", render(record));
     }
-    ExitStatus::from_diagnostics(records.iter().map(|r| (r.code.as_str(), r.severity)), false)
 }
 
 fn render(record: &DiagnosticRecord) -> String {

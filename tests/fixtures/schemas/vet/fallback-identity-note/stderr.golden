@@ -1,0 +1,2 @@
+note[KDLITH-SCH014]: declaration ticket takes its identity from argument 0's field number, whose type Integer admits values that are not strings
+  --> schema.kdl:14:5

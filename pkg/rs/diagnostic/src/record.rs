@@ -77,7 +77,7 @@ impl Label {
 /// `message`, minted once by the detecting layer; the rest render at
 /// presentation time from the registered template and the structured
 /// fields.
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[non_exhaustive]
 pub struct DiagnosticRecord {
     pub code: String,

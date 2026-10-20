@@ -4,6 +4,7 @@
 
 use std::fmt::Write as _;
 
+use kdlith_diagnostic::DiagnosticRecord;
 use kdlith_engine::{DefinitionKind, Names, ReferenceDecl, Role, TypeDecl, TypeExpr, TypeKind};
 
 use crate::catalog;
@@ -28,9 +29,17 @@ const BUILTINS: [&str; 6] = ["String", "Bool", "Integer", "Decimal", "U64", "Val
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GeneratedTree {
     pub(crate) files: Vec<(String, String)>,
+    /// The advisory diagnostics the definition's compilation raised;
+    /// they shape no file.
+    pub(crate) notes: Vec<DiagnosticRecord>,
 }
 
 impl GeneratedTree {
+    /// The definition's advisory diagnostics, in detection order.
+    pub fn notes(&self) -> &[DiagnosticRecord] {
+        &self.notes
+    }
+
     /// Every generator-owned path, sorted.
     pub fn paths(&self) -> impl Iterator<Item = &str> + '_ {
         self.files.iter().map(|(path, _)| path.as_str())
@@ -170,7 +179,10 @@ impl Emission<'_> {
             manifest_text(files.iter().map(|(path, _)| path.as_str())),
         ));
         files.sort_by(|(one, _), (other, _)| one.cmp(other));
-        Ok(GeneratedTree { files })
+        Ok(GeneratedTree {
+            files,
+            notes: Vec::new(),
+        })
     }
 
     /// The crate manifest: standalone, no workspace inheritance, its
