@@ -1,10 +1,15 @@
+scope dev
 option mode
 option size
-setting mode light layer=base
+setting mode light layer=base {
+    note "fallback"
+}
 setting mode dark layer=user {
     tag contrast "high"
+    note "fallback"
+    note "contrast"
 }
-setting size large layer=base
+setting size large scope=dev layer=base
 metadata {
     pair origin "fixture"
 }
