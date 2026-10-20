@@ -124,6 +124,11 @@ object_type! {
     }
 }
 
+impl ProfileDef {
+    /// The identity domain its declarations register in.
+    pub const DOMAIN: &str = "ProfileDef";
+}
+
 object_type! {
     pub struct RootsRule {
         "allow" => allow: Vec<TypeName>,
@@ -219,6 +224,11 @@ object_type! {
     }
 }
 
+impl DiscoveryDef {
+    /// The identity domain its declarations register in.
+    pub const DOMAIN: &str = "DiscoveryDef";
+}
+
 object_type! {
     /// The anchor's name is the key of the enclosing ordered map.
     pub struct AnchorDef {
@@ -285,6 +295,11 @@ object_type! {
     }
 }
 
+impl ReferenceDef {
+    /// The identity domain its declarations register in.
+    pub const DOMAIN: &str = "ReferenceDef";
+}
+
 enum_type! {
     pub enum Qualification {
         "explicit" => Explicit,
@@ -312,6 +327,11 @@ object_type! {
         "duplicates" => duplicates: DuplicateTreatment,
         "missing" => missing: MissingRequirement,
     }
+}
+
+impl ResolutionPolicyDef {
+    /// The identity domain its declarations register in.
+    pub const DOMAIN: &str = "ResolutionPolicyDef";
 }
 
 enum_type! {
@@ -366,6 +386,11 @@ object_type! {
         "ttl" => ttl: Option<u64>,
         "command" => command: Vec<String>,
     }
+}
+
+impl SecretProvider {
+    /// The identity domain its declarations register in.
+    pub const DOMAIN: &str = "SecretProvider";
 }
 
 /// The shapes of this document's types, in declaration order.

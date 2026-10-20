@@ -82,6 +82,9 @@ pub(crate) struct ItemNode<'d> {
     /// Whether this node is the first to need its handler: same-named
     /// nodes under different parents share one.
     pub declares_handler: bool,
+    /// The identity domain this declaration registers in, mirroring the
+    /// symbol catalog's descriptor; records register none.
+    pub domain: Option<&'d str>,
 }
 
 /// The model every emitted file is rendered from.
@@ -100,6 +103,12 @@ pub(crate) struct Emission<'d> {
     pub documents: Vec<Document<'d>>,
     /// Every item node, in contribution order across documents.
     pub items: Vec<ItemNode<'d>>,
+    /// Every type a typed contribution node contributes as, in
+    /// contribution order: the variants of the contribution enum.
+    pub contributions: Vec<String>,
+    /// The processor's contribution enum, when the definition declares
+    /// typed contribution nodes.
+    pub contribution_enum: Option<&'static str>,
     /// Each monomorphized generic instance's rendered name, with the
     /// Rust name it reads under.
     pub instances: BTreeMap<String, String>,
@@ -277,10 +286,36 @@ impl<'d> Emission<'d> {
             .map(|name| ((*name).to_owned(), mangle(name)))
             .collect();
         let mut items = Vec::new();
+        let mut contributions: Vec<String> = Vec::new();
+        // The identity domain a declaring node registers in, as the
+        // symbol catalog's descriptor spells it.
+        let declaration_domain = |node: &NodeDecl| -> Option<&str> {
+            definition
+                .bindings
+                .iter()
+                .find(|(_, bound)| std::ptr::eq(*bound, node))
+                .and_then(|(id, _)| definition.symbols.declaration(id))
+                .map(|descriptor| names.resolve(descriptor.domain))
+        };
         for document in &mut documents {
             for node in &document.nodes {
                 let role = match node.role {
                     Some(role @ (Role::Declaration | Role::Record)) => role,
+                    Some(Role::Contribution) => {
+                        // A typed contribution names the type its value
+                        // reads as; an untyped one keeps its raw record.
+                        if let Some(ty) = node.ty {
+                            let rendered = names.resolve(ty).to_owned();
+                            let ty = instances
+                                .get(&rendered)
+                                .cloned()
+                                .unwrap_or_else(|| rendered.clone());
+                            if !contributions.contains(&ty) {
+                                contributions.push(ty);
+                            }
+                        }
+                        continue;
+                    }
                     _ => continue,
                 };
                 let node_name = names.resolve(node.name).to_owned();
@@ -329,6 +364,11 @@ impl<'d> Emission<'d> {
                     keyed: false,
                     declares_variant: true,
                     declares_handler: true,
+                    domain: if role == Role::Declaration {
+                        declaration_domain(node)
+                    } else {
+                        None
+                    },
                 });
             }
         }
@@ -346,6 +386,8 @@ impl<'d> Emission<'d> {
             version,
             documents,
             items,
+            contributions,
+            contribution_enum: None,
             instances,
             spelling: Spelling::of(definition.kind),
             item_enum: "Item",
@@ -376,6 +418,9 @@ impl<'d> Emission<'d> {
             emission.documents[at].unions = unions;
         }
         emission.item_enum = item_enum(&definition.name, &taken)?;
+        if !emission.contributions.is_empty() {
+            emission.contribution_enum = Some(contribution_enum(&definition.name, &taken)?);
+        }
         Ok(emission)
     }
 
@@ -866,26 +911,41 @@ fn unspellable_name(kind: DefinitionKind, name: &str) -> Option<&'static str> {
 /// type takes `Item`; both taken fails closed rather than inventing a
 /// third spelling.
 fn item_enum(owner: &str, taken: &[String]) -> Result<&'static str, Error> {
+    processor_enum(owner, taken, "Item", "ItemKind")
+}
+
+/// The processor's contribution enum, when the definition declares typed
+/// contribution nodes: `Contribution`, else `ContributionKind` when a
+/// declared type takes it; both taken fails closed rather than inventing
+/// a third spelling.
+fn contribution_enum(owner: &str, taken: &[String]) -> Result<&'static str, Error> {
+    processor_enum(owner, taken, "Contribution", "ContributionKind")
+}
+
+fn processor_enum(
+    owner: &str,
+    taken: &[String],
+    primary: &'static str,
+    fallback: &'static str,
+) -> Result<&'static str, Error> {
     let free = |name: &str| !taken.iter().any(|other| other == name);
-    if free("Item") {
-        return Ok("Item");
+    if free(primary) {
+        return Ok(primary);
     }
-    if free("ItemKind") {
-        return Ok("ItemKind");
+    if free(fallback) {
+        return Ok(fallback);
     }
     Err(Error::UnspellableName {
         what: "processor enum",
         owner: owner.to_owned(),
-        name: "ItemKind".to_owned(),
+        name: fallback.to_owned(),
         reason: TAKEN,
     })
 }
 
-/// The names a dialect crate spells bare beside its declared types: the
-/// Rust prelude items its renderings use, `Self`, the engine items its
-/// modules import, and the standard library's `BTreeMap`. A declared or
-/// node-local type taking one would shadow it, so the crate would not
-/// compile.
+/// The names a dialect crate spells bare beside its declared types —
+/// prelude items, `Self`, its imported engine items, `BTreeMap` — which
+/// a declared or node-local type taking one would shadow.
 const SHADOWED_IN_DIALECT: [&str; 27] = [
     "BTreeMap",
     "Decimal",

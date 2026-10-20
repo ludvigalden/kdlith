@@ -106,12 +106,22 @@ object_type! {
     }
 }
 
+impl StringType {
+    /// The identity domain its declarations register in.
+    pub const DOMAIN: &str = "StringType";
+}
+
 object_type! {
     pub struct EnumType {
         "name" => name: TypeName,
         "parameters" => parameters: Option<Vec<TypeName>>,
         "members" => members: OrderedMap<MemberName, EnumMember>,
     }
+}
+
+impl EnumType {
+    /// The identity domain its declarations register in.
+    pub const DOMAIN: &str = "EnumType";
 }
 
 object_type! {
@@ -127,6 +137,11 @@ object_type! {
         "fields" => fields: OrderedMap<FieldName, FieldDef>,
         "constraints" => constraints: Vec<Constraint>,
     }
+}
+
+impl ObjectType {
+    /// The identity domain its declarations register in.
+    pub const DOMAIN: &str = "ObjectType";
 }
 
 object_type! {
@@ -148,6 +163,11 @@ object_type! {
     }
 }
 
+impl UnionType {
+    /// The identity domain its declarations register in.
+    pub const DOMAIN: &str = "UnionType";
+}
+
 object_type! {
     pub struct Variant {
         "type" => ty: TypeExpression,
@@ -164,6 +184,11 @@ object_type! {
     }
 }
 
+impl MapType {
+    /// The identity domain its declarations register in.
+    pub const DOMAIN: &str = "MapType";
+}
+
 object_type! {
     /// A pattern codec declaration: one whole-string match, the named
     /// captures it types, and the output type a decoded value carries.
@@ -175,6 +200,11 @@ object_type! {
         "captures" => captures: OrderedMap<MemberName, Capture>,
         "namespace" => namespace: Option<MemberName>,
     }
+}
+
+impl CodecType {
+    /// The identity domain its declarations register in.
+    pub const DOMAIN: &str = "CodecType";
 }
 
 object_type! {

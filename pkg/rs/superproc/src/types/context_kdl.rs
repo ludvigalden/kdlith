@@ -41,6 +41,11 @@ object_type! {
     }
 }
 
+impl SlotDef {
+    /// The identity domain its declarations register in.
+    pub const DOMAIN: &str = "SlotDef";
+}
+
 enum_type! {
     /// How a set effect reaching an occupied slot is treated; the
     /// fail-closed default rejects.

@@ -266,6 +266,9 @@ impl Emission<'_> {
             self.item_enum
         ));
         out.line("};");
+        if let Some(contribution) = self.contribution_enum {
+            out.line(&format!("pub use processors::{contribution};"));
+        }
         rust_file(&out.finish())
     }
 
@@ -388,6 +391,7 @@ impl Emission<'_> {
         for decl in &doc.types {
             out.blank();
             self.type_declaration(&mut out, decl)?;
+            self.domain_declaration(&mut out, &self.rust_name(decl.name));
             self.owned_unions(&mut out, doc, &self.rust_name(decl.name));
         }
         for decl in &doc.references {
@@ -397,6 +401,7 @@ impl Emission<'_> {
         for (node, name) in doc.locals.iter().zip(&locals) {
             out.blank();
             self.local_declaration(&mut out, node, name)?;
+            self.domain_declaration(&mut out, name);
             self.owned_unions(&mut out, doc, name);
         }
         if shaped {
@@ -480,6 +485,29 @@ impl Emission<'_> {
             out.blank();
             inline_union_declaration(out, union);
         }
+    }
+
+    /// The identity domain a type's declarations register in, beside the
+    /// type, when declaration nodes read as it. Declarations of one type
+    /// registering in different domains leave the type without one
+    /// constant to name.
+    fn domain_declaration(&self, out: &mut Out, name: &str) {
+        let mut domains = self
+            .items
+            .iter()
+            .filter(|item| item.ty == name)
+            .filter_map(|item| item.domain);
+        let Some(domain) = domains.next() else {
+            return;
+        };
+        if domains.any(|other| other != domain) {
+            return;
+        }
+        out.blank();
+        out.line(&format!("impl {name} {{"));
+        out.line("    /// The identity domain its declarations register in.");
+        out.line(&format!("    pub const DOMAIN: &str = {domain:?};"));
+        out.line("}");
     }
 
     /// One declared type, as its declaration macro spells it. A generic
@@ -975,6 +1003,18 @@ impl Emission<'_> {
         out.line("    }");
         out.line("}");
         out.blank();
+        if let Some(contribution) = self.contribution_enum {
+            out.line("::kdlith_engine::contribution_type! {");
+            out.line("    /// A contribution's value, or a resolution's settled value, as the");
+            out.line("    /// type its contribution node declares.");
+            out.line(&format!("    pub enum {contribution} {{"));
+            for ty in &self.contributions {
+                out.line(&format!("        {ty}(types::{ty}),"));
+            }
+            out.line("    }");
+            out.line("}");
+            out.blank();
+        }
         out.line("/// Every handler, by contributing document.");
         let handler = spelling.engine("Handler");
         out.line(&format!("const HANDLERS: &[&[{handler}<{item}>]] = &["));

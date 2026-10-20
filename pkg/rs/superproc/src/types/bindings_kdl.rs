@@ -41,6 +41,11 @@ object_type! {
     }
 }
 
+impl NodeDef {
+    /// The identity domain its declarations register in.
+    pub const DOMAIN: &str = "NodeDef";
+}
+
 object_type! {
     /// A dependent payload binding: how a node's remaining payload binds
     /// against the declaration a field of the same node references.
