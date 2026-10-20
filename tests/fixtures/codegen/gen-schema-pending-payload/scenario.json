@@ -4,11 +4,11 @@
   "description": "Pending payload validation through a generated crate: gen schema generates a committed self-contained schema whose contribution payload binds against the text member of the referenced setting under fixture-value, a known binding codec no processor installs, twice into scratch trees the harness requires byte-identical; the generated crate compiles inside a scratch workspace materialized from this scenario's committed template. The compiled processor, naming every kdlith type it spells through the generated crate alone, collects a committed data document as a reading linked under complete scope through its generated reader: each payload streams as a pending item with its raw value, the one fitting its String member passes, the two values for that member fail KDLITH-REF005, and the payload whose reference resolves to nothing fails KDLITH-REF001 alone, its payload never validated, the link diagnostic before the payload diagnostic, and the reading fails; linked under local scope the same diagnostics are reported and the reading does not fail, each as vet data reports it on the same input",
   "form": "schema",
   "entrypoint": "inputs/settings.kdl",
-  "crate": "settings-proc",
+  "crate": "put-proc",
   "steps": [
-    { "generate": "ws/rs/settings-proc" },
+    { "generate": "ws/rs/put-proc" },
     { "generate": "gen-again" },
-    { "determinism": ["ws/rs/settings-proc", "gen-again"] },
+    { "determinism": ["ws/rs/put-proc", "gen-again"] },
     {
       "compile": {
         "workspace": "ws",
@@ -16,7 +16,7 @@
           "crates": ["diagnostic", "engine", "model", "parse", "runtime", "superproc"],
           "kdl": true
         },
-        "command": ["cargo", "build", "--offline", "--manifest-path", "ws/rs/settings-proc/Cargo.toml"]
+        "command": ["cargo", "build", "--offline", "--manifest-path", "ws/rs/put-proc/Cargo.toml"]
       }
     },
     {

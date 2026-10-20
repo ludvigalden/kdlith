@@ -10,7 +10,7 @@
 
 use std::path::PathBuf;
 
-use settings_proc::{
+use put_proc::{
     CheckScope, DiagnosticRecord, Extensions, Item, Reading, TypedItem, load, reader,
 };
 

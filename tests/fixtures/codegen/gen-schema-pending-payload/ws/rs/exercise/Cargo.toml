@@ -5,5 +5,5 @@ edition = "2024"
 rust-version = "1.85"
 
 [dependencies]
-settings-proc = { path = "../settings-proc" }
+put-proc = { path = "../put-proc" }
 serde_json = { workspace = true }
