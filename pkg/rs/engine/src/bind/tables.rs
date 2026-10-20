@@ -418,7 +418,24 @@ fn decl_info(def: &Definition, id: NodeDeclId, decl: &NodeDecl) -> DeclInfo {
         ),
         None => IdentityBind::Fallback(None),
     };
-    let deferred = def.plan.node(id).map_or(&[][..], |plan| &plan.deferred);
+    // Declared-reference-typed fields are added by the per-field
+    // `reference_type` scan below, in field order; only `ref<T>` plan
+    // entries seed the list.
+    let deferred: Vec<&DeferredBinding> = def
+        .plan
+        .node(id)
+        .map_or(&[][..], |plan| &plan.deferred)
+        .iter()
+        .filter(|binding| {
+            !matches!(
+                binding,
+                DeferredBinding::Reference {
+                    reference: Some(_),
+                    ..
+                }
+            )
+        })
+        .collect();
     let mut references: Vec<usize> = deferred
         .iter()
         .filter_map(|binding| match binding {

@@ -1,0 +1,3 @@
+group core
+group ops
+member alice core backup=ops home=core

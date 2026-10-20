@@ -1354,9 +1354,15 @@ is still read, and the read decides the exit status.
 A `plan-node` carries `name`, `role` (or null), `scope` (the scope
 index, or null), `children-effects` and `following-effects`,
 `context-reads` (`field`, `slot`, and `policy`: `fallback`, `fixed`, or
-null), `deferred` (`{"deferred":"reference","field","target"}` or
-`{"deferred":"contribution"}`), `dependent` (`target`, `member`, and
-`codec`, or null), `declaration`, and `requires`. An effect is
+null), `deferred` (`{"deferred":"contribution"}`; one entry per
+reference a field's type holds, through optional, nullable, list, map
+key and value, and union members —
+`{"deferred":"reference","field","target"}` for a `ref<T>`,
+`{"deferred":"reference-type","field","reference","target"}` for a
+declared reference type, naming it and its target; like the link
+stage, the walk stops at a generic instantiation), `dependent`
+(`target`, `member`, and `codec`, or null), `declaration`, and
+`requires`. An effect is
 `{"effect":"set","slot",…,"layer"}` (with `field` when the value comes
 from a field, or `value` when it is written in the schema),
 `{"effect":"remove","slot"}`, `{"effect":"clear","namespace"}`, or

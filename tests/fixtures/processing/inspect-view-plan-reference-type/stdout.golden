@@ -1,0 +1,3 @@
+{"item":"plan-context","data":{"slots":[],"namespaces":[]}}
+{"item":"plan-node","data":{"name":"group","role":"declaration","scope":0,"children-effects":[],"following-effects":[],"context-reads":[],"deferred":[],"dependent":null,"declaration":true,"requires":["declaration-lookup"]}}
+{"item":"plan-node","data":{"name":"member","role":"record","scope":1,"children-effects":[],"following-effects":[],"context-reads":[],"deferred":[{"deferred":"reference-type","field":"group","reference":"GroupRef","target":"Group"},{"deferred":"reference-type","field":"backup","reference":"GroupRef","target":"Group"},{"deferred":"reference","field":"home","target":"Group"}],"dependent":null,"declaration":false,"requires":["deferred-binding"]}}

@@ -69,8 +69,14 @@ pub struct ContextRead {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum DeferredBinding {
-    /// A `ref<T>` field resolved by name among declarations of `target`.
-    Reference { field: Sym, target: Sym },
+    /// A field resolved by name among declarations of `target`: typed
+    /// `ref<T>` when `reference` is `None`, else typed by the declared
+    /// reference type `reference` names, whose target is `target`.
+    Reference {
+        field: Sym,
+        target: Sym,
+        reference: Option<Sym>,
+    },
     /// The node's bound result is preserved for later resolution.
     Contribution,
 }
@@ -134,7 +140,7 @@ pub(crate) fn build(
             children_effects: effects(&context, node, EffectTarget::Children),
             following_effects: effects(&context, node, EffectTarget::Following),
             context_reads: context_reads(&context, node),
-            deferred: deferred(types, node),
+            deferred: deferred(types, symbols, node),
             dependent: node.value.clone(),
             declaration: symbols.declaration(id).is_some(),
         })
@@ -201,14 +207,14 @@ fn context_reads(context: &ContextPlan, node: &NodeDecl) -> Vec<ContextRead> {
     reads
 }
 
-fn deferred(types: &TypeCatalog, node: &NodeDecl) -> Vec<DeferredBinding> {
+fn deferred(types: &TypeCatalog, symbols: &SymbolCatalog, node: &NodeDecl) -> Vec<DeferredBinding> {
     let mut out = Vec::new();
     if node.role == Some(Role::Contribution) {
         out.push(DeferredBinding::Contribution);
     }
     for field in &node.fields {
         if let Some(expr) = field_type(types, node, field) {
-            references(expr, field.name, &mut out);
+            references(symbols, expr, field.name, &mut out);
         }
     }
     out
@@ -234,27 +240,44 @@ pub(crate) fn field_type<'t>(
         .map(|def| &def.ty)
 }
 
-fn references(expr: &TypeExpr, field: Sym, out: &mut Vec<DeferredBinding>) {
+/// The references a field's type holds. A generic instantiation is not
+/// walked, matching the link stage's field typing.
+fn references(
+    symbols: &SymbolCatalog,
+    expr: &TypeExpr,
+    field: Sym,
+    out: &mut Vec<DeferredBinding>,
+) {
     match expr {
-        TypeExpr::Named(_) | TypeExpr::Instantiation(_, _) => {}
+        TypeExpr::Named(name) => {
+            if let Some(decl) = symbols.reference(*name) {
+                out.push(DeferredBinding::Reference {
+                    field,
+                    target: decl.target,
+                    reference: Some(*name),
+                });
+            }
+        }
+        TypeExpr::Instantiation(_, _) => {}
         TypeExpr::Ref(inner) => {
             if let TypeExpr::Named(target) = inner.as_ref() {
                 out.push(DeferredBinding::Reference {
                     field,
                     target: *target,
+                    reference: None,
                 });
             }
         }
         TypeExpr::Optional(inner) | TypeExpr::Nullable(inner) | TypeExpr::List(inner) => {
-            references(inner, field, out);
+            references(symbols, inner, field, out);
         }
         TypeExpr::Map(key, value) | TypeExpr::OrderedMap(key, value) => {
-            references(key, field, out);
-            references(value, field, out);
+            references(symbols, key, field, out);
+            references(symbols, value, field, out);
         }
         TypeExpr::Union(members) => {
             for member in members {
-                references(member, field, out);
+                references(symbols, member, field, out);
             }
         }
     }

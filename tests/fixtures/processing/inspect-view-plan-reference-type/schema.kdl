@@ -1,0 +1,30 @@
+// A member record whose fields reach the Group declarations two ways:
+// through the GroupRef reference type (bare and optional) and through a
+// plain ref<Group>, so the plan view lists both deferred shapes.
+schema roster version="1" {
+    types {
+        object Group {
+            field name String
+        }
+        object Member {
+            field name String
+            field group GroupRef
+            field backup "optional<GroupRef>"
+            field home "ref<Group>"
+        }
+        codec GroupName output=String {
+            match #"(?<name>[a-z][a-z0-9-]*)"#
+            capture name String
+        }
+    }
+    node group role=declaration type=Group {
+        field name arg=0
+    }
+    reference GroupRef target=Group codec=GroupName qualification=explicit
+    node member role=record type=Member {
+        field name arg=0
+        field group arg=1
+        field backup property=backup
+        field home property=home
+    }
+}

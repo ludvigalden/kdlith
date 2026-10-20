@@ -1,0 +1,21 @@
+{
+  "binary": "kdlith",
+  "description": "The plan view lists every reference shape the link stage links: the member record's group and backup fields, typed by the GroupRef reference type bare and through optional, render as reference-type entries naming the reference type and its target, while home, typed ref<Group>, keeps the plain reference entry; the entries follow field order",
+  "args": [
+    "inspect",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "--view",
+    "plan",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"deferred\":[{\"deferred\":\"reference-type\",\"field\":\"group\",\"reference\":\"GroupRef\",\"target\":\"Group\"},{\"deferred\":\"reference-type\",\"field\":\"backup\",\"reference\":\"GroupRef\",\"target\":\"Group\"},{\"deferred\":\"reference\",\"field\":\"home\",\"target\":\"Group\"}]"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

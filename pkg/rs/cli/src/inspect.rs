@@ -584,9 +584,23 @@ impl PlanNames<'_> {
     fn deferred(&self, deferred: &DeferredBinding) -> serde_json::Value {
         use serde_json::json;
         match deferred {
-            DeferredBinding::Reference { field, target } => json!({
+            DeferredBinding::Reference {
+                field,
+                target,
+                reference: None,
+            } => json!({
                 "deferred": "reference",
                 "field": self.n.resolve(*field),
+                "target": self.n.resolve(*target),
+            }),
+            DeferredBinding::Reference {
+                field,
+                target,
+                reference: Some(reference),
+            } => json!({
+                "deferred": "reference-type",
+                "field": self.n.resolve(*field),
+                "reference": self.n.resolve(*reference),
                 "target": self.n.resolve(*target),
             }),
             DeferredBinding::Contribution => json!({"deferred": "contribution"}),
