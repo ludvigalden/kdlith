@@ -34,6 +34,10 @@ string_type! {
 }
 
 string_type! {
+    pub struct ScopeName;
+}
+
+string_type! {
     pub struct DomainName;
 }
 
@@ -372,6 +376,7 @@ pub(crate) const TYPES: &[TypeShape] = &[
     DiscoveryName::SHAPE,
     AnchorName::SHAPE,
     ProviderName::SHAPE,
+    ScopeName::SHAPE,
     DomainName::SHAPE,
     ResolverName::SHAPE,
     AliasName::SHAPE,

@@ -40,6 +40,10 @@ dialect kdlith version="0" {
             format kebab-case
         }
 
+        string ScopeName {
+            format kebab-case
+        }
+
         string DomainName {
             format kebab-case
         }

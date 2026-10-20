@@ -91,6 +91,7 @@
 {"item":"effective","data":{"section":"type","entry":{"name":"RootsRule","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"SchemaDef","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"SchemaName","parameters":[],"kind":"string"}}}
+{"item":"effective","data":{"section":"type","entry":{"name":"ScopeName","parameters":[],"kind":"string"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"SecretId","parameters":[],"kind":"string"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"SecretProvider","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"Sensitivity","parameters":[],"kind":"enum"}}}

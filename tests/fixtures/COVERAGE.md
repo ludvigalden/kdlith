@@ -279,7 +279,7 @@ under test.
 | Verb contract | Exercised by | State |
 | --- | --- | --- |
 | `vet dialect` local scope, one file each | dialect/canonical-vet/bindings-local, dialect/canonical-vet/context-local, dialect/canonical-vet/documents-local, dialect/canonical-vet/types-local | covered |
-| `vet dialect` complete, digest pin | dialect/canonical-vet/merged, dialect/entrypoint-vet/dialect, dialect/entrypoint-vet/import-repeat-coalesce, dialect/entrypoint-vet/import-repeat-instantiate | covered — same digest `9d8f61fdb900af9a` on every path, including under the dialect-path repeated policies |
+| `vet dialect` complete, digest pin | dialect/canonical-vet/merged, dialect/entrypoint-vet/dialect, dialect/entrypoint-vet/import-repeat-coalesce, dialect/entrypoint-vet/import-repeat-instantiate | covered — same digest `39a810b40fe80000` on every path, including under the dialect-path repeated policies |
 | `vet schema` bundled default | processing/vet-schema-default, schemas/vet/catalog | covered — catalog digest pinned |
 | `vet schema`/`list types` resolver admission | processing/resolution/schema-vet, processing/resolution/schema-list-types, invalid/schemas/resolver-not-installed, invalid/schemas/list-resolver-not-installed | covered — the schema verbs load under the extensions the data verbs install: a policy naming the shipped `layered` resolver passes, any other resolver name fails closed KDLITH-DLC006; stdout and stderr pinned byte for byte on the positives |
 | `vet schema` `--dialect` override | processing/vet-schema-override | covered — same digest as the default |

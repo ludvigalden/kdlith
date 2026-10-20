@@ -1845,7 +1845,13 @@ impl<'d, 's> Binder<'d, 's> {
         let repeated = text_of(info.repeated);
         let alias = text_of(info.alias);
         let layer = text_of(info.layer);
-        let scope = text_of(info.scope);
+        // A scope field typed as a declared reference hoists its written
+        // spelling, matching the untyped string form.
+        let scope = match info.scope.and_then(|at| values.get(at)?.as_ref()) {
+            Some(Value::String(text)) => Some(text.clone()),
+            Some(Value::Reference(reference)) => Some(reference.written.clone()),
+            _ => None,
+        };
         let project: Vec<String> = match info.project.and_then(|at| values.get(at)?.as_ref()) {
             Some(Value::List(names)) => names
                 .iter()
@@ -1856,10 +1862,16 @@ impl<'d, 's> Binder<'d, 's> {
                 .collect(),
             _ => Vec::new(),
         };
-        let reference = info.references.iter().find_map(|at| match values.get(*at) {
-            Some(Some(Value::Reference(reference))) => Some(reference.clone()),
-            _ => None,
-        });
+        // The scope reference is the contribution's metadata, never its
+        // target.
+        let reference = info
+            .references
+            .iter()
+            .filter(|at| Some(**at) != info.scope)
+            .find_map(|at| match values.get(*at) {
+                Some(Some(Value::Reference(reference))) => Some(reference.clone()),
+                _ => None,
+            });
         let fields: Vec<Field> = info
             .fields
             .iter()
