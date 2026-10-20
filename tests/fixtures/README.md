@@ -245,7 +245,9 @@ whose target is a `ref<Option>`, whose layer is bound from the `layer`
 property, and whose `follows` field references another option; each
 policy schema beside it (`replace.kdl`, `union.kdl`, `last-wins.kdl`,
 `missing-allow.kdl`, `no-layers.kdl`) imports it and declares one
-resolution policy naming the shipped `layered` resolver. Each arm
+resolution policy naming the shipped `layered` resolver. `key-ref.kdl`
+stands alone: its setting holds a map keyed by an option reference
+type, so the missing-target check reads map keys as well as fields. Each arm
 scenario runs `read data` on its own data document and pins the target's
 `resolution` item byte for byte; `order` and `order-shuffled` run `vet
 data` over the same contributions in different orders and pin the whole

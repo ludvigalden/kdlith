@@ -1,0 +1,43 @@
+// A setting contribution whose `weights` map is keyed by the OptionRef
+// reference type: each entry's key is a reference to another option,
+// so the missing-target arm reads map keys as well as field values.
+schema settings version="1" {
+    types {
+        object Option {
+            field name String
+        }
+        object Weight {
+            field value String
+        }
+        object Setting {
+            field target "ref<Option>"
+            field value String
+            field weights "map<OptionRef, Weight>"
+            field layer "optional<String>"
+        }
+        codec OptionName output=String {
+            match #"(?<name>[a-z][a-z0-9-]*)"#
+            capture name String
+        }
+    }
+    node option role=declaration type=Option {
+        field name arg=0
+    }
+    reference OptionRef target=Option codec=OptionName qualification=explicit
+    node setting role=contribution type=Setting {
+        field target arg=0
+        field value arg=1
+        field layer property=layer
+        field weights {
+            from {
+                entries weight key="arg(0)" value=Weight
+            }
+        }
+    }
+    node weight type=Weight parent=setting {
+        field value arg=1
+    }
+    resolution resolver=layered {
+        layers user base
+    }
+}

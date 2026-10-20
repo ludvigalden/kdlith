@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "Missing under reject through a map key, satisfied: the record's weights map key references the option font, which a base-layer record contributes, so the resolver reads map keys without over-rejecting and resolves mode with its keyed entry intact",
+  "args": [
+    "read",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/resolution/key-ref.kdl",
+    "data.kdl",
+    "mode"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

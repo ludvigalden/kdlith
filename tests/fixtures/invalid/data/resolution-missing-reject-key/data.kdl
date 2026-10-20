@@ -1,0 +1,5 @@
+option mode
+option font
+setting mode dark layer=user {
+    weight font "2"
+}

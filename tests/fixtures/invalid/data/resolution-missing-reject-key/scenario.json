@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "Missing under reject through a map key: the record's weights map is keyed by the OptionRef reference type and its one key references the declared option font, which no record contributes, so the shipped layered resolver refuses the records as KDLITH-DLC010",
+  "args": [
+    "read",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/resolution/key-ref.kdl",
+    "data.kdl",
+    "mode"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

@@ -288,14 +288,15 @@ fn same_target(a: &Reference, b: &Reference) -> bool {
     key_of(a) == key_of(b) && a.context == b.context
 }
 
-/// Every reference a value holds, in value order.
+/// Every reference a value holds, map keys included, in value order.
 fn references<'v>(value: &'v Value, out: &mut Vec<&'v Reference>) {
     match value {
         Value::Reference(reference) => out.push(reference),
         Value::List(items) => items.iter().for_each(|item| references(item, out)),
-        Value::Map(entries) => entries
-            .iter()
-            .for_each(|entry| references(&entry.value, out)),
+        Value::Map(entries) => entries.iter().for_each(|entry| {
+            out.extend(&entry.reference);
+            references(&entry.value, out);
+        }),
         _ => {}
     }
 }
