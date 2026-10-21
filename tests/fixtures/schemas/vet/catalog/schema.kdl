@@ -7,10 +7,14 @@ schema catalog version="1" {
         object Entry {
             field id String
             field locale "optional<Locale>"
-            field group "optional<ref<Group>>"
+            field group "optional<GroupRef>"
         }
         object Group {
             field name String
+        }
+        codec GroupName output=String {
+            match #"(?<name>[a-z0-9-]+)"#
+            capture name String
         }
     }
     context {
@@ -51,4 +55,5 @@ schema catalog version="1" {
         }
         following group locale defaults-reset
     }
+    reference GroupRef target=Group codec=GroupName qualification=explicit
 }

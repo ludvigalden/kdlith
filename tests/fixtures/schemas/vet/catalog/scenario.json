@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "A schema definition with an import resolved relative to it, typed context slots, a ref<T> to a declared type, following and children effects computed from the header, and a document rule compiles with complete checking under the canonical dialect",
+  "description": "A schema definition with an import resolved relative to it, typed context slots, a field typed by a declared name-only reference type, following and children effects computed from the header, and a document rule compiles with complete checking under the canonical dialect",
   "args": [
     "vet",
     "schema",

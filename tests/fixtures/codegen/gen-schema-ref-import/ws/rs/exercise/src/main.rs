@@ -1,14 +1,17 @@
 //! Exercise the generated processor of an import-carrying schema whose
-//! record type holds a `ref<Group>`: load the committed schema through
-//! the generated loader, read a committed data document through the
-//! generated typed reader, link the reading's declarations, and resolve
-//! every entry's group reference against the linked declarations.
+//! record type holds a declared reference type: load the committed
+//! schema through the generated loader, collect a committed data
+//! document as a linked reading through the generated typed reader, and
+//! resolve every entry's group reference through the reading. Every name
+//! the exercise spells comes from the generated crate alone.
 
 use std::path::PathBuf;
 
-use catalog_proc::types::Entry;
-use catalog_proc::{Item, load, reader};
-use kdlith_engine::{CheckScope, Extensions, Links, TypedItem, Unresolved};
+use catalog_proc::types::{Entry, Group};
+use catalog_proc::{
+    CheckScope, DiagnosticRecord, Extensions, Item, ItemVariant, LinkOutcome, Location,
+    ResolveError, TypedItem, load, reader,
+};
 
 fn main() {
     let args: Vec<PathBuf> = std::env::args().skip(1).map(PathBuf::from).collect();
@@ -33,61 +36,85 @@ fn main() {
         definition.documents.len()
     );
 
-    let reading = reader(&definition).unwrap_or_else(|records| reject("reader", &records));
-
-    // Linking is a separate step over the reading's items: every
-    // declaration registers under its identity as it streams past, and
-    // the records' references resolve once the whole reading is linked,
-    // so a reference to a declaration written later still resolves.
-    let mut links: Links<Item> = Links::new();
-    let mut entries: Vec<Entry> = Vec::new();
-    let mut sink = |item: TypedItem<Item>| {
-        links.observe(&item);
-        if let TypedItem::Record {
-            value: Item::Entry(entry),
-            ..
-        } = item
-        {
-            entries.push(entry);
-        }
-    };
-    match reading.read(&[data], &mut sink) {
-        Ok(false) => {}
-        Ok(true) => {
-            eprintln!("catalog-exercise: the data reading reported error diagnostics");
-            std::process::exit(1);
-        }
-        Err(error) => {
+    // The link stage runs once the whole document is read, so a reference
+    // to a declaration written later still resolves. Under complete scope
+    // its duplicate and unresolved diagnostics fail the reading; the
+    // outcomes are reported, not treated as a read failure.
+    let reading = reader(&definition)
+        .unwrap_or_else(|records| reject("reader", &records))
+        .link(CheckScope::Complete)
+        .collect(&[data])
+        .unwrap_or_else(|error| {
             eprintln!("catalog-exercise: data read failed: {error}");
             std::process::exit(1);
+        });
+    let mut entries: Vec<&Entry> = Vec::new();
+    let mut declarations = 0;
+    for item in reading.items() {
+        match item {
+            TypedItem::Record { value, .. } => entries.extend(ItemVariant::<Entry>::variant(value)),
+            TypedItem::Declaration { .. } => declarations += 1,
+            _ => {}
         }
     }
+    println!("read ok entries={} declarations={declarations}", entries.len());
     println!(
-        "read ok entries={} declarations={}",
-        entries.len(),
-        links.len()
+        "linked failed={} duplicates={} diagnostics={}",
+        reading.failed(),
+        reading.duplicates().len(),
+        reading.diagnostics().len()
     );
 
     for entry in &entries {
         let locale = entry.locale.as_ref().map_or("-", |locale| locale.as_str());
         let group = match &entry.group {
             None => "none".to_owned(),
-            Some(reference) => match links.resolve(reference) {
+            // `resolve` takes the reference carrier through `Deref`.
+            Some(reference) => match reading.resolve::<Group>(reference) {
                 Ok(group) => format!("{}->{}", reference.written(), group.name),
-                Err(Unresolved::Missing) => format!("{} unresolved missing", reference.written()),
-                Err(Unresolved::Ambiguous { candidates }) => format!(
-                    "{} unresolved ambiguous candidates={candidates}",
-                    reference.written()
+                Err(ResolveError::Link { outcome, .. }) => format!(
+                    "{} {} {}",
+                    reference.written(),
+                    outcome_name(&outcome),
+                    outcome.code().unwrap_or("none")
                 ),
                 Err(other) => format!("{} unresolved {other}", reference.written()),
             },
         };
         println!("entry id={} locale={locale} group={group}", entry.id);
     }
+    for duplicate in reading.duplicates() {
+        println!(
+            "duplicate {} {} at {} first {}",
+            duplicate.declaration.identity.domain,
+            duplicate.declaration.identity.name.0.join("."),
+            line(duplicate.declaration.site),
+            line(duplicate.first.site),
+        );
+    }
+    for record in reading.diagnostics() {
+        println!("diag {}", record.code);
+    }
+}
+
+fn outcome_name(outcome: &LinkOutcome) -> &'static str {
+    match outcome {
+        LinkOutcome::Resolved => "resolved",
+        LinkOutcome::Unresolved => "unresolved",
+        LinkOutcome::Ambiguous => "ambiguous",
+        LinkOutcome::UnmetQualifier(_) => "unmet-qualifier",
+        _ => "unknown",
+    }
+}
+
+fn line(site: Option<Location>) -> String {
+    site.map_or("?".to_owned(), |site| {
+        format!("{}:{}", site.span.start.line, site.span.start.column)
+    })
 }
 
 /// Report a rejected stage and fail; the pinned run never reaches here.
-fn reject(stage: &str, records: &[kdlith_diagnostic::DiagnosticRecord]) -> ! {
+fn reject(stage: &str, records: &[DiagnosticRecord]) -> ! {
     eprintln!(
         "catalog-exercise: {stage} rejected the input ({} diagnostics)",
         records.len()
