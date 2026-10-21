@@ -195,24 +195,7 @@ fn list(n: &Names, syms: &[Sym]) -> String {
 }
 
 pub(crate) fn expr(n: &Names, ty: &TypeExpr) -> String {
-    let apply = |head: &str, args: &[&TypeExpr]| {
-        let args: Vec<String> = args.iter().map(|a| expr(n, a)).collect();
-        format!("{head}<{}>", args.join(", "))
-    };
-    match ty {
-        TypeExpr::Named(name) => n.resolve(*name).to_owned(),
-        TypeExpr::Instantiation(head, args) => {
-            let args: Vec<&TypeExpr> = args.iter().collect();
-            apply(n.resolve(*head), &args)
-        }
-        TypeExpr::Optional(inner) => apply("optional", &[inner]),
-        TypeExpr::Nullable(inner) => apply("nullable", &[inner]),
-        TypeExpr::List(inner) => apply("list", &[inner]),
-        TypeExpr::Ref(inner) => apply("ref", &[inner]),
-        TypeExpr::Map(key, value) => apply("map", &[key, value]),
-        TypeExpr::OrderedMap(key, value) => apply("ordered-map", &[key, value]),
-        TypeExpr::Union(members) => apply("union", &members.iter().collect::<Vec<_>>()),
-    }
+    ty.render(n)
 }
 
 fn kind(n: &Names, kind: &TypeKind) -> String {

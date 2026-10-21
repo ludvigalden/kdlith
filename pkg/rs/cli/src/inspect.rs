@@ -9,7 +9,7 @@ use kdlith_diagnostic::{DiagnosticRecord, ExitStatus, Severity};
 use kdlith_engine::{
     AccumulateOp, CheckScope, ContextPolicy, DeferredBinding, Definition, EffectStep, EntryContext,
     Extensions, ImportDecl, LinkOutcome, Names, Role, ScopeId, ScopeRules, SetFrom, Site, SlotDecl,
-    SourceRevisions, Sym, TypeExpr, TypedItem, list_nodes, list_profiles, list_types,
+    SourceRevisions, Sym, TypedItem, list_nodes, list_profiles, list_types,
 };
 use kdlith_model::Location;
 use kdlith_superproc::{Item, load_dialect, load_schema_anchored, reader};
@@ -327,7 +327,7 @@ fn plan_lines(def: &Definition) -> Vec<serde_json::Value> {
     let mut lines = vec![json!({"item": "plan-context", "data": {
         "slots": slots.iter().map(|(_, slot)| json!({
             "name": n.resolve(slot.name),
-            "type": type_text(n, &slot.ty),
+            "type": slot.ty.render(n),
             "namespace": slot.namespace.map(|s| n.resolve(s)),
             "accumulate": slot.accumulate.map(AccumulateOp::name),
         })).collect::<Vec<_>>(),
@@ -660,7 +660,7 @@ fn effective_lines(def: &Definition) -> Vec<serde_json::Value> {
     for slot in slots {
         let value = json!({
             "name": n.resolve(slot.name),
-            "type": type_text(n, &slot.ty),
+            "type": slot.ty.render(n),
             "namespace": slot.namespace.map(|s| n.resolve(s)),
             "accumulate": slot.accumulate.map(AccumulateOp::name),
             "duplicates": slot.duplicates.name(),
@@ -688,28 +688,6 @@ fn effective_lines(def: &Definition) -> Vec<serde_json::Value> {
         lines.push(entry("profile", value));
     }
     lines
-}
-
-/// A type expression in the definition's own spelling.
-fn type_text(n: &Names, ty: &TypeExpr) -> String {
-    let apply = |head: &str, args: &[&TypeExpr]| {
-        let args: Vec<String> = args.iter().map(|a| type_text(n, a)).collect();
-        format!("{head}<{}>", args.join(", "))
-    };
-    match ty {
-        TypeExpr::Named(name) => n.resolve(*name).to_owned(),
-        TypeExpr::Instantiation(head, args) => {
-            apply(n.resolve(*head), &args.iter().collect::<Vec<_>>())
-        }
-        TypeExpr::Optional(inner) => apply("optional", &[inner]),
-        TypeExpr::Nullable(inner) => apply("nullable", &[inner]),
-        TypeExpr::List(inner) => apply("list", &[inner]),
-        TypeExpr::Ref(inner) => apply("ref", &[inner]),
-        TypeExpr::Map(key, value) => apply("map", &[key, value]),
-        TypeExpr::OrderedMap(key, value) => apply("ordered-map", &[key, value]),
-        TypeExpr::Union(members) => apply("union", &members.iter().collect::<Vec<_>>()),
-        other => format!("{other:?}"),
-    }
 }
 
 /// Print each value as one JSON line; a failed write fails the run.

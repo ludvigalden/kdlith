@@ -227,20 +227,20 @@ pub fn rust_type(
                 render(inner, None)?
             )),
             _ => Err(Error::UnsupportedExpression {
-                spelling: expression_text(expr, names),
+                spelling: expr.render(names),
             }),
         },
         TypeExpr::Union(_) => match union {
             Some(name) => Ok(name.to_owned()),
             None => Err(Error::UnsupportedExpression {
-                spelling: expression_text(expr, names),
+                spelling: expr.render(names),
             }),
         },
         // A generic instantiation surviving to generation, or a
         // constructor this version does not know, cannot decode; it
         // fails closed rather than emitting a type that cannot read.
         _ => Err(Error::UnsupportedExpression {
-            spelling: expression_text(expr, names),
+            spelling: expr.render(names),
         }),
     }
 }
@@ -354,47 +354,6 @@ fn collect_engine_names(expr: &TypeExpr, names: &Names, found: &mut Vec<&'static
             }
         }
         _ => {}
-    }
-}
-
-/// The definition's own spelling of a type expression, for error text.
-pub fn expression_text(expr: &TypeExpr, names: &Names) -> String {
-    match expr {
-        TypeExpr::Named(sym) => names.resolve(*sym).to_owned(),
-        TypeExpr::Instantiation(head, arguments) => format!(
-            "{}<{}>",
-            names.resolve(*head),
-            arguments
-                .iter()
-                .map(|argument| expression_text(argument, names))
-                .collect::<Vec<_>>()
-                .join(", ")
-        ),
-        TypeExpr::Optional(inner) => format!("optional<{}>", expression_text(inner, names)),
-        TypeExpr::Nullable(inner) => format!("nullable<{}>", expression_text(inner, names)),
-        TypeExpr::List(inner) => format!("list<{}>", expression_text(inner, names)),
-        TypeExpr::Map(key, value) => format!(
-            "map<{}, {}>",
-            expression_text(key, names),
-            expression_text(value, names)
-        ),
-        TypeExpr::OrderedMap(key, value) => format!(
-            "ordered-map<{}, {}>",
-            expression_text(key, names),
-            expression_text(value, names)
-        ),
-        TypeExpr::Union(members) => format!(
-            "union<{}>",
-            members
-                .iter()
-                .map(|member| expression_text(member, names))
-                .collect::<Vec<_>>()
-                .join(", ")
-        ),
-        TypeExpr::Ref(inner) => format!("ref<{}>", expression_text(inner, names)),
-        // A constructor this version does not know still spells in the
-        // definition's own grammar, which is all error text needs.
-        other => format!("{other:?}"),
     }
 }
 

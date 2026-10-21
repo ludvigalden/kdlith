@@ -11,8 +11,8 @@ use kdlith_engine::{
 
 use crate::emit::declaration_expressions;
 use crate::render::{
-    Spelling, expression_text, field_name, include_path, inline_union_name, is_identifier, mangle,
-    normalize_path, pascal, rust_type, subexpressions, variant_name,
+    Spelling, field_name, include_path, inline_union_name, is_identifier, mangle, normalize_path,
+    pascal, rust_type, subexpressions, variant_name,
 };
 use crate::{Error, Packaging};
 
@@ -468,11 +468,7 @@ impl<'d> Emission<'d> {
             _ => false,
         };
         let refuse = |key: &TypeExpr, value: &TypeExpr| Error::UnsupportedExpression {
-            spelling: format!(
-                "map<{}, {}>",
-                expression_text(key, names),
-                expression_text(value, names)
-            ),
+            spelling: format!("map<{}, {}>", key.render(names), value.render(names)),
         };
         for doc in &self.documents {
             let mut expressions: Vec<&TypeExpr> = Vec::new();
@@ -700,10 +696,7 @@ fn case_type(
     let Some(rendered) = object else {
         return Err(Error::UnsupportedCaseNode {
             node: names.resolve(node.name).to_owned(),
-            types: selected
-                .iter()
-                .map(|ty| expression_text(ty, names))
-                .collect(),
+            types: selected.iter().map(|ty| ty.render(names)).collect(),
         });
     };
     let ty = instances
@@ -786,7 +779,7 @@ fn inline_unions(
             [members] => *members,
             _ => {
                 return Err(Error::UnsupportedExpression {
-                    spelling: expression_text(ty, names),
+                    spelling: ty.render(names),
                 });
             }
         };
@@ -827,7 +820,7 @@ fn inline_unions(
             if accepted & seen != 0 {
                 let union = TypeExpr::Union(members.clone());
                 return Err(Error::UnsupportedExpression {
-                    spelling: expression_text(&union, names),
+                    spelling: union.render(names),
                 });
             }
             seen |= accepted;

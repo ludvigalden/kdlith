@@ -77,6 +77,30 @@ pub enum TypeExpr {
     Ref(Box<TypeExpr>),
 }
 
+impl TypeExpr {
+    /// The expression in the definition's own spelling, as diagnostics
+    /// and views print it: `optional<list<Name>>`, `map<K, V>`.
+    pub fn render(&self, names: &Names) -> String {
+        let apply = |head: &str, args: &[&TypeExpr]| {
+            let args: Vec<String> = args.iter().map(|arg| arg.render(names)).collect();
+            format!("{head}<{}>", args.join(", "))
+        };
+        match self {
+            TypeExpr::Named(name) => names.resolve(*name).to_owned(),
+            TypeExpr::Instantiation(head, args) => {
+                apply(names.resolve(*head), &args.iter().collect::<Vec<_>>())
+            }
+            TypeExpr::Optional(inner) => apply("optional", &[inner]),
+            TypeExpr::Nullable(inner) => apply("nullable", &[inner]),
+            TypeExpr::List(inner) => apply("list", &[inner]),
+            TypeExpr::Ref(inner) => apply("ref", &[inner]),
+            TypeExpr::Map(key, value) => apply("map", &[key, value]),
+            TypeExpr::OrderedMap(key, value) => apply("ordered-map", &[key, value]),
+            TypeExpr::Union(members) => apply("union", &members.iter().collect::<Vec<_>>()),
+        }
+    }
+}
+
 /// One declared or built-in type.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
