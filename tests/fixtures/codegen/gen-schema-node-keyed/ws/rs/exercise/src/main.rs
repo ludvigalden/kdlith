@@ -2,7 +2,8 @@
 //! several differently named nodes: load the committed schema through
 //! the generated loader, read a committed data document through the
 //! generated typed reader, and print each item under the variant its
-//! node reads as, with the type-level projection every variant shares.
+//! node reads as, matching the grouped Item enum exhaustively with no
+//! wildcard arm, with the type-level projection every variant shares.
 
 use std::path::PathBuf;
 
@@ -44,7 +45,6 @@ fn main() {
             Item::Gadget(widget) => format!("gadget id={} tone={}", widget.id, widget.tone.member()),
             Item::Part(widget) => format!("part id={} tone={}", widget.id, widget.tone.member()),
             Item::Bin(bin) => format!("bin name={}", bin.name),
-            _ => "other".to_owned(),
         };
         lines.push(format!("{line} widget={projected}"));
     };

@@ -34,6 +34,10 @@ schema settings version="1" {
             match #"(?<name>[a-z][a-z0-9-]*)"#
             capture name String
         }
+        union Patch {
+            variant replace String
+            variant append String
+        }
     }
     node scope role=declaration type=ScopeDef {
         field name arg=0

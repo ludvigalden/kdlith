@@ -7,13 +7,15 @@
 //! typed `Setting` through the processor's typed contribution
 //! projection, with its application scope, its merged notes, and the
 //! layers that reached it — plus the ordered maps the settled settings
-//! and the node-local metadata record decode to, and how a refused
-//! reading fails.
+//! and the node-local metadata record decode to, how a refused
+//! reading fails, and how the exhaustive marker lets the generated
+//! union match with no wildcard arm and the generated object rebuild
+//! by a struct literal.
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use settings_proc::types::{Choice, Setting};
+use settings_proc::types::{Choice, Patch, Setting};
 use settings_proc::{
     CheckScope, DiagnosticRecord, Extensions, Item, LAYERED, Layered, TypedItem, load, reader,
     reader_with_contribution_resolver,
@@ -41,6 +43,8 @@ fn main() {
         .unwrap_or_else(|records| reject("schema", &records));
     println!("schema ok digest={}", definition.digest());
     println!("option domain={}", Choice::DOMAIN);
+    println!("patches {}", patch_kind(&Patch::Replace(String::from("replace"))));
+    println!("patches {}", patch_kind(&Patch::Append(String::from("append"))));
 
     // The plain reader is resolver-free: contributions stay records.
     let plain = reader(&definition).unwrap_or_else(|records| reject("reader", &records));
@@ -105,6 +109,12 @@ fn read(
         TypedItem::Contribution(_) => tally.contributions += 1,
         TypedItem::Resolution(resolved) => {
             let setting = settled(&item);
+            // The exhaustive marker lets the generated object be rebuilt
+            // by a full struct literal, field for field.
+            if rebuilt(&setting) != setting {
+                eprintln!("layered-exercise: the rebuilt setting differs");
+                std::process::exit(1);
+            }
             let target = &resolved.target.written;
             tally.resolutions.push(format!(
                 "resolved target={target} value={} scope={} layers={}",
@@ -149,6 +159,28 @@ fn settled(item: &TypedItem<Item>) -> Setting {
             eprintln!("layered-exercise: a resolution item carries no contribution value");
             std::process::exit(1);
         }
+    }
+}
+
+/// The generated union's variant, matched with no wildcard arm.
+fn patch_kind(patch: &Patch) -> &'static str {
+    match patch {
+        Patch::Replace(_) => "replace",
+        Patch::Append(_) => "append",
+    }
+}
+
+/// The setting rebuilt by a struct literal over every generated field,
+/// which compiles only where the object is exhaustive.
+fn rebuilt(setting: &Setting) -> Setting {
+    Setting {
+        scope: setting.scope.clone(),
+        target: setting.target.clone(),
+        value: setting.value.clone(),
+        follows: setting.follows.clone(),
+        layer: setting.layer.clone(),
+        tags: setting.tags.clone(),
+        notes: setting.notes.clone(),
     }
 }
 
