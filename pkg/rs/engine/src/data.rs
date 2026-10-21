@@ -32,7 +32,9 @@ use crate::value_resolver::SharedResolver;
 
 const ORIGIN: &str = "data-document";
 
-/// Takes each document's entry context: every slot's value in slot order.
+/// Takes every slot's value in slot order: each document's entry context
+/// just before its text, and the context each record or declaration
+/// bound under just before the item.
 pub(crate) type Entering<'e> = &'e mut dyn FnMut(&[Option<SlotValue>]);
 
 /// What one reading supplies beyond its definition: the profile, or the
@@ -262,7 +264,9 @@ impl<'d> DataReader<'d> {
     /// `texts` immediately before the document item it belongs to, so a
     /// consumer pairs them in stream order without reading a file again;
     /// with `entered`, also giving it, at the same point, every slot's
-    /// value in slot order as the document's invocation entered it.
+    /// value in slot order as the document's invocation entered it, and
+    /// immediately before each record or declaration, the values it
+    /// bound under.
     pub(crate) fn read_documents(
         &self,
         entries: &[&Path],
@@ -719,6 +723,9 @@ struct Left {
     values: Vec<Option<SlotValue>>,
     consulted: bool,
     records: Vec<RecordContext>,
+    /// The context each record and declaration bound under, in stream
+    /// order; kept only when the reading gives them to a consumer.
+    bound: Vec<Vec<Option<SlotValue>>>,
 }
 
 /// One reading in progress: the invocation stack, the caches, and the
@@ -831,12 +838,15 @@ impl Reading<'_, '_> {
                     {
                         let cached = cached.clone();
                         let key = identity.map(|k| (k, active));
+                        let mut bound = Vec::new();
                         if let Some(left) = key.as_ref().and_then(|key| self.left.get(key)) {
                             let Left {
                                 values,
                                 consulted,
                                 records,
+                                bound: contexts,
                             } = left.clone();
+                            bound = contexts;
                             let source = u32::try_from(id.index()).unwrap_or(u32::MAX);
                             // A replay re-attributes its records to the
                             // invocation replaying them, as it does its items.
@@ -851,7 +861,7 @@ impl Reading<'_, '_> {
                             let derivation = self.derivation(id);
                             self.results[at].derivations.push(derivation);
                         }
-                        self.replay(id, (&shown, &digest), &text, cached);
+                        self.replay(id, (&shown, &digest), &text, cached, &bound);
                     } else {
                         self.bind(id, (&shown, &digest), &text, context.ok(), identity);
                     }
@@ -862,17 +872,26 @@ impl Reading<'_, '_> {
         self.invocations.leave();
     }
 
-    /// Yield a cached invocation's items under its new source identity.
+    /// Yield a cached invocation's items under its new source identity,
+    /// each record and declaration after the context it bound under.
     fn replay(
         &mut self,
         id: InvocationId,
         (shown, digest): (&str, &str),
         text: &str,
         cached: Rc<Vec<Item>>,
+        bound: &[Vec<Option<SlotValue>>],
     ) {
         let source = SourceId(u32::try_from(id.index()).unwrap_or(u32::MAX));
         self.document(source, shown, digest, text);
+        let mut bound = bound.iter();
         for item in cached.iter() {
+            if let Some(entering) = &mut self.entering
+                && matches!(item, Item::Record(_) | Item::Declaration(_))
+                && let Some(values) = bound.next()
+            {
+                entering(values);
+            }
             (self.sink)(remap(item, source));
         }
     }
@@ -915,6 +934,7 @@ impl Reading<'_, '_> {
         .with_resolver(self.reader.resolver.clone());
         let mut own: Vec<Item> = Vec::new();
         let mut records: Vec<RecordContext> = Vec::new();
+        let mut bound: Vec<Vec<Option<SlotValue>>> = Vec::new();
         let mut cacheable = true;
         while self.broken.is_none() {
             match session.next_item() {
@@ -962,6 +982,16 @@ impl Reading<'_, '_> {
                     if cacheable {
                         own.push(item.clone());
                     }
+                    if let Some(entering) = &mut self.entering
+                        && matches!(item, Item::Record(_) | Item::Declaration(_))
+                    {
+                        // As for the record index above: no record or
+                        // declaration carries effects, so the live
+                        // context is the one the item bound under.
+                        let values = session.context().snapshot_values();
+                        entering(&values);
+                        bound.push(values);
+                    }
                     self.emit(item);
                 }
                 Ok(None) => break,
@@ -1001,6 +1031,7 @@ impl Reading<'_, '_> {
                     values: left,
                     consulted,
                     records,
+                    bound,
                 };
                 self.left.insert(key.clone(), left);
                 self.results.push(BoundResult {

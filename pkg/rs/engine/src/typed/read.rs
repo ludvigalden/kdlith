@@ -67,6 +67,12 @@ pub enum TypedItem<T> {
         /// The document the record was read from.
         #[serde(skip)]
         origin: Origin,
+        /// The slots [`TypedReader::capturing`] named, in the order it
+        /// named them, each with its value as the record binds under it;
+        /// `None` where the slot is unset. Empty unless capture was asked
+        /// for.
+        #[serde(skip)]
+        context: Vec<(String, Option<SlotValue>)>,
     },
     /// A declaration with its identity, read as the processor's type.
     Declaration {
@@ -86,6 +92,9 @@ pub enum TypedItem<T> {
         /// The document the declaration was read from.
         #[serde(skip)]
         origin: Origin,
+        /// The slots [`TypedReader::capturing`] named, as on a record.
+        #[serde(skip)]
+        context: Vec<(String, Option<SlotValue>)>,
     },
     Contribution(Box<BoundContribution>),
     /// A dependent value kept raw until its referenced declaration is
@@ -454,9 +463,10 @@ impl<'d, T: 'static> TypedReader<'d, T> {
     }
 
     /// Carry, on every document item, the named context slots' values as
-    /// the document's first node binds under them, in the order named,
-    /// in place of any named before. A name the definition declares no
-    /// slot for fails the reading before any document is read
+    /// the document's first node binds under them, and on every record
+    /// and declaration their values as it binds, in the order named, in
+    /// place of any named before. A name the definition declares no slot
+    /// for fails the reading before any document is read
     /// ([`ReadError::UnknownSlot`]).
     #[must_use]
     pub fn capturing(mut self, slots: &[&str]) -> Self {
@@ -512,8 +522,9 @@ impl<'d, T: 'static> TypedReader<'d, T> {
     ) -> Result<(bool, Option<LinkReport>), ReadError> {
         let captured = self.captured_slots()?;
         // The data reader gives each document's text, and its entry
-        // context when asked, just before its document item, so they
-        // pair in stream order.
+        // context when asked, just before its document item, and each
+        // record's or declaration's context just before it, so they pair
+        // in stream order.
         let text = Cell::new(String::new());
         let mut texts = |read: &str| text.set(read.to_owned());
         let context = RefCell::new(Vec::new());
@@ -618,6 +629,7 @@ impl<'d, T: 'static> TypedReader<'d, T> {
                 context: context.take(),
             },
             Item::Record(record) => {
+                let context = context.take();
                 let value = self.value(
                     Role::Record,
                     &record.node_name,
@@ -631,9 +643,11 @@ impl<'d, T: 'static> TypedReader<'d, T> {
                     span: record.span,
                     site: record.site,
                     origin: origin(record.node),
+                    context,
                 }));
             }
             Item::Declaration(declaration) => {
+                let context = context.take();
                 let value = self.value(
                     Role::Declaration,
                     &declaration.node_name,
@@ -648,6 +662,7 @@ impl<'d, T: 'static> TypedReader<'d, T> {
                     span: declaration.span,
                     site: declaration.site,
                     origin: origin(declaration.node),
+                    context,
                 }));
             }
             Item::Contribution(contribution) => TypedItem::Contribution(Box::new(contribution)),
