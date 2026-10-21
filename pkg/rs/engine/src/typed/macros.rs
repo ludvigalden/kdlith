@@ -63,6 +63,20 @@ macro_rules! enum_type {
             $(#[$meta])* $vis enum $name { $($(#[$vmeta])* $member => $variant),+ }
         }
     };
+    // The `exhaustive;` marker drops the non-exhaustive attribute; the
+    // emitter chooses it per form, never the macro.
+    (
+        exhaustive;
+        $(#[$meta:meta])* $vis:vis enum $name:ident {
+            $($(#[$vmeta:meta])* $member:literal => $variant:ident),+ $(,)?
+        }
+    ) => {
+        $crate::enum_type! {
+            as stringify!($name);
+            exhaustive;
+            $(#[$meta])* $vis enum $name { $($(#[$vmeta])* $member => $variant),+ }
+        }
+    };
     (
         as $spelled:expr;
         $(#[$meta:meta])* $vis:vis enum $name:ident {
@@ -72,6 +86,59 @@ macro_rules! enum_type {
         $(#[$meta])*
         #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
         #[non_exhaustive]
+        $vis enum $name {
+            $($(#[$vmeta])* $variant),+
+        }
+
+        impl $name {
+            /// Every member with its spelling, in declaration order.
+            pub const MEMBERS: &'static [(&'static str, Self)] = &[$(($member, Self::$variant)),+];
+
+            /// The member as a definition spells it.
+            pub fn member(self) -> &'static str {
+                match self {
+                    $(Self::$variant => $member),+
+                }
+            }
+        }
+
+        impl $crate::FromValue for $name {
+            fn from_value(
+                value: &$crate::__private::Value,
+            ) -> ::core::result::Result<Self, $crate::Mismatch> {
+                $crate::member_value(value, Self::MEMBERS)
+            }
+        }
+
+        impl $crate::LogicalType for $name {
+            fn expression() -> ::std::string::String {
+                ::std::string::String::from($spelled)
+            }
+        }
+
+        impl $crate::Shaped for $name {
+            const SHAPE: $crate::TypeShape =
+                $crate::TypeShape::enumeration($spelled, &[$($member),+]);
+        }
+
+        impl $crate::__private::serde::Serialize for $name {
+            fn serialize<S: $crate::__private::serde::Serializer>(
+                &self,
+                serializer: S,
+            ) -> ::core::result::Result<S::Ok, S::Error> {
+                serializer.serialize_str(self.member())
+            }
+        }
+    };
+    (
+        as $spelled:expr;
+        exhaustive;
+        $(#[$meta:meta])* $vis:vis enum $name:ident {
+            $($(#[$vmeta:meta])* $member:literal => $variant:ident),+ $(,)?
+        }
+    ) => {
+        $(#[$meta])*
+        #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
         $vis enum $name {
             $($(#[$vmeta])* $variant),+
         }
@@ -146,6 +213,13 @@ macro_rules! object_type {
     ($(#[$meta:meta])* $vis:vis struct $name:ident {}) => {
         $crate::object_type! { as stringify!($name); $(#[$meta])* $vis struct $name {} }
     };
+    (exhaustive; $(#[$meta:meta])* $vis:vis struct $name:ident {}) => {
+        $crate::object_type! {
+            as stringify!($name);
+            exhaustive;
+            $(#[$meta])* $vis struct $name {}
+        }
+    };
     (
         $(#[$meta:meta])* $vis:vis struct $name:ident {
             $($(#[$fmeta:meta])* $key:literal => $field:ident: $ty:ty),+ $(,)?
@@ -156,10 +230,47 @@ macro_rules! object_type {
             $(#[$meta])* $vis struct $name { $($(#[$fmeta])* $key => $field: $ty),+ }
         }
     };
+    (
+        exhaustive;
+        $(#[$meta:meta])* $vis:vis struct $name:ident {
+            $($(#[$fmeta:meta])* $key:literal => $field:ident: $ty:ty),+ $(,)?
+        }
+    ) => {
+        $crate::object_type! {
+            as stringify!($name);
+            exhaustive;
+            $(#[$meta])* $vis struct $name { $($(#[$fmeta])* $key => $field: $ty),+ }
+        }
+    };
     (as $spelled:expr; $(#[$meta:meta])* $vis:vis struct $name:ident {}) => {
         $(#[$meta])*
         #[derive(Clone, Debug, PartialEq, Eq)]
         #[non_exhaustive]
+        $vis struct $name {}
+
+        impl $crate::FromFields for $name {
+            fn from_fields(
+                _: &mut $crate::Fields<'_>,
+            ) -> ::core::result::Result<Self, $crate::Mismatch> {
+                ::core::result::Result::Ok(Self {})
+            }
+        }
+
+        $crate::object_type!(@logical $spelled, $name {});
+
+        impl $crate::__private::serde::Serialize for $name {
+            fn serialize<S: $crate::__private::serde::Serializer>(
+                &self,
+                serializer: S,
+            ) -> ::core::result::Result<S::Ok, S::Error> {
+                use $crate::__private::serde::ser::SerializeMap as _;
+                serializer.serialize_map(::core::option::Option::Some(0))?.end()
+            }
+        }
+    };
+    (as $spelled:expr; exhaustive; $(#[$meta:meta])* $vis:vis struct $name:ident {}) => {
+        $(#[$meta])*
+        #[derive(Clone, Debug, PartialEq, Eq)]
         $vis struct $name {}
 
         impl $crate::FromFields for $name {
@@ -223,6 +334,47 @@ macro_rules! object_type {
             }
         }
     };
+    (
+        as $spelled:expr;
+        exhaustive;
+        $(#[$meta:meta])* $vis:vis struct $name:ident {
+            $($(#[$fmeta:meta])* $key:literal => $field:ident: $ty:ty),+ $(,)?
+        }
+    ) => {
+        $(#[$meta])*
+        #[derive(Clone, Debug, PartialEq, Eq)]
+        $vis struct $name {
+            $($(#[$fmeta])* pub $field: $ty),+
+        }
+
+        impl $crate::FromFields for $name {
+            fn from_fields(
+                fields: &mut $crate::Fields<'_>,
+            ) -> ::core::result::Result<Self, $crate::Mismatch> {
+                ::core::result::Result::Ok(Self {
+                    $($field: fields.take::<$ty>($key)?),+
+                })
+            }
+        }
+
+        $crate::object_type!(@logical $spelled, $name { $($key: $ty),+ });
+
+        impl $crate::__private::serde::Serialize for $name {
+            fn serialize<S: $crate::__private::serde::Serializer>(
+                &self,
+                serializer: S,
+            ) -> ::core::result::Result<S::Ok, S::Error> {
+                use $crate::__private::serde::ser::SerializeMap as _;
+                let mut map = serializer.serialize_map(::core::option::Option::None)?;
+                $(
+                    if !$crate::LogicalType::is_absent(&self.$field) {
+                        map.serialize_entry($key, &self.$field)?;
+                    }
+                )+
+                map.end()
+            }
+        }
+    };
 }
 
 /// A union type: one Rust variant per variant, selected by the node name
@@ -236,6 +388,18 @@ macro_rules! union_type {
     ) => {
         $crate::union_type! {
             as stringify!($name);
+            $(#[$meta])* $vis enum $name { $($(#[$vmeta])* $node => $variant($ty)),+ }
+        }
+    };
+    (
+        exhaustive;
+        $(#[$meta:meta])* $vis:vis enum $name:ident {
+            $($(#[$vmeta:meta])* $node:literal => $variant:ident($ty:ty)),+ $(,)?
+        }
+    ) => {
+        $crate::union_type! {
+            as stringify!($name);
+            exhaustive;
             $(#[$meta])* $vis enum $name { $($(#[$vmeta])* $node => $variant($ty)),+ }
         }
     };
@@ -296,12 +460,69 @@ macro_rules! union_type {
             }
         }
     };
+    (
+        as $spelled:expr;
+        exhaustive;
+        $(#[$meta:meta])* $vis:vis enum $name:ident {
+            $($(#[$vmeta:meta])* $node:literal => $variant:ident($ty:ty)),+ $(,)?
+        }
+    ) => {
+        $(#[$meta])*
+        #[derive(Clone, Debug, PartialEq, Eq)]
+        $vis enum $name {
+            $($(#[$vmeta])* $variant($ty)),+
+        }
+
+        impl $crate::FromValue for $name {
+            fn from_value(
+                value: &$crate::__private::Value,
+            ) -> ::core::result::Result<Self, $crate::Mismatch> {
+                let (node, inner) = $crate::variant_value(value)?;
+                match node {
+                    $($node => <$ty as $crate::FromValue>::from_value(inner)
+                        .map(Self::$variant)
+                        .map_err(|mismatch| mismatch.within($node)),)+
+                    other => ::core::result::Result::Err($crate::Mismatch::new(::std::format!(
+                        "{other} is not a variant of {}",
+                        $spelled
+                    ))),
+                }
+            }
+        }
+
+        impl $crate::LogicalType for $name {
+            fn expression() -> ::std::string::String {
+                ::std::string::String::from($spelled)
+            }
+        }
+
+        impl $crate::Shaped for $name {
+            const SHAPE: $crate::TypeShape = $crate::TypeShape::union(
+                $spelled,
+                &[$($crate::VariantShape::new($node, <$ty as $crate::LogicalType>::expression)),+],
+            );
+        }
+
+        impl $crate::__private::serde::Serialize for $name {
+            fn serialize<S: $crate::__private::serde::Serializer>(
+                &self,
+                serializer: S,
+            ) -> ::core::result::Result<S::Ok, S::Error> {
+                use $crate::__private::serde::ser::SerializeMap as _;
+                let mut map = serializer.serialize_map(::core::option::Option::Some(1))?;
+                match self {
+                    $(Self::$variant(inner) => map.serialize_entry($node, inner)?,)+
+                }
+                map.end()
+            }
+        }
+    };
 }
 
-/// A named reference type: a newtype over the `ref<Target>` carrier,
-/// spelled as the declaration names it. Its references decode into the
-/// lookup domain, so reading compares against that domain rather than
-/// the target's name; a spelling no codec decoded never reads as one.
+/// A reference type: a newtype over the `ref<Target>` carrier.
+/// References decode into the lookup domain, so reading compares
+/// against that domain, not the target's name; a spelling no codec
+/// decoded never reads as one.
 #[macro_export]
 macro_rules! reference_type {
     (
@@ -502,6 +723,55 @@ macro_rules! inline_union_type {
             }
         }
     };
+    (
+        exhaustive;
+        $(#[$meta:meta])* $vis:vis enum $name:ident {
+            $($(#[$vmeta:meta])* $variant:ident($ty:ty)),+ $(,)?
+        }
+    ) => {
+        $(#[$meta])*
+        #[derive(Clone, Debug, PartialEq, Eq)]
+        $vis enum $name {
+            $($(#[$vmeta])* $variant($ty)),+
+        }
+
+        impl $crate::FromValue for $name {
+            fn from_value(
+                value: &$crate::__private::Value,
+            ) -> ::core::result::Result<Self, $crate::Mismatch> {
+                $(if let ::core::result::Result::Ok(read) =
+                    <$ty as $crate::FromValue>::from_value(value)
+                {
+                    return ::core::result::Result::Ok(Self::$variant(read));
+                })+
+                ::core::result::Result::Err($crate::Mismatch::expected(
+                    &<Self as $crate::LogicalType>::expression(),
+                    value,
+                ))
+            }
+        }
+
+        impl $crate::LogicalType for $name {
+            fn expression() -> ::std::string::String {
+                let members: &[::std::string::String] =
+                    &[$(<$ty as $crate::LogicalType>::expression()),+];
+                ::std::format!("union<{}>", members.join(", "))
+            }
+        }
+
+        impl $crate::__private::serde::Serialize for $name {
+            fn serialize<S: $crate::__private::serde::Serializer>(
+                &self,
+                serializer: S,
+            ) -> ::core::result::Result<S::Ok, S::Error> {
+                match self {
+                    $(Self::$variant(inner) => {
+                        $crate::__private::serde::Serialize::serialize(inner, serializer)
+                    })+
+                }
+            }
+        }
+    };
 }
 
 /// A contribution's value, or a resolution's settled value, as the
@@ -518,6 +788,74 @@ macro_rules! contribution_type {
         $(#[$meta])*
         #[derive(Clone, Debug, PartialEq, Eq)]
         #[non_exhaustive]
+        $vis enum $name {
+            $($(#[$vmeta])* $variant($ty)),+
+        }
+
+        impl $crate::FromValue for $name {
+            fn from_value(
+                value: &$crate::__private::Value,
+            ) -> ::core::result::Result<Self, $crate::Mismatch> {
+                let mut fits: ::std::vec::Vec<(&'static str, Self)> = ::std::vec::Vec::new();
+                $(if let ::core::result::Result::Ok(read) =
+                    <$ty as $crate::FromValue>::from_value(value)
+                {
+                    fits.push((stringify!($variant), Self::$variant(read)));
+                })+
+                let mut fits = fits.into_iter();
+                match (fits.next(), fits.next()) {
+                    (::core::option::Option::Some((_, one)), ::core::option::Option::None) => {
+                        ::core::result::Result::Ok(one)
+                    }
+                    (::core::option::Option::None, _) => {
+                        ::core::result::Result::Err($crate::Mismatch::new(::std::format!(
+                            "the value fits no contribution type of {}",
+                            stringify!($name)
+                        )))
+                    }
+                    (
+                        ::core::option::Option::Some((one, _)),
+                        ::core::option::Option::Some((other, _)),
+                    ) => ::core::result::Result::Err($crate::Mismatch::new(::std::format!(
+                        "the value fits both {one} and {other}"
+                    ))),
+                }
+            }
+        }
+
+        $(impl $crate::ItemVariant<$ty> for $name {
+            // A one-variant contribution type leaves the fallback arm
+            // unreachable.
+            #[allow(unreachable_patterns)]
+            fn variant(&self) -> ::core::option::Option<&$ty> {
+                match self {
+                    Self::$variant(inner) => ::core::option::Option::Some(inner),
+                    _ => ::core::option::Option::None,
+                }
+            }
+        })+
+
+        impl $crate::__private::serde::Serialize for $name {
+            fn serialize<S: $crate::__private::serde::Serializer>(
+                &self,
+                serializer: S,
+            ) -> ::core::result::Result<S::Ok, S::Error> {
+                match self {
+                    $(Self::$variant(inner) => {
+                        $crate::__private::serde::Serialize::serialize(inner, serializer)
+                    })+
+                }
+            }
+        }
+    };
+    (
+        exhaustive;
+        $(#[$meta:meta])* $vis:vis enum $name:ident {
+            $($(#[$vmeta:meta])* $variant:ident($ty:ty)),+ $(,)?
+        }
+    ) => {
+        $(#[$meta])*
+        #[derive(Clone, Debug, PartialEq, Eq)]
         $vis enum $name {
             $($(#[$vmeta])* $variant($ty)),+
         }
@@ -602,6 +940,22 @@ macro_rules! item_type {
             }
         }
     };
+    // An exhaustive empty enum matches with no arm at all; the emitter
+    // spells the marker uniformly across the item arms.
+    (exhaustive; $(#[$meta:meta])* $vis:vis enum $name:ident {}) => {
+        $(#[$meta])*
+        #[derive(Clone, Debug, PartialEq, Eq)]
+        $vis enum $name {}
+
+        impl $crate::__private::serde::Serialize for $name {
+            fn serialize<S: $crate::__private::serde::Serializer>(
+                &self,
+                _serializer: S,
+            ) -> ::core::result::Result<S::Ok, S::Error> {
+                match *self {}
+            }
+        }
+    };
     (@from $name:ident $ty:ident $only:ident) => {
         impl ::core::convert::From<$ty> for $name {
             fn from(value: $ty) -> Self {
@@ -648,10 +1002,88 @@ macro_rules! item_type {
             }
         }
     };
+    (
+        exhaustive;
+        $(#[$meta:meta])* $vis:vis enum $name:ident {
+            $($ty:ident => $($variant:ident)|+),+ $(,)?
+        }
+    ) => {
+        $(#[$meta])*
+        #[derive(Clone, Debug, PartialEq, Eq)]
+        $vis enum $name {
+            $($($variant($ty)),+),+
+        }
+
+        $($crate::item_type!(@from $name $ty $($variant)+);)+
+
+        $(impl $crate::ItemVariant<$ty> for $name {
+            // A type backing every variant leaves the fallback arm unreachable.
+            #[allow(unreachable_patterns)]
+            fn variant(&self) -> ::core::option::Option<&$ty> {
+                match self {
+                    $(Self::$variant(inner))|+ => ::core::option::Option::Some(inner),
+                    _ => ::core::option::Option::None,
+                }
+            }
+        })+
+
+        impl $crate::__private::serde::Serialize for $name {
+            fn serialize<S: $crate::__private::serde::Serializer>(
+                &self,
+                serializer: S,
+            ) -> ::core::result::Result<S::Ok, S::Error> {
+                match self {
+                    $($(Self::$variant(inner))|+ => {
+                        $crate::__private::serde::Serialize::serialize(inner, serializer)
+                    })+
+                }
+            }
+        }
+    };
     ($(#[$meta:meta])* $vis:vis enum $name:ident { $($(#[$vmeta:meta])* $variant:ident),+ $(,)? }) => {
         $(#[$meta])*
         #[derive(Clone, Debug, PartialEq, Eq)]
         #[non_exhaustive]
+        $vis enum $name {
+            $($(#[$vmeta])* $variant($variant)),+
+        }
+
+        $(impl ::core::convert::From<$variant> for $name {
+            fn from(value: $variant) -> Self {
+                Self::$variant(value)
+            }
+        })+
+
+        $(impl $crate::ItemVariant<$variant> for $name {
+            // A one-variant item type leaves the fallback arm unreachable.
+            #[allow(unreachable_patterns)]
+            fn variant(&self) -> ::core::option::Option<&$variant> {
+                match self {
+                    Self::$variant(inner) => ::core::option::Option::Some(inner),
+                    _ => ::core::option::Option::None,
+                }
+            }
+        })+
+
+        impl $crate::__private::serde::Serialize for $name {
+            fn serialize<S: $crate::__private::serde::Serializer>(
+                &self,
+                serializer: S,
+            ) -> ::core::result::Result<S::Ok, S::Error> {
+                match self {
+                    $(Self::$variant(inner) => {
+                        $crate::__private::serde::Serialize::serialize(inner, serializer)
+                    })+
+                }
+            }
+        }
+    };
+    (
+        exhaustive;
+        $(#[$meta:meta])* $vis:vis enum $name:ident { $($(#[$vmeta:meta])* $variant:ident),+ $(,)? }
+    ) => {
+        $(#[$meta])*
+        #[derive(Clone, Debug, PartialEq, Eq)]
         $vis enum $name {
             $($(#[$vmeta])* $variant($variant)),+
         }
