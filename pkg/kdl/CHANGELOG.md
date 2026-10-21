@@ -95,6 +95,30 @@ published yet.
 - Definitions whose only nodes are contribution-role now generate a
   processor where they were refused before; the no-items refusal names
   record, declaration, and contribution nodes.
+- Generated schema-form types are exhaustive: every type declaration
+  emits the exhaustive marker, so a `match` over a union, enum, or the
+  `Item` enum needs no wildcard arm and objects construct with a
+  struct literal. Dialect-form generation is unchanged.
+- String-typed newtypes implement `Display`, `Borrow<str>`,
+  `AsRef<str>`, and `PartialEq<str>`, so they serve as `HashMap` keys
+  looked up by plain string literals and format with `{}`.
+- Generated schema crates expose `Item::name()`, returning the single
+  string identity field of a declaration and `None` for records,
+  composed identities, and non-string identities.
+- The engine root re-exports `Value`, and generated schema crates
+  re-export `Value`, `TypedReader`, and `ReadError`, so a tool
+  depending on the generated crate alone can name its reader and
+  error types.
+- Reference-typed newtypes dereference to their `Ref`, so `Ref`
+  methods are reachable on the field and `Reading::resolve` takes the
+  dereferenced or coerced borrow. `Reading::link_of` documents its
+  gate list: the alias namespaces that hid a match, reported for each
+  resolved reference. Enum-typed newtypes implement `Display` through
+  their member name.
+- Typed records and declarations carry the context slots they bound
+  under, stamped per item when a reader is capturing (replayed
+  documents included), and both carry the node name of the node that
+  produced them.
 
 ### Fixed
 
