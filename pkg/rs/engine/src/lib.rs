@@ -102,13 +102,11 @@ pub use source_context::{AppliedSourceValue, apply as apply_source_context};
 pub use structure::{Occurs, OrderRule, ScopeRules, ScopeState, Violation};
 pub use symbols::{ContributionDescriptor, DeclarationDescriptor, ReferencePolicy, SymbolCatalog};
 pub use syntax::ParsedDocument;
-#[allow(deprecated)]
-pub use typed::Links;
 pub use typed::{
     Decimal, Declarations, Expression, FieldShape, Fields, FromFields, FromValue, Handler,
     ItemVariant, LogicalType, Mismatch, NodeShape, Nullable, OrderedMap, Origin, ReadError, ReadFn,
-    Reading, Ref, ResolveError, Shaped, SlotShape, TypeShape, TypedItem, TypedReader, Unresolved,
-    ValueExpr, VariantShape, member_value, object_value, read_fields, reference_value, text_value,
+    Reading, Ref, ResolveError, Shaped, SlotShape, TypeShape, TypedItem, TypedReader, ValueExpr,
+    VariantShape, member_value, object_value, read_fields, reference_value, text_value,
     variant_value,
 };
 pub use types::{

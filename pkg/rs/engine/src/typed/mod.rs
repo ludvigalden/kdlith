@@ -10,9 +10,7 @@ mod read;
 mod shape;
 mod value;
 
-#[allow(deprecated)]
-pub use links::Links;
-pub use links::{ItemVariant, Ref, Unresolved, reference_value};
+pub use links::{ItemVariant, Ref, reference_value};
 pub use origin::Origin;
 pub use read::{ReadError, Reading, ResolveError, TypedItem, TypedReader};
 pub use shape::{

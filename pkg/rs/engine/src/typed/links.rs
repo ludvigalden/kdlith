@@ -1,13 +1,12 @@
-//! Linking typed references: a reading's declarations by identity, and
-//! a `ref<T>` value resolved against them. Binding never resolves a
-//! reference; linking is a separate step over a typed reading's items.
+//! Typed references: a `ref<T>` value as bound, and the item variant a
+//! resolved reference is read as. Binding never resolves a reference; a
+//! linked reading does.
 
 use std::fmt;
 use std::marker::PhantomData;
 
-use kdlith_model::{Identity, Location, Position, SourceId, Value};
+use kdlith_model::{Location, Position, SourceId, Value};
 
-use crate::typed::read::TypedItem;
 use crate::typed::value::{FromValue, LogicalType, Mismatch};
 
 /// A `ref<T>` value: a symbolic reference, as bound, to a declaration
@@ -156,105 +155,4 @@ impl<T> serde::Serialize for Ref<T> {
 pub trait ItemVariant<D> {
     /// The variant's value, when the item is of type `D`.
     fn variant(&self) -> Option<&D>;
-}
-
-/// Why a reference resolves to no single declaration of its type.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[non_exhaustive]
-pub enum Unresolved {
-    /// No declaration in the reference's domain carries its name.
-    Missing,
-    /// More than one declaration in the domain carries its name.
-    Ambiguous { candidates: usize },
-    /// The one declaration found is not read as the referenced type.
-    NotOfType,
-}
-
-impl fmt::Display for Unresolved {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Missing => f.write_str("no declaration carries the referenced name"),
-            Self::Ambiguous { candidates } => {
-                write!(f, "{candidates} declarations carry the referenced name")
-            }
-            Self::NotOfType => f.write_str("the declaration is not of the referenced type"),
-        }
-    }
-}
-
-impl std::error::Error for Unresolved {}
-
-/// The declarations of a typed reading, by identity, in reading order:
-/// the linked graph a `ref<T>` value resolves against.
-#[deprecated(
-    note = "matches names only, without alias gating, qualifiers, or duplicate checks; \
-            collect a linked reading and use `Reading::resolve` or `Reading::settled`"
-)]
-#[derive(Clone, Debug)]
-pub struct Links<T> {
-    declarations: Vec<(Identity, T)>,
-}
-
-// The deprecated type's own impls are its definition, not a use of it.
-#[allow(deprecated)]
-impl<T> Default for Links<T> {
-    fn default() -> Self {
-        Self {
-            declarations: Vec::new(),
-        }
-    }
-}
-
-#[allow(deprecated)]
-impl<T> Links<T> {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Register one declaration under its identity.
-    pub fn declare(&mut self, identity: Identity, value: T) {
-        self.declarations.push((identity, value));
-    }
-
-    /// How many declarations are registered.
-    pub fn len(&self) -> usize {
-        self.declarations.len()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.declarations.is_empty()
-    }
-
-    /// The one declaration `reference` names, read as its type: exactly
-    /// one candidate in the reference's domain must carry its name.
-    pub fn resolve<D>(&self, reference: &Ref<D>) -> Result<&D, Unresolved>
-    where
-        T: ItemVariant<D>,
-    {
-        let mut candidates = self.declarations.iter().filter(|(identity, _)| {
-            identity.domain == reference.domain && identity.name.0 == reference.name
-        });
-        match (candidates.next(), candidates.next()) {
-            (None, _) => Err(Unresolved::Missing),
-            (Some((_, value)), None) => value.variant().ok_or(Unresolved::NotOfType),
-            (Some(_), Some(_)) => Err(Unresolved::Ambiguous {
-                candidates: 2 + candidates.count(),
-            }),
-        }
-    }
-}
-
-#[allow(deprecated)]
-impl<T: Clone> Links<T> {
-    /// Register the item when it is a declaration; every other item
-    /// passes untouched, so a reading's sink can observe its whole
-    /// stream.
-    pub fn observe(&mut self, item: &TypedItem<T>) {
-        if let TypedItem::Declaration {
-            identity, value, ..
-        } = item
-        {
-            self.declare(identity.clone(), value.clone());
-        }
-    }
 }
