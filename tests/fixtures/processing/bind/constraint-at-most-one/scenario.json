@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "Under at-most-one a node may hold none or one of the listed fields, however each binds: a capture with none, one with the argument-bound name, one with the property-bound file, and one with the child-bound selector all bind valid",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/constraints-schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

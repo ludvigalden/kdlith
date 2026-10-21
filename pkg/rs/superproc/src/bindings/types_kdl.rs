@@ -27,6 +27,12 @@ pub(crate) const NODES: &[NodeShape] = &[
         .under(&["constraints"])
         .ty("Requires"),
     NodeShape::new("bound").under(&["constraints"]).ty("Bound"),
+    NodeShape::new("at-most-one")
+        .under(&["constraints"])
+        .ty("AtMostOne"),
+    NodeShape::new("exactly-one-field")
+        .under(&["constraints"])
+        .ty("ExactlyOneField"),
     NodeShape::new("union")
         .under(&["types"])
         .declaration()

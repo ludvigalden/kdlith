@@ -343,9 +343,6 @@ fn object(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) -> Option<(String, Vec
         }
     }
     let fields: Vec<FieldDef> = fields.into_iter().map(|(field, _)| field).collect();
-    if let Some(site) = constraint_block {
-        check_constraints(cx, site, &label, &fields, &constraints);
-    }
     check_parameters(cx, Site::new(doc, node.span), &label, &parameters);
     Some((
         name,
@@ -532,6 +529,15 @@ fn constraint_list(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode, out: &mut Vec
                         max,
                     });
                 }
+            }
+            "at-most-one" | "exactly-one-field" => {
+                let names = part.rest_strings(cx, 0, "field name");
+                part.finish_leaf(cx);
+                let fields = names.iter().map(|n| cx.names.intern(n)).collect();
+                out.push(match child.name.as_str() {
+                    "at-most-one" => Constraint::AtMostOne(fields),
+                    _ => Constraint::ExactlyOneField(fields),
+                });
             }
             _ => cx.unknown(doc, child, "constraints"),
         }
@@ -796,54 +802,107 @@ fn codec(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) -> Option<(String, Vec<
     ))
 }
 
+/// Check every declared object's constraints against its fields. Called
+/// from `finish` after the expansion pass, so a constraint may name a
+/// field an `include` spliced in; an object whose includes were never
+/// spliced (local checking) is not judged on the names it lacks.
+pub(crate) fn constraints(cx: &mut Cx<'_>) {
+    let objects: Vec<_> = cx
+        .types
+        .iter()
+        .filter_map(|(_, decl)| {
+            let (TypeKind::Object(object), Some(site)) = (&decl.kind, decl.site) else {
+                return None;
+            };
+            if object.constraints.is_empty() {
+                return None;
+            }
+            let label = format!("object {}", cx.names.resolve(decl.name));
+            let unspliced = cx.expansions.iter().any(|p| p.owner == decl.name);
+            Some((site, label, object.clone(), unspliced))
+        })
+        .collect();
+    for (site, label, object, unspliced) in objects {
+        check_constraints(cx, site, &label, &object, unspliced);
+    }
+}
+
 /// Check an object's constraints against its fields: every named field
-/// is declared, and a bound names a numeric field and a non-empty range.
-pub(crate) fn check_constraints(
+/// is declared, a bound names a numeric field and a non-empty range, and
+/// an exclusivity list names at least one field, each once.
+fn check_constraints(
     cx: &mut Cx<'_>,
     site: Site,
     label: &str,
-    fields: &[FieldDef],
-    constraints: &[Constraint],
+    object: &ObjectType,
+    unspliced: bool,
 ) {
-    for constraint in constraints {
-        for sym in constraint.fields() {
-            if !fields.iter().any(|f| f.name == sym) {
-                let spelled = cx.names.resolve(sym).to_owned();
-                cx.malformed(
-                    site,
-                    label,
-                    &format!("constraint names undeclared field {spelled}"),
-                );
+    let fields = &object.fields;
+    for constraint in &object.constraints {
+        if !unspliced {
+            for sym in constraint.fields() {
+                if !fields.iter().any(|f| f.name == sym) {
+                    let spelled = cx.names.resolve(sym).to_owned();
+                    cx.malformed(
+                        site,
+                        label,
+                        &format!("constraint names undeclared field {spelled}"),
+                    );
+                }
             }
         }
-        let Constraint::Bound { field, min, max } = constraint else {
-            continue;
+        let (kind, list) = match constraint {
+            Constraint::AtMostOne(list) => ("at-most-one", list),
+            Constraint::ExactlyOneField(list) => ("exactly-one-field", list),
+            Constraint::Bound { field, min, max } => {
+                check_bound(cx, site, label, fields, *field, (*min, *max));
+                continue;
+            }
+            _ => continue,
         };
-        let spelled = cx.names.resolve(*field).to_owned();
-        if min.is_none() && max.is_none() {
-            let reason = format!("bound {spelled} declares neither min nor max");
-            cx.malformed(site, label, &reason);
+        if list.is_empty() {
+            cx.malformed(site, label, &format!("{kind} names no field"));
         }
-        if let (Some(min), Some(max)) = (min, max)
-            && min > max
-        {
-            let reason = format!("bound {spelled} has min {min} above max {max}");
-            cx.malformed(site, label, &reason);
-        }
-        let Some(def) = fields.iter().find(|f| f.name == *field) else {
-            continue;
-        };
-        if let Err(why) = bounded_type(cx, &def.ty) {
-            let reason = format!("bound {spelled} names a field that {why}");
-            cx.malformed(site, label, &reason);
+        for (at, sym) in list.iter().enumerate() {
+            if list[..at].contains(sym) && !list[at + 1..].contains(sym) {
+                let spelled = cx.names.resolve(*sym).to_owned();
+                cx.malformed(site, label, &format!("{kind} names field {spelled} twice"));
+            }
         }
     }
 }
 
-/// Whether a field type carries a number a bound can compare exactly:
-/// `Integer`, `Decimal`, or `U64`, optionally or nullably held, or as a
-/// list's elements. A `ValueExpr` or union may hold a non-number, so a
-/// bound over one is refused rather than left unchecked.
+fn check_bound(
+    cx: &mut Cx<'_>,
+    site: Site,
+    label: &str,
+    fields: &[FieldDef],
+    field: Sym,
+    (min, max): (Option<u64>, Option<u64>),
+) {
+    let spelled = cx.names.resolve(field).to_owned();
+    if min.is_none() && max.is_none() {
+        let reason = format!("bound {spelled} declares neither min nor max");
+        cx.malformed(site, label, &reason);
+    }
+    if let (Some(min), Some(max)) = (min, max)
+        && min > max
+    {
+        let reason = format!("bound {spelled} has min {min} above max {max}");
+        cx.malformed(site, label, &reason);
+    }
+    let Some(def) = fields.iter().find(|f| f.name == field) else {
+        return;
+    };
+    if let Err(why) = bounded_type(cx, &def.ty) {
+        let reason = format!("bound {spelled} names a field that {why}");
+        cx.malformed(site, label, &reason);
+    }
+}
+
+/// Whether a field type holds a number a bound compares exactly:
+/// `Integer`, `Decimal`, or `U64`, optional, nullable, or as list
+/// elements. A `ValueExpr` or union may hold a non-number, so is refused.
 fn bounded_type(cx: &Cx<'_>, ty: &TypeExpr) -> Result<(), &'static str> {
     let mut ty = ty;
     while let TypeExpr::Optional(inner) | TypeExpr::Nullable(inner) = ty {

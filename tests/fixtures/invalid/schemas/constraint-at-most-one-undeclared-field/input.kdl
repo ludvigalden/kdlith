@@ -1,0 +1,15 @@
+schema s version="1" {
+    types {
+        object Capture {
+            field name "optional<String>"
+            field file "optional<String>"
+            constraints {
+                at-most-one name file selector
+            }
+        }
+    }
+    node capture role=record type=Capture {
+        field name arg=0
+        field file property=file
+    }
+}

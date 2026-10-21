@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "An exclusivity list may name a union-typed field, since presence does not depend on type: pick alone satisfies exactly-one-field whether it binds as the U64 member or the String member",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/constraints-schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

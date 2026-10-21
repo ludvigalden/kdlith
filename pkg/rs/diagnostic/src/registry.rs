@@ -657,6 +657,16 @@ pub const CODES: &[CodeDefinition] = &[
         correction: "Write a value within the bound, or widen the bound",
         retired: false,
     },
+    CodeDefinition {
+        code: "KDLITH-BND013",
+        label: "exclusivity-violated",
+        severity: Severity::Error,
+        exit_class: 1,
+        trigger: "a bound node holds values for more than one field an at-most-one or exactly-one-field constraint of a type it binds as lists, or for none of an exactly-one-field list; presence is judged after defaults, context, and resolved values fill the node, and #null is a value",
+        message_template: "<node> violates <constraint>: fields holding a value: <found>",
+        correction: "Supply exactly the permitted number of the listed fields",
+        retired: false,
+    },
     // CTX
     CodeDefinition {
         code: "KDLITH-CTX001",

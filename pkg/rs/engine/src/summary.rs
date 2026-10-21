@@ -244,6 +244,10 @@ fn kind(n: &Names, kind: &TypeKind) -> String {
                         let (min, max) = (end("min", min), end("max", max));
                         format!("bound {}{min}{max}", n.resolve(*field))
                     }
+                    Constraint::AtMostOne(fields) => format!("at-most-one{}", list(n, fields)),
+                    Constraint::ExactlyOneField(fields) => {
+                        format!("exactly-one-field{}", list(n, fields))
+                    }
                 })
                 .collect();
             format!(

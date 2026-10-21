@@ -7,6 +7,7 @@
 {"item":"effective","data":{"section":"type","entry":{"name":"AnchorName","parameters":[],"kind":"string"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"ArgsSource","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"ArgumentSource","parameters":[],"kind":"object"}}}
+{"item":"effective","data":{"section":"type","entry":{"name":"AtMostOne","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"BindingCodec","parameters":[],"kind":"enum"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"Bound","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"BuiltinType","parameters":[],"kind":"enum"}}}
@@ -45,6 +46,7 @@
 {"item":"effective","data":{"section":"type","entry":{"name":"EntriesSource","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"EnumMember","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"EnumType","parameters":[],"kind":"object"}}}
+{"item":"effective","data":{"section":"type","entry":{"name":"ExactlyOneField","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"ExactlyOneGroup","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"ExpandSource","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"FieldBinding","parameters":[],"kind":"object"}}}
@@ -125,6 +127,7 @@
 {"item":"effective","data":{"section":"node","entry":{"name":"anchor","parents":["discovery"],"role":null,"type":"AnchorDef","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"args","parents":["child","children","from"],"role":null,"type":"ArgsSource","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"argument","parents":["child","children","from"],"role":null,"type":"ArgumentSource","profile":null}}}
+{"item":"effective","data":{"section":"node","entry":{"name":"at-most-one","parents":["constraints"],"role":null,"type":"AtMostOne","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"bound","parents":["constraints"],"role":null,"type":"Bound","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"capture","parents":["codec"],"role":null,"type":"Capture","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"case","parents":["cases"],"role":null,"type":"CaseRule","profile":null}}}
@@ -147,6 +150,7 @@
 {"item":"effective","data":{"section":"node","entry":{"name":"entries","parents":["from"],"role":null,"type":"EntriesSource","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"enum","parents":["types"],"role":"declaration","type":"EnumType","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"exactly-one","parents":["node"],"role":null,"type":"ExactlyOneGroup","profile":null}}}
+{"item":"effective","data":{"section":"node","entry":{"name":"exactly-one-field","parents":["constraints"],"role":null,"type":"ExactlyOneField","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"expand","parents":["from"],"role":null,"type":"ExpandSource","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"fallback","parents":["field"],"role":null,"type":null,"profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"field","parents":["node"],"role":null,"type":"FieldBinding","profile":null}}}

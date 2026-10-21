@@ -64,6 +64,7 @@ const UNRESOLVED_VALUE: &str = "KDLITH-BND009";
 const UNSUPPORTED_KEY: &str = "KDLITH-BND010";
 const CONSTRAINT_VIOLATED: &str = "KDLITH-BND011";
 const OUT_OF_BOUND: &str = "KDLITH-BND012";
+const EXCLUSIVITY_VIOLATED: &str = "KDLITH-BND013";
 
 const DOCUMENT_ROOT: &str = "the document root";
 
@@ -1174,7 +1175,8 @@ impl<'d, 's> Binder<'d, 's> {
     /// (`KDLITH-BND011`): `requires F G` fails when F holds a value and G
     /// none, and `all-or-none` fails for each listed field left absent
     /// while another holds a value. A `bound` fails for each number
-    /// outside its inclusive range (`KDLITH-BND012`).
+    /// outside its inclusive range (`KDLITH-BND012`); `at-most-one` and
+    /// `exactly-one-field` fail on their held count (`KDLITH-BND013`).
     fn constraints(
         &mut self,
         cx: &mut Cx<'_>,
@@ -1194,6 +1196,13 @@ impl<'d, 's> Binder<'d, 's> {
             for constraint in &object.constraints {
                 if let Constraint::Bound { field, min, max } = constraint {
                     self.bound(cx, frame, values, ty, *field, (*min, *max));
+                    continue;
+                }
+                if let Constraint::AtMostOne(fields) | Constraint::ExactlyOneField(fields) =
+                    constraint
+                {
+                    let exactly = matches!(constraint, Constraint::ExactlyOneField(_));
+                    self.exclusive(cx, frame, values, ty, fields, exactly);
                     continue;
                 }
                 let (spelled, unmet) = match constraint {
@@ -1293,6 +1302,42 @@ impl<'d, 's> Binder<'d, 's> {
             let values = [node, constraint.as_str(), field_name, found];
             self.diagnose(cx, OUT_OF_BOUND, frame.span, &values);
         }
+    }
+
+    /// Report an exclusivity list whose held fields number more than one,
+    /// or, for `exactly-one-field`, none. Presence is a held value, so a
+    /// default, a context value, and `#null` all count.
+    fn exclusive(
+        &mut self,
+        cx: &mut Cx<'_>,
+        frame: &BindFrame,
+        values: &[Option<Value>],
+        ty: Sym,
+        fields: &[Sym],
+        exactly: bool,
+    ) {
+        let held: Vec<&str> = fields
+            .iter()
+            .filter(|field| self.held(frame, values, **field))
+            .map(|field| self.name(*field))
+            .collect();
+        if held.len() == 1 || (held.is_empty() && !exactly) {
+            return;
+        }
+        let kind = if exactly {
+            "exactly-one-field"
+        } else {
+            "at-most-one"
+        };
+        let names: Vec<&str> = fields.iter().map(|f| self.name(*f)).collect();
+        let constraint = format!("{kind} {} of {}", names.join(" "), self.name(ty));
+        let found = if held.is_empty() {
+            "none".to_owned()
+        } else {
+            held.join(" ")
+        };
+        let values = [self.name(frame.name), constraint.as_str(), found.as_str()];
+        self.diagnose(cx, EXCLUSIVITY_VIOLATED, frame.span, &values);
     }
 
     /// Validate a node's dependent payload against its `against` target's

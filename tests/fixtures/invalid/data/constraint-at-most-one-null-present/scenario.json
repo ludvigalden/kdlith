@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "#null is a value, so a nullable field set to #null counts as present: name with file=#null holds two fields of an at-most-one list and is rejected with the exclusivity code",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/constraints-schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

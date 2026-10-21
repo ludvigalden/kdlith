@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "Presence is judged after values are filled: a pause supplying nothing gets wait from its literal fallback and token from the computed default the --resolve-from file resolves, so each exactly-one-field list holds exactly one value",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/constraints-schema.kdl",
+    "--resolve-from",
+    "values.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

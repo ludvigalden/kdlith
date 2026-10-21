@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "Under exactly-one-field a node holding exactly one listed field binds valid: the argument-bound text alone satisfies the list",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/constraints-schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

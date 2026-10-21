@@ -1,0 +1,6 @@
+capture
+capture "home"
+capture file="shot.png"
+capture {
+    selector "#main"
+}

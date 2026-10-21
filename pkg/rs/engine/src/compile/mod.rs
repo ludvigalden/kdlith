@@ -210,11 +210,13 @@ fn finish<'d>(
     documents: &'d [ParsedDocument],
     governing: Option<&Definition>,
 ) -> Result<Definition, Vec<DiagnosticRecord>> {
-    if cx.scope == CheckScope::Complete && !cx.diags.has_errors() {
+    let complete = cx.scope == CheckScope::Complete && !cx.diags.has_errors();
+    if complete {
         expansions::run(&mut cx);
-        if !cx.diags.has_errors() {
-            mono::run(&mut cx);
-        }
+    }
+    types::constraints(&mut cx);
+    if complete && !cx.diags.has_errors() {
+        mono::run(&mut cx);
     }
     collect::merge_policy(&mut cx);
     let bindings = scopes::build(&mut cx);

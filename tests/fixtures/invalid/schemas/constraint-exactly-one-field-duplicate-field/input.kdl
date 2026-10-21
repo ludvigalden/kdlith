@@ -1,0 +1,15 @@
+schema s version="1" {
+    types {
+        object Target {
+            field url "optional<String>"
+            field text "optional<String>"
+            constraints {
+                exactly-one-field url text url
+            }
+        }
+    }
+    node target role=record type=Target {
+        field url property=url
+        field text arg=0
+    }
+}

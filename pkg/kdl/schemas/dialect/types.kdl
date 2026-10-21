@@ -220,6 +220,8 @@ dialect kdlith version="0" {
             variant all-or-none AllOrNone
             variant requires Requires
             variant bound Bound
+            variant at-most-one AtMostOne
+            variant exactly-one-field ExactlyOneField
         }
 
         object AllOrNone {
@@ -237,6 +239,17 @@ dialect kdlith version="0" {
             field field FieldName
             field min "optional<U64>"
             field max "optional<U64>"
+        }
+
+        // Exclusivity over an object's fields, however each binds: at
+        // most one of the listed fields holds a value.
+        object AtMostOne {
+            field fields "list<FieldName>"
+        }
+
+        // Exactly one of the listed fields holds a value.
+        object ExactlyOneField {
+            field fields "list<FieldName>"
         }
     }
 
@@ -330,6 +343,8 @@ dialect kdlith version="0" {
                     children all-or-none
                     children requires
                     children bound
+                    children at-most-one
+                    children exactly-one-field
                 }
             }
         }
@@ -376,6 +391,8 @@ dialect kdlith version="0" {
         children all-or-none
         children requires
         children bound
+        children at-most-one
+        children exactly-one-field
     }
 
     node all-or-none type=AllOrNone parent=constraints {
@@ -395,6 +412,22 @@ dialect kdlith version="0" {
         field field arg=0
         field min property=min
         field max property=max
+    }
+
+    node at-most-one type=AtMostOne parent=constraints {
+        field fields {
+            from {
+                args
+            }
+        }
+    }
+
+    node exactly-one-field type=ExactlyOneField parent=constraints {
+        field fields {
+            from {
+                args
+            }
+        }
     }
 
     node union role=declaration type=UnionType parent=types {

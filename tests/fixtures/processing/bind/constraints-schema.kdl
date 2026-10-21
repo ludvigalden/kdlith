@@ -1,8 +1,11 @@
 // The schema the object-constraint and case-required scenarios share:
 // a record whose type states requires and all-or-none over two nullable
 // fields, a record whose collected list is supplied even when empty, a
-// record whose case dispatch selects a type with a required field, and
-// a record whose type bounds a U64, an Integer, a Decimal, and a list.
+// record whose case dispatch selects a type with a required field, a
+// record whose type bounds a U64, an Integer, a Decimal, and a list, and
+// records whose exclusivity lists name fields bound from an argument, a
+// property, and a child, a union field, an included field, and fields
+// filled by a literal fallback and by a resolved computed default.
 schema constraints version="1" {
     types {
         object Item {
@@ -45,6 +48,41 @@ schema constraints version="1" {
             field shape String
             field side U64
         }
+        object Locator {
+            field url "optional<String>"
+        }
+        object Capture {
+            field name "optional<String>"
+            field file "optional<nullable<String>>"
+            field selector "optional<String>"
+            constraints {
+                at-most-one name file selector
+            }
+        }
+        object Target {
+            include Locator
+            field text "optional<String>"
+            field pick "optional<union<U64, String>>"
+            constraints {
+                exactly-one-field url text pick
+            }
+        }
+        object Pause {
+            field wait "optional<U64>" {
+                fallback 100
+            }
+            field delay "optional<U64>"
+            field token "optional<String>" {
+                fallback computed=#true {
+                    dependency "token"
+                }
+            }
+            field secret "optional<String>"
+            constraints {
+                exactly-one-field wait delay
+                exactly-one-field token secret
+            }
+        }
     }
     node item role=record type=Item {
         field a property=a
@@ -80,5 +118,21 @@ schema constraints version="1" {
             case property=shape equals=circle type=Circle
             case property=shape equals=square type=Square
         }
+    }
+    node capture role=record type=Capture {
+        field name arg=0
+        field file property=file
+        field selector child=selector
+    }
+    node target role=record type=Target {
+        field url property=url
+        field text arg=0
+        field pick property=pick
+    }
+    node pause role=record type=Pause {
+        field wait property=wait
+        field delay property=delay
+        field token property=token
+        field secret property=secret
     }
 }

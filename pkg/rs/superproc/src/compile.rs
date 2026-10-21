@@ -611,6 +611,20 @@ fn constraint(constraint: &Constraint) -> ConstraintInput {
             min: bound.min,
             max: bound.max,
         },
+        Constraint::AtMostOne(at_most_one) => ConstraintInput::AtMostOne {
+            fields: at_most_one
+                .fields
+                .iter()
+                .map(|field| field.as_str().to_owned())
+                .collect(),
+        },
+        Constraint::ExactlyOneField(exactly_one_field) => ConstraintInput::ExactlyOneField {
+            fields: exactly_one_field
+                .fields
+                .iter()
+                .map(|field| field.as_str().to_owned())
+                .collect(),
+        },
     }
 }
 

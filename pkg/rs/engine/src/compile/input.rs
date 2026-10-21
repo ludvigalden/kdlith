@@ -211,6 +211,12 @@ pub enum ConstraintInput {
         min: Option<u64>,
         max: Option<u64>,
     },
+    AtMostOne {
+        fields: Vec<String>,
+    },
+    ExactlyOneField {
+        fields: Vec<String>,
+    },
 }
 
 /// A node declaration: role, type, placement, profile, field bindings,

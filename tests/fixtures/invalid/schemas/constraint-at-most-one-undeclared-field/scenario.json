@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "An at-most-one list naming a field its object does not declare is a malformed constraint (KDLITH-DLC005)",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

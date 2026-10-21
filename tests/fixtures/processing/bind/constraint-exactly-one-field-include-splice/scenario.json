@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A field an include splices into the object counts like a declared one: the constraint names url, which Target gains from Locator, and url alone satisfies exactly-one-field",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/constraints-schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

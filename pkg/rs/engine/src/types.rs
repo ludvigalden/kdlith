@@ -472,13 +472,19 @@ pub enum Constraint {
         min: Option<u64>,
         max: Option<u64>,
     },
+    /// At most one of the listed fields holds a value.
+    AtMostOne(Vec<Sym>),
+    /// Exactly one of the listed fields holds a value.
+    ExactlyOneField(Vec<Sym>),
 }
 
 impl Constraint {
     /// The fields the constraint names, in its spelling's order.
     pub fn fields(&self) -> Vec<Sym> {
         match self {
-            Constraint::AllOrNone(list) => list.clone(),
+            Constraint::AllOrNone(list)
+            | Constraint::AtMostOne(list)
+            | Constraint::ExactlyOneField(list) => list.clone(),
             Constraint::Requires { field, required } => vec![*field, *required],
             Constraint::Bound { field, .. } => vec![*field],
         }

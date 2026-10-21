@@ -226,6 +226,8 @@ union_type! {
         "all-or-none" => AllOrNone(AllOrNone),
         "requires" => Requires(Requires),
         "bound" => Bound(Bound),
+        "at-most-one" => AtMostOne(AtMostOne),
+        "exactly-one-field" => ExactlyOneField(ExactlyOneField),
     }
 }
 
@@ -249,6 +251,18 @@ object_type! {
         "field" => field: FieldName,
         "min" => min: Option<u64>,
         "max" => max: Option<u64>,
+    }
+}
+
+object_type! {
+    pub struct AtMostOne {
+        "fields" => fields: Vec<FieldName>,
+    }
+}
+
+object_type! {
+    pub struct ExactlyOneField {
+        "fields" => fields: Vec<FieldName>,
     }
 }
 
@@ -281,4 +295,6 @@ pub(crate) const TYPES: &[TypeShape] = &[
     AllOrNone::SHAPE,
     Requires::SHAPE,
     Bound::SHAPE,
+    AtMostOne::SHAPE,
+    ExactlyOneField::SHAPE,
 ];

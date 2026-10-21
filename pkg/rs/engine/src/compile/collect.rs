@@ -19,7 +19,7 @@ use crate::compile::input::{
     ProviderInput, ReferenceInput, ResolutionInput, SequenceInput, SlotInput, SourceContextInput,
     SourceInput, TypeInput,
 };
-use crate::compile::types::{check_constraints, declare, field_name, format_rule, validator_use};
+use crate::compile::types::{declare, field_name, format_rule, validator_use};
 use crate::decode::found;
 use crate::definition::{
     AccumulateOp, AnchorDecl, DiscoveryDecl, DocumentRule, DuplicateTreatment, ImportDecl,
@@ -200,7 +200,6 @@ fn type_decl(cx: &mut Cx<'_>, site: Site, ty: &TypeInput) {
                 .iter()
                 .map(|c| constraint(cx, c))
                 .collect::<Vec<_>>();
-            check_constraints(cx, site, &format!("object {name}"), &built, &constraints);
             (
                 name.clone(),
                 parameter_list(cx, site, &format!("object {name}"), parameters),
@@ -391,6 +390,12 @@ fn constraint(cx: &mut Cx<'_>, constraint: &ConstraintInput) -> Constraint {
             min: *min,
             max: *max,
         },
+        ConstraintInput::AtMostOne { fields } => {
+            Constraint::AtMostOne(fields.iter().map(|f| cx.names.intern(f)).collect())
+        }
+        ConstraintInput::ExactlyOneField { fields } => {
+            Constraint::ExactlyOneField(fields.iter().map(|f| cx.names.intern(f)).collect())
+        }
     }
 }
 

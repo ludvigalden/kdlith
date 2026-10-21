@@ -1,0 +1,4 @@
+{"item":"document","data":{"source":0,"path":"data.kdl"}}
+{"item":"record","data":{"node":{"source":0,"index":0},"type_name":"Target","fields":[{"name":"pick","value":{"kind":"number","value":"3"},"origin":0}],"origin":0,"validation":"valid"}}
+{"item":"record","data":{"node":{"source":0,"index":1},"type_name":"Target","fields":[{"name":"pick","value":{"kind":"string","value":"first"},"origin":1}],"origin":1,"validation":"valid"}}
+{"item":"scope-complete","data":{"source":0,"scope":null}}

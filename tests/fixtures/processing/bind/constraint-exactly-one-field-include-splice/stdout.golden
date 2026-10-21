@@ -1,0 +1,3 @@
+{"item":"document","data":{"source":0,"path":"data.kdl"}}
+{"item":"record","data":{"node":{"source":0,"index":0},"type_name":"Target","fields":[{"name":"url","value":{"kind":"string","value":"https://example.com"},"origin":0}],"origin":0,"validation":"valid"}}
+{"item":"scope-complete","data":{"source":0,"scope":null}}

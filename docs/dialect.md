@@ -57,7 +57,7 @@ the only authority for the dialect.
 
 | File                                    | Contributes                                                                                                                                                                                                                                                            |
 | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pkg/kdl/schemas/dialect/types.kdl`     | Logical types, the type-expression grammar, built-in scalars and formats, field definitions, object constraints and numeric bounds, generic type parameters, pattern codecs, field sensitivity                                                                         |
+| `pkg/kdl/schemas/dialect/types.kdl`     | Logical types, the type-expression grammar, built-in scalars and formats, field definitions, object constraints, numeric bounds, and field exclusivity, generic type parameters, pattern codecs, field sensitivity                                                     |
 | `pkg/kdl/schemas/dialect/bindings.kdl`  | Roles, node declarations, field bindings and their sources, collision and duplicate-key policies, child cardinality, member-group expansion, dependent value binding, case dispatch                                                                                    |
 | `pkg/kdl/schemas/dialect/context.kdl`   | Typed context slots, effect groups and targets, effects, context policies, execution timing, source-context declarations, accumulating context, context snapshots                                                                                                      |
 | `pkg/kdl/schemas/dialect/documents.kdl` | Dialect and schema roots, containers, structural document rules, source imports with their discovery grammars and aliases, document profiles, descendant rules, ordered sequences, symbol catalogs and reference policies, contribution policies, provider descriptors |
@@ -106,7 +106,7 @@ coverage discipline: at least one positive bind scenario per mechanism
 and one negative control per new code (`KDLITH-SCH011`, `KDLITH-SCH012`,
 `KDLITH-SCH013`, `KDLITH-IMP004`, `KDLITH-IMP005`,
 `KDLITH-IMP006`, `KDLITH-CTX006`, `KDLITH-CTX004`, `KDLITH-REF005`,
-`KDLITH-BND010`, `KDLITH-BND011`, `KDLITH-BND012`; the retired
+`KDLITH-BND010`, `KDLITH-BND011`, `KDLITH-BND012`, `KDLITH-BND013`; the retired
 `KDLITH-CTX003` is subsumed by `KDLITH-CTX006`, whose negative control is
 the `accumulate-no-op` scenario), landing with the
 canonical declarations that define them.
@@ -132,7 +132,7 @@ canonical declarations that define them.
 | Maps                                 | `map` declarations with `key-type` and `value-type` children                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | R1 §2        |
 | Documented default versus fallback   | `documented-default` is metadata only and never materializes an absent value; `fallback` supplies an absent value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | R2 §10       |
 | Field sensitivity                    | A logical field may carry `sensitivity=secret` or `sensitivity=reference`: `secret` marks a resolved sensitive value, `reference` an identifier that locates one, and a type modeling both keeps them as separate fields. Metadata is not enforcement: every serialization and diagnostic surface applies an explicit output policy — emit, omit, or redact — and a `secret` field is never emitted unless the policy explicitly says emit                                                                                                                                                                                                                                                                                                                                                             | R3 §8        |
-| Object constraints                   | `all-or-none`, `requires`, and `bound`: enforceable policies an author states explicitly, never rules extracted from descriptions. The binder enforces them on every type a node binds as (`KDLITH-BND011`; a number outside a `bound` is `KDLITH-BND012`); `#null` and an empty collection are supplied values, only a field holding none is absent                                                                                                                                                                                                                                                                                                                                                                                                                                                   | R2 §10       |
+| Object constraints                   | `all-or-none`, `requires`, `bound`, `at-most-one`, and `exactly-one-field`: enforceable policies an author states explicitly, never rules extracted from descriptions. The binder enforces them on every type a node binds as (`KDLITH-BND011`; a number outside a `bound` is `KDLITH-BND012`; a broken exclusivity list is `KDLITH-BND013`); `#null` and an empty collection are supplied values, only a field holding none is absent                                                                                                                                                                                                                                                                                                                                                                 | R2 §10       |
 
 ### Bindings, roles, and cardinality (`bindings.kdl`)
 
@@ -579,6 +579,26 @@ compiled definition once and never reads the definition's KDL:
   is `KDLITH-BND012`; an absent field or `#null` is not checked. Ends
   are unsigned at this version, so a negative lower bound cannot be
   stated; a signed bound is a follow-up.
+- **Field exclusivity.** `at-most-one F G …` fails when more than one of
+  the listed fields holds a value, and `exactly-one-field F G …` when
+  more or fewer than one does (`KDLITH-BND013`, once per broken list,
+  naming the fields that hold one). A field counts however it binds —
+  an argument, a property, or a child — and whatever its type, so a
+  union or `ValueExpr` field may be listed. Presence is judged where
+  `requires` judges it, after written, context, fallback, and resolved
+  values fill the node: a literal fallback or a resolved computed
+  default counts as present, and so does a written `#null`. A field an
+  `include` splices into the object counts like a declared one, since
+  expansion runs before binding. Layered contributions apply after
+  binding and are outside an exclusivity list's reach, as they are a
+  bound's; a list may overlap `requires` or `all-or-none`, and each is
+  enforced on its own. A list naming no field, naming a field twice, or
+  naming a field the object does not declare (after its includes are
+  spliced) is malformed (`KDLITH-DLC005`); the constraints grammar
+  admits the two spellings only inside an object's `constraints` block,
+  so neither can be written for any other kind of type. The node-level
+  `exactly-one` group (`documents.kdl`) is a different mechanism: it
+  counts child nodes, not fields.
 - **Context.** A context-bound field takes the slot's value only when no
   explicit value is present (`fallback`), and an explicit value must
   agree with the slot (`fixed`). A field read only from context fails
@@ -746,26 +766,27 @@ every reading path: when a processor such as superproc binds it (the
 item stream `inspect` shows) and when the engine compiles it (`vet`, and
 `inspect` after its item stream).
 
-| Rejected construct                                                                                  | Code            |
-| --------------------------------------------------------------------------------------------------- | --------------- |
-| A node no binding accepts in its position, including a missing or extra root                        | `KDLITH-BND001` |
-| A child that occurs more or fewer times than its rule allows, including the first-node rule         | `KDLITH-BND002` |
-| A value that does not decode as its declared type, such as a name with the wrong format             | `KDLITH-BND003` |
-| A required field or argument that is absent, such as a definition root without `version=`           | `KDLITH-BND004` |
-| An argument, property, or type annotation that no binding consumes                                  | `KDLITH-BND005` |
-| A repeated key of a keyed collection, such as two fields of one object or two bindings of a field   | `KDLITH-BND006` |
-| A value that names no member of its enum, such as an unknown `role=` or string `format`             | `KDLITH-BND008` |
-| A map key its key type decodes to a value no map key holds, such as a number                        | `KDLITH-BND010` |
-| A node breaking a `requires` or `all-or-none` constraint of a type it binds as                      | `KDLITH-BND011` |
-| A number outside the inclusive range of a `bound` constraint of a type its node binds as            | `KDLITH-BND012` |
-| A type expression that breaks the type-expression grammar                                           | `KDLITH-DLC007` |
-| Two fields bound to the same argument, property, or rest arguments                                  | `KDLITH-SCH003` |
-| An import that projects a slot the dialect does not declare                                         | `KDLITH-SCH006` |
-| An expansion or generic-instantiation cycle in a definition                                         | `KDLITH-SCH009` |
-| Variant prefixes of one union where one is a prefix of another                                      | `KDLITH-SCH010` |
-| A schema that declares profiles while its invocation selects none, or names or lists an unknown one | `KDLITH-SCH011` |
-| A profile whose `extends` chain returns to a profile already on it                                  | `KDLITH-SCH012` |
-| A second profile of one schema marked `default`                                                     | `KDLITH-SCH013` |
+| Rejected construct                                                                                                                    | Code            |
+| ------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
+| A node no binding accepts in its position, including a missing or extra root                                                          | `KDLITH-BND001` |
+| A child that occurs more or fewer times than its rule allows, including the first-node rule                                           | `KDLITH-BND002` |
+| A value that does not decode as its declared type, such as a name with the wrong format                                               | `KDLITH-BND003` |
+| A required field or argument that is absent, such as a definition root without `version=`                                             | `KDLITH-BND004` |
+| An argument, property, or type annotation that no binding consumes                                                                    | `KDLITH-BND005` |
+| A repeated key of a keyed collection, such as two fields of one object or two bindings of a field                                     | `KDLITH-BND006` |
+| A value that names no member of its enum, such as an unknown `role=` or string `format`                                               | `KDLITH-BND008` |
+| A map key its key type decodes to a value no map key holds, such as a number                                                          | `KDLITH-BND010` |
+| A node breaking a `requires` or `all-or-none` constraint of a type it binds as                                                        | `KDLITH-BND011` |
+| A number outside the inclusive range of a `bound` constraint of a type its node binds as                                              | `KDLITH-BND012` |
+| A node holding more than one field of an `at-most-one` list, or not exactly one of an `exactly-one-field` list, of a type it binds as | `KDLITH-BND013` |
+| A type expression that breaks the type-expression grammar                                                                             | `KDLITH-DLC007` |
+| Two fields bound to the same argument, property, or rest arguments                                                                    | `KDLITH-SCH003` |
+| An import that projects a slot the dialect does not declare                                                                           | `KDLITH-SCH006` |
+| An expansion or generic-instantiation cycle in a definition                                                                           | `KDLITH-SCH009` |
+| Variant prefixes of one union where one is a prefix of another                                                                        | `KDLITH-SCH010` |
+| A schema that declares profiles while its invocation selects none, or names or lists an unknown one                                   | `KDLITH-SCH011` |
+| A profile whose `extends` chain returns to a profile already on it                                                                    | `KDLITH-SCH012` |
+| A second profile of one schema marked `default`                                                                                       | `KDLITH-SCH013` |
 
 A bad type expression (`KDLITH-DLC007`) and an unknown enum value
 (`KDLITH-BND008`) are distinct from a plain value-type mismatch
@@ -855,6 +876,14 @@ bounded list — quoting the constraint, its type, the field, and the
 number (or the withheld-value marker for a concealed field). A bound
 the definition cannot honor is caught at compile instead, as
 `KDLITH-DLC005`, so no bound is ever silently unchecked.
+
+Field exclusivity adds `KDLITH-BND013`, minted at the node once per
+broken `at-most-one` or `exactly-one-field` list, quoting the
+constraint, its type, and the listed fields that hold a value (`none`
+when an `exactly-one-field` list has none). The fields are named, never
+their values, so a concealed field reveals nothing. A list the
+definition cannot honor is caught at compile instead, as
+`KDLITH-DLC005`.
 
 The shipped contribution resolver adds `KDLITH-DLC010`, minted when a
 registered resolver refuses the records it was handed (a duplicate

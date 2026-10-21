@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A node holding two fields of an exactly-one-field list is rejected with the exclusivity code: the argument-bound text and the included url",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/constraints-schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}
