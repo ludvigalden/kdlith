@@ -1,0 +1,46 @@
+// A self-contained schema whose root context-control node sets a slot
+// for its children only: the picks and bins inside the block bind under
+// its value, the fruit around it under whatever was set before.
+schema shelf version="1" {
+    types {
+        string Region {
+            format kebab-case
+        }
+        object Fruit {
+            field id String
+            field region "optional<Region>"
+        }
+        object Bin {
+            field name String
+        }
+    }
+    context {
+        slot region Region namespace=defaults
+    }
+    node fruit role=record type=Fruit {
+        field id arg=0
+        field region context=region
+    }
+    node pick role=record type=Fruit parent=region {
+        field id arg=0
+        field region context=region
+    }
+    node bin role=declaration type=Bin parent=region {
+        field name arg=0
+    }
+    node region role=context-control {
+        field value Region arg=0
+        effects target=children {
+            set region field=value
+        }
+        children pick
+        children bin
+    }
+    node use role=source-import {
+        field path String arg=0
+        field repeated "optional<String>" property=repeated
+    }
+    document {
+        following fruit region use
+    }
+}

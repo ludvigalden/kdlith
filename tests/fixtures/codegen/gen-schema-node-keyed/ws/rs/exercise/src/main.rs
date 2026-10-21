@@ -3,8 +3,9 @@
 //! the generated loader, read a committed data document through the
 //! generated typed reader, and print each item under the variant its
 //! node reads as, matching the grouped Item enum exhaustively with no
-//! wildcard arm, with the type-level projection every variant shares;
-//! the enum tone formats as the member its definition spells.
+//! wildcard arm, with the type-level projection every variant shares
+//! and the name of the node the item was written as; the enum tone
+//! formats as the member its definition spells.
 
 use std::path::PathBuf;
 
@@ -35,8 +36,9 @@ fn main() {
 
     let mut lines: Vec<String> = Vec::new();
     let mut sink = |item: TypedItem<Item>| {
-        let value = match item {
-            TypedItem::Record { value, .. } | TypedItem::Declaration { value, .. } => value,
+        let (node, value) = match item {
+            TypedItem::Record { node_name, value, .. }
+            | TypedItem::Declaration { node_name, value, .. } => (node_name, value),
             _ => return,
         };
         let projected = ItemVariant::<Widget>::variant(&value)
@@ -47,7 +49,7 @@ fn main() {
             Item::Part(widget) => format!("part id={} tone={}", widget.id, widget.tone),
             Item::Bin(bin) => format!("bin name={}", bin.name),
         };
-        lines.push(format!("{line} widget={projected}"));
+        lines.push(format!("{line} widget={projected} node={node}"));
     };
     match reading.read(&[data], &mut sink) {
         Ok(false) => {}

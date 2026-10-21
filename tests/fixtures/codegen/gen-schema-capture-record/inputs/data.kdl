@@ -1,0 +1,8 @@
+fruit before
+region north {
+    bin crates
+    pick apple
+}
+fruit after
+use "part.kdl" repeated=instantiate
+use "./part.kdl" repeated=instantiate
