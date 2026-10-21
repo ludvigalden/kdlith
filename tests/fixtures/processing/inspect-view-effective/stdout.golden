@@ -8,6 +8,7 @@
 {"item":"effective","data":{"section":"type","entry":{"name":"ArgsSource","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"ArgumentSource","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"BindingCodec","parameters":[],"kind":"enum"}}}
+{"item":"effective","data":{"section":"type","entry":{"name":"Bound","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"BuiltinType","parameters":[],"kind":"enum"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"Capture","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"CaseDispatch","parameters":[],"kind":"object"}}}
@@ -124,6 +125,7 @@
 {"item":"effective","data":{"section":"node","entry":{"name":"anchor","parents":["discovery"],"role":null,"type":"AnchorDef","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"args","parents":["child","children","from"],"role":null,"type":"ArgsSource","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"argument","parents":["child","children","from"],"role":null,"type":"ArgumentSource","profile":null}}}
+{"item":"effective","data":{"section":"node","entry":{"name":"bound","parents":["constraints"],"role":null,"type":"Bound","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"capture","parents":["codec"],"role":null,"type":"Capture","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"case","parents":["cases"],"role":null,"type":"CaseRule","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"cases","parents":["node"],"role":null,"type":"CaseDispatch","profile":null}}}

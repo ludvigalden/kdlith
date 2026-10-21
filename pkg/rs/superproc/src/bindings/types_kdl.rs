@@ -26,6 +26,7 @@ pub(crate) const NODES: &[NodeShape] = &[
     NodeShape::new("requires")
         .under(&["constraints"])
         .ty("Requires"),
+    NodeShape::new("bound").under(&["constraints"]).ty("Bound"),
     NodeShape::new("union")
         .under(&["types"])
         .declaration()

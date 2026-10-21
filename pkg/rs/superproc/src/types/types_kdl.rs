@@ -225,6 +225,7 @@ union_type! {
     pub enum Constraint {
         "all-or-none" => AllOrNone(AllOrNone),
         "requires" => Requires(Requires),
+        "bound" => Bound(Bound),
     }
 }
 
@@ -238,6 +239,16 @@ object_type! {
     pub struct Requires {
         "field" => field: FieldName,
         "required" => required: FieldName,
+    }
+}
+
+object_type! {
+    /// An inclusive range over a numeric field's value; either end may be
+    /// absent. A list field is bounded per element.
+    pub struct Bound {
+        "field" => field: FieldName,
+        "min" => min: Option<u64>,
+        "max" => max: Option<u64>,
     }
 }
 
@@ -269,4 +280,5 @@ pub(crate) const TYPES: &[TypeShape] = &[
     Constraint::SHAPE,
     AllOrNone::SHAPE,
     Requires::SHAPE,
+    Bound::SHAPE,
 ];

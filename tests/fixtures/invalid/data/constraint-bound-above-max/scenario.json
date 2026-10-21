@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A number above its field's bound max is rejected with the bound code: a U64 over max, a Decimal a millionth over max 1, and a list element over its per-element max",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/constraints-schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

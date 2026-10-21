@@ -1,0 +1,4 @@
+{"item":"document","data":{"source":0,"path":"data.kdl"}}
+{"item":"record","data":{"node":{"source":0,"index":0},"type_name":"Limited","fields":[{"name":"wait","value":{"kind":"number","value":"320"},"origin":0},{"name":"offset","value":{"kind":"number","value":"7"},"origin":0},{"name":"ratio","value":{"kind":"number","value":"0.25"},"origin":0},{"name":"steps","value":{"kind":"list","value":[{"kind":"number","value":"3"},{"kind":"number","value":"0x9"}]},"origin":0}],"origin":0,"validation":"valid"}}
+{"item":"record","data":{"node":{"source":0,"index":3},"type_name":"Limited","fields":[{"name":"steps","value":{"kind":"list","value":[]},"origin":3}],"origin":3,"validation":"valid"}}
+{"item":"scope-complete","data":{"source":0,"scope":null}}

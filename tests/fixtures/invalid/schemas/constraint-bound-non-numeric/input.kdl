@@ -1,0 +1,16 @@
+schema s version="1" {
+    types {
+        object Entry {
+            field name String
+            field anything "optional<ValueExpr>"
+            constraints {
+                bound name max=10
+                bound anything max=10
+            }
+        }
+    }
+    node entry role=record type=Entry {
+        field name arg=0
+        field anything property=anything
+    }
+}

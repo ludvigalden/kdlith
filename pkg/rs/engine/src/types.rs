@@ -461,7 +461,28 @@ impl OutputPolicy {
 #[non_exhaustive]
 pub enum Constraint {
     AllOrNone(Vec<Sym>),
-    Requires { field: Sym, required: Sym },
+    Requires {
+        field: Sym,
+        required: Sym,
+    },
+    /// An inclusive range over a numeric field's value; a list field is
+    /// bounded per element.
+    Bound {
+        field: Sym,
+        min: Option<u64>,
+        max: Option<u64>,
+    },
+}
+
+impl Constraint {
+    /// The fields the constraint names, in its spelling's order.
+    pub fn fields(&self) -> Vec<Sym> {
+        match self {
+            Constraint::AllOrNone(list) => list.clone(),
+            Constraint::Requires { field, required } => vec![*field, *required],
+            Constraint::Bound { field, .. } => vec![*field],
+        }
+    }
 }
 
 /// A union discriminated by the node name that spells each variant.

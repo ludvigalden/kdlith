@@ -19,7 +19,7 @@ use crate::compile::input::{
     ProviderInput, ReferenceInput, ResolutionInput, SequenceInput, SlotInput, SourceContextInput,
     SourceInput, TypeInput,
 };
-use crate::compile::types::{declare, field_name, format_rule, validator_use};
+use crate::compile::types::{check_constraints, declare, field_name, format_rule, validator_use};
 use crate::decode::found;
 use crate::definition::{
     AccumulateOp, AnchorDecl, DiscoveryDecl, DocumentRule, DuplicateTreatment, ImportDecl,
@@ -200,24 +200,7 @@ fn type_decl(cx: &mut Cx<'_>, site: Site, ty: &TypeInput) {
                 .iter()
                 .map(|c| constraint(cx, c))
                 .collect::<Vec<_>>();
-            for constraint in &constraints {
-                let named: Vec<Sym> = match constraint {
-                    Constraint::AllOrNone(list) => list.clone(),
-                    Constraint::Requires { field, required } => vec![*field, *required],
-                };
-                for sym in named
-                    .iter()
-                    .filter(|sym| !built.iter().any(|f| f.name == **sym))
-                {
-                    let label = format!("object {name}");
-                    let spelled = cx.names.resolve(*sym).to_owned();
-                    cx.malformed(
-                        site,
-                        &label,
-                        &format!("constraint names undeclared field {spelled}"),
-                    );
-                }
-            }
+            check_constraints(cx, site, &format!("object {name}"), &built, &constraints);
             (
                 name.clone(),
                 parameter_list(cx, site, &format!("object {name}"), parameters),
@@ -402,6 +385,11 @@ fn constraint(cx: &mut Cx<'_>, constraint: &ConstraintInput) -> Constraint {
         ConstraintInput::Requires { field, required } => Constraint::Requires {
             field: cx.names.intern(field),
             required: cx.names.intern(required),
+        },
+        ConstraintInput::Bound { field, min, max } => Constraint::Bound {
+            field: cx.names.intern(field),
+            min: *min,
+            max: *max,
         },
     }
 }

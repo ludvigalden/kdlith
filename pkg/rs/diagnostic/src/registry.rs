@@ -637,6 +637,16 @@ pub const CODES: &[CodeDefinition] = &[
         correction: "Supply the absent field, or remove the field that requires it",
         retired: false,
     },
+    CodeDefinition {
+        code: "KDLITH-BND012",
+        label: "bound-violated",
+        severity: Severity::Error,
+        exit_class: 1,
+        trigger: "a bound node's numeric field holds a number outside the inclusive range a bound constraint of a type it binds as declares; a list field is checked per element, and an absent field is not checked",
+        message_template: "<node> violates <constraint>: <field> holds <found>, outside the bound",
+        correction: "Write a value within the bound, or widen the bound",
+        retired: false,
+    },
     // CTX
     CodeDefinition {
         code: "KDLITH-CTX001",

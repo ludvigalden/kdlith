@@ -1,0 +1,5 @@
+limited wait=320 offset=7 ratio=0.25 {
+    step 3
+    step 0x9
+}
+limited

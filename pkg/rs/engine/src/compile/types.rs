@@ -344,21 +344,7 @@ fn object(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) -> Option<(String, Vec
     }
     let fields: Vec<FieldDef> = fields.into_iter().map(|(field, _)| field).collect();
     if let Some(site) = constraint_block {
-        let known = |sym: &Sym| fields.iter().any(|f| f.name == *sym);
-        for constraint in &constraints {
-            let named: Vec<Sym> = match constraint {
-                Constraint::AllOrNone(list) => list.clone(),
-                Constraint::Requires { field, required } => vec![*field, *required],
-            };
-            for sym in named.iter().filter(|sym| !known(sym)) {
-                let spelled = cx.names.resolve(*sym).to_owned();
-                cx.malformed(
-                    site,
-                    &label,
-                    &format!("constraint names undeclared field {spelled}"),
-                );
-            }
-        }
+        check_constraints(cx, site, &label, &fields, &constraints);
     }
     check_parameters(cx, Site::new(doc, node.span), &label, &parameters);
     Some((
@@ -531,6 +517,19 @@ fn constraint_list(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode, out: &mut Vec
                     out.push(Constraint::Requires {
                         field: cx.names.intern(&field),
                         required: cx.names.intern(&required),
+                    });
+                }
+            }
+            "bound" => {
+                let field = part.string_arg(cx, 0, "field");
+                let min = part.u64_prop(cx, "min");
+                let max = part.u64_prop(cx, "max");
+                part.finish_leaf(cx);
+                if let Some(field) = field {
+                    out.push(Constraint::Bound {
+                        field: cx.names.intern(&field),
+                        min,
+                        max,
                     });
                 }
             }
@@ -795,6 +794,76 @@ fn codec(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) -> Option<(String, Vec<
             namespace,
         }),
     ))
+}
+
+/// Check an object's constraints against its fields: every named field
+/// is declared, and a bound names a numeric field and a non-empty range.
+pub(crate) fn check_constraints(
+    cx: &mut Cx<'_>,
+    site: Site,
+    label: &str,
+    fields: &[FieldDef],
+    constraints: &[Constraint],
+) {
+    for constraint in constraints {
+        for sym in constraint.fields() {
+            if !fields.iter().any(|f| f.name == sym) {
+                let spelled = cx.names.resolve(sym).to_owned();
+                cx.malformed(
+                    site,
+                    label,
+                    &format!("constraint names undeclared field {spelled}"),
+                );
+            }
+        }
+        let Constraint::Bound { field, min, max } = constraint else {
+            continue;
+        };
+        let spelled = cx.names.resolve(*field).to_owned();
+        if min.is_none() && max.is_none() {
+            let reason = format!("bound {spelled} declares neither min nor max");
+            cx.malformed(site, label, &reason);
+        }
+        if let (Some(min), Some(max)) = (min, max)
+            && min > max
+        {
+            let reason = format!("bound {spelled} has min {min} above max {max}");
+            cx.malformed(site, label, &reason);
+        }
+        let Some(def) = fields.iter().find(|f| f.name == *field) else {
+            continue;
+        };
+        if let Err(why) = bounded_type(cx, &def.ty) {
+            let reason = format!("bound {spelled} names a field that {why}");
+            cx.malformed(site, label, &reason);
+        }
+    }
+}
+
+/// Whether a field type carries a number a bound can compare exactly:
+/// `Integer`, `Decimal`, or `U64`, optionally or nullably held, or as a
+/// list's elements. A `ValueExpr` or union may hold a non-number, so a
+/// bound over one is refused rather than left unchecked.
+fn bounded_type(cx: &Cx<'_>, ty: &TypeExpr) -> Result<(), &'static str> {
+    let mut ty = ty;
+    while let TypeExpr::Optional(inner) | TypeExpr::Nullable(inner) = ty {
+        ty = inner;
+    }
+    if let TypeExpr::List(inner) = ty {
+        ty = inner;
+        while let TypeExpr::Nullable(inner) = ty {
+            ty = inner;
+        }
+    }
+    match ty {
+        TypeExpr::Named(name) => match cx.names.resolve(*name) {
+            "Integer" | "Decimal" | "U64" => Ok(()),
+            "ValueExpr" => Err("may hold a non-number ValueExpr"),
+            _ => Err("is not numeric"),
+        },
+        TypeExpr::Union(_) => Err("may hold a non-number union member"),
+        _ => Err("is not numeric"),
+    }
 }
 
 /// `^[A-Za-z][A-Za-z0-9_-]*$`, the dialect's `FieldName`.

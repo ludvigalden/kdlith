@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A number below its field's bound min is rejected with the bound code: a U64 one under min and a negative Integer under min 0",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/constraints-schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

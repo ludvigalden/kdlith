@@ -199,8 +199,18 @@ pub struct VariantInput {
 /// An object constraint, as declared.
 #[derive(Clone, Debug)]
 pub enum ConstraintInput {
-    AllOrNone { fields: Vec<String> },
-    Requires { field: String, required: String },
+    AllOrNone {
+        fields: Vec<String>,
+    },
+    Requires {
+        field: String,
+        required: String,
+    },
+    Bound {
+        field: String,
+        min: Option<u64>,
+        max: Option<u64>,
+    },
 }
 
 /// A node declaration: role, type, placement, profile, field bindings,

@@ -13,8 +13,8 @@
     "exit": 0,
     "stdout-contains": [
       "ok: dialect kdlith version 0 scope=complete documents=4 ",
-      " types=119 nodes=69 ",
-      " digest=8d9f5f2f33ec976b"
+      " types=120 nodes=70 ",
+      " digest=fd18b9573bd3023f"
     ]
   }
 }

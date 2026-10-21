@@ -219,6 +219,7 @@ dialect kdlith version="0" {
         union Constraint {
             variant all-or-none AllOrNone
             variant requires Requires
+            variant bound Bound
         }
 
         object AllOrNone {
@@ -228,6 +229,14 @@ dialect kdlith version="0" {
         object Requires {
             field field FieldName
             field required FieldName
+        }
+
+        // An inclusive range over a numeric field's value; either end
+        // may be absent. A list field is bounded per element.
+        object Bound {
+            field field FieldName
+            field min "optional<U64>"
+            field max "optional<U64>"
         }
     }
 
@@ -320,6 +329,7 @@ dialect kdlith version="0" {
                 child constraints {
                     children all-or-none
                     children requires
+                    children bound
                 }
             }
         }
@@ -365,6 +375,7 @@ dialect kdlith version="0" {
     node constraints parent=object {
         children all-or-none
         children requires
+        children bound
     }
 
     node all-or-none type=AllOrNone parent=constraints {
@@ -378,6 +389,12 @@ dialect kdlith version="0" {
     node requires type=Requires parent=constraints {
         field field arg=0
         field required arg=1
+    }
+
+    node bound type=Bound parent=constraints {
+        field field arg=0
+        field min property=min
+        field max property=max
     }
 
     node union role=declaration type=UnionType parent=types {

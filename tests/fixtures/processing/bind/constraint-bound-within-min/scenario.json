@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "Numbers inside their bounds bind valid: a U64, an Integer, and a Decimal within range and each element of a bounded list, while a record holding no bounded value is not checked",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/constraints-schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

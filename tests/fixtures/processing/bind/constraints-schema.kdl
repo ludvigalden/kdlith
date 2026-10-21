@@ -1,7 +1,8 @@
 // The schema the object-constraint and case-required scenarios share:
 // a record whose type states requires and all-or-none over two nullable
-// fields, a record whose collected list is supplied even when empty, and
-// a record whose case dispatch selects a type with a required field.
+// fields, a record whose collected list is supplied even when empty, a
+// record whose case dispatch selects a type with a required field, and
+// a record whose type bounds a U64, an Integer, a Decimal, and a list.
 schema constraints version="1" {
     types {
         object Item {
@@ -17,6 +18,18 @@ schema constraints version="1" {
             field note "optional<String>"
             constraints {
                 requires tags note
+            }
+        }
+        object Limited {
+            field wait "optional<U64>"
+            field offset "optional<Integer>"
+            field ratio "optional<Decimal>"
+            field steps "list<U64>"
+            constraints {
+                bound wait min=10 max=5000
+                bound offset min=0 max=100
+                bound ratio max=1
+                bound steps max=9
             }
         }
         object Shape {
@@ -46,6 +59,18 @@ schema constraints version="1" {
             }
         }
         field note property=note
+    }
+    node limited role=record type=Limited {
+        field wait property=wait
+        field offset property=offset
+        field ratio property=ratio
+        field steps {
+            from {
+                children step {
+                    argument 0
+                }
+            }
+        }
     }
     node g role=record type=Shape {
         field shape property=shape

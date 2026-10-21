@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A bound over a field that is not Integer, Decimal, or U64 is a malformed constraint (KDLITH-DLC005): a String field, and a ValueExpr field that may hold a non-number",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

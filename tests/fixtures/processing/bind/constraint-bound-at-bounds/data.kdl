@@ -1,0 +1,5 @@
+limited wait=10 offset=0 ratio=1.0
+limited wait=5000 offset=100 ratio=1e0 {
+    step 9
+}
+limited wait=0x1388 offset=+100 ratio=0.1e1

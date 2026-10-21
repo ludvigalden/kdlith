@@ -237,6 +237,13 @@ fn kind(n: &Names, kind: &TypeKind) -> String {
                     Constraint::Requires { field, required } => {
                         format!("requires {} {}", n.resolve(*field), n.resolve(*required))
                     }
+                    Constraint::Bound { field, min, max } => {
+                        let end = |key: &str, end: &Option<u64>| {
+                            end.map(|end| format!(" {key} {end}")).unwrap_or_default()
+                        };
+                        let (min, max) = (end("min", min), end("max", max));
+                        format!("bound {}{min}{max}", n.resolve(*field))
+                    }
                 })
                 .collect();
             format!(

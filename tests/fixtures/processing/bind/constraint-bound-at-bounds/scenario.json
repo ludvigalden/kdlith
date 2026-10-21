@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "Bounds are inclusive and compare exact values, not spellings: a value equal to min and one equal to max both bind valid, including a hex U64, a signed Integer, and Decimals spelled with a fraction or an exponent",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/constraints-schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

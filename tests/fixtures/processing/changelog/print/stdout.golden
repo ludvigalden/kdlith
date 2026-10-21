@@ -122,6 +122,11 @@ published yet.
   `Source { shown, text }` and `read_sources`, with the typed
   reader's `read_sources` and `collect_sources` delegating over the
   same reading; an import inside an in-memory document fails closed.
+- The engine root re-exports the field-binding value-source enum as
+  `FieldSource`, leaving `Source` to name an in-memory document.
+- A `bound` object constraint declares an inclusive `min`/`max` range
+  over an `Integer`, `Decimal`, or `U64` field, compared exactly and
+  per element of a list; a number outside it is `KDLITH-BND012`.
 
 ### Fixed
 

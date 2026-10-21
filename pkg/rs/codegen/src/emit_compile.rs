@@ -533,6 +533,11 @@ fn constraint(constraint: &Constraint) -> ConstraintInput {
             field: requires.field.as_str().to_owned(),
             required: requires.required.as_str().to_owned(),
         },
+        Constraint::Bound(bound) => ConstraintInput::Bound {
+            field: bound.field.as_str().to_owned(),
+            min: bound.min,
+            max: bound.max,
+        },
     }
 }
 "##;

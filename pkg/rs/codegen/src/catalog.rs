@@ -16,6 +16,10 @@ pub(crate) fn type_doc(name: &str) -> Option<&'static [&'static str]> {
         ],
         "Capture" => &["The capture's name is the key of the enclosing ordered map."],
         "IncludeRef" => &["An include directive among a declaring container's like members."],
+        "Bound" => &[
+            "An inclusive range over a numeric field's value; either end may be",
+            "absent. A list field is bounded per element.",
+        ],
         "Role" => &["What the processing session does with a node's bound result."],
         "DependentBinding" => &[
             "A dependent payload binding: how a node's remaining payload binds",

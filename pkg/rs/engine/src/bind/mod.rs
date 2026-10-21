@@ -2,11 +2,13 @@
 //! parent and name against a compiled definition, binds its entries and
 //! children into typed fields, and emits bound items and diagnostics.
 
+mod bound;
 mod frame;
 mod source;
 mod tables;
 
 use std::borrow::Cow;
+use std::cmp::Ordering;
 use std::collections::BTreeMap;
 
 use kdlith_diagnostic::registry::{lookup, render};
@@ -61,6 +63,7 @@ const PROFILE_NOT_SELECTED: &str = "KDLITH-SCH011";
 const UNRESOLVED_VALUE: &str = "KDLITH-BND009";
 const UNSUPPORTED_KEY: &str = "KDLITH-BND010";
 const CONSTRAINT_VIOLATED: &str = "KDLITH-BND011";
+const OUT_OF_BOUND: &str = "KDLITH-BND012";
 
 const DOCUMENT_ROOT: &str = "the document root";
 
@@ -1170,7 +1173,8 @@ impl<'d, 's> Binder<'d, 's> {
     /// its own declared type and the type a case selected
     /// (`KDLITH-BND011`): `requires F G` fails when F holds a value and G
     /// none, and `all-or-none` fails for each listed field left absent
-    /// while another holds a value.
+    /// while another holds a value. A `bound` fails for each number
+    /// outside its inclusive range (`KDLITH-BND012`).
     fn constraints(
         &mut self,
         cx: &mut Cx<'_>,
@@ -1188,6 +1192,10 @@ impl<'d, 's> Binder<'d, 's> {
                 continue;
             };
             for constraint in &object.constraints {
+                if let Constraint::Bound { field, min, max } = constraint {
+                    self.bound(cx, frame, values, ty, *field, (*min, *max));
+                    continue;
+                }
                 let (spelled, unmet) = match constraint {
                     Constraint::Requires { field, required } => {
                         let spelled =
@@ -1209,6 +1217,7 @@ impl<'d, 's> Binder<'d, 's> {
                             .map(|first| (*first, absent));
                         (spelled, unmet)
                     }
+                    _ => continue,
                 };
                 let Some((trigger, absent)) = unmet else {
                     continue;
@@ -1222,6 +1231,67 @@ impl<'d, 's> Binder<'d, 's> {
                     self.diagnose(cx, CONSTRAINT_VIOLATED, frame.span, &values);
                 }
             }
+        }
+    }
+
+    /// Report each number a bounded field holds outside its inclusive
+    /// range, per element of a list. Every value here has passed its
+    /// field's type however it bound, so only numbers compare.
+    fn bound(
+        &mut self,
+        cx: &mut Cx<'_>,
+        frame: &BindFrame,
+        values: &[Option<Value>],
+        ty: Sym,
+        field: Sym,
+        (min, max): (Option<u64>, Option<u64>),
+    ) {
+        let owner = frame.owner;
+        let Some(at) = self.tables.decls[owner.index()]
+            .fields
+            .iter()
+            .position(|info| info.name == field)
+        else {
+            return;
+        };
+        let held: Vec<&str> = match values.get(at).and_then(Option::as_ref) {
+            Some(Value::Number(text)) => vec![text.as_str()],
+            Some(Value::List(items)) => items
+                .iter()
+                .filter_map(|item| match item {
+                    Value::Number(text) => Some(text.as_str()),
+                    _ => None,
+                })
+                .collect(),
+            _ => Vec::new(),
+        };
+        let outside = |text: &str| {
+            let below = min.is_some_and(|min| bound::compare(text, min) == Some(Ordering::Less));
+            let above = max.is_some_and(|max| bound::compare(text, max) == Some(Ordering::Greater));
+            below || above
+        };
+        let outside: Vec<String> = held
+            .into_iter()
+            .filter(|text| outside(text))
+            .map(str::to_owned)
+            .collect();
+        if outside.is_empty() {
+            return;
+        }
+        let range = match (min, max) {
+            (Some(min), Some(max)) => format!("min {min} max {max}"),
+            (Some(min), None) => format!("min {min}"),
+            (None, Some(max)) => format!("max {max}"),
+            (None, None) => String::new(),
+        };
+        let field_name = self.name(field);
+        let constraint = format!("bound {field_name} {range} of {}", self.name(ty));
+        let node = self.name(frame.name);
+        let conceal = self.conceals(owner, at);
+        for text in outside {
+            let found = if conceal { CONCEALED } else { text.as_str() };
+            let values = [node, constraint.as_str(), field_name, found];
+            self.diagnose(cx, OUT_OF_BOUND, frame.span, &values);
         }
     }
 
