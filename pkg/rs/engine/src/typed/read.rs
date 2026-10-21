@@ -54,6 +54,10 @@ pub enum TypedItem<T> {
     /// A record, read as the processor's type for it.
     Record {
         node: NodeId,
+        /// The declared node that bound the record, by name: several
+        /// nodes may bind one type. Not part of the item's serialized form.
+        #[serde(skip)]
+        node_name: String,
         #[serde(rename = "type")]
         type_name: String,
         value: T,
@@ -77,6 +81,10 @@ pub enum TypedItem<T> {
     /// A declaration with its identity, read as the processor's type.
     Declaration {
         node: NodeId,
+        /// The declared node that bound the declaration, by name. Not
+        /// part of the item's serialized form.
+        #[serde(skip)]
+        node_name: String,
         identity: Identity,
         #[serde(rename = "type")]
         type_name: String,
@@ -638,6 +646,7 @@ impl<'d, T: 'static> TypedReader<'d, T> {
                 );
                 return Some(value.map(|value| TypedItem::Record {
                     node: record.node,
+                    node_name: record.node_name,
                     type_name: record.type_name,
                     value,
                     span: record.span,
@@ -656,6 +665,7 @@ impl<'d, T: 'static> TypedReader<'d, T> {
                 );
                 return Some(value.map(|value| TypedItem::Declaration {
                     node: declaration.node,
+                    node_name: declaration.node_name,
                     identity: declaration.identity,
                     type_name: declaration.type_name,
                     value,
