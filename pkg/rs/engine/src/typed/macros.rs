@@ -21,6 +21,30 @@ macro_rules! string_type {
             }
         }
 
+        impl ::core::fmt::Display for $name {
+            fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+                ::core::fmt::Display::fmt(&self.0, f)
+            }
+        }
+
+        impl ::core::borrow::Borrow<str> for $name {
+            fn borrow(&self) -> &str {
+                &self.0
+            }
+        }
+
+        impl ::core::convert::AsRef<str> for $name {
+            fn as_ref(&self) -> &str {
+                &self.0
+            }
+        }
+
+        impl ::core::cmp::PartialEq<str> for $name {
+            fn eq(&self, other: &str) -> bool {
+                self.0 == other
+            }
+        }
+
         impl $crate::FromValue for $name {
             fn from_value(
                 value: &$crate::__private::Value,
