@@ -5,7 +5,10 @@
 //! its lookup domain, name segments, qualifiers, spelling, and site; then
 //! collect each document as a linked reading and print the link stage's
 //! outcome for every reference, its diagnostics, and what `resolve` and
-//! `settled` return for each record's reference; finally read each
+//! `settled` return for each record's reference, with the gate list
+//! `link_of` reports for every reference that resolved; reference
+//! newtypes pass to `resolve` and call the carrier's methods through
+//! `Deref`, with no `.0`; finally read each
 //! document again and print every declaration's provenance: its shown
 //! path and line, and the alias of the import that loaded it. Every name
 //! the exercise spells comes from the generated crate alone.
@@ -141,19 +144,20 @@ fn provenance(type_name: &str, name: &str, site: Option<Location>, origin: &Orig
 }
 
 /// The reference a record holds, matched through the type-level
-/// projection so the line does not depend on how variants are keyed.
+/// projection so the line does not depend on how variants are keyed;
+/// a borrowed reference newtype coerces to its carrier.
 fn describe(item: &Item) -> Option<String> {
     if let Some(record) = ItemVariant::<Use>::variant(item) {
-        return Some(reference("use", "ConfigVarRef", &record.target.0));
+        return Some(reference("use", "ConfigVarRef", &record.target));
     }
     if let Some(record) = ItemVariant::<Pin>::variant(item) {
-        return Some(reference("pin", "ConfigPathRef", &record.target.0));
+        return Some(reference("pin", "ConfigPathRef", &record.target));
     }
     if let Some(record) = ItemVariant::<Depends>::variant(item) {
-        return Some(reference("depends", "ToolRef", &record.target.0));
+        return Some(reference("depends", "ToolRef", &record.target));
     }
     if let Some(record) = ItemVariant::<Takes>::variant(item) {
-        return Some(reference("takes", "InputSetRef", &record.target.0));
+        return Some(reference("takes", "InputSetRef", &record.target));
     }
     None
 }
@@ -244,31 +248,45 @@ fn print_linked(document: &Path, reading: &Reading<Item>) {
         let TypedItem::Record { value, .. } = item else {
             continue;
         };
+        // `&*record.target` reborrows the carrier through `Deref`, and
+        // `record.target.site()` calls its method through the newtype.
         if let Some(record) = ItemVariant::<Use>::variant(value) {
-            resolved(reading, "use", &record.target.0, config_var, tool);
+            let site = record.target.site();
+            resolved(reading, "use", &*record.target, site, config_var, tool);
         } else if let Some(record) = ItemVariant::<Pin>::variant(value) {
-            resolved(reading, "pin", &record.target.0, config_var, tool);
+            let site = record.target.site();
+            resolved(reading, "pin", &*record.target, site, config_var, tool);
         } else if let Some(record) = ItemVariant::<Depends>::variant(value) {
-            resolved(reading, "depends", &record.target.0, tool, config_var);
+            let site = record.target.site();
+            resolved(reading, "depends", &*record.target, site, tool, config_var);
         } else if let Some(record) = ItemVariant::<Takes>::variant(value) {
-            resolved(reading, "takes", &record.target.0, input_set, tool);
+            let site = record.target.site();
+            resolved(reading, "takes", &*record.target, site, input_set, tool);
         }
     }
 }
 
-/// What `resolve` returns for a record's reference, then what `settled`
-/// returns for it read as its own target type and as another type.
+/// What `resolve` returns for a record's reference, with the gate list
+/// `link_of` reports when it resolved (`resolve` reports one only on
+/// failure), then what `settled` returns for it read as its own target
+/// type and as another type.
 fn resolved<D, O>(
     reading: &Reading<Item>,
     node: &str,
     target: &Ref<D>,
+    site: Location,
     name: fn(&D) -> String,
     other: fn(&O) -> String,
 ) where
     Item: ItemVariant<D> + ItemVariant<O>,
 {
-    let site = at(reading, target.site());
-    let resolve = reading.resolve(target).map(name);
+    let site = at(reading, site);
+    let resolve = reading.resolve(target).map(|value| {
+        let gated = reading
+            .link_of(target)
+            .map_or("?".to_owned(), |link| link.gated.join(","));
+        format!("{} gated=[{gated}]", name(value))
+    });
     println!("resolve {node} site={site} -> {}", answer(resolve));
     let settled = reading.settled::<D, D>(target).map(name);
     println!("settled {node} site={site} as-target -> {}", answer(settled));
