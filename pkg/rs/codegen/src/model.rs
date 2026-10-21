@@ -85,6 +85,9 @@ pub(crate) struct ItemNode<'d> {
     /// The identity domain this declaration registers in, mirroring the
     /// symbol catalog's descriptor; records register none.
     pub domain: Option<&'d str>,
+    /// The identity fields this declaration composes its symbol from,
+    /// mirroring the symbol catalog's descriptor; records compose none.
+    pub identity_fields: &'d [Sym],
 }
 
 /// The model every emitted file is rendered from.
@@ -288,15 +291,21 @@ impl<'d> Emission<'d> {
         let mut items = Vec::new();
         let mut contributions: Vec<String> = Vec::new();
         let mut contributes = false;
-        // The identity domain a declaring node registers in, as the
-        // symbol catalog's descriptor spells it.
-        let declaration_domain = |node: &NodeDecl| -> Option<&str> {
+        // The symbol catalog's descriptor of a declaring node.
+        let descriptor = |node: &NodeDecl| {
             definition
                 .bindings
                 .iter()
                 .find(|(_, bound)| std::ptr::eq(*bound, node))
                 .and_then(|(id, _)| definition.symbols.declaration(id))
-                .map(|descriptor| names.resolve(descriptor.domain))
+        };
+        // The identity domain a declaring node registers in, and the
+        // fields its declarations compose their symbol from, as the
+        // descriptor spells them.
+        let declaration_identity = |node: &NodeDecl| {
+            descriptor(node).map_or((None, &[][..]), |found| {
+                (Some(names.resolve(found.domain)), &found.identity_fields)
+            })
         };
         for document in &mut documents {
             for node in &document.nodes {
@@ -356,6 +365,11 @@ impl<'d> Emission<'d> {
                 if local {
                     document.locals.push(node);
                 }
+                let (domain, identity_fields) = if role == Role::Declaration {
+                    declaration_identity(node)
+                } else {
+                    (None, &[][..])
+                };
                 items.push(ItemNode {
                     node,
                     variant: ty.clone(),
@@ -366,11 +380,8 @@ impl<'d> Emission<'d> {
                     keyed: false,
                     declares_variant: true,
                     declares_handler: true,
-                    domain: if role == Role::Declaration {
-                        declaration_domain(node)
-                    } else {
-                        None
-                    },
+                    domain,
+                    identity_fields,
                 });
             }
         }

@@ -2,6 +2,7 @@
 //! LF newlines, fixed indentation, the generated marker first, and
 //! width-pinned wrapping.
 
+use std::collections::BTreeMap;
 use std::fmt::Write as _;
 
 use kdlith_diagnostic::DiagnosticRecord;
@@ -1025,6 +1026,37 @@ impl Emission<'_> {
         out.line("    }");
         out.line("}");
         out.blank();
+        let identity_arms = self.identity_arms();
+        if self.kind == DefinitionKind::Schema && !identity_arms.is_empty() {
+            // The schema form alone names its items; the dialect form's
+            // bytes stay pinned to the reference processor.
+            let option = self.spelling.path("core::option", "Option");
+            out.line(&format!("impl {item} {{"));
+            out.line("    /// The declaration's name: the text of its one string identity");
+            out.line("    /// field. Records, and declarations whose identity composes");
+            out.line("    /// several fields or is no string, name nothing.");
+            out.line(&format!("    pub fn name(&self) -> {option}<&str> {{"));
+            out.line("        match self {");
+            let covered = identity_arms.len();
+            for (variant, accessor) in identity_arms {
+                out.line(&format!(
+                    "            Self::{variant}(value) => {option}::Some(value.{accessor}),"
+                ));
+            }
+            // A wildcard over variants all named would be unreachable.
+            let variants = self
+                .items
+                .iter()
+                .filter(|item| item.declares_variant)
+                .count();
+            if covered < variants {
+                out.line(&format!("            _ => {option}::None,"));
+            }
+            out.line("        }");
+            out.line("    }");
+            out.line("}");
+            out.blank();
+        }
         if let Some(contribution) = self.contribution_enum {
             out.line("::kdlith_engine::contribution_type! {");
             if self.kind == DefinitionKind::Schema {
@@ -1148,6 +1180,73 @@ impl Emission<'_> {
             .into_iter()
             .map(|(ty, variants)| format!("{ty} => {}", variants.join(" | ")))
             .collect()
+    }
+
+    /// Each `Item` variant whose items name themselves by one string
+    /// identity field, with the accessor its value reads the field's
+    /// text through. Variants whose items disagree name nothing.
+    fn identity_arms(&self) -> Vec<(String, String)> {
+        let mut arms: BTreeMap<String, Option<String>> = BTreeMap::new();
+        for item in &self.items {
+            let accessor = self.identity_accessor(item);
+            match arms.get_mut(&item.variant) {
+                Some(spelled) if spelled.as_deref() != accessor.as_deref() => *spelled = None,
+                Some(_) => {}
+                None => {
+                    arms.insert(item.variant.clone(), accessor);
+                }
+            }
+        }
+        arms.into_iter()
+            .filter_map(|(variant, accessor)| accessor.map(|accessor| (variant, accessor)))
+            .collect()
+    }
+
+    /// The accessor a declaring node's one string identity field reads
+    /// its text through: `as_str` serves `String` and string types
+    /// alike. Records and other identities name nothing.
+    fn identity_accessor(&self, item: &ItemNode<'_>) -> Option<String> {
+        if item.record {
+            return None;
+        }
+        let [field] = item.identity_fields else {
+            return None;
+        };
+        let field = *field;
+        let declared = item.node.ty.and_then(|ty| {
+            self.documents.iter().find_map(|doc| {
+                doc.types
+                    .iter()
+                    .find(|decl| decl.name == ty)
+                    .and_then(|decl| {
+                        match &decl.kind {
+                            TypeKind::Object(object) => object
+                                .fields
+                                .iter()
+                                .find(|candidate| candidate.name == field),
+                            _ => None,
+                        }
+                        .map(|found| &found.ty)
+                    })
+            })
+        });
+        let ty = declared.or_else(|| {
+            item.node
+                .fields
+                .iter()
+                .find(|candidate| candidate.name == field)
+                .and_then(|candidate| candidate.ty.as_ref())
+        })?;
+        let TypeExpr::Named(name) = ty else {
+            return None;
+        };
+        let text = self.names.resolve(*name) == "String"
+            || self.documents.iter().any(|doc| {
+                doc.types
+                    .iter()
+                    .any(|decl| decl.name == *name && matches!(decl.kind, TypeKind::String(_)))
+            });
+        text.then(|| format!("{}.as_str()", field_name(self.names.resolve(field))))
     }
 
     /// One document's handlers, in node declaration order.
