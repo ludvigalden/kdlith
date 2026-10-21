@@ -66,6 +66,9 @@ pub use extensions::{
     Extensions, PATH_STEM_SOURCE, TYPE_EXPRESSION_VALIDATOR, TYPE_EXPRESSION_VERSION,
 };
 pub use kdlith_model::ResolvedContribution;
+/// Deliberate root surface: tools name `Value` through the engine and
+/// the generated crates that re-export it, never through `__private`.
+pub use kdlith_model::Value;
 pub use kdlith_runtime::{
     CacheEntry, CacheScan, CleanOutcome, Derivation, EncodedEntry, EntryClass, EntryFault,
     OwnedEntry, SnapshotEntry, SnapshotMeta, SnapshotRecord, WriteOutcome, cache_key, clean_state,
