@@ -13,7 +13,7 @@
       "exercise": {
         "command": ["cat", "ws/rs/shadow-proc/src/types/schema_kdl.rs"],
         "stdout-contains": [
-          "object_type! {\n    pub struct Option {\n        \"name\" => name: String,\n    }\n}\n",
+          "object_type! {\n    exhaustive;\n    pub struct Option {\n        \"name\" => name: String,\n    }\n}\n",
           "        \"pick\" => pick: ::core::option::Option<String>,\n",
           "pub(crate) const TYPES: &[::kdlith_engine::TypeShape] = &[\n    <Option as ::kdlith_engine::Shaped>::SHAPE,\n    <Entry as ::kdlith_engine::Shaped>::SHAPE,\n];\n"
         ]

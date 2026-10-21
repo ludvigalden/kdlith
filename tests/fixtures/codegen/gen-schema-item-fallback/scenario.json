@@ -14,10 +14,10 @@
         "command": ["cat", "ws/rs/bind-proc/src/processors/mod.rs", "ws/rs/bind-proc/src/lib.rs", "ws/rs/bind-proc/src/types/schema_kdl.rs"],
         "stdout-contains": [
           "use crate::types::{Group, Item, Stamp};\n",
-          "item_type! {\n    /// A record or declaration of a document written in the schema.\n    pub enum ItemKind {\n        Group,\n        Item,\n        Stamp,\n    }\n}\n",
+          "item_type! {\n    exhaustive;\n    /// A record or declaration of a document written in the schema.\n    pub enum ItemKind {\n        Group,\n        Item,\n        Stamp,\n    }\n}\n",
           "pub static DECLARATIONS: ::kdlith_engine::Declarations<ItemKind> =\n",
           "pub use processors::{\n    DECLARATIONS, ItemKind, reader, reader_with_contribution_resolver, reader_with_resolver,\n};\n",
-          "object_type! {\n    pub struct Item {\n        \"id\" => id: String,\n",
+          "object_type! {\n    exhaustive;\n    pub struct Item {\n        \"id\" => id: String,\n",
           "        \"region\" => region: ::core::option::Option<Locale>,\n",
           "        \"tags\" => tags: ::std::vec::Vec<String>,\n",
           "        \"group\" => group: ::core::option::Option<::kdlith_engine::Ref<Group>>,\n",

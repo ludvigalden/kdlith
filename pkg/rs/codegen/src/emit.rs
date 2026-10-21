@@ -442,6 +442,11 @@ impl Emission<'_> {
     ) -> Result<(), Error> {
         let node_name = self.names.resolve(node.name);
         out.line("object_type! {");
+        // Schema-form node-local types match and construct exhaustively;
+        // the dialect form keeps the reference processor's bytes.
+        if self.kind == DefinitionKind::Schema {
+            out.line("    exhaustive;");
+        }
         out.line(&format!(
             "    /// The fields of a `{node_name}` node, which declares no type=."
         ));
@@ -483,7 +488,7 @@ impl Emission<'_> {
     fn owned_unions(&self, out: &mut Out, doc: &Document<'_>, owner: &str) {
         for union in doc.unions.iter().filter(|union| union.owner == owner) {
             out.blank();
-            inline_union_declaration(out, union);
+            inline_union_declaration(out, union, self.kind == DefinitionKind::Schema);
         }
     }
 
@@ -518,10 +523,23 @@ impl Emission<'_> {
         let name = self.rust_name(decl.name);
         let doc = catalog::type_doc(logical);
         let spelled = (name != logical).then(|| format!("    as {logical:?};"));
+        // Only the attribute-carrying macros accept the marker; the
+        // newtype macros never carried `#[non_exhaustive]`. Gated here
+        // per form, never inside a shared macro arm, so the dialect
+        // form's bytes stay pinned to the reference processor.
+        let exhaustive = (self.kind == DefinitionKind::Schema
+            && matches!(
+                decl.kind,
+                TypeKind::Enum(_) | TypeKind::Object(_) | TypeKind::Union(_)
+            ))
+        .then(|| "    exhaustive;".to_owned());
         let open = |out: &mut Out, invocation: &str| {
             out.line(invocation);
             if let Some(spelled) = &spelled {
                 out.line(spelled);
+            }
+            if let Some(exhaustive) = &exhaustive {
+                out.line(exhaustive);
             }
         };
         match &decl.kind {
@@ -990,6 +1008,9 @@ impl Emission<'_> {
         out.line("use crate::{bindings, contexts, types};");
         out.blank();
         out.line("item_type! {");
+        if self.kind == DefinitionKind::Schema {
+            out.line("    exhaustive;");
+        }
         match self.kind {
             DefinitionKind::Dialect => {
                 out.line("    /// A record or declaration of a definition written in the dialect.");
@@ -1005,6 +1026,9 @@ impl Emission<'_> {
         out.blank();
         if let Some(contribution) = self.contribution_enum {
             out.line("::kdlith_engine::contribution_type! {");
+            if self.kind == DefinitionKind::Schema {
+                out.line("    exhaustive;");
+            }
             out.line("    /// A contribution's value, or a resolution's settled value, as the");
             out.line("    /// type its contribution node declares.");
             out.line(&format!("    pub enum {contribution} {{"));
@@ -1225,8 +1249,11 @@ pub(crate) fn declaration_expressions(decl: &TypeDecl) -> Vec<&TypeExpr> {
 }
 
 /// One inline union's enum, its variants in member order.
-fn inline_union_declaration(out: &mut Out, union: &InlineUnion) {
+fn inline_union_declaration(out: &mut Out, union: &InlineUnion, exhaustive: bool) {
     out.line("inline_union_type! {");
+    if exhaustive {
+        out.line("    exhaustive;");
+    }
     out.line(&format!(
         "    /// The inline union `{}.{}` holds.",
         union.owner, union.key
