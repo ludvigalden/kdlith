@@ -17,8 +17,8 @@ use std::sync::Arc;
 
 use settings_proc::types::{Choice, Patch, Setting};
 use settings_proc::{
-    CheckScope, DiagnosticRecord, Extensions, Item, LAYERED, Layered, TypedItem, load, reader,
-    reader_with_contribution_resolver,
+    CheckScope, DiagnosticRecord, Extensions, Item, LAYERED, Layered, ReadError, TypedItem, load,
+    reader, reader_with_contribution_resolver,
 };
 
 fn main() {
@@ -48,11 +48,7 @@ fn main() {
 
     // The plain reader is resolver-free: contributions stay records.
     let plain = reader(&definition).unwrap_or_else(|records| reject("reader", &records));
-    let (failed, tally) = read(data, |sink| {
-        plain
-            .read(&[data], sink)
-            .map_err(|error| error.to_string())
-    });
+    let (failed, tally) = read(data, |sink| plain.read(&[data], sink));
     println!(
         "plain failed={failed} contributions={} resolutions={}",
         tally.contributions,
@@ -61,11 +57,7 @@ fn main() {
 
     let layered = reader_with_contribution_resolver(&definition, Arc::new(Layered))
         .unwrap_or_else(|records| reject("reader", &records));
-    let (failed, tally) = read(data, |sink| {
-        layered
-            .read(&[data], sink)
-            .map_err(|error| error.to_string())
-    });
+    let (failed, tally) = read(data, |sink| layered.read(&[data], sink));
     println!(
         "layered failed={failed} contributions={} resolutions={}",
         tally.contributions,
@@ -78,11 +70,7 @@ fn main() {
         println!("{line}");
     }
 
-    let (failed, tally) = read(invalid, |sink| {
-        layered
-            .read(&[invalid], sink)
-            .map_err(|error| error.to_string())
-    });
+    let (failed, tally) = read(invalid, |sink| layered.read(&[invalid], sink));
     println!(
         "refused failed={failed} resolutions={} codes={}",
         tally.resolutions.len(),
@@ -101,7 +89,7 @@ struct Tally {
 /// Read one document through `drive`, tallying the stream's items.
 fn read(
     path: &Path,
-    mut drive: impl FnMut(&mut dyn FnMut(TypedItem<Item>)) -> Result<bool, String>,
+    mut drive: impl FnMut(&mut dyn FnMut(TypedItem<Item>)) -> Result<bool, ReadError>,
 ) -> (bool, Tally) {
     let mut tally = Tally::default();
     let mut sink = |item: TypedItem<Item>| match &item {
