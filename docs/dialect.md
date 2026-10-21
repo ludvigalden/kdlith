@@ -104,8 +104,8 @@ and binder every processor uses. Negative controls under
 rejected construct. The mechanisms this expansion defines carry the same
 coverage discipline: at least one positive bind scenario per mechanism
 and one negative control per new code (`KDLITH-SCH011`, `KDLITH-SCH012`,
-`KDLITH-SCH013`, `KDLITH-IMP004`,
-`KDLITH-IMP005`, `KDLITH-CTX006`, `KDLITH-CTX004`, `KDLITH-REF005`,
+`KDLITH-SCH013`, `KDLITH-IMP004`, `KDLITH-IMP005`,
+`KDLITH-IMP006`, `KDLITH-CTX006`, `KDLITH-CTX004`, `KDLITH-REF005`,
 `KDLITH-BND010`, `KDLITH-BND011`, `KDLITH-BND012`; the retired
 `KDLITH-CTX003` is subsumed by `KDLITH-CTX006`, whose negative control is
 the `accumulate-no-op` scenario), landing with the
@@ -306,6 +306,28 @@ dialect root binds no discovery grammar at all, so a dialect's imports
 are always literal (an expression is `KDLITH-DLC005`) and the dialect
 verbs (`vet dialect`, `inspect dialect`, `gen dialect`) take no
 `--anchor`.
+
+A data document's imports are confined to the directory of the entry
+document the reading began from. Each import target, literal or
+expression-matched, is resolved to its canonical path — every symbolic
+link followed — and that path must lie, component by component, under
+the entry document's canonical directory; otherwise the request fails
+with `KDLITH-IMP006` at the import site before the target is read, so
+nothing of the refused file reaches the item stream or a diagnostic.
+The test is on the resolved path, not the spelling: a `..` segment or
+an absolute path that resolves inside the entry's directory is
+followed, and a link inside the directory whose target lies outside it
+is refused. The root is the entry's directory for every document the
+reading reaches, so an imported document may reach above its own
+directory as long as the entry's directory still holds the target. A
+host-supplied anchor does not widen the root: a data import expression
+whose match lies outside the entry's directory is refused like a
+literal path. The message names the import as written and as shown,
+never the resolved path. A target that does not resolve at all stays
+`KDLITH-IMP001`. Confinement holds under `--scope local` as well, which
+gates only the link exit. It covers data documents only: dialect and
+schema definitions, and definition documents read as data of a
+dialect, are host-authored inputs whose imports stay unconfined.
 
 An import carrying `as=NAME` preserves both the source and its alias in
 the import request. The aliased document resolves its own declarations
@@ -839,6 +861,12 @@ registered resolver refuses the records it was handed (a duplicate
 under `reject`, a missing target under `reject`, or a record in a layer
 the policy does not declare); `KDLITH-DLC006` keeps only the
 not-installed and no-policy cases.
+
+Import confinement adds `KDLITH-IMP006`, minted at a data document's
+import site when a target resolves outside the entry document's
+directory, before the target is read
+([Import resolution](#import-resolution)); a target that does not
+resolve keeps `KDLITH-IMP001`.
 
 The remaining definition codes (`KDLITH-SCH001`, `KDLITH-SCH002`,
 `KDLITH-SCH004`, `KDLITH-SCH005`, `KDLITH-SCH007`, `KDLITH-SCH008`,

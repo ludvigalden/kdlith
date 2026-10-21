@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "An absolute data import is held to the same confinement: /etc/hosts resolves outside the entry document's directory and is refused with KDLITH-IMP006 before it is read, by the containment test itself rather than by any binding of the path",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/imports.kdl",
+    "data.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

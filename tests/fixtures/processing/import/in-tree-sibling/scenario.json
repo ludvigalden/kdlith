@@ -1,0 +1,20 @@
+{
+  "binary": "kdlith",
+  "description": "Positive control for import confinement: a sibling import of the entry document resolves inside the entry document's directory and is followed exactly as before, the import item naming its target and the imported document streaming as source 1",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/imports.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"import\",\"data\":{\"node\":{\"source\":0,\"index\":0},\"expression\":\"part.kdl\",\"targets\":[\"part.kdl\"],",
+      "{\"item\":\"document\",\"data\":{\"source\":1,\"path\":\"part.kdl\"}}\n{\"item\":\"record\",\"data\":{\"node\":{\"source\":1,\"index\":0},\"type_name\":\"Part\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"sibling\"},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n",
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":1},\"type_name\":\"Part\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"entry\"},\"origin\":1}],\"origin\":1,\"validation\":\"valid\"}}\n"
+    ],
+    "stdout-not-contains": ["\"item\":\"diagnostic\""]
+  }
+}

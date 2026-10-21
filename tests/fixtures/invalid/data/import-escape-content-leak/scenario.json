@@ -1,0 +1,20 @@
+{
+  "binary": "kdlith",
+  "description": "A refused import leaks nothing of its target: sub/doc.kdl imports ../secret.env, a readable non-KDL file outside the entry document's directory whose first node name is the sentinel SECRETTOKEN. The run exits 1 with KDLITH-IMP006 alone, both streams pinned byte for byte, so neither the sentinel nor any binding diagnostic derived from the file's bytes appears",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/imports.kdl",
+    "sub/doc.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": [
+      "error[KDLITH-IMP006]: import ../secret.env (sub/../secret.env) resolves outside the directory of entry document sub/doc.kdl\n"
+    ],
+    "stdout-not-contains": ["SECRETTOKEN", "hunter2", "KDLITH-BND001", "KDLITH-SYN001"],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

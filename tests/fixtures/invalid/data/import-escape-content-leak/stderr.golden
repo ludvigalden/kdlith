@@ -1,0 +1,2 @@
+error[KDLITH-IMP006]: import ../secret.env (sub/../secret.env) resolves outside the directory of entry document sub/doc.kdl
+  --> sub/doc.kdl:1:1

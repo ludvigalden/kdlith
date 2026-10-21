@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A data import whose .. segment leaves the entry document's directory is refused with KDLITH-IMP006 at the import request, before the target is read: the entry sub/doc.kdl imports ../outside.kdl, which exists and is readable, so the refusal is confinement's and not KDLITH-IMP001's",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/imports.kdl",
+    "sub/doc.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

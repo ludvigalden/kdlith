@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "Import confinement holds under --scope local: the scope gates only the link exit, so the entry sub/doc.kdl importing the existing ../outside.kdl is still refused with KDLITH-IMP006 before the target is read",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "local",
+    "--schema",
+    "{fx-suite}/processing/bind/imports.kdl",
+    "sub/doc.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

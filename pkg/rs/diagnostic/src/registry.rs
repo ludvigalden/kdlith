@@ -284,6 +284,16 @@ pub const CODES: &[CodeDefinition] = &[
         correction: "Name an anchor the grammar declares and the host supplies, or import a literal path",
         retired: false,
     },
+    CodeDefinition {
+        code: "KDLITH-IMP006",
+        label: "import-outside-entry",
+        severity: Severity::Error,
+        exit_class: 1,
+        trigger: "a data document's import resolves, after symbolic links, to a path outside the directory of the entry document the reading began from; it is refused before the target is read",
+        message_template: "import <expression> (<shown>) resolves outside the directory of entry document <entry>",
+        correction: "Keep every document the data imports inside the entry document's directory",
+        retired: false,
+    },
     // DLC
     CodeDefinition {
         code: "KDLITH-DLC001",

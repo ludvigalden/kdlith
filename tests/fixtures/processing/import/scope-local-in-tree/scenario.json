@@ -1,0 +1,21 @@
+{
+  "binary": "kdlith",
+  "description": "Import confinement under --scope local leaves a legal import alone: the scope gates only the link exit, so the sibling import inside the entry document's directory is still followed and the run exits 0",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "local",
+    "--schema",
+    "{fx-suite}/processing/bind/imports.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"expression\":\"part.kdl\",\"targets\":[\"part.kdl\"],",
+      "{\"item\":\"document\",\"data\":{\"source\":1,\"path\":\"part.kdl\"}}\n"
+    ],
+    "stdout-not-contains": ["\"item\":\"diagnostic\""]
+  }
+}

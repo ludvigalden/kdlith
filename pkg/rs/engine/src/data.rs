@@ -31,6 +31,7 @@ use crate::types::OutputPolicy;
 use crate::value_resolver::SharedResolver;
 
 const ORIGIN: &str = "data-document";
+const IMPORT_OUTSIDE_ENTRY: &str = "KDLITH-IMP006";
 
 /// Takes every slot's value in slot order: each document's entry context
 /// just before its text, and the context each record or declaration
@@ -1262,13 +1263,14 @@ impl Reading<'_, '_> {
                 .display()
                 .to_string();
             let base = invocation.path.parent().unwrap_or(Path::new(""));
-            let resolved = std::fs::canonicalize(base.join(&request.expression))
-                .ok()
-                .filter(|resolved| resolved.is_file());
-            return match resolved {
-                Some(resolved) => Ok(vec![Target { resolved, shown }]),
-                None => Err(Box::new(unresolvable(&shown))),
+            let Ok(resolved) = std::fs::canonicalize(base.join(&request.expression)) else {
+                return Err(Box::new(unresolvable(&shown)));
             };
+            self.confine(&request.expression, &shown, &resolved)?;
+            if !resolved.is_file() {
+                return Err(Box::new(unresolvable(&shown)));
+            }
+            return Ok(vec![Target { resolved, shown }]);
         }
         let def = self.reader.def;
         let dir = importer
@@ -1306,14 +1308,53 @@ impl Reading<'_, '_> {
             dir: &dir,
             shown: &dir,
         };
-        anchors::expression_targets(
+        let targets = anchors::expression_targets(
             &request.expression,
             def.grammar_for(self.selection.profile()),
             &def.names,
             &self.anchors,
             &base,
             ORIGIN,
-        )
+        )?;
+        for target in &targets {
+            self.confine(&request.expression, &target.shown, &target.resolved)?;
+        }
+        Ok(targets)
+    }
+
+    /// Refuse, before any read, a data import whose canonical target
+    /// lies outside the entry document's directory (`KDLITH-IMP006`);
+    /// the record never names the canonical path.
+    fn confine(
+        &self,
+        expression: &str,
+        shown: &str,
+        resolved: &Path,
+    ) -> Result<(), Box<DiagnosticRecord>> {
+        // Definition documents read as dialect data are host-authored.
+        if self.reader.def.kind == DefinitionKind::Dialect {
+            return Ok(());
+        }
+        let mut entry = self.invocations.innermost();
+        while let Some(caller) = entry
+            .and_then(|id| self.invocations.get(id))
+            .and_then(|invocation| invocation.caller)
+        {
+            entry = Some(caller);
+        }
+        let entry = entry.and_then(|id| self.invocations.get(id));
+        let inside = entry
+            .and_then(|entry| entry.path.parent())
+            .is_some_and(|root| resolved.starts_with(root));
+        if inside {
+            return Ok(());
+        }
+        let entry = entry.map_or("", |entry| entry.shown.as_str());
+        Err(Box::new(record(
+            IMPORT_OUTSIDE_ENTRY,
+            &[expression, shown, entry],
+            ORIGIN,
+        )))
     }
 
     /// Every slot of the definition: an invocation's own context is

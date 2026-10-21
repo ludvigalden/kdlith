@@ -1,0 +1,4 @@
+{"item":"document","data":{"source":0,"path":"sub/doc.kdl"}}
+{"item":"import","data":{"node":{"source":0,"index":0},"expression":"../secret.env","alias":null,"project":[],"repeated":"reject","site":{"source":0,"span":{"start":{"offset":0,"line":1,"column":1},"end":{"offset":3,"line":1,"column":4}}},"origin":0}}
+{"item":"diagnostic","data":{"code":"KDLITH-IMP006","severity":"error","source_path":"sub/doc.kdl","span":{"start":0,"end":3},"line":1,"col":1,"origin":"data-document","labels":[],"related":[],"correction":"Keep every document the data imports inside the entry document's directory","message":"import ../secret.env (sub/../secret.env) resolves outside the directory of entry document sub/doc.kdl"}}
+{"item":"scope-complete","data":{"source":0,"scope":null}}

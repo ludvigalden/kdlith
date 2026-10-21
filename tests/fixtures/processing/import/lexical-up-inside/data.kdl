@@ -1,0 +1,2 @@
+use "sub/a.kdl"
+use "sub/../b.kdl"
