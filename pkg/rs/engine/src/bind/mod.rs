@@ -2881,29 +2881,6 @@ impl<'d, 's> BindingSession<'d, 's> {
         )
     }
 
-    /// Bind starting from `context` under a profile selection the
-    /// reading resolved once for the document's entry.
-    pub fn with_selection(
-        def: &'d Definition,
-        source: SourceId,
-        path: &str,
-        text: &'s str,
-        context: Context,
-        selection: ProfileSelection,
-    ) -> Self {
-        Self::with_all(
-            def,
-            source,
-            path,
-            text,
-            context,
-            Knobs {
-                selection: Some(selection),
-                ..Knobs::plain()
-            },
-        )
-    }
-
     /// Every binding-session knob at once.
     fn with_all(
         def: &'d Definition,
