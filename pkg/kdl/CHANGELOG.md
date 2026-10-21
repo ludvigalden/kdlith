@@ -130,3 +130,8 @@ published yet.
 - Schema roots without a version are rejected on every reading path.
 - Overlapping argument bindings are reported on every definition
   path, with one diagnostic code per rejected construct.
+- A value-bound union accepts a number, a bool, or an un-prefixed
+  string that an un-prefixed variant's type accepts: prefix selection
+  runs first, then the first such variant in declaration order binds
+  the value, so a union can hold a literal number beside a prefixed
+  template variant.

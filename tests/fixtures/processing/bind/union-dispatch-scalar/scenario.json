@@ -1,0 +1,21 @@
+{
+  "binary": "kdlith",
+  "description": "A value-bound union dispatches a scalar no prefix selects to the first un-prefixed variant whose type accepts it: a number binds beside a prefixed template variant, and both a number and an un-prefixed string bind into a prefix-free union",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"name\":\"v\",\"value\":{\"kind\":\"number\",\"value\":\"320\"}",
+      "{\"name\":\"v\",\"value\":{\"kind\":\"string\",\"value\":\"${wait}\"}",
+      "{\"name\":\"v\",\"value\":{\"kind\":\"number\",\"value\":\"7\"}",
+      "{\"name\":\"v\",\"value\":{\"kind\":\"string\",\"value\":\"hello\"}",
+      "\"validation\":\"valid\""
+    ]
+  }
+}

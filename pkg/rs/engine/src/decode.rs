@@ -12,9 +12,7 @@ use crate::extensions::TYPE_EXPRESSION_VALIDATOR;
 use crate::names::{Names, Sym};
 use crate::syntax::parse_u64;
 use crate::type_expr::{self, ExprError};
-use crate::types::{
-    Builtin, CodecDecl, StringType, TypeCatalog, TypeExpr, TypeId, TypeKind, Variant,
-};
+use crate::types::{Builtin, CodecDecl, StringType, TypeCatalog, TypeExpr, TypeId, TypeKind};
 
 /// The compiled patterns of one definition's string types and codecs,
 /// built once.
@@ -219,17 +217,25 @@ impl Decoder {
                 .iter()
                 .any(|member| member.name == *text)
                 .then(|| value.clone()),
-            // A value-bound union selects its variant by prefix: one
-            // probe, no backtracking, and a failure inside the selected
-            // variant is an error, never a fallback.
-            (TypeKind::Union(union), Value::String(text)) => {
-                let variant: &Variant = union.variants.iter().find(|variant| {
-                    variant
-                        .prefix
-                        .as_deref()
-                        .is_some_and(|prefix| text.starts_with(prefix))
-                })?;
-                self.decode_at(types, names, &variant.ty, value, at)
+            // A prefix selects its variant with no fallback on failure; a
+            // scalar no prefix selects binds as the first un-prefixed
+            // variant, in declaration order, whose type accepts it.
+            (TypeKind::Union(union), Value::String(_) | Value::Number(_) | Value::Bool(_)) => {
+                if let Value::String(text) = value
+                    && let Some(variant) = union.variants.iter().find(|variant| {
+                        variant
+                            .prefix
+                            .as_deref()
+                            .is_some_and(|prefix| text.starts_with(prefix))
+                    })
+                {
+                    return self.decode_at(types, names, &variant.ty, value, at);
+                }
+                union
+                    .variants
+                    .iter()
+                    .filter(|variant| variant.prefix.is_none())
+                    .find_map(|variant| self.decode_at(types, names, &variant.ty, value, at))
             }
             // A codec decodes a matching string in the stream; the
             // decoded value carries the output type.

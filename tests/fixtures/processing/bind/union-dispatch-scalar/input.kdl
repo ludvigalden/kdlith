@@ -1,0 +1,4 @@
+probe 320
+probe "${wait}"
+label 7
+label "hello"

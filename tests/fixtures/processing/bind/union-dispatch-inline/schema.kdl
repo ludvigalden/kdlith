@@ -1,0 +1,5 @@
+schema picks version="1" {
+    node pick role=record {
+        field v "union<U64, String>" arg=0
+    }
+}

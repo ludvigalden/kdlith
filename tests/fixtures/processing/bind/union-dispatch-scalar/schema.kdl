@@ -1,0 +1,18 @@
+schema probes version="1" {
+    types {
+        union NumOrTemplate {
+            variant number U64
+            variant template String prefix="${"
+        }
+        union NumOrText {
+            variant number U64
+            variant text String
+        }
+    }
+    node probe role=record {
+        field v NumOrTemplate arg=0
+    }
+    node label role=record {
+        field v NumOrText arg=0
+    }
+}

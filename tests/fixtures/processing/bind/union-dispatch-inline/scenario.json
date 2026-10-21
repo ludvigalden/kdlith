@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "An inline union type expression tries its members in order: a number binds as U64 and a string as String",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"name\":\"v\",\"value\":{\"kind\":\"number\",\"value\":\"42\"}",
+      "{\"name\":\"v\",\"value\":{\"kind\":\"string\",\"value\":\"forty-two\"}",
+      "\"validation\":\"valid\""
+    ]
+  }
+}
