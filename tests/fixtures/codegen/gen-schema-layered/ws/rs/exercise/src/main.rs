@@ -10,12 +10,15 @@
 //! and the node-local metadata record decode to, how a refused
 //! reading fails, and how the exhaustive marker lets the generated
 //! union match with no wildcard arm and the generated object rebuild
-//! by a struct literal.
+//! by a struct literal. The generated string newtype keys a map looked
+//! up by `&str` and formats as its text, and each item names itself
+//! through its identity field, or nothing for a record.
 
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use settings_proc::types::{Choice, Patch, Setting};
+use settings_proc::types::{Choice, OptionName, Patch, Setting};
 use settings_proc::{
     CheckScope, DiagnosticRecord, Extensions, Item, LAYERED, Layered, ReadError, TypedItem, load,
     reader, reader_with_contribution_resolver,
@@ -54,6 +57,20 @@ fn main() {
         tally.contributions,
         tally.resolutions.len()
     );
+    for line in &tally.names {
+        println!("{line}");
+    }
+    // The newtype borrows as `str`, so the map answers a plain `&str`.
+    let found = |key: &str| tally.options.get(key).map_or("-".to_owned(), usize::to_string);
+    let named = tally.options.keys().any(|name| *name == *"mode");
+    println!(
+        "option get mode={} ghost={} eq={named}",
+        found("mode"),
+        found("ghost")
+    );
+    let mut spelled: Vec<String> = tally.options.keys().map(|name| format!("{name}")).collect();
+    spelled.sort();
+    println!("option names {}", spelled.join(","));
 
     let layered = reader_with_contribution_resolver(&definition, Arc::new(Layered))
         .unwrap_or_else(|records| reject("reader", &records));
@@ -84,6 +101,8 @@ struct Tally {
     resolutions: Vec<String>,
     maps: Vec<String>,
     codes: Vec<String>,
+    names: Vec<String>,
+    options: HashMap<OptionName, usize>,
 }
 
 /// Read one document through `drive`, tallying the stream's items.
@@ -116,13 +135,22 @@ fn read(
                 note_texts(&setting)
             ));
         }
-        TypedItem::Record {
-            value: Item::Metadata(metadata),
-            ..
-        } => tally.maps.push(format!(
-            "metadata pairs {}",
-            pairs(metadata.pairs.iter().map(|(key, tag)| (key, &tag.text)))
-        )),
+        TypedItem::Record { value, .. } => {
+            if let Item::Metadata(metadata) = value {
+                tally.maps.push(format!(
+                    "metadata pairs {}",
+                    pairs(metadata.pairs.iter().map(|(key, tag)| (key, &tag.text)))
+                ));
+            }
+            tally.names.push(format!("record name={}", value.name().unwrap_or("-")));
+        }
+        TypedItem::Declaration { value, .. } => {
+            if let Item::Choice(choice) = value {
+                let at = tally.options.len();
+                tally.options.insert(choice.name.clone(), at);
+            }
+            tally.names.push(format!("declaration name={}", value.name().unwrap_or("-")));
+        }
         _ => {}
     };
     match drive(&mut sink) {

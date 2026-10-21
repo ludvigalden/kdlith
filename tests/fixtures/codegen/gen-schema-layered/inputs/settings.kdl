@@ -6,14 +6,18 @@
 // and the policy ranks user over base. Setting tags nest an ordered map
 // inside an optional, and the typeless metadata record holds an ordered
 // map in a node-local field, so the generated crate must import the map
-// type for both.
+// type for both. Option names are a declared string type, so the
+// generated newtype keys a map, formats, and names its declaration.
 schema settings version="1" {
     types {
+        string OptionName {
+            format kebab-case
+        }
         object ScopeDef {
             field name String
         }
         object Choice {
-            field name String
+            field name OptionName
         }
         object Tag {
             field text String
