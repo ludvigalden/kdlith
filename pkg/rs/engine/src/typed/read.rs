@@ -297,7 +297,9 @@ impl<T> Reading<T> {
     }
 
     /// The link the reading's link stage made for `reference`, found by
-    /// the site it was written at.
+    /// the site it was written at. Its `gated` lists the alias
+    /// namespaces that hid a match; `resolve` reports them only on
+    /// failure, so a resolved reference's gate list is read here.
     pub fn link_of<V>(&self, reference: &Ref<V>) -> Option<&Link> {
         let (kind, at) = *self.sites.get(&reference.site())?;
         self.report.as_ref()?.types.get(kind)?.links.get(at)

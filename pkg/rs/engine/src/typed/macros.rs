@@ -126,6 +126,12 @@ macro_rules! enum_type {
             }
         }
 
+        impl ::core::fmt::Display for $name {
+            fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+                ::core::fmt::Display::fmt(self.member(), f)
+            }
+        }
+
         impl $crate::FromValue for $name {
             fn from_value(
                 value: &$crate::__private::Value,
@@ -176,6 +182,12 @@ macro_rules! enum_type {
                 match self {
                     $(Self::$variant => $member),+
                 }
+            }
+        }
+
+        impl ::core::fmt::Display for $name {
+            fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+                ::core::fmt::Display::fmt(self.member(), f)
             }
         }
 
@@ -565,6 +577,16 @@ macro_rules! reference_type {
 
             /// Its qualifier names, in declaration order.
             pub const QUALIFIERS: &'static [&'static str] = &[$($qualifier),*];
+        }
+
+        // The carrier's methods call through the newtype, and a borrow
+        // of it coerces to the `&Ref` that `Reading::resolve` takes.
+        impl ::core::ops::Deref for $name {
+            type Target = $crate::Ref<$target>;
+
+            fn deref(&self) -> &Self::Target {
+                &self.0
+            }
         }
 
         impl $crate::FromValue for $name {
