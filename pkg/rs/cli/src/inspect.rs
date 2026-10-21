@@ -79,13 +79,13 @@ pub(crate) fn run(command: InspectCommand) -> ExitStatus {
                             }
                         }
                         (Rendering::Entries, None) => status,
-                        (Rendering::Definition, Some(definition)) => {
-                            match render_definition(args.view, definition) {
+                        (Rendering::Definition(view), Some(definition)) => {
+                            match render_definition(view, definition) {
                                 ExitStatus::Success => status,
                                 failed => failed,
                             }
                         }
-                        (Rendering::Definition, None) => uncompiled(args.view),
+                        (Rendering::Definition(_), None) => uncompiled(args.view),
                     },
                 ),
                 Err(status) => status,
@@ -105,17 +105,25 @@ fn paths(files: &[PathBuf]) -> Vec<&Path> {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Rendering {
     Stream,
-    Definition,
+    Definition(DefinitionView),
     Entries,
     References,
+}
+
+/// The views rendered from the compiled definition.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum DefinitionView {
+    Effective,
+    Plan,
 }
 
 impl Rendering {
     fn of(view: ViewArg, target: VetTarget) -> Self {
         match (view, target) {
-            (ViewArg::Effective, VetTarget::Dialect | VetTarget::Schema) | (ViewArg::Plan, _) => {
-                Rendering::Definition
+            (ViewArg::Effective, VetTarget::Dialect | VetTarget::Schema) => {
+                Rendering::Definition(DefinitionView::Effective)
             }
+            (ViewArg::Plan, _) => Rendering::Definition(DefinitionView::Plan),
             (ViewArg::Context, _) => Rendering::Entries,
             (ViewArg::References, _) => Rendering::References,
             _ => Rendering::Stream,
@@ -181,11 +189,6 @@ fn target_name(target: VetTarget) -> &'static str {
         VetTarget::Schema => "schema",
         VetTarget::Data => "data",
     }
-}
-
-fn not_implemented(view: ViewArg) -> ExitStatus {
-    eprintln!("kdlith: the {} view is not implemented yet", view.name());
-    ExitStatus::Failure
 }
 
 /// Read `entries` and their imports as definition documents written in
@@ -265,8 +268,10 @@ fn inspect_view(
                 // The matrix admits the entries and references renderings
                 // on data only.
                 (Rendering::Stream | Rendering::Entries | Rendering::References, _) => status,
-                (Rendering::Definition, Some(definition)) => render_definition(view, &definition),
-                (Rendering::Definition, None) => uncompiled(view),
+                (Rendering::Definition(shown), Some(definition)) => {
+                    render_definition(shown, &definition)
+                }
+                (Rendering::Definition(_), None) => uncompiled(view),
             }
         }
         Ok(_) => ExitStatus::Failure,
@@ -287,11 +292,10 @@ fn uncompiled(view: ViewArg) -> ExitStatus {
 }
 
 /// Render a definition-rendered view from the compiled definition.
-fn render_definition(view: ViewArg, definition: &Definition) -> ExitStatus {
+fn render_definition(view: DefinitionView, definition: &Definition) -> ExitStatus {
     match view {
-        ViewArg::Effective => write_lines(&effective_lines(definition)),
-        ViewArg::Plan => write_lines(&plan_lines(definition)),
-        _ => not_implemented(view),
+        DefinitionView::Effective => write_lines(&effective_lines(definition)),
+        DefinitionView::Plan => write_lines(&plan_lines(definition)),
     }
 }
 
