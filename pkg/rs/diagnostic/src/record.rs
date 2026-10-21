@@ -11,18 +11,6 @@ pub enum Severity {
     Note,
 }
 
-impl Severity {
-    /// Lowest stderr verbosity band at which this severity is shown.
-    /// Warnings ride band 2 (the default), notes band 3.
-    pub fn stderr_band(self) -> u8 {
-        match self {
-            Severity::Error => 1,
-            Severity::Warning => 2,
-            Severity::Note => 3,
-        }
-    }
-}
-
 /// Half-open byte range over UTF-8 encoded source, file-relative. Byte
 /// offsets are authoritative; a 1-based line and Unicode-scalar column
 /// may ride beside the span, never instead of it.

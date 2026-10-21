@@ -15,7 +15,7 @@ use kdlith_diagnostic::registry::{lookup, render};
 const INVALID_ARGUMENT: &str = "KDLITH-CLI001";
 /// Two options the grammar declares mutually exclusive, both given.
 const CONFLICTING_OPTIONS: &str = "KDLITH-CLI002";
-/// `--stdout-format` or `export --format` names an unsupported encoding.
+/// `export --format` names an unsupported encoding.
 const UNKNOWN_FORMAT: &str = "KDLITH-CLI003";
 /// `inspect --view` names a view the inspected target does not support.
 const INAPPLICABLE_VIEW: &str = "KDLITH-CLI004";

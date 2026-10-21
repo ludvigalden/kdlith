@@ -4,6 +4,6 @@
   "args": ["help"],
   "expect": {
     "exit": 0,
-    "stdout-contains": ["Usage: kdlith [OPTIONS] <COMMAND>"]
+    "stdout-contains": ["Usage: kdlith <COMMAND>"]
   }
 }

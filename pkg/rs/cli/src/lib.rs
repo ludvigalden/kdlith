@@ -1,6 +1,6 @@
 //! Commands, arguments, output conventions, and orchestration: a
 //! verb-first clap command tree (gen, vet, export, inspect, list,
-//! read, cache, changelog, plus help) behind three global options.
+//! read, cache, changelog, plus help).
 mod cache;
 mod changelog;
 mod export;
@@ -25,7 +25,7 @@ pub use inspect::inspect;
 pub use read::read;
 pub use vet::{DataOptions, VetTarget, vet, vet_data};
 
-/// The whole command line: global options plus one verb.
+/// The whole command line: one verb.
 #[derive(Parser)]
 #[command(
     name = "kdlith",
@@ -35,28 +35,6 @@ pub use vet::{DataOptions, VetTarget, vet, vet_data};
     disable_help_subcommand = true
 )]
 struct Cli {
-    /// Stderr verbosity band, 0–10
-    #[arg(
-        short = 'v',
-        long,
-        value_name = "N",
-        global = true,
-        default_value_t = 2,
-        value_parser = parse_verbosity
-    )]
-    verbosity: u8,
-    /// Equivalent to --verbosity 10
-    #[arg(long, global = true)]
-    debug: bool,
-    /// Command response format
-    #[arg(
-        long,
-        value_name = "FORMAT",
-        global = true,
-        default_value = "text",
-        value_parser = parse_stdout_format
-    )]
-    stdout_format: String,
     #[command(subcommand)]
     command: Command,
 }
@@ -725,10 +703,6 @@ pub fn run() -> ExitStatus {
         Ok(cli) => cli,
         Err(error) => return usage::report_parse_error(&error),
     };
-    // The verbosity band is accepted and validated everywhere; --debug
-    // is its top end. Per-verb output wiring consumes it later.
-    let _band = if cli.debug { 10 } else { cli.verbosity };
-    let _format = cli.stdout_format.as_str();
     match cli.command {
         Command::Gen(args) => generate::run(args.command),
         Command::Vet(args) => vet::run(args.command),
@@ -762,29 +736,6 @@ fn help(path: &[String]) -> ExitStatus {
     let _ = shown.print_help();
     println!();
     ExitStatus::Success
-}
-
-/// `--verbosity` takes a number from 0 to 10.
-fn parse_verbosity(value: &str) -> Result<u8, String> {
-    let band = value
-        .parse::<u8>()
-        .map_err(|_| "verbosity takes a number from 0 to 10".to_owned())?;
-    if band <= 10 {
-        Ok(band)
-    } else {
-        Err("verbosity takes a number from 0 to 10".to_owned())
-    }
-}
-
-/// `--stdout-format` is validated up front and only `text` is
-/// supported for now; anything else is a KDLITH-CLI003 rejection, never
-/// a silently ignored value.
-fn parse_stdout_format(value: &str) -> Result<String, usage::UnknownFormat> {
-    if value == "text" {
-        Ok(value.to_owned())
-    } else {
-        Err(usage::UnknownFormat::new(value, "text"))
-    }
 }
 
 /// `export --format` is validated up front and only `ndjson` is

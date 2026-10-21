@@ -1,0 +1,5 @@
+error[KDLITH-CLI001]: unexpected argument '--stdout-format' found
+
+Usage: kdlith <COMMAND>
+
+For more information, try '--help'.

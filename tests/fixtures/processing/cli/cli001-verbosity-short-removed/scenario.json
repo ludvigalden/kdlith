@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "-v before the verb is an unexpected argument, the command line taking no global options: exit 2 under KDLITH-CLI001 before any verb runs",
+  "args": [
+    "-v",
+    "0",
+    "read",
+    "file",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 2,
+    "stderr-contains": [
+      "error[KDLITH-CLI001]"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

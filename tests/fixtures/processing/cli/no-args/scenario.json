@@ -6,7 +6,7 @@
     "exit": 2,
     "stderr-contains": [
       "error[KDLITH-CLI001]",
-      "Usage: kdlith [OPTIONS] <COMMAND>"
+      "Usage: kdlith <COMMAND>"
     ]
   }
 }

@@ -180,10 +180,11 @@ at the node declaration, at the same span on both reading paths, because the
 reader-path binder check fires first in `vet`.
 
 `processing/cli/` holds the CLI-surface contracts: `export` without its
-required arguments, `--version`, the `help` verb, the exit-2 rejections of
-a non-text `--stdout-format` and an out-of-band `--verbosity`, the bare
-no-arguments invocation, and the argument-error stratum. Every argument
-rejection exits `2` under its registered code: the `cli001-*` scenarios
+required arguments, `--version`, the `help` verb, the bare no-arguments
+invocation, and the argument-error stratum. The command line takes no
+global options: `--verbosity`, `-v`, `--debug`, and `--stdout-format`
+before the verb are unexpected arguments. Every argument rejection
+exits `2` under its registered code: the `cli001-*` scenarios
 pin `KDLITH-CLI001` across the argument forms, the `cli002-*` scenarios
 pin `KDLITH-CLI002` on `gen`'s exclusive `--dry-run`/`--check` pair, and
 `cli003-export-format` pins `KDLITH-CLI003`; the

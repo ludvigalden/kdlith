@@ -10,7 +10,7 @@
     "stderr-contains": [
       "error[KDLITH-CLI001]",
       "unexpected argument 'extra' found",
-      "Usage: kdlith changelog [OPTIONS]"
+      "Usage: kdlith changelog"
     ]
   }
 }

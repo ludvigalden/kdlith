@@ -153,10 +153,10 @@ pub const CODES: &[CodeDefinition] = &[
     },
     CodeDefinition {
         code: "KDLITH-CLI003",
-        label: "unknown-stdout-format",
+        label: "unknown-format",
         severity: Severity::Error,
         exit_class: 2,
-        trigger: "--stdout-format or export --format names an unsupported encoding",
+        trigger: "export --format names an unsupported encoding",
         message_template: "unknown format <format>; expected one of <values>",
         correction: "Choose one of the listed formats",
         retired: false,

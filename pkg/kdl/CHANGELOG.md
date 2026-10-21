@@ -31,8 +31,7 @@ published yet.
 - Deterministic generation of Rust processor crates from compiled
   definitions.
 - A verb-first command tree: `gen`, `vet`, `export`, `inspect`,
-  `list`, `read`, `cache`, `changelog`, and `help`, behind the
-  `--verbosity`, `--debug`, and `--stdout-format` global options.
+  `list`, `read`, `cache`, `changelog`, and `help`.
 - `gen` with dry-run planning, drift checking, and refusal to
   overwrite files it does not own.
 - `vet` and `inspect` for dialect definitions, schema definitions, and
