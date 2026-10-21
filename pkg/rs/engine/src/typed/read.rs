@@ -16,7 +16,7 @@ use kdlith_runtime::{Handlers, SessionError, SlotValue};
 use serde::Serialize;
 
 use crate::bindings::Role;
-use crate::data::{DataReader, Entering, ReadOptions};
+use crate::data::{DataReader, Entering, EntrySource, ReadOptions, Source};
 use crate::definition::{CheckScope, Definition};
 use crate::link::{
     DuplicateDeclaration, ImportAliases, Link, LinkInputs, LinkOutcome, LinkReport, link_reading,
@@ -516,6 +516,28 @@ impl<'d, T: 'static> TypedReader<'d, T> {
         Ok(Reading::new(items, report, self.linking, failed))
     }
 
+    /// Read as [`TypedReader::read`] does, over documents held in
+    /// memory instead of read from disk (see [`Source`]): the engine
+    /// reading decides everything, this reader only types its items.
+    /// An import inside an in-memory document fails closed
+    /// (`KDLITH-IMP001`).
+    pub fn read_sources(
+        &self,
+        sources: &[Source],
+        sink: &mut dyn FnMut(TypedItem<T>),
+    ) -> Result<bool, ReadError> {
+        self.sources_scoped(sources, sink, true)
+            .map(|(failed, report)| failed || self.gates(report.as_ref()))
+    }
+
+    /// Read as [`TypedReader::collect`] does, over documents held in
+    /// memory instead of read from disk.
+    pub fn collect_sources(&self, sources: &[Source]) -> Result<Reading<T>, ReadError> {
+        let mut items = Vec::new();
+        let (failed, report) = self.sources_scoped(sources, &mut |item| items.push(item), true)?;
+        Ok(Reading::new(items, report, self.linking, failed))
+    }
+
     /// Whether a reading's link report fails it: under complete scope
     /// only.
     fn gates(&self, report: Option<&LinkReport>) -> bool {
@@ -525,6 +547,35 @@ impl<'d, T: 'static> TypedReader<'d, T> {
     fn read_scoped(
         &self,
         entries: &[&Path],
+        sink: &mut dyn FnMut(TypedItem<T>),
+        follow: bool,
+    ) -> Result<(bool, Option<LinkReport>), ReadError> {
+        let entries: Vec<EntrySource> = entries
+            .iter()
+            .map(|entry| EntrySource::Path(entry))
+            .collect();
+        self.read_over(&entries, sink, follow)
+    }
+
+    fn sources_scoped(
+        &self,
+        sources: &[Source],
+        sink: &mut dyn FnMut(TypedItem<T>),
+        follow: bool,
+    ) -> Result<(bool, Option<LinkReport>), ReadError> {
+        let entries: Vec<EntrySource> = sources
+            .iter()
+            .map(|source| EntrySource::Memory {
+                shown: &source.shown,
+                text: &source.text,
+            })
+            .collect();
+        self.read_over(&entries, sink, follow)
+    }
+
+    fn read_over(
+        &self,
+        entries: &[EntrySource<'_>],
         sink: &mut dyn FnMut(TypedItem<T>),
         follow: bool,
     ) -> Result<(bool, Option<LinkReport>), ReadError> {

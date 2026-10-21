@@ -118,6 +118,10 @@ published yet.
   under, stamped per item when a reader is capturing (replayed
   documents included), and both carry the node name of the node that
   produced them.
+- The engine's data reader accepts documents held in memory through
+  `Source { shown, text }` and `read_sources`, with the typed
+  reader's `read_sources` and `collect_sources` delegating over the
+  same reading; an import inside an in-memory document fails closed.
 
 ### Fixed
 

@@ -303,6 +303,26 @@ impl Invocations {
         self.push(canonical, shown, context, None, Repeated::Reject)
     }
 
+    /// Invoke an entry document held in memory, shown as `shown`: the
+    /// same registration [`Invocations::enter_root`] gives a file
+    /// entry, with its shown spelling standing in for a canonical
+    /// path. A document held in memory resolves no imports of its own;
+    /// the reading fails them closed.
+    pub fn enter_root_in_memory(
+        &mut self,
+        shown: &str,
+        context: Context,
+    ) -> Result<InvocationId, ImportFailure> {
+        let path = PathBuf::from(shown);
+        if let Some(first) = self.find(&path) {
+            return Err(ImportFailure::Repeated {
+                target: shown.to_owned(),
+                first,
+            });
+        }
+        self.push(path, shown.to_owned(), context, None, Repeated::Reject)
+    }
+
     /// Resolve a request made by the innermost active invocation. The
     /// imported document gets the projected slots of its caller's
     /// context as a context of its own, so nothing it does reaches the

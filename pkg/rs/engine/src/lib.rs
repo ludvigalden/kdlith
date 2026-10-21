@@ -37,7 +37,7 @@ pub use bindings::{
     Arity, BindingCatalog, BindingCodec, CaseRule, ChildPlan, ChildRule, Collision, ContextPolicy,
     DependentBinding, DescendantRule, DuplicateKeys, Effect, EffectGroup, EffectTarget,
     FieldBinding, IdentityDecl, NodeDecl, NodeDeclId, ParentKey, Placement, Role, Scope, ScopeId,
-    SequenceDecl, SequenceStep, SetFrom, Source,
+    SequenceDecl, SequenceStep, SetFrom, Source as FieldSource,
 };
 pub use cache::{DerivedState, derive_state};
 pub use compile::input::{
@@ -50,7 +50,9 @@ pub use compile::input::{
     VariantInput,
 };
 pub use compile::{DIALECT_VERSION, compile_dialect, compile_dialect_input, compile_schema_input};
-pub use data::{BoundResult, DataReader, EntryContext, ReadOptions, RecordContext, Restored};
+pub use data::{
+    BoundResult, DataReader, EntryContext, ReadOptions, RecordContext, Restored, Source,
+};
 pub use definition::{
     AccumulateOp, AnchorDecl, CheckScope, Definition, DefinitionKind, DiscoveryDecl, DocumentRule,
     DuplicateTreatment, ImportDecl, MatchKind, MatchRule, MergeDuplicates, MissingRequirement,

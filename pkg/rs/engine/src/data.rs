@@ -108,6 +108,38 @@ impl ReadOptions {
     }
 }
 
+/// A data document held in memory instead of read from disk: the path
+/// its provenance shows, and its text. The revision digest and
+/// invocation identity derive from the text exactly as a file
+/// reading's do, so a `Source` holding a file's bytes and that file
+/// read as an entry produce one reading. A document held in memory has
+/// no directory to resolve an import against: an import inside it
+/// fails closed (`KDLITH-IMP001`).
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct Source {
+    /// The path as the reading shows the document.
+    pub shown: String,
+    /// The document's text, as a file reading would read it.
+    pub text: String,
+}
+
+impl Source {
+    pub fn new(shown: impl Into<String>, text: impl Into<String>) -> Self {
+        Self {
+            shown: shown.into(),
+            text: text.into(),
+        }
+    }
+}
+
+/// An entry as the reading locates it: a document on disk, or one held
+/// in memory under the spelling its provenance shows.
+pub(crate) enum EntrySource<'a> {
+    Path(&'a Path),
+    Memory { shown: &'a str, text: &'a str },
+}
+
 /// One bound result a reading cached: the invocation identity it is
 /// keyed by, where it was derived, and its items under one canonical
 /// source identity, so equal semantics give equal items wherever the
@@ -266,10 +298,10 @@ impl<'d> DataReader<'d> {
     /// with `entered`, also giving it, at the same point, every slot's
     /// value in slot order as the document's invocation entered it, and
     /// immediately before each record or declaration, the values it
-    /// bound under.
+    /// bound under. An entry may be a document held in memory.
     pub(crate) fn read_documents(
         &self,
-        entries: &[&Path],
+        entries: &[EntrySource<'_>],
         options: &ReadOptions,
         sink: &mut dyn FnMut(Item),
         texts: &mut dyn FnMut(&str),
@@ -295,6 +327,28 @@ impl<'d> DataReader<'d> {
         sink: &mut dyn FnMut(Item),
     ) -> Result<bool, ReadError> {
         self.read_scoped(entries, options, sink, true)
+            .map(|outcome| outcome.failed)
+    }
+
+    /// Read as [`DataReader::read`] does, over documents held in memory
+    /// instead of read from disk: each `Source`'s text binds as its
+    /// shown path's document would, with the same revision digest and
+    /// provenance. An import inside an in-memory document fails closed
+    /// (`KDLITH-IMP001`): it has no directory to resolve against.
+    pub fn read_sources(
+        &self,
+        sources: &[Source],
+        options: &ReadOptions,
+        sink: &mut dyn FnMut(Item),
+    ) -> Result<bool, ReadError> {
+        let entries: Vec<EntrySource> = sources
+            .iter()
+            .map(|source| EntrySource::Memory {
+                shown: &source.shown,
+                text: &source.text,
+            })
+            .collect();
+        self.read_inner(&entries, options, sink, Sides::none(), true, true)
             .map(|outcome| outcome.failed)
     }
 
@@ -440,7 +494,11 @@ impl<'d> DataReader<'d> {
                 sink(item);
             }
         };
-        let before = self.read_inner(earlier, options, &mut tap, Sides::none(), true, false)?;
+        let earlier: Vec<EntrySource> = earlier
+            .iter()
+            .map(|entry| EntrySource::Path(entry))
+            .collect();
+        let before = self.read_inner(&earlier, options, &mut tap, Sides::none(), true, false)?;
         let source = SourceId(u32::try_from(before.entered).unwrap_or(u32::MAX));
         let Some(scope) = dispatch_scope(def, &text, record.node) else {
             return Ok(Restored::Miss);
@@ -510,7 +568,11 @@ impl<'d> DataReader<'d> {
         sink: &mut dyn FnMut(Item),
         follow: bool,
     ) -> Result<Outcome, ReadError> {
-        self.read_inner(entries, options, sink, Sides::none(), follow, follow)
+        let entries: Vec<EntrySource> = entries
+            .iter()
+            .map(|entry| EntrySource::Path(entry))
+            .collect();
+        self.read_inner(&entries, options, sink, Sides::none(), follow, follow)
     }
 
     /// [`DataReader::read_scoped`], with contribution resolution chosen
@@ -518,7 +580,7 @@ impl<'d> DataReader<'d> {
     /// would resolve a partial picture.
     fn read_inner(
         &self,
-        entries: &[&Path],
+        entries: &[EntrySource<'_>],
         options: &ReadOptions,
         sink: &mut dyn FnMut(Item),
         sides: Sides<'_, '_>,
@@ -532,7 +594,11 @@ impl<'d> DataReader<'d> {
         let grammars = (def.kind == DefinitionKind::Dialect).then(|| {
             let mut grammars = DeclaredGrammars::default();
             for entry in entries {
-                if let Ok(text) = std::fs::read_to_string(entry) {
+                let text = match entry {
+                    EntrySource::Path(path) => std::fs::read_to_string(path).ok(),
+                    EntrySource::Memory { text, .. } => Some((*text).to_owned()),
+                };
+                if let Some(text) = text {
                     grammars.scan(&text);
                 }
             }
@@ -603,6 +669,7 @@ impl<'d> DataReader<'d> {
             entering: if armed { Some(&mut enter) } else { None },
             invocations: Invocations::new().with_schema_fingerprint(self.schema_fingerprint()),
             syntax: HashMap::new(),
+            held: HashMap::new(),
             bound: HashMap::new(),
             results: Vec::new(),
             result_of: HashMap::new(),
@@ -625,17 +692,28 @@ impl<'d> DataReader<'d> {
             // source path as the invocation spells it — never from its
             // content. The documents its imports reach bind under this
             // selection.
-            let shown = entry.display().to_string();
+            let shown = match entry {
+                EntrySource::Path(path) => path.display().to_string(),
+                EntrySource::Memory { shown, .. } => (*shown).to_owned(),
+            };
             reading.chain.push(shown.clone());
             reading.selection =
                 def.select_profile(options.profile.as_deref(), &options.profiles, &shown);
             reading
                 .invocations
                 .select_profiles(selection_fingerprint(def, &reading.selection));
-            match reading
-                .invocations
-                .enter_root(entry, Context::new(layout.clone()))
-            {
+            let entered = match entry {
+                EntrySource::Path(path) => reading
+                    .invocations
+                    .enter_root(path, Context::new(layout.clone())),
+                EntrySource::Memory { text, .. } => reading
+                    .invocations
+                    .enter_root_in_memory(&shown, Context::new(layout.clone()))
+                    .inspect(|id| {
+                        reading.held.insert(*id, Rc::from(*text));
+                    }),
+            };
+            match entered {
                 Ok(id) => reading.visit(id),
                 Err(failure) => reading.diagnose(import_failure(failure, ORIGIN)),
             }
@@ -753,6 +831,10 @@ struct Reading<'r, 'd> {
     /// The syntax cache: document text by source revision, so a source
     /// invoked again under the same revision is read and stored once.
     syntax: HashMap<u64, Rc<str>>,
+    /// The text of each entry document held in memory, by its
+    /// invocation: it is never read from disk, and an import inside it
+    /// has no directory to resolve against.
+    held: HashMap<InvocationId, Rc<str>>,
     /// The bound-result cache: the items of one invocation by their
     /// invocation semantics and the active profiles they bound under,
     /// so a repeated invocation with equal semantics under the same
@@ -808,7 +890,14 @@ impl Reading<'_, '_> {
         if let Some(invocation) = self.invocations.get(id) {
             let (path, shown) = (invocation.path.clone(), invocation.shown.clone());
             let context = invocation.context.project(&self.all_slots());
-            match read_text(&path, &shown, "document size", ORIGIN) {
+            // A document held in memory reads its own text; every other
+            // invocation reads from disk.
+            let read = match self.held.get(&id) {
+                Some(held) => Ok(held.clone()),
+                None => read_text(&path, &shown, "document size", ORIGIN)
+                    .map(|text| Rc::from(text.as_str())),
+            };
+            match read {
                 Ok(text) => {
                     // A grammar written after the import it governs
                     // still governs it, so a definition document is
@@ -818,11 +907,7 @@ impl Reading<'_, '_> {
                     }
                     let revision = stable_hash(text.as_bytes());
                     self.invocations.supply_revision(id, revision);
-                    let text = self
-                        .syntax
-                        .entry(revision)
-                        .or_insert_with(|| Rc::from(text.as_str()))
-                        .clone();
+                    let text = self.syntax.entry(revision).or_insert_with(|| text).clone();
                     let identity = self.invocations.get(id).and_then(|i| i.identity());
                     let digest = revision_digest(revision);
                     let active = self.selection.members().to_vec();
@@ -1156,6 +1241,12 @@ impl Reading<'_, '_> {
     /// against the host-supplied anchors, in deterministic order.
     fn targets(&self, request: &ImportRequest) -> Result<Vec<Target>, Box<DiagnosticRecord>> {
         let importer = self.invocations.innermost();
+        // A document held in memory has no directory to resolve an
+        // import against: the request fails closed rather than resolve
+        // against a path it merely spells.
+        if importer.is_some_and(|id| self.held.contains_key(&id)) {
+            return Err(Box::new(unresolvable(&request.expression)));
+        }
         if !discovery::is_expression(&request.expression) {
             let Some(importer) = importer else {
                 return Err(Box::new(unresolvable(&request.expression)));
