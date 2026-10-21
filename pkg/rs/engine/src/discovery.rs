@@ -7,6 +7,7 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use crate::definition::{DiscoveryDecl, Patterns};
+use crate::diag::{IMPORT_ANCHOR, IMPORT_GRAMMAR};
 use crate::names::Names;
 use crate::names::Sym;
 
@@ -49,10 +50,11 @@ pub enum ExpansionError {
     /// The expression's syntax is not admitted: an unadmitted pattern
     /// kind, environment-variable interpolation (which no grammar
     /// admits), or a malformed expression (`KDLITH-IMP004`).
-    NotAdmitted { reason: String },
+    NotAdmitted { expression: String, reason: String },
     /// The expression names an anchor the grammar does not declare, or
-    /// declares but the host does not supply (`KDLITH-IMP005`).
-    Anchor { name: String },
+    /// declares but the host does not supply, or places one past the
+    /// first segment (`KDLITH-IMP005`).
+    Anchor { name: String, reason: String },
     /// A directory the expansion reads cannot be read.
     Unreadable { path: String, reason: String },
 }
@@ -61,19 +63,18 @@ impl ExpansionError {
     /// The registered import code this error reports under.
     pub fn code(&self) -> &'static str {
         match self {
-            ExpansionError::NotAdmitted { .. } => "KDLITH-IMP004",
-            ExpansionError::Anchor { .. } | ExpansionError::Unreadable { .. } => "KDLITH-IMP005",
+            ExpansionError::NotAdmitted { .. } => IMPORT_GRAMMAR,
+            ExpansionError::Anchor { .. } | ExpansionError::Unreadable { .. } => IMPORT_ANCHOR,
         }
     }
 
-    /// The values the code's message renders.
-    pub fn values(&self) -> [String; 2] {
+    /// The values the code's message renders: the subject, then the
+    /// computed reason it fails.
+    pub fn values(&self) -> [&str; 2] {
         match self {
-            ExpansionError::NotAdmitted { reason } => {
-                [reason.clone(), "the active grammar".to_owned()]
-            }
-            ExpansionError::Anchor { name } => [name.clone(), "the active grammar".to_owned()],
-            ExpansionError::Unreadable { path, reason } => [path.clone(), reason.clone()],
+            ExpansionError::NotAdmitted { expression, reason } => [expression, reason],
+            ExpansionError::Anchor { name, reason } => [name, reason],
+            ExpansionError::Unreadable { path, reason } => [path, reason],
         }
     }
 }
@@ -86,7 +87,8 @@ pub fn parse(
     names: &Names,
 ) -> Result<Expansion, ExpansionError> {
     let not_admitted = |reason: &str| ExpansionError::NotAdmitted {
-        reason: format!("import {expression:?} {reason}"),
+        expression: expression.to_owned(),
+        reason: reason.to_owned(),
     };
     if expression.is_empty() {
         return Err(not_admitted("is empty"));
@@ -128,8 +130,13 @@ fn segment(
                 .any(|anchor| names.resolve(anchor.name) == name)
         });
         if !declared {
+            let reason = match grammar {
+                Some(g) => format!("grammar {} does not declare it", names.resolve(g.name)),
+                None => "no discovery grammar is bound, so only literal paths import".to_owned(),
+            };
             return Err(ExpansionError::Anchor {
                 name: name.to_owned(),
+                reason,
             });
         }
         let sym = grammar
@@ -221,6 +228,7 @@ pub fn expand(
     if let Some(Segment::Anchor(name)) = expansion.segments.first() {
         let value = anchors.get(name).ok_or_else(|| ExpansionError::Anchor {
             name: names.resolve(*name).to_owned(),
+            reason: "the host does not supply it".to_owned(),
         })?;
         roots = vec![value.clone()];
         at = 1;
@@ -254,6 +262,7 @@ fn walk(
         Segment::Literal(text) => walk(matches, names, &dir.join(text), further),
         Segment::Anchor(name) => Err(ExpansionError::Anchor {
             name: names.resolve(*name).to_owned(),
+            reason: "an anchor may only lead the expression".to_owned(),
         }),
         Segment::Pattern {
             doublestar, text, ..

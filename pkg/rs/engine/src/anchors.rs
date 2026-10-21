@@ -10,7 +10,7 @@ use kdlith_diagnostic::DiagnosticRecord;
 use kdlith_model::Value;
 
 use crate::definition::{AnchorDecl, DiscoveryDecl, Patterns};
-use crate::diag::{IMPORT_ANCHOR, IMPORT_GRAMMAR, IMPORT_UNRESOLVED, Site, record};
+use crate::diag::{IMPORT_ANCHOR, IMPORT_UNRESOLVED, Site, record};
 use crate::discovery::{self, ExpansionError};
 use crate::names::{Names, Sym};
 use crate::syntax::{ParsedDocument, SyntaxNode};
@@ -59,14 +59,17 @@ pub(crate) fn undeclared(
         return Vec::new();
     }
     let listed: Vec<&str> = grammars.iter().map(|g| names.resolve(g.name)).collect();
-    let grammar = if listed.is_empty() {
-        "(none declared)".to_owned()
+    let reason = if listed.is_empty() {
+        "the host supplies it, but the definition declares no discovery grammar".to_owned()
     } else {
-        listed.join(", ")
+        format!(
+            "the host supplies it, but no discovery grammar declares it (declared: {})",
+            listed.join(", ")
+        )
     };
     missing
         .into_iter()
-        .map(|name| record(IMPORT_ANCHOR, &[name, &grammar], origin))
+        .map(|name| record(IMPORT_ANCHOR, &[name, &reason], origin))
         .collect()
 }
 
@@ -89,7 +92,7 @@ pub(crate) fn expression_targets(
     base: &Base<'_>,
     origin: &str,
 ) -> Result<Vec<Target>, Box<DiagnosticRecord>> {
-    let failed = |error: ExpansionError| Box::new(expansion_record(expression, &error, origin));
+    let failed = |error: ExpansionError| Box::new(record(error.code(), &error.values(), origin));
     let expansion = discovery::parse(expression, grammar, names).map_err(failed)?;
     let matches = discovery::expand(&expansion, names, anchors, base.dir).map_err(failed)?;
     if matches.is_empty() && !grammar.is_some_and(|grammar| grammar.allow_empty) {
@@ -111,20 +114,6 @@ pub(crate) fn expression_targets(
         targets.push(Target { resolved, shown });
     }
     Ok(targets)
-}
-
-/// An import-expression failure as its registered diagnostic, with the
-/// values the code's message renders: the mapping the compiler reports.
-fn expansion_record(expression: &str, error: &ExpansionError, origin: &str) -> DiagnosticRecord {
-    let [first, second] = error.values();
-    match error {
-        ExpansionError::NotAdmitted { .. } => {
-            record(IMPORT_GRAMMAR, &[expression, &second], origin)
-        }
-        ExpansionError::Anchor { .. } | ExpansionError::Unreadable { .. } => {
-            record(IMPORT_ANCHOR, &[&first, &second], origin)
-        }
-    }
 }
 
 /// The discovery grammars definition documents declare for their own

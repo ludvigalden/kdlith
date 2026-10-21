@@ -29,9 +29,9 @@
           "case unprofiled\n  document inputs/audit.kdl\n  diagnostic KDLITH-SCH011 invocation profile profile (none) is not one of the profiles schema survey declares\n  failed=true\n",
           "case profiled\n  document inputs/audit.kdl\n  record Thing name=audited\n  failed=false\n",
           "case profiled-options\n  document inputs/audit.kdl\n  record Thing name=audited\n  failed=false\n",
-          "case unanchored\n  document inputs/entry.kdl\n  import $root/*.kdl targets=[]\n  diagnostic KDLITH-IMP005 anchor root of grammar the active grammar is not declared or not host-supplied\n  record Thing name=top\n  failed=true\n",
-          "case grammarless-profile\n  document inputs/entry.kdl\n  import $root/*.kdl targets=[]\n  diagnostic KDLITH-IMP005 anchor root of grammar the active grammar is not declared or not host-supplied\n  record Thing name=top\n  failed=true\n",
-          "case undeclared-anchor\n  diagnostic KDLITH-IMP005 anchor other of grammar main is not declared or not host-supplied\n  failed=true\n"
+          "case unanchored\n  document inputs/entry.kdl\n  import $root/*.kdl targets=[]\n  diagnostic KDLITH-IMP005 anchor root is unavailable: the host does not supply it\n  record Thing name=top\n  failed=true\n",
+          "case grammarless-profile\n  document inputs/entry.kdl\n  import $root/*.kdl targets=[]\n  diagnostic KDLITH-IMP005 anchor root is unavailable: no discovery grammar is bound, so only literal paths import\n  record Thing name=top\n  failed=true\n",
+          "case undeclared-anchor\n  diagnostic KDLITH-IMP005 anchor other is unavailable: the host supplies it, but no discovery grammar declares it (declared: main)\n  failed=true\n"
         ]
       }
     }

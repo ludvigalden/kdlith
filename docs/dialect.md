@@ -278,11 +278,13 @@ no imports.
 An import expression is evaluated under the discovery grammar the
 active profile (or the schema root, when no profiles are declared)
 binds; a schema binding no grammar evaluates literal paths only. An
-expression whose syntax the active grammar does not admit — including
+expression whose syntax the bound grammar does not admit — including
 any environment-variable interpolation, which no grammar admits — fails
 with `KDLITH-IMP004`, and an anchor the grammar does not declare, or
-declares but the host does not supply, with `KDLITH-IMP005`. The mirror
-arm is rejected too: an anchor the host supplies that no discovery
+declares but the host does not supply, with `KDLITH-IMP005`; each
+message names the computed cause — the syntax refused, or why the
+anchor is unavailable. The mirror arm is rejected too: an anchor the
+host supplies that no discovery
 grammar of the definition declares is `KDLITH-IMP005`, never silently
 ignored. An expression matching zero sources does not resolve
 (`KDLITH-IMP001`) unless the grammar declares an explicit empty-match

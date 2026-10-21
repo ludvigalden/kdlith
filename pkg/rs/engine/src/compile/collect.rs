@@ -27,10 +27,7 @@ use crate::definition::{
     Qualification, QualifierDecl, ReferenceDecl, ResolutionPolicyDecl, ResolutionSelection,
     SlotDecl, SlotDuplicates, SourceContextDecl, SourceContextMode, SourceFieldDecl,
 };
-use crate::diag::{
-    IMPORT_ANCHOR, IMPORT_GRAMMAR, INVALID_BINDING, NOT_INSTALLED, SECOND_DEFAULT, Site, duplicate,
-    duplicate_key,
-};
+use crate::diag::{INVALID_BINDING, NOT_INSTALLED, SECOND_DEFAULT, Site, duplicate, duplicate_key};
 use crate::discovery::{self, ExpansionError};
 use crate::names::Sym;
 use crate::syntax::parse_u64;
@@ -1214,7 +1211,7 @@ fn import(cx: &mut Cx<'_>, site: Site, input: &ImportInput) {
         match grammar {
             Some(grammar) => {
                 if let Err(error) = discovery::parse(&input.path, Some(grammar), &cx.names) {
-                    report_expansion(cx, site, &input.path, &error);
+                    report_expansion(cx, site, &error);
                     return;
                 }
             }
@@ -1239,20 +1236,8 @@ fn import(cx: &mut Cx<'_>, site: Site, input: &ImportInput) {
 }
 
 /// Report an import-expression failure under its registered code.
-fn report_expansion(cx: &mut Cx<'_>, site: Site, expression: &str, error: &ExpansionError) {
-    let values = error.values();
-    let [first, second] = values;
-    match error {
-        ExpansionError::NotAdmitted { .. } => {
-            cx.diags.error(IMPORT_GRAMMAR, site, &[expression, &second]);
-        }
-        ExpansionError::Anchor { name } => {
-            cx.diags.error(IMPORT_ANCHOR, site, &[name, &second]);
-        }
-        ExpansionError::Unreadable { .. } => {
-            cx.diags.error(IMPORT_ANCHOR, site, &[&first, &second]);
-        }
-    }
+fn report_expansion(cx: &mut Cx<'_>, site: Site, error: &ExpansionError) {
+    cx.diags.error(error.code(), site, &error.values());
 }
 
 /// A document profile: a named selection of root types.
