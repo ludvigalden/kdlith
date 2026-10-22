@@ -1,0 +1,31 @@
+schema catalog version="1" {
+    types {
+        enum BrowserClass {
+            member neutral description="A neutral step"
+            member full description="A full step"
+        }
+        object Step {
+            field name String
+            field delay "optional<U64>"
+        }
+    }
+    annotation class BrowserClass required
+    annotation note String
+    node eval role=record type=Step description="Run the step" {
+        field name arg=0
+        field delay property=delay
+        annotation class full
+        annotation note "first eval"
+    }
+    node wait role=record type=Step {
+        field name arg=0
+        field delay property=delay
+        annotation class neutral
+    }
+    document {
+        first {
+            exactly-one eval
+        }
+        following eval wait
+    }
+}

@@ -84,6 +84,10 @@ pub struct Definition {
     /// are declared.
     pub root_grammar: Option<Sym>,
     pub references: Vec<ReferenceDecl>,
+    /// The schema-level annotations the schema declares, in declaration
+    /// order. Dialect definitions declare none: the declaration node's
+    /// parent is the schema root.
+    pub annotations: Vec<AnnotationDecl>,
     /// The declared contribution-resolution policy, when the schema
     /// declares one. The engine compiles and holds it; the registered
     /// resolver applies it.
@@ -594,6 +598,23 @@ pub struct ReferenceDecl {
     pub lookup: Option<Sym>,
     pub qualification: Qualification,
     pub qualifiers: Vec<QualifierDecl>,
+    pub site: Site,
+}
+
+/// A schema-level annotation: the name node declarations may attach, the
+/// scalar type every value is checked against, and whether every node
+/// declaration must carry it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct AnnotationDecl {
+    pub name: Sym,
+    /// The scalar type every value is checked against: a built-in scalar
+    /// or a declared string or enum type. A non-scalar type is rejected
+    /// when the definition compiles.
+    pub ty: TypeExpr,
+    /// Whether the annotation is total: every node declaration carries
+    /// it, and one missing it is rejected.
+    pub required: bool,
     pub site: Site,
 }
 

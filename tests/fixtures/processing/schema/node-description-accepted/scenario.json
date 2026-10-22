@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A node declaration takes description=, the spelling it rejected before as an unbound property: eval carries a description and wait an empty one, the schema declares no annotation, and vet schema accepts it with exit 0. The description is metadata the summary carries, so the digest pins it",
+  "args": [
+    "vet",
+    "schema",
+    "schema.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "ok: schema docs version 1 scope=complete documents=1 types=1 nodes=2 ",
+      "digest=5c5e8ca1b9bb060b"
+    ]
+  }
+}

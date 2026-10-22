@@ -50,6 +50,8 @@ pub enum Construct {
     Profile(ProfileInput),
     Discovery(DiscoveryInput),
     Reference(ReferenceInput),
+    /// A schema-level annotation declaration.
+    Annotation(AnnotationInput),
     Resolution(ResolutionInput),
     Provider(ProviderInput),
     SourceContext(SourceContextInput),
@@ -242,6 +244,10 @@ pub struct NodeInput {
     pub cases: Vec<CaseInput>,
     pub otherwise: Option<String>,
     pub identity: Option<IdentityInput>,
+    /// The declaration's `description=` documentation.
+    pub description: Option<String>,
+    /// The annotation facts the declaration carries, in written order.
+    pub annotations: Vec<NodeAnnotationInput>,
 }
 
 /// One field binding and the sources that populate it.
@@ -419,6 +425,23 @@ pub struct QualifierInput {
     pub name: String,
     pub ty: String,
     pub required: bool,
+}
+
+/// A schema-level annotation declaration, as declared.
+#[derive(Clone, Debug, Default)]
+pub struct AnnotationInput {
+    pub name: String,
+    /// The declared type expression, as written.
+    pub ty: String,
+    /// Whether every node declaration must carry the annotation.
+    pub required: bool,
+}
+
+/// One annotation fact a node declaration carries, as written.
+#[derive(Clone, Debug)]
+pub struct NodeAnnotationInput {
+    pub name: String,
+    pub value: Value,
 }
 
 /// One descendant rule of a node declaration, as declared.

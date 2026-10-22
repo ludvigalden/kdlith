@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "kind": "codegen-oracle",
+  "description": "Metadata is not enforcement: schema.kdl gives the eval node declaration a description, a required class annotation, and an optional note, and the wait node only the required annotation; plain-schema.kdl is the same schema with every description and annotation removed. One declared command binds the same data under both schemas through the bound view and requires both runs to exit 0 with empty stderr and byte-identical stdout, so an annotation can change no binding outcome; the bound stream names no annotation value or description. No generate step runs (the entrypoint and crate keys the kind requires go unused)",
+  "entrypoint": "schema.kdl",
+  "crate": "unused",
+  "steps": [
+    {
+      "exercise": {
+        "command": ["sh", "-c", "\"$KDLITH_FX_KDLITH\" inspect data --view bound --schema schema.kdl data.kdl > annotated.out 2> annotated.err; a=$?; \"$KDLITH_FX_KDLITH\" inspect data --view bound --schema plain-schema.kdl data.kdl > plain.out 2> plain.err; p=$?; echo \"annotated=$a plain=$p\"; cmp -s annotated.out plain.out && echo 'stdout identical'; test -s annotated.err || test -s plain.err || echo 'stderr empty'; grep -c '\"type_name\":\"Step\"' annotated.out; cat annotated.out"],
+        "stdout-contains": [
+          "annotated=0 plain=0\nstdout identical\nstderr empty\n2\n",
+          "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":0},\"type_name\":\"Step\",\"fields\":[{\"name\":\"name\",\"value\":{\"kind\":\"string\",\"value\":\"alpha\"},\"origin\":0},{\"name\":\"delay\",\"value\":{\"kind\":\"number\",\"value\":\"3\"},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n"
+        ],
+        "stdout-not-contains": ["full", "neutral", "first eval", "Run the step"]
+      }
+    }
+  ]
+}

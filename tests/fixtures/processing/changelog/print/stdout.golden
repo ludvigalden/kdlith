@@ -127,8 +127,37 @@ published yet.
 - A `bound` object constraint declares an inclusive `min`/`max` range
   over an `Integer`, `Decimal`, or `U64` field, compared exactly and
   per element of a list; a number outside it is `KDLITH-BND012`.
+- `at-most-one FIELDS...` and `exactly-one-field FIELDS...` object
+  constraints: at most one, or exactly one, of the listed fields holds a
+  value, however each binds — argument, property, or child. A broken
+  exclusivity list is rejected when the schema is compiled
+  (`KDLITH-DLC005`), and a bound node violating the constraint is
+  `KDLITH-BND013`, reported once per broken list. Both spellings change
+  the canonical dialect digest.
+- Node declaration metadata: a schema declares annotation vocabulary
+  with `annotation NAME TYPE [required]` and node declarations carry
+  typed `annotation NAME VALUE` facts plus `description=`
+  documentation, which changes the canonical dialect digest. Every
+  value is checked against its annotation's declared scalar type when
+  the schema is compiled, a required annotation is total over every
+  node declaration, and all five failure modes — a value outside its
+  type, an undeclared name, a repeated annotation on one node, a node
+  missing a required annotation, and a non-scalar annotation type — are
+  `KDLITH-DLC005`. The metadata never changes binding: nothing in
+  binding, linking, provenance, or export consumes it, `inspect schema`
+  shows it (each declaration streams as an `AnnotationDef` item, the
+  effective view lists it per node and per declaration), and generated
+  schema processors expose one public constant per annotation fact,
+  typed by the annotation's declared type.
 
 ### Fixed
+
+- A data document's imports are confined to the entry document's
+  directory: a target that resolves outside it — including through a
+  symbolic link — is refused with `KDLITH-IMP006` before the target is
+  read, so an import can no longer leak the contents of a file outside
+  the entry tree. Definition documents loading through their governing
+  dialect are exempt, and `--scope local` refuses as well.
 
 - A fallback identity composed from a non-string field no longer
   composes an empty identity silently: the compiler notes the field at

@@ -7,25 +7,26 @@ use kdlith_runtime::Repeated;
 
 use crate::bindings::{
     BindingCodec, CaseRule, ChildRule, Collision, ContextPolicy, DependentBinding, DescendantRule,
-    DuplicateKeys, Effect, EffectGroup, EffectTarget, FieldBinding, IdentityDecl, NodeDecl,
-    Placement, Role, SequenceDecl, SequenceStep, SetFrom, Source,
+    DuplicateKeys, Effect, EffectGroup, EffectTarget, FieldBinding, IdentityDecl, NodeAnnotation,
+    NodeDecl, Placement, Role, SequenceDecl, SequenceStep, SetFrom, Source,
 };
 use crate::compile::Cx;
 use crate::compile::expansions::Pending;
 use crate::compile::input::{
-    ChildRuleInput, ConstraintInput, Construct, DefaultInput, DefinitionInput, DependentInput,
-    DiscoveryInput, DocumentRuleInput, EffectGroupInput, EffectInput, FieldBindingInput,
-    FieldInput, ImportInput, Located, MatchRuleInput, MemberInput, NodeInput, ProfileInput,
-    ProviderInput, ReferenceInput, ResolutionInput, SequenceInput, SlotInput, SourceContextInput,
-    SourceInput, TypeInput,
+    AnnotationInput, ChildRuleInput, ConstraintInput, Construct, DefaultInput, DefinitionInput,
+    DependentInput, DiscoveryInput, DocumentRuleInput, EffectGroupInput, EffectInput,
+    FieldBindingInput, FieldInput, ImportInput, Located, MatchRuleInput, MemberInput, NodeInput,
+    ProfileInput, ProviderInput, ReferenceInput, ResolutionInput, SequenceInput, SlotInput,
+    SourceContextInput, SourceInput, TypeInput,
 };
 use crate::compile::types::{declare, field_name, format_rule, validator_use};
 use crate::decode::found;
 use crate::definition::{
-    AccumulateOp, AnchorDecl, DiscoveryDecl, DocumentRule, DuplicateTreatment, ImportDecl,
-    MatchKind, MatchRule, MergeDuplicates, MissingRequirement, Patterns, ProfileDecl, ProviderDecl,
-    Qualification, QualifierDecl, ReferenceDecl, ResolutionPolicyDecl, ResolutionSelection,
-    SlotDecl, SlotDuplicates, SourceContextDecl, SourceContextMode, SourceFieldDecl,
+    AccumulateOp, AnnotationDecl, AnchorDecl, DiscoveryDecl, DocumentRule, DuplicateTreatment,
+    ImportDecl, MatchKind, MatchRule, MergeDuplicates, MissingRequirement, Patterns, ProfileDecl,
+    ProviderDecl, Qualification, QualifierDecl, ReferenceDecl, ResolutionPolicyDecl,
+    ResolutionSelection, SlotDecl, SlotDuplicates, SourceContextDecl, SourceContextMode,
+    SourceFieldDecl,
 };
 use crate::diag::{INVALID_BINDING, NOT_INSTALLED, SECOND_DEFAULT, Site, duplicate, duplicate_key};
 use crate::discovery::{self, ExpansionError};
@@ -62,6 +63,7 @@ pub(crate) fn all(cx: &mut Cx<'_>, input: &DefinitionInput) {
             Construct::Import(input) => import(cx, site, input),
             Construct::Include { owner, target, at } => include(cx, site, owner, target, *at),
             Construct::Resolution(input) => resolution(cx, site, input),
+            Construct::Annotation(input) => annotation_decl(cx, site, input),
             Construct::Provider(input) => provider(cx, site, input),
             Construct::SourceContext(input) => source_context(cx, site, input),
             // Collected by the grammar-affecting first pass above.
@@ -517,6 +519,15 @@ fn node(cx: &mut Cx<'_>, site: Site, input: &NodeInput) {
         .otherwise
         .as_deref()
         .and_then(|ty| cx.type_expr(site, ty));
+    let annotations = input
+        .annotations
+        .iter()
+        .map(|fact| NodeAnnotation {
+            name: cx.names.intern(&fact.name),
+            value: fact.value.clone(),
+        })
+        .collect();
+    let description = input.description.clone();
     let placement = match (&input.parent, &input.parents) {
         (Some(_), Some(_)) => {
             cx.diags.error(
@@ -568,6 +579,40 @@ fn node(cx: &mut Cx<'_>, site: Site, input: &NodeInput) {
         cases,
         otherwise,
         identity,
+        description,
+        annotations,
+        site,
+    });
+}
+
+/// A schema-level `annotation NAME TYPE [required]` declaration: the
+/// name node declarations may attach, the type every value is checked
+/// against when the definition compiles, and whether the annotation is
+/// total. A name declared twice is a duplicate declaration.
+fn annotation_decl(cx: &mut Cx<'_>, site: Site, input: &AnnotationInput) {
+    let name = cx.names.intern(&input.name);
+    if let Some(first) = cx
+        .annotations
+        .iter()
+        .find(|decl| decl.name == name)
+        .map(|decl| decl.site)
+    {
+        duplicate(
+            &mut cx.diags,
+            cx.kind,
+            (site, first),
+            "annotation",
+            &input.name,
+        );
+        return;
+    }
+    let Some(ty) = cx.type_expr(site, &input.ty) else {
+        return;
+    };
+    cx.annotations.push(AnnotationDecl {
+        name,
+        ty,
+        required: input.required,
         site,
     });
 }

@@ -1,0 +1,17 @@
+schema s version="1" {
+    types {
+        object Step {
+            field name String
+        }
+        union Choice {
+            variant text String
+            variant count U64
+        }
+    }
+    annotation shape Step
+    annotation pick Choice
+    annotation many "list<String>"
+    node eval role=record type=Step {
+        field name arg=0
+    }
+}

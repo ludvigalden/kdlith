@@ -10,6 +10,10 @@ pub(crate) const NODES: &[NodeShape] = &[
         .under(&["schema", "dialect"])
         .declaration()
         .ty("NodeDef"),
+    NodeShape::new("annotation")
+        .under(&["schema"])
+        .declaration()
+        .ty("AnnotationDef"),
     NodeShape::new("field").under(&["node"]).ty("FieldBinding"),
     NodeShape::new("argument")
         .under(SOURCE_PARENTS)
@@ -45,4 +49,7 @@ pub(crate) const NODES: &[NodeShape] = &[
     NodeShape::new("otherwise")
         .under(&["cases"])
         .ty("Otherwise"),
+    NodeShape::new("annotation")
+        .under(&["node"])
+        .ty("NodeAnnotation"),
 ];

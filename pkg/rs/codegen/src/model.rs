@@ -5,8 +5,8 @@
 use std::collections::BTreeMap;
 
 use kdlith_engine::{
-    CheckScope, Definition, DefinitionKind, Names, NodeDecl, ReferenceDecl, Role, SlotDecl, Sym,
-    TypeDecl, TypeExpr, TypeKind,
+    Builtin, CheckScope, Definition, DefinitionKind, Names, NodeDecl, ReferenceDecl, Role,
+    SlotDecl, Sym, TypeDecl, TypeExpr, TypeKind,
 };
 
 use crate::emit::declaration_expressions;
@@ -122,6 +122,23 @@ pub(crate) struct Emission<'d> {
     pub item_enum: &'static str,
     /// How the manifest names the kdlith crates it depends on.
     pub packaging: Packaging,
+    /// One public constant per annotation fact a node declaration
+    /// carries, in contribution order.
+    pub annotations: Vec<AnnotationConst>,
+}
+
+/// One annotation fact as the generated crate exposes it: a public
+/// constant named after the node and the annotation, typed by the
+/// annotation's declared scalar type.
+pub(crate) struct AnnotationConst {
+    /// The constant's name: `<NODE>_<ANNOTATION>`, upper snake case.
+    pub name: String,
+    pub node: String,
+    pub annotation: String,
+    /// The Rust type the constant holds.
+    pub ty: String,
+    /// The constant's value, as a Rust expression.
+    pub value: String,
 }
 
 impl<'d> Emission<'d> {
@@ -407,6 +424,7 @@ impl<'d> Emission<'d> {
             spelling: Spelling::of(definition.kind),
             item_enum: "Item",
             packaging,
+            annotations: annotation_constants(definition)?,
         };
         emission.check_spellings()?;
         emission.check_map_keys(definition)?;
@@ -897,6 +915,93 @@ pub(crate) fn kind_name(kind: &TypeKind) -> &'static str {
         TypeKind::Map(_) => "map",
         TypeKind::Codec(_) => "codec",
         _ => "declared",
+    }
+}
+
+/// The constants a definition's annotation facts generate, in
+/// contribution order: one per fact, named after its node and its
+/// annotation and typed by the annotation's declared scalar type —
+/// `bool` for a Bool, `u64` for a U64, `i64` for an Integer, the
+/// generated enum's member for a declared enum type, and the written
+/// spelling as `&str` for a String, a Decimal, or a declared string
+/// type, whose generated newtypes own their text and cannot be built in
+/// a constant. Two facts spelling one constant, as two same-named nodes
+/// under different parents do, fail closed.
+fn annotation_constants(definition: &Definition) -> Result<Vec<AnnotationConst>, Error> {
+    let names = &definition.names;
+    let mut constants: Vec<AnnotationConst> = Vec::new();
+    for (_, node) in definition.bindings.iter() {
+        let node_name = names.resolve(node.name);
+        for fact in &node.annotations {
+            let annotation = names.resolve(fact.name);
+            let Some(decl) = definition
+                .annotations
+                .iter()
+                .find(|decl| decl.name == fact.name)
+            else {
+                continue;
+            };
+            let (ty, value) = annotation_value(definition, &decl.ty, &fact.value);
+            let name = format!(
+                "{}_{}",
+                node_name.replace('-', "_").to_uppercase(),
+                annotation.replace('-', "_").to_uppercase()
+            );
+            if constants.iter().any(|other| other.name == name) {
+                return Err(Error::UnspellableName {
+                    what: "annotation constant",
+                    owner: node_name.to_owned(),
+                    name,
+                    reason: "another annotation fact spells the same constant",
+                });
+            }
+            constants.push(AnnotationConst {
+                name,
+                node: node_name.to_owned(),
+                annotation: annotation.to_owned(),
+                ty,
+                value,
+            });
+        }
+    }
+    Ok(constants)
+}
+
+/// The Rust type and literal of one annotation value, which the compiler
+/// already decoded as its declared scalar type.
+fn annotation_value(
+    definition: &Definition,
+    ty: &TypeExpr,
+    value: &kdlith_engine::Value,
+) -> (String, String) {
+    use kdlith_engine::Value;
+    let declared = match ty {
+        TypeExpr::Named(name) => definition
+            .types
+            .lookup(*name)
+            .and_then(|id| definition.types.get(id))
+            .map(|decl| (definition.names.resolve(*name), &decl.kind)),
+        _ => None,
+    };
+    let text = |spelled: &str| ("&str".to_owned(), format!("{spelled:?}"));
+    let digits = |spelled: &str| spelled.strip_prefix('+').unwrap_or(spelled).to_owned();
+    match (declared, value) {
+        (Some((_, TypeKind::Builtin(Builtin::Bool))), Value::Bool(flag)) => {
+            ("bool".to_owned(), flag.to_string())
+        }
+        (Some((_, TypeKind::Builtin(Builtin::U64))), Value::Number(spelled)) => {
+            ("u64".to_owned(), digits(spelled))
+        }
+        (Some((_, TypeKind::Builtin(Builtin::Integer))), Value::Number(spelled)) => {
+            ("i64".to_owned(), digits(spelled))
+        }
+        (Some((name, TypeKind::Enum(_))), Value::String(member)) => {
+            let ty = format!("crate::types::{name}");
+            let member = format!("{ty}::{}", pascal(member));
+            (ty, member)
+        }
+        (_, Value::String(spelled) | Value::Number(spelled)) => text(spelled),
+        (_, other) => text(&format!("{other:?}")),
     }
 }
 

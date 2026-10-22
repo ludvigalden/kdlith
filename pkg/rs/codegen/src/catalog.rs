@@ -307,8 +307,15 @@ pub(crate) fn glue(name: &str) -> Option<Glue> {
                 "StepInput",
                 "FieldBindingInput",
                 "SourceInput",
+                "NodeAnnotationInput",
             ],
             types: &["NodeDef", "FieldBinding", "Source", "Effect"],
+        },
+        "AnnotationDef" => Glue {
+            arm: ANNOTATION_DEF_ARM,
+            record_arm: None,
+            engine_inputs: &["AnnotationInput"],
+            types: &["AnnotationDef"],
         },
         "SlotDef" => Glue {
             arm: SLOT_DEF_ARM,
@@ -511,6 +518,15 @@ const CODEC_TYPE_ARM: &str = r##"        Item::CodecType(CodecType {
 "##;
 
 const NODE_DEF_ARM: &str = r##"        Item::NodeDef(node) => Construct::Node(Box::new(node_input(node))),
+"##;
+
+const ANNOTATION_DEF_ARM: &str = r##"        Item::AnnotationDef(AnnotationDef { name, ty, required }) => {
+            Construct::Annotation(AnnotationInput {
+                name: name.as_str().to_owned(),
+                ty: ty.as_str().to_owned(),
+                required: required.is_some(),
+            })
+        }
 "##;
 
 const SLOT_DEF_ARM: &str = r##"        Item::SlotDef(slot) => Construct::Slot(SlotInput {

@@ -8,8 +8,9 @@ use std::path::{Path, PathBuf};
 use kdlith_diagnostic::{DiagnosticRecord, ExitStatus, Severity};
 use kdlith_engine::{
     AccumulateOp, CheckScope, ContextPolicy, DeferredBinding, Definition, EffectStep, EntryContext,
-    Extensions, ImportDecl, LinkOutcome, Names, Role, ScopeId, ScopeRules, SetFrom, Site, SlotDecl,
-    SourceRevisions, Sym, TypedItem, list_nodes, list_profiles, list_types,
+    Extensions, ImportDecl, LinkOutcome, Names, NodeDecl, Placement, Role, ScopeId, ScopeRules,
+    SetFrom, Site, SlotDecl, SourceRevisions, Sym, TypedItem, list_nodes, list_profiles,
+    list_types,
 };
 use kdlith_model::Location;
 use kdlith_superproc::{Item, load_dialect, load_schema_anchored, reader};
@@ -614,8 +615,8 @@ impl PlanNames<'_> {
 }
 
 /// The effective view of a compiled definition: its types, nodes,
-/// slots, imports and profiles, in that order, each group sorted the
-/// way `list` sorts it.
+/// slots, imports, profiles, and annotation declarations, in that
+/// order, each group sorted the way `list` sorts it.
 fn effective_lines(def: &Definition) -> Vec<serde_json::Value> {
     use serde_json::json;
     let n = &def.names;
@@ -650,13 +651,27 @@ fn effective_lines(def: &Definition) -> Vec<serde_json::Value> {
         lines.push(entry("type", value));
     }
     for node in list_nodes(def) {
-        let value = json!({
+        let mut value = json!({
             "name": node.name,
             "parents": node.parents,
             "role": node.role,
             "type": node.ty,
             "profile": node.profile,
         });
+        // Only a declaration carrying metadata carries the keys, so every
+        // other node renders as it always has.
+        if let Some(decl) = node_decl(def, &node) {
+            if let Some(description) = &decl.description {
+                value["description"] = json!(description);
+            }
+            if !decl.annotations.is_empty() {
+                value["annotations"] = decl
+                    .annotations
+                    .iter()
+                    .map(|fact| json!({"name": n.resolve(fact.name), "value": fact.value}))
+                    .collect();
+            }
+        }
         lines.push(entry("node", value));
     }
     let mut slots: Vec<&SlotDecl> = def.slots.iter().collect();
@@ -691,7 +706,35 @@ fn effective_lines(def: &Definition) -> Vec<serde_json::Value> {
         });
         lines.push(entry("profile", value));
     }
+    let mut annotations: Vec<_> = def.annotations.iter().collect();
+    annotations.sort_by_key(|decl| n.resolve(decl.name));
+    for decl in annotations {
+        let value = json!({
+            "name": n.resolve(decl.name),
+            "type": decl.ty.render(n),
+            "required": decl.required,
+        });
+        lines.push(entry("annotation", value));
+    }
     lines
+}
+
+/// The declaration a listed node entry names: same name, parents, and
+/// profile, which dispatch makes unique.
+fn node_decl<'d>(def: &'d Definition, node: &kdlith_engine::NodeEntry) -> Option<&'d NodeDecl> {
+    let n = &def.names;
+    def.bindings.iter().map(|(_, decl)| decl).find(|decl| {
+        let mut parents: Vec<&str> = match &decl.placement {
+            Placement::Root => Vec::new(),
+            Placement::Under(names) => names.iter().map(|p| n.resolve(*p)).collect(),
+            _ => Vec::new(),
+        };
+        parents.sort_unstable();
+        parents.dedup();
+        n.resolve(decl.name) == node.name
+            && parents == node.parents
+            && decl.profile.map(|p| n.resolve(p)) == node.profile.as_deref()
+    })
 }
 
 /// Print each value as one JSON line; a failed write fails the run.

@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "An annotation declared with a type that is not one scalar value is a malformed construct (KDLITH-DLC005): an object type, a union type, and a list type expression are each rejected",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

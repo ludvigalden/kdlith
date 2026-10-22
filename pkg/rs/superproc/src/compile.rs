@@ -6,22 +6,22 @@ use std::path::{Path, PathBuf};
 
 use kdlith_diagnostic::{ByteSpan, DiagnosticRecord, Severity};
 use kdlith_engine::{
-    AnchorInput, CaptureInput, CaseInput, CheckScope, ChildRuleInput, ConstraintInput, Construct,
-    DefaultInput, Definition, DefinitionInput, DependentInput, DescendantRuleInput, DiscoveryInput,
-    DocumentInput, DocumentRuleInput, EffectGroupInput, EffectInput, Extensions, FieldBindingInput,
-    FieldInput, FormatInput, IdentityInput, ImportInput, Located, MatchRuleInput, MemberInput,
-    NodeInput, ParsedDocument, ProfileInput, ProviderInput, QualifierInput, ReferenceInput,
-    ResolutionInput, SequenceInput, SlotInput, SourceContextInput, SourceFieldInput, SourceInput,
-    StepInput, TypeInput, TypedItem, ValidatorInput, VariantInput, compile_dialect,
-    compile_dialect_input, compile_schema_input,
+    AnchorInput, AnnotationInput, CaptureInput, CaseInput, CheckScope, ChildRuleInput,
+    ConstraintInput, Construct, DefaultInput, Definition, DefinitionInput, DependentInput,
+    DescendantRuleInput, DiscoveryInput, DocumentInput, DocumentRuleInput, EffectGroupInput,
+    EffectInput, Extensions, FieldBindingInput, FieldInput, FormatInput, IdentityInput, ImportInput,
+    Located, MatchRuleInput, MemberInput, NodeAnnotationInput, NodeInput, ParsedDocument,
+    ProfileInput, ProviderInput, QualifierInput, ReferenceInput, ResolutionInput, SequenceInput,
+    SlotInput, SourceContextInput, SourceFieldInput, SourceInput, StepInput, TypeInput, TypedItem,
+    ValidatorInput, VariantInput, compile_dialect, compile_dialect_input, compile_schema_input,
 };
 use kdlith_runtime::Repeated;
 
 use crate::processors::{Item, reader};
 use crate::types::{
-    CodecType, Constraint, DefaultSpec, DiscoveryDef, DocumentRule, Effect, EnumType, FieldBinding,
-    MapType, MatchRule, NodeDef, ObjectType, ProfileDef, ReferenceDef, ResolutionPolicyDef,
-    SecretProvider, Source, StringType, UnionType,
+    AnnotationDef, CodecType, Constraint, DefaultSpec, DiscoveryDef, DocumentRule, Effect, EnumType,
+    FieldBinding, MapType, MatchRule, NodeDef, ObjectType, ProfileDef, ReferenceDef,
+    ResolutionPolicyDef, SecretProvider, Source, StringType, UnionType,
 };
 
 /// The canonical dialect's contributing documents, embedded so the
@@ -442,6 +442,13 @@ fn declaration(value: Item) -> Option<Construct> {
             namespace: namespace.map(|namespace| namespace.as_str().to_owned()),
         }),
         Item::NodeDef(node) => Construct::Node(Box::new(node_input(node))),
+        Item::AnnotationDef(AnnotationDef { name, ty, required }) => {
+            Construct::Annotation(AnnotationInput {
+                name: name.as_str().to_owned(),
+                ty: ty.as_str().to_owned(),
+                required: required.is_some(),
+            })
+        }
         Item::SlotDef(slot) => Construct::Slot(SlotInput {
             name: slot.name.as_str().to_owned(),
             ty: slot.ty.as_str().to_owned(),
@@ -739,6 +746,16 @@ fn node_input(node: NodeDef) -> NodeInput {
                 .map(|field| field.as_str().to_owned())
                 .collect(),
         }),
+        description: node.description,
+        annotations: node
+            .annotations
+            .iter()
+            .flatten()
+            .map(|fact| NodeAnnotationInput {
+                name: fact.name.as_str().to_owned(),
+                value: fact.value.clone(),
+            })
+            .collect(),
     }
 }
 

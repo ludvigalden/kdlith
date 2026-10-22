@@ -3,7 +3,8 @@
 
 use crate::bindings::{
     BindingCodec, CaseRule, ChildRule, Collision, ContextPolicy, DependentBinding, DuplicateKeys,
-    Effect, EffectGroup, EffectTarget, FieldBinding, NodeDecl, Placement, Role, SetFrom, Source,
+    Effect, EffectGroup, EffectTarget, FieldBinding, NodeAnnotation, NodeDecl, Placement, Role,
+    SetFrom, Source,
 };
 use crate::compile::Cx;
 use crate::compile::reader::Construct;
@@ -23,6 +24,7 @@ pub(crate) fn declaration(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) {
     let role = construct.string_prop(cx, "role");
     let ty = construct.string_prop(cx, "type");
     let parent = construct.string_prop(cx, "parent");
+    let description = construct.string_prop(cx, "description");
     construct.finish(cx);
     let Some(name) = name else { return };
     let label = format!("node {name}");
@@ -52,6 +54,7 @@ pub(crate) fn declaration(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) {
     let mut cases: Vec<CaseRule> = Vec::new();
     let mut otherwise = None;
     let mut cases_site = None;
+    let mut annotations: Vec<NodeAnnotation> = Vec::new();
     for child in &node.children {
         let child_site = Site::new(doc, child.span);
         match child.name.as_str() {
@@ -126,6 +129,18 @@ pub(crate) fn declaration(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) {
                 }
                 groups.push(members);
             }
+            "annotation" => {
+                let mut part = Construct::new(cx, doc, child);
+                let fact = part.string_arg(cx, 0, "annotation name");
+                let held = part.value_arg(cx, 1, "annotation value");
+                part.finish_leaf(cx);
+                if let (Some(fact), Some(held)) = (fact, held) {
+                    annotations.push(NodeAnnotation {
+                        name: cx.names.intern(&fact),
+                        value: held,
+                    });
+                }
+            }
             _ => cx.unknown(doc, child, "node"),
         }
     }
@@ -190,6 +205,8 @@ pub(crate) fn declaration(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) {
         cases,
         otherwise,
         identity: None,
+        description,
+        annotations,
         site,
     });
 }

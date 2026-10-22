@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "inspect schema renders the metadata a schema carries: under the effective view the eval node declaration lists its description and both of its annotation facts as bound values, the wait node, which has no description, lists only its one annotation, and every annotation declaration is its own section entry with its declared type and whether it is required. The goldens were written from this scenario's own command, which exits 0 with stderr empty",
+  "args": [
+    "inspect",
+    "schema",
+    "--view",
+    "effective",
+    "schema.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

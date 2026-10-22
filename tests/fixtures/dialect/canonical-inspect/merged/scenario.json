@@ -15,7 +15,7 @@
       "{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":null}}\n{\"item\":\"document\",\"data\":{\"source\":1,\"path\":\"",
       "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":1,\"index\":2},\"identity\":{\"domain\":\"EnumType\",\"name\":[\"Role\"]},\"type\":\"EnumType\",\"value\":{\"name\":\"Role\",\"members\":{\"record\":{\"description\":\"Emit a validated record\"},\"declaration\":{\"description\":\"Register an identity and expose typed metadata\"},\"contribution\":{\"description\":\"Preserve an assignment or overlay for later resolution\"},\"context-control\":{\"description\":\"Apply a declared context transition\"},\"source-import\":{\"description\":\"Schedule another source invocation\"},\"container\":{\"description\":\"Process children under structural and scope rules\"}}}}}\n",
       "{\"item\":\"scope-complete\",\"data\":{\"source\":1,\"scope\":null}}\n{\"item\":\"document\",\"data\":{\"source\":2,\"path\":\"",
-      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":3,\"index\":316},\"type\":\"DocumentRule\",\"value\":{\"first\":{\"exactly-one\":[\"dialect\",\"schema\"]},\"following\":[]}}}\n",
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":3,\"index\":317},\"type\":\"DocumentRule\",\"value\":{\"first\":{\"exactly-one\":[\"dialect\",\"schema\"]},\"following\":[]}}}\n",
       "{\"item\":\"scope-complete\",\"data\":{\"source\":3,\"scope\":{\"source\":3,\"index\":0}}}\n{\"item\":\"scope-complete\",\"data\":{\"source\":3,\"scope\":null}}\n"
     ]
   }

@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A node declaration carrying an annotation the schema does not declare is a malformed construct (KDLITH-DLC005): the schema declares tier only and eval carries class",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

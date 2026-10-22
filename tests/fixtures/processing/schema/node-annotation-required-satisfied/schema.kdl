@@ -1,0 +1,38 @@
+schema steps version="1" {
+    types {
+        enum BrowserClass {
+            member neutral
+            member light-capable
+            member full-only
+            member opaque
+        }
+        object Step {
+            field name String
+        }
+    }
+    annotation class BrowserClass required
+    annotation tier U64 required
+    annotation retries Integer
+    annotation weight Decimal
+    annotation cached Bool
+    annotation label String
+    node eval role=record type=Step {
+        field name arg=0
+        annotation class full-only
+        annotation tier 1
+        annotation retries -2
+        annotation weight 0.5
+        annotation cached #true
+        annotation label "evaluate"
+    }
+    node wait role=record type=Step {
+        field name arg=0
+        annotation tier 2
+        annotation class neutral
+    }
+    node click role=record type=Step {
+        field name arg=0
+        annotation class light-capable
+        annotation tier 3
+    }
+}

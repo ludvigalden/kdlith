@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A node declaration carrying one annotation twice is a malformed construct (KDLITH-DLC005), even when each value decodes as the declared type",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

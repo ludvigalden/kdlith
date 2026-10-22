@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "Annotation totality fails closed: class is declared required, eval carries it, and wait, which does not, is a malformed construct (KDLITH-DLC005) at vet schema time",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

@@ -3,9 +3,10 @@
 // A binding maps KDL syntax into a logical field. A logical field is not
 // inherently "argument 0" or "a child named name"; those are its
 // representations in a data document. This document contributes the
-// node declaration, the roles vocabulary, the binding sources
-// (arguments, properties, children, and entries envelopes), the
-// collision and duplicate-key policies, and per-child cardinality.
+// node declaration with its description and annotation metadata, the
+// roles vocabulary, the binding sources (arguments, properties,
+// children, and entries envelopes), the collision and duplicate-key
+// policies, and per-child cardinality.
 //
 // Dispatch is by parent binding, node name, and explicit discriminators,
 // never by trying every schema until one accepts. Bindings are compiled
@@ -49,6 +50,39 @@ dialect kdlith version="0" {
             field value "optional<DependentBinding>"
             field cases "optional<CaseDispatch>"
             field identity "optional<IdentityBlock>"
+            field description "optional<String>"
+            field annotations "optional<list<NodeAnnotation>>"
+        }
+
+        // The name of a schema-declared annotation. Kebab-case, so a
+        // name maps onto one Rust constant spelling.
+        string AnnotationName {
+            format kebab-case
+        }
+
+        // Whether an annotation is required, spelled as the literal
+        // third argument of its declaration. Absent is the default and
+        // means optional.
+        enum AnnotationRequirement {
+            member required description="Every node declaration carries the annotation"
+        }
+
+        // One annotation fact on a node declaration: the name of a
+        // schema-declared annotation and its value. The name and the
+        // value's type are checked when the schema is compiled; until
+        // then the value is any single KDL scalar.
+        object NodeAnnotation {
+            field name AnnotationName
+            field value ValueExpr
+        }
+
+        // A schema-level annotation: the name nodes may attach, the
+        // scalar type every value is checked against, and whether every
+        // node declaration must carry it.
+        object AnnotationDef {
+            field name AnnotationName
+            field type TypeExpression
+            field required "optional<AnnotationRequirement>"
         }
 
         // A dependent payload binding: how a node's remaining payload
@@ -255,6 +289,12 @@ dialect kdlith version="0" {
                 children descendants
             }
         }
+        field description property=description
+        field annotations {
+            from {
+                children annotation
+            }
+        }
         children parents max-occurs=1
         children effects max-occurs=2
         children value max-occurs=1
@@ -262,6 +302,18 @@ dialect kdlith version="0" {
         children identity max-occurs=1
         children sequence max-occurs=1
         children descendants
+        children annotation
+    }
+
+    // A schema-level annotation declaration: `annotation NAME TYPE`,
+    // optionally followed by `required`. The type names the scalar type
+    // every value is checked against when the schema is compiled; a
+    // required annotation is total, and a node declaration missing it is
+    // rejected.
+    node annotation role=declaration type=AnnotationDef parent=schema {
+        field name arg=0
+        field type arg=1
+        field required arg=2
     }
 
     // A field binding. Shorthands abbreviate the common single-source
@@ -402,5 +454,14 @@ dialect kdlith version="0" {
 
     node otherwise type=Otherwise parent=cases {
         field type property=type
+    }
+
+    // One annotation fact on a node declaration: the name of a
+    // schema-declared annotation and its value. The compiler checks the
+    // name against the schema's `annotation` declarations and the value
+    // against the declared type; it never changes binding.
+    node annotation type=NodeAnnotation parent=node {
+        field name arg=0
+        field value arg=1
     }
 }

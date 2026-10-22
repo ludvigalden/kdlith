@@ -822,6 +822,17 @@ impl Emission<'_> {
             out.line(&format!("    {module}::NODES,"));
         }
         out.line("];");
+        for constant in &self.annotations {
+            out.blank();
+            out.line(&format!(
+                "/// The `{}` annotation of the `{}` node declaration.",
+                constant.annotation, constant.node
+            ));
+            out.line(&format!(
+                "pub const {}: {} = {};",
+                constant.name, constant.ty, constant.value
+            ));
+        }
         rust_file(&out.finish())
     }
 

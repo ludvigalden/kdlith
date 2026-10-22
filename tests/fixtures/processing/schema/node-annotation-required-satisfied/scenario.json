@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "Annotation totality holds: the schema declares two required annotations (class over a declared enum, tier over U64) and four optional ones covering the other admitted scalar types (Integer, Decimal, Bool, String), and every node declaration carries both required annotations, in any order, with values that decode as their declared types. vet schema accepts it with exit 0, and the digest pins the annotation declarations and the per-node facts the summary carries",
+  "args": [
+    "vet",
+    "schema",
+    "schema.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "ok: schema steps version 1 scope=complete documents=1 types=2 nodes=3 ",
+      "digest=b3f458dab91d98e7"
+    ]
+  }
+}

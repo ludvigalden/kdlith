@@ -122,6 +122,15 @@ impl Definition {
                 qualifiers.join(",")
             );
         }
+        for annotation in &self.annotations {
+            let _ = writeln!(
+                out,
+                "annotation {} {} required={}",
+                n.resolve(annotation.name),
+                expr(n, &annotation.ty),
+                annotation.required
+            );
+        }
         if let Some(policy) = &self.resolution {
             let _ = writeln!(
                 out,
@@ -374,8 +383,22 @@ fn node_line(n: &Names, node: &NodeDecl) -> String {
             )
         },
     );
+    // Metadata is written only when declared, so every node carrying
+    // none keeps its summary line and digest.
+    let mut metadata = String::new();
+    if let Some(description) = &node.description {
+        let _ = write!(metadata, " description={description:?}");
+    }
+    if !node.annotations.is_empty() {
+        let facts: Vec<String> = node
+            .annotations
+            .iter()
+            .map(|fact| format!("{}={:?}", n.resolve(fact.name), fact.value))
+            .collect();
+        let _ = write!(metadata, " annotations [{}]", facts.join(","));
+    }
     format!(
-        "node {} role={role} type={ty} under={placement} profile={profile} fields [{}] children [{}] effects [{}] groups [{}] descendants [{}] sequence {sequence} value {value} cases [{}] otherwise {otherwise} identity {identity}",
+        "node {} role={role} type={ty} under={placement} profile={profile} fields [{}] children [{}] effects [{}] groups [{}] descendants [{}] sequence {sequence} value {value} cases [{}] otherwise {otherwise} identity {identity}{metadata}",
         n.resolve(node.name),
         fields.join("; "),
         children.join(","),

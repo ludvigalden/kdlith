@@ -5,6 +5,9 @@
 {"item":"effective","data":{"section":"type","entry":{"name":"AlternativesRule","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"AnchorDef","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"AnchorName","parameters":[],"kind":"string"}}}
+{"item":"effective","data":{"section":"type","entry":{"name":"AnnotationDef","parameters":[],"kind":"object"}}}
+{"item":"effective","data":{"section":"type","entry":{"name":"AnnotationName","parameters":[],"kind":"string"}}}
+{"item":"effective","data":{"section":"type","entry":{"name":"AnnotationRequirement","parameters":[],"kind":"enum"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"ArgsSource","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"ArgumentSource","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"AtMostOne","parameters":[],"kind":"object"}}}
@@ -69,6 +72,7 @@
 {"item":"effective","data":{"section":"type","entry":{"name":"MergePolicy","parameters":[],"kind":"enum"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"MissingRequirement","parameters":[],"kind":"enum"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"NamespaceName","parameters":[],"kind":"string"}}}
+{"item":"effective","data":{"section":"type","entry":{"name":"NodeAnnotation","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"NodeDef","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"NodeName","parameters":[],"kind":"string"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"ObjectType","parameters":[],"kind":"object"}}}
@@ -125,6 +129,8 @@
 {"item":"effective","data":{"section":"node","entry":{"name":"all-or-none","parents":["constraints"],"role":null,"type":"AllOrNone","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"alternatives","parents":["step"],"role":null,"type":"AlternativesRule","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"anchor","parents":["discovery"],"role":null,"type":"AnchorDef","profile":null}}}
+{"item":"effective","data":{"section":"node","entry":{"name":"annotation","parents":["node"],"role":null,"type":"NodeAnnotation","profile":null}}}
+{"item":"effective","data":{"section":"node","entry":{"name":"annotation","parents":["schema"],"role":"declaration","type":"AnnotationDef","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"args","parents":["child","children","from"],"role":null,"type":"ArgsSource","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"argument","parents":["child","children","from"],"role":null,"type":"ArgumentSource","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"at-most-one","parents":["constraints"],"role":null,"type":"AtMostOne","profile":null}}}

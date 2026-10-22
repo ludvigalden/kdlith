@@ -2,6 +2,7 @@
 //! its catalogs out. The seed bootstrap (`compile_dialect`) reads syntax
 //! directly and compiles only the canonical dialect; see docs/dialect.md.
 
+mod annotations;
 mod collect;
 mod conform;
 mod document;
@@ -130,6 +131,7 @@ pub(crate) struct Cx<'d> {
     pub(crate) profiles: Vec<crate::definition::ProfileDecl>,
     pub(crate) discoveries: Vec<crate::definition::DiscoveryDecl>,
     pub(crate) references: Vec<crate::definition::ReferenceDecl>,
+    pub(crate) annotations: Vec<crate::definition::AnnotationDecl>,
     pub(crate) resolution: Option<crate::definition::ResolutionPolicyDecl>,
     pub(crate) providers: Vec<crate::definition::ProviderDecl>,
     pub(crate) source_context: Option<crate::definition::SourceContextDecl>,
@@ -175,6 +177,7 @@ fn start<'d>(
         profiles: Vec::new(),
         discoveries: Vec::new(),
         references: Vec::new(),
+        annotations: Vec::new(),
         resolution: None,
         providers: Vec::new(),
         source_context: None,
@@ -226,6 +229,7 @@ fn finish<'d>(
         link::run(&mut cx, &bindings, &symbols);
         if !cx.diags.has_errors() {
             literals::run(&mut cx, &bindings);
+            annotations::run(&mut cx, &bindings);
         }
     }
     if cx.diags.has_errors() {
@@ -252,6 +256,7 @@ fn finish<'d>(
         discoveries: cx.discoveries,
         root_grammar,
         references: cx.references,
+        annotations: cx.annotations,
         resolution: cx.resolution,
         providers: cx.providers,
         source_context: cx.source_context,

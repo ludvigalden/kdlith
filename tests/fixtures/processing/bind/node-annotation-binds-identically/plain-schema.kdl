@@ -1,0 +1,26 @@
+schema catalog version="1" {
+    types {
+        enum BrowserClass {
+            member neutral
+            member full
+        }
+        object Step {
+            field name String
+            field delay "optional<U64>"
+        }
+    }
+    node eval role=record type=Step {
+        field name arg=0
+        field delay property=delay
+    }
+    node wait role=record type=Step {
+        field name arg=0
+        field delay property=delay
+    }
+    document {
+        first {
+            exactly-one eval
+        }
+        following eval wait
+    }
+}

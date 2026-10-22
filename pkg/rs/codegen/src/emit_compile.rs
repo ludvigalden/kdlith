@@ -668,6 +668,16 @@ fn node_input(node: NodeDef) -> NodeInput {
                 .map(|field| field.as_str().to_owned())
                 .collect(),
         }),
+        description: node.description,
+        annotations: node
+            .annotations
+            .iter()
+            .flatten()
+            .map(|fact| NodeAnnotationInput {
+                name: fact.name.as_str().to_owned(),
+                value: fact.value.clone(),
+            })
+            .collect(),
     }
 }
 "##;

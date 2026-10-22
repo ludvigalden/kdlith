@@ -1,0 +1,19 @@
+schema s version="1" {
+    types {
+        enum BrowserClass {
+            member neutral
+            member full
+        }
+        object Step {
+            field name String
+        }
+    }
+    annotation class BrowserClass required
+    node eval role=record type=Step {
+        field name arg=0
+        annotation class full
+    }
+    node wait role=record type=Step {
+        field name arg=0
+    }
+}

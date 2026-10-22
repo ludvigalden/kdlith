@@ -1,0 +1,6 @@
+{"item":"effective","data":{"section":"type","entry":{"name":"BrowserClass","parameters":[],"kind":"enum"}}}
+{"item":"effective","data":{"section":"type","entry":{"name":"Step","parameters":[],"kind":"object"}}}
+{"item":"effective","data":{"section":"node","entry":{"name":"eval","parents":[],"role":"record","type":"Step","profile":null,"description":"Evaluate a script in the page","annotations":[{"name":"class","value":{"kind":"string","value":"full"}},{"name":"tier","value":{"kind":"number","value":"2"}}]}}}
+{"item":"effective","data":{"section":"node","entry":{"name":"wait","parents":[],"role":"record","type":"Step","profile":null,"annotations":[{"name":"class","value":{"kind":"string","value":"neutral"}}]}}}
+{"item":"effective","data":{"section":"annotation","entry":{"name":"class","type":"BrowserClass","required":true}}}
+{"item":"effective","data":{"section":"annotation","entry":{"name":"tier","type":"U64","required":false}}}

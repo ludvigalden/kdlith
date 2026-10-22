@@ -2,7 +2,9 @@
 //! declarations, field bindings and their sources, collision and
 //! duplicate-key policies, and child cardinality.
 
-use kdlith_engine::{OrderedMap, Shaped, TypeShape, ValueExpr, enum_type, object_type, union_type};
+use kdlith_engine::{
+    OrderedMap, Shaped, TypeShape, ValueExpr, enum_type, object_type, string_type, union_type,
+};
 
 use super::{
     ContextPolicy, DescendantRule, EffectGroup, ExactlyOneGroup, FieldName, IdentityBlock,
@@ -38,12 +40,44 @@ object_type! {
         "value" => value: Option<DependentBinding>,
         "cases" => cases: Option<CaseDispatch>,
         "identity" => identity: Option<IdentityBlock>,
+        "description" => description: Option<String>,
+        "annotations" => annotations: Option<Vec<NodeAnnotation>>,
     }
 }
 
 impl NodeDef {
     /// The identity domain its declarations register in.
     pub const DOMAIN: &str = "NodeDef";
+}
+
+string_type! {
+    pub struct AnnotationName;
+}
+
+enum_type! {
+    pub enum AnnotationRequirement {
+        "required" => Required,
+    }
+}
+
+object_type! {
+    pub struct NodeAnnotation {
+        "name" => name: AnnotationName,
+        "value" => value: ValueExpr,
+    }
+}
+
+object_type! {
+    pub struct AnnotationDef {
+        "name" => name: AnnotationName,
+        "type" => ty: TypeExpression,
+        "required" => required: Option<AnnotationRequirement>,
+    }
+}
+
+impl AnnotationDef {
+    /// The identity domain its declarations register in.
+    pub const DOMAIN: &str = "AnnotationDef";
 }
 
 object_type! {
@@ -206,6 +240,10 @@ object_type! {
 pub(crate) const TYPES: &[TypeShape] = &[
     Role::SHAPE,
     NodeDef::SHAPE,
+    AnnotationName::SHAPE,
+    AnnotationRequirement::SHAPE,
+    NodeAnnotation::SHAPE,
+    AnnotationDef::SHAPE,
     DependentBinding::SHAPE,
     DependentTarget::SHAPE,
     BindingCodec::SHAPE,

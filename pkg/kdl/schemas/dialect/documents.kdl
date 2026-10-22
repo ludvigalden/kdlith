@@ -408,6 +408,7 @@ dialect kdlith version="0" {
         children reference
         children resolution max-occurs=1
         children provider
+        children annotation
     }
 
     node types role=container {

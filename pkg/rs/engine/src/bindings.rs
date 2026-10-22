@@ -113,7 +113,26 @@ pub struct NodeDecl {
     /// The identity block the declaration composes its qualified symbol
     /// from, when it declares one.
     pub identity: Option<IdentityDecl>,
+    /// The declaration's documentation, as `description=` spells it.
+    /// Metadata only: nothing in binding, linking, or provenance reads
+    /// it.
+    pub description: Option<String>,
+    /// The annotation facts the declaration carries. Metadata only: the
+    /// names are checked against the schema's annotation declarations
+    /// and the values against their declared types when the definition
+    /// compiles, and nothing in binding, linking, or provenance reads
+    /// them.
+    pub annotations: Vec<NodeAnnotation>,
     pub site: Site,
+}
+
+/// One annotation fact on a node declaration: the name of a
+/// schema-declared annotation and its value as written.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct NodeAnnotation {
+    pub name: Sym,
+    pub value: Value,
 }
 
 /// An occurrence bound over the declaring node's subtree.

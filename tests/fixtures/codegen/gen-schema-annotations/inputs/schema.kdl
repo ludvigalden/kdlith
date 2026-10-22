@@ -1,0 +1,22 @@
+schema steps version="1" {
+    types {
+        enum BrowserClass {
+            member neutral
+            member full
+        }
+        object Step {
+            field name String
+        }
+    }
+    annotation class BrowserClass required
+    annotation tier U64
+    node eval role=record type=Step description="Evaluate a script in the page" {
+        field name arg=0
+        annotation class full
+        annotation tier 2
+    }
+    node wait role=record type=Step {
+        field name arg=0
+        annotation class neutral
+    }
+}

@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "An annotation value that does not decode as its declared scalar type is a malformed construct (KDLITH-DLC005): tier is declared U64 and eval gives it a string",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}
