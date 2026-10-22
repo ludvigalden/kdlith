@@ -149,6 +149,17 @@ published yet.
   effective view lists it per node and per declaration), and generated
   schema processors expose one public constant per annotation fact,
   typed by the annotation's declared type.
+- Node groups: a schema declares `group NAME MEMBER...` once, a node
+  declaration admits every member with one `children-group NAME` rule,
+  and `parents group=NAME` places a node under every member, which
+  changes the canonical dialect digest. Groups expand to per-name
+  children rules and placements when the schema is compiled, so
+  dispatch stays static and a child outside every group is still
+  `KDLITH-BND001`; a group rule's occurrence bounds apply to each
+  member. An undeclared group is `KDLITH-SCH006`, a group without
+  members is the new `KDLITH-SCH015`, and a member naming no declared
+  node or a child spelled both directly and through a group is
+  `KDLITH-SCH005`.
 
 ### Fixed
 

@@ -64,6 +64,9 @@ pub(crate) fn all(cx: &mut Cx<'_>, input: &DefinitionInput) {
             Construct::Include { owner, target, at } => include(cx, site, owner, target, *at),
             Construct::Resolution(input) => resolution(cx, site, input),
             Construct::Annotation(input) => annotation_decl(cx, site, input),
+            Construct::Group(input) => {
+                crate::compile::groups::declare(cx, site, &input.name, &input.nodes);
+            }
             Construct::Provider(input) => provider(cx, site, input),
             Construct::SourceContext(input) => source_context(cx, site, input),
             // Collected by the grammar-affecting first pass above.
@@ -424,6 +427,12 @@ fn node(cx: &mut Cx<'_>, site: Site, input: &NodeInput) {
             children.push(rule);
         }
     }
+    let mut children_groups = Vec::new();
+    for rule in &input.children_groups {
+        if let Some(rule) = child_rule(cx, site, rule, &name) {
+            children_groups.push(rule);
+        }
+    }
     let mut effects = Vec::new();
     for group in &input.effects {
         if let Some(group) = effect_group(cx, site, group) {
@@ -568,9 +577,11 @@ fn node(cx: &mut Cx<'_>, site: Site, input: &NodeInput) {
         } else {
             Placement::Under(under)
         },
+        parent_group: input.parent_group.as_deref().map(|g| cx.names.intern(g)),
         profile,
         fields,
         children,
+        children_groups,
         effects,
         groups,
         descendants,

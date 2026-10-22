@@ -30,6 +30,7 @@ pub(crate) const DISPATCH_PREFIX: &str = "KDLITH-SCH010";
 pub(crate) const INHERITANCE_CYCLE: &str = "KDLITH-SCH012";
 pub(crate) const SECOND_DEFAULT: &str = "KDLITH-SCH013";
 pub(crate) const FALLBACK_IDENTITY: &str = "KDLITH-SCH014";
+pub(crate) const EMPTY_NODE_GROUP: &str = "KDLITH-SCH015";
 pub(crate) const IMPORT_UNRESOLVED: &str = "KDLITH-IMP001";
 pub(crate) const IMPORT_CYCLE: &str = "KDLITH-IMP002";
 pub(crate) const IMPORT_REPEATED: &str = "KDLITH-IMP003";

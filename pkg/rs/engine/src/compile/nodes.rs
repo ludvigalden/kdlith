@@ -194,9 +194,11 @@ pub(crate) fn declaration(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) {
         } else {
             Placement::Under(under)
         },
+        parent_group: None,
         profile: None,
         fields,
         children,
+        children_groups: Vec::new(),
         effects,
         groups,
         descendants: Vec::new(),

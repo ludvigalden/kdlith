@@ -30,9 +30,11 @@ object_type! {
         "type" => ty: Option<TypeName>,
         "parent" => parent: Option<NodeName>,
         "parents" => parents: Option<Vec<NodeName>>,
+        "parent-group" => parent_group: Option<NodeGroupName>,
         "profile" => profile: Option<ProfileName>,
         "fields" => fields: OrderedMap<FieldName, FieldBinding>,
         "children" => children: OrderedMap<NodeName, ChildRule>,
+        "children-groups" => children_groups: OrderedMap<NodeGroupName, ChildRule>,
         "effects" => effects: Vec<EffectGroup>,
         "groups" => groups: Vec<ExactlyOneGroup>,
         "descendants" => descendants: Vec<DescendantRule>,
@@ -236,6 +238,22 @@ object_type! {
     }
 }
 
+string_type! {
+    pub struct NodeGroupName;
+}
+
+object_type! {
+    pub struct NodeGroupDef {
+        "name" => name: NodeGroupName,
+        "nodes" => nodes: Vec<NodeName>,
+    }
+}
+
+impl NodeGroupDef {
+    /// The identity domain its declarations register in.
+    pub const DOMAIN: &str = "NodeGroupDef";
+}
+
 /// The shapes of this document's types, in declaration order.
 pub(crate) const TYPES: &[TypeShape] = &[
     Role::SHAPE,
@@ -263,4 +281,6 @@ pub(crate) const TYPES: &[TypeShape] = &[
     Collision::SHAPE,
     DuplicateKeys::SHAPE,
     ChildRule::SHAPE,
+    NodeGroupName::SHAPE,
+    NodeGroupDef::SHAPE,
 ];

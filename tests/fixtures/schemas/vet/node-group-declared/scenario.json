@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "A schema declaring node groups with members as arguments vets green: group components admits card and badge under deck and stack through one children-group rule each, with per-member bounds, and parents group=containers places both members under every container; the summary counts four node declarations because groups expand into per-name rules and placements, never into declarations",
+  "args": [
+    "vet",
+    "schema",
+    "schema.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "ok: schema cards version 1 scope=complete documents=1 types=3 nodes=4 slots=0 profiles=0 digest=1fcbfe6b429972b5"
+    ]
+  }
+}

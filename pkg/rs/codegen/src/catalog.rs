@@ -317,6 +317,12 @@ pub(crate) fn glue(name: &str) -> Option<Glue> {
             engine_inputs: &["AnnotationInput"],
             types: &["AnnotationDef"],
         },
+        "NodeGroupDef" => Glue {
+            arm: NODE_GROUP_DEF_ARM,
+            record_arm: None,
+            engine_inputs: &["GroupInput"],
+            types: &["NodeGroupDef"],
+        },
         "SlotDef" => Glue {
             arm: SLOT_DEF_ARM,
             record_arm: None,
@@ -527,6 +533,12 @@ const ANNOTATION_DEF_ARM: &str = r##"        Item::AnnotationDef(AnnotationDef {
                 required: required.is_some(),
             })
         }
+"##;
+
+const NODE_GROUP_DEF_ARM: &str = r##"        Item::NodeGroupDef(NodeGroupDef { name, nodes }) => Construct::Group(GroupInput {
+            name: name.as_str().to_owned(),
+            nodes: nodes.iter().map(|node| node.as_str().to_owned()).collect(),
+        }),
 "##;
 
 const SLOT_DEF_ARM: &str = r##"        Item::SlotDef(slot) => Construct::Slot(SlotInput {

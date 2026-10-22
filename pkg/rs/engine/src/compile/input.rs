@@ -52,6 +52,8 @@ pub enum Construct {
     Reference(ReferenceInput),
     /// A schema-level annotation declaration.
     Annotation(AnnotationInput),
+    /// A schema-level node group declaration.
+    Group(GroupInput),
     Resolution(ResolutionInput),
     Provider(ProviderInput),
     SourceContext(SourceContextInput),
@@ -232,10 +234,16 @@ pub struct NodeInput {
     pub ty: Option<String>,
     pub parent: Option<String>,
     pub parents: Option<Vec<String>>,
+    /// The node group the `parents` child names with `group=`: the node
+    /// is placed under every member as well.
+    pub parent_group: Option<String>,
     /// The profile the declaration belongs to (`profile=NAME`).
     pub profile: Option<String>,
     pub fields: Vec<FieldBindingInput>,
     pub children: Vec<ChildRuleInput>,
+    /// The `children-group` rules, keyed by node group name; each
+    /// expands to one children rule per member.
+    pub children_groups: Vec<ChildRuleInput>,
     pub effects: Vec<EffectGroupInput>,
     pub groups: Vec<Vec<String>>,
     pub descendants: Vec<DescendantRuleInput>,
@@ -435,6 +443,14 @@ pub struct AnnotationInput {
     pub ty: String,
     /// Whether every node declaration must carry the annotation.
     pub required: bool,
+}
+
+/// A node group declaration, as declared: its name and member node
+/// names, in written order.
+#[derive(Clone, Debug, Default)]
+pub struct GroupInput {
+    pub name: String,
+    pub nodes: Vec<String>,
 }
 
 /// One annotation fact a node declaration carries, as written.

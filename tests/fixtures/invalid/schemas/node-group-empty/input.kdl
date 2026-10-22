@@ -1,0 +1,9 @@
+schema s version="1" {
+    types {
+        object Card { field title String }
+    }
+    group empty
+    node card role=record type=Card {
+        field title arg=0
+    }
+}

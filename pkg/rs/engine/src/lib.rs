@@ -44,7 +44,7 @@ pub use compile::input::{
     AnchorInput, AnnotationInput, CaptureInput, CaseInput, ChildRuleInput, ConstraintInput,
     Construct, DefaultInput, DefinitionInput, DependentInput, DescendantRuleInput, DiscoveryInput,
     DocumentInput, DocumentRuleInput, EffectGroupInput, EffectInput, FieldBindingInput, FieldInput,
-    FormatInput, IdentityInput, ImportInput, Located, MatchRuleInput, MemberInput,
+    FormatInput, GroupInput, IdentityInput, ImportInput, Located, MatchRuleInput, MemberInput,
     NodeAnnotationInput, NodeInput, ProfileInput, ProviderInput, QualifierInput, ReferenceInput,
     ResolutionInput, SequenceInput, SlotInput, SourceContextInput, SourceFieldInput, SourceInput,
     StepInput, TypeInput, ValidatorInput, VariantInput,

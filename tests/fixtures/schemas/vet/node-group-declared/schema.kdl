@@ -1,0 +1,28 @@
+schema cards version="1" {
+    types {
+        object Card { field title String }
+        object Badge { field label String }
+        object Deck {
+            field name String
+            field cards "list<Card>"
+        }
+    }
+    group components card badge
+    group containers deck stack
+    node deck role=record type=Deck {
+        field name arg=0
+        field cards { from { children card } }
+        children-group components max-occurs=3
+    }
+    node stack role=container {
+        children-group components
+    }
+    node card type=Card {
+        parents group=containers
+        field title arg=0
+    }
+    node badge role=record type=Badge {
+        parents group=containers
+        field label arg=0
+    }
+}

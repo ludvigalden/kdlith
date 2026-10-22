@@ -1,0 +1,12 @@
+schema s version="1" {
+    types {
+        object Card { field title String }
+    }
+    group components card ribbon
+    node deck role=container {
+        children-group components
+    }
+    node card role=record type=Card parent=deck {
+        field title arg=0
+    }
+}

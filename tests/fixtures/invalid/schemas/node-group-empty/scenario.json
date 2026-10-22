@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A node group declared with zero members is refused where it is declared (KDLITH-SCH015), even when no children-group rule or parents group reference names it",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

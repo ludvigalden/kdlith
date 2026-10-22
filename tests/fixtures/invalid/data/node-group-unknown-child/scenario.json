@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A child outside every node group a container's children-group rules name stays unknown after expansion (KDLITH-BND001): stack admits the members of components, and ribbon is not one",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/node-group-children/schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

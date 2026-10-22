@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A node declaration spelling one child both by a literal children rule and through a children-group rule composes two rules for one name, which contradict (KDLITH-SCH005)",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

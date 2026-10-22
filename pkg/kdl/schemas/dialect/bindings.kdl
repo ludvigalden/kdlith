@@ -28,7 +28,9 @@ dialect kdlith version="0" {
 
         // A node declaration. parent names the one node it may appear
         // under; parents lists several. A declaration gives at most one of
-        // the two, and a node with neither is a root node. With type=, its
+        // the two, and a node with neither is a root node. The parents
+        // child may also name a node group, placing the node under every
+        // member of the group as well. With type=, its
         // field bindings bind the fields of that logical object type;
         // without it, each field binding declares its field inline with a
         // type expression. A node without role= is bound as part of its
@@ -40,9 +42,11 @@ dialect kdlith version="0" {
             field type "optional<TypeName>"
             field parent "optional<NodeName>"
             field parents "optional<list<NodeName>>"
+            field parent-group "optional<NodeGroupName>"
             field profile "optional<ProfileName>"
             field fields "ordered-map<FieldName, FieldBinding>"
             field children "ordered-map<NodeName, ChildRule>"
+            field children-groups "ordered-map<NodeGroupName, ChildRule>"
             field effects "list<EffectGroup>"
             field groups "list<ExactlyOneGroup>"
             field descendants "list<DescendantRule>"
@@ -240,6 +244,19 @@ dialect kdlith version="0" {
             field min-occurs "optional<U64>"
             field max-occurs "optional<U64>"
         }
+
+        // The name of a schema-declared node group.
+        string NodeGroupName {
+            format kebab-case
+        }
+
+        // A named group of node names. A children-group rule or a
+        // parents group= reference expands, when the schema is compiled,
+        // to one rule or placement per member, so dispatch stays by name.
+        object NodeGroupDef {
+            field name NodeGroupName
+            field nodes "list<NodeName>"
+        }
     }
 
     // Node declarations in a schema definition.
@@ -258,6 +275,13 @@ dialect kdlith version="0" {
                 }
             }
         }
+        field parent-group {
+            from {
+                child parents {
+                    property group
+                }
+            }
+        }
         field fields {
             from {
                 entries field key="arg(0)" value=FieldBinding
@@ -267,6 +291,12 @@ dialect kdlith version="0" {
         field children {
             from {
                 entries children key="arg(0)" value=ChildRule
+            }
+            duplicate-keys reject
+        }
+        field children-groups {
+            from {
+                entries children-group key="arg(0)" value=ChildRule
             }
             duplicate-keys reject
         }
@@ -303,6 +333,7 @@ dialect kdlith version="0" {
         children sequence max-occurs=1
         children descendants
         children annotation
+        children children-group
     }
 
     // A schema-level annotation declaration: `annotation NAME TYPE`,
@@ -314,6 +345,18 @@ dialect kdlith version="0" {
         field name arg=0
         field type arg=1
         field required arg=2
+    }
+
+    // A node group: `group NAME MEMBER...`. Members are node names, never
+    // node declarations; every member must be declared, and a group
+    // names at least one.
+    node group role=declaration type=NodeGroupDef parent=schema {
+        field name arg=0
+        field nodes {
+            from {
+                args
+            }
+        }
     }
 
     // A field binding. Shorthands abbreviate the common single-source
@@ -415,6 +458,13 @@ dialect kdlith version="0" {
     }
 
     node children type=ChildRule parent=node {
+        field min-occurs property=min-occurs
+        field max-occurs property=max-occurs
+    }
+
+    // A children rule over a node group: one rule per member, each with
+    // these occurrence bounds.
+    node children-group type=ChildRule parent=node {
         field min-occurs property=min-occurs
         field max-occurs property=max-occurs
     }

@@ -594,6 +594,10 @@ fn node_input(node: NodeDef) -> NodeInput {
             .parents
             .as_ref()
             .map(|parents| parents.iter().map(|p| p.as_str().to_owned()).collect()),
+        parent_group: node
+            .parent_group
+            .as_ref()
+            .map(|group| group.as_str().to_owned()),
         profile: node
             .profile
             .as_ref()
@@ -605,6 +609,15 @@ fn node_input(node: NodeDef) -> NodeInput {
             .collect(),
         children: node
             .children
+            .iter()
+            .map(|(name, rule)| ChildRuleInput {
+                name: name.as_str().to_owned(),
+                min: rule.min_occurs,
+                max: rule.max_occurs,
+            })
+            .collect(),
+        children_groups: node
+            .children_groups
             .iter()
             .map(|(name, rule)| ChildRuleInput {
                 name: name.as_str().to_owned(),

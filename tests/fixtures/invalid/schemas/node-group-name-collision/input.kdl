@@ -1,0 +1,17 @@
+schema s version="1" {
+    types {
+        object Card { field title String }
+        object Badge { field label String }
+    }
+    group components card badge
+    node deck role=container {
+        children card max-occurs=1
+        children-group components
+    }
+    node card role=record type=Card parent=deck {
+        field title arg=0
+    }
+    node badge role=record type=Badge parent=deck {
+        field label arg=0
+    }
+}

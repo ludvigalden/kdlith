@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A node group member naming no declared node is refused with the code an exactly-one group naming an unpermitted child takes (KDLITH-SCH005); card is declared and passes, ribbon is not",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

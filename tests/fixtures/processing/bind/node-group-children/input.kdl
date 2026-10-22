@@ -1,0 +1,7 @@
+deck "main" {
+    card "one"
+    badge "new"
+}
+stack {
+    badge "sale"
+}

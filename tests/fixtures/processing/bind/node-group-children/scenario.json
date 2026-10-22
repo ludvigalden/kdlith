@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "Grouped children bind end to end through the expanded rules: card, a part placed by parents group=containers, binds into the deck record's cards field, and badge, a record placed the same way, is admitted under both deck and stack by their children-group components rules; a name outside the group stays unknown (the BND001 twin is invalid/data/node-group-unknown-child)",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"type_name\":\"Badge\",\"fields\":[{\"name\":\"label\",\"value\":{\"kind\":\"string\",\"value\":\"new\"}",
+      "{\"name\":\"cards\",\"value\":{\"kind\":\"list\",\"value\":[{\"kind\":\"map\",\"value\":[{\"key\":\"title\",\"value\":{\"kind\":\"string\",\"value\":\"one\"}}]}]}",
+      "\"type_name\":\"Badge\",\"fields\":[{\"name\":\"label\",\"value\":{\"kind\":\"string\",\"value\":\"sale\"}"
+    ]
+  }
+}

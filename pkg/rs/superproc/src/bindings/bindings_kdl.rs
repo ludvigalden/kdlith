@@ -14,6 +14,10 @@ pub(crate) const NODES: &[NodeShape] = &[
         .under(&["schema"])
         .declaration()
         .ty("AnnotationDef"),
+    NodeShape::new("group")
+        .under(&["schema"])
+        .declaration()
+        .ty("NodeGroupDef"),
     NodeShape::new("field").under(&["node"]).ty("FieldBinding"),
     NodeShape::new("argument")
         .under(SOURCE_PARENTS)
@@ -38,6 +42,9 @@ pub(crate) const NODES: &[NodeShape] = &[
         .under(&["from"])
         .ty("ContextSource"),
     NodeShape::new("children").under(&["node"]).ty("ChildRule"),
+    NodeShape::new("children-group")
+        .under(&["node"])
+        .ty("ChildRule"),
     NodeShape::new("value")
         .under(&["node"])
         .ty("DependentBinding"),

@@ -90,12 +90,18 @@ pub struct NodeDecl {
     /// The logical object type whose fields the bindings populate.
     pub ty: Option<Sym>,
     pub placement: Placement,
+    /// The node group the declaration's `parents` names with `group=`;
+    /// compiled into `placement`, one parent per member.
+    pub parent_group: Option<Sym>,
     /// The profile this declaration belongs to, when it carries
     /// `profile=NAME`: the declaration is admitted only under that
     /// profile.
     pub profile: Option<Sym>,
     pub fields: Vec<FieldBinding>,
     pub children: Vec<ChildRule>,
+    /// The `children-group` rules, each named by its node group;
+    /// compiled into `children`, one rule per member.
+    pub children_groups: Vec<ChildRule>,
     pub effects: Vec<EffectGroup>,
     pub groups: Vec<Vec<Sym>>,
     /// Occurrence bounds over this node's whole subtree, checked when

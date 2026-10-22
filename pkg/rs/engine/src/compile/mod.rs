@@ -7,6 +7,7 @@ mod collect;
 mod conform;
 mod document;
 mod expansions;
+mod groups;
 pub mod input;
 mod link;
 mod literals;
@@ -132,6 +133,9 @@ pub(crate) struct Cx<'d> {
     pub(crate) discoveries: Vec<crate::definition::DiscoveryDecl>,
     pub(crate) references: Vec<crate::definition::ReferenceDecl>,
     pub(crate) annotations: Vec<crate::definition::AnnotationDecl>,
+    /// The node groups the schema declares, expanded into children
+    /// rules and placements before scopes are built.
+    pub(crate) groups: Vec<groups::GroupDecl>,
     pub(crate) resolution: Option<crate::definition::ResolutionPolicyDecl>,
     pub(crate) providers: Vec<crate::definition::ProviderDecl>,
     pub(crate) source_context: Option<crate::definition::SourceContextDecl>,
@@ -178,6 +182,7 @@ fn start<'d>(
         discoveries: Vec::new(),
         references: Vec::new(),
         annotations: Vec::new(),
+        groups: Vec::new(),
         resolution: None,
         providers: Vec::new(),
         source_context: None,
@@ -222,6 +227,7 @@ fn finish<'d>(
         mono::run(&mut cx);
     }
     collect::merge_policy(&mut cx);
+    groups::expand(&mut cx);
     let bindings = scopes::build(&mut cx);
     let symbols = SymbolCatalog::build(&bindings, &cx.references);
     source_context_check(&mut cx);
