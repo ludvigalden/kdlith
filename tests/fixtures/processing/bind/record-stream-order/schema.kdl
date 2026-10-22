@@ -1,0 +1,21 @@
+// Sections nest in sections, and cards sit in sections; both are
+// records, so the stream holds one item per node.
+schema tree version="1" {
+    types {
+        object Section {
+            field title String
+        }
+        object Card {
+            field title String
+        }
+    }
+    node section role=record type=Section root=#true {
+        parents section
+        field title arg=0
+        children section
+        children card
+    }
+    node card role=record type=Card parent=section {
+        field title arg=0
+    }
+}

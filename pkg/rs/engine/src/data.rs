@@ -502,7 +502,7 @@ impl<'d> DataReader<'d> {
             .collect();
         let before = self.read_inner(&earlier, options, &mut tap, Sides::none(), true, false)?;
         let source = SourceId(u32::try_from(before.entered).unwrap_or(u32::MAX));
-        let Some(scope) = dispatch_scope(def, &text, record.node) else {
+        let Some((scope, enclosing)) = dispatch_scope(def, &text, record.node) else {
             return Ok(Restored::Miss);
         };
         sink(Item::Document(
@@ -514,7 +514,7 @@ impl<'d> DataReader<'d> {
             context,
             &selection,
             self.handlers.clone(),
-            (record.node, scope),
+            (record.node, scope, enclosing),
         )
         .under_policy(options.output_policy)
         .with_resolver(self.resolver.clone());
@@ -1476,6 +1476,9 @@ fn remap(item: &Item, source: SourceId) -> Item {
             let mut record = record.clone();
             let from = record.node.source;
             record.node.source = source;
+            if let Some(parent) = &mut record.parent {
+                parent.source = source;
+            }
             relocate(&mut record.fields, &mut record.site, from, source);
             Item::Record(record)
         }
@@ -1483,6 +1486,9 @@ fn remap(item: &Item, source: SourceId) -> Item {
             let mut declaration = declaration.clone();
             let from = declaration.node.source;
             declaration.node.source = source;
+            if let Some(parent) = &mut declaration.parent {
+                parent.source = source;
+            }
             relocate(&mut declaration.fields, &mut declaration.site, from, source);
             Item::Declaration(declaration)
         }

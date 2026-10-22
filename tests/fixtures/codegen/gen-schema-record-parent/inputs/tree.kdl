@@ -1,0 +1,45 @@
+// A self-contained schema whose item nodes nest: a section declaration
+// binds at the document root and inside another section; a card record
+// binds at the root, inside a section, inside a tone control (which
+// yields no item of its own), and inside a shelf container; an import
+// brings in a document whose root items have no parent of their own.
+schema tree version="1" {
+    types {
+        object Section {
+            field title String
+        }
+        object Card {
+            field title String
+            field tone "optional<String>"
+        }
+    }
+    context {
+        slot tone String namespace=defaults
+    }
+    node section role=declaration type=Section root=#true {
+        parents section
+        field title arg=0
+        children section
+        children card
+        children tone
+        children shelf
+    }
+    node card role=record type=Card root=#true {
+        parents section tone shelf
+        field title arg=0
+        field tone context=tone
+    }
+    node tone role=context-control parent=section {
+        field value String arg=0
+        effects target=children {
+            set tone field=value
+        }
+        children card
+    }
+    node shelf role=container parent=section {
+        children card
+    }
+    node use role=source-import {
+        field path String arg=0
+    }
+}

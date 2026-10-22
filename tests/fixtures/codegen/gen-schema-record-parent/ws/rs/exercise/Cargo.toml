@@ -1,0 +1,8 @@
+[package]
+name = "record-parent-exercise"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+
+[dependencies]
+tree-proc = { path = "../tree-proc" }

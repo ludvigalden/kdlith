@@ -38,6 +38,11 @@ pub struct BoundRecord {
     /// the item's serialized form.
     #[serde(skip)]
     pub site: Option<Location>,
+    /// The nearest enclosing node whose role yields an item, in the same
+    /// source; `None` at the document's root level. Not part of the
+    /// item's serialized form.
+    #[serde(skip)]
+    pub parent: Option<NodeId>,
 }
 
 /// A node of the declaration role: registers an identity and exposes
@@ -63,6 +68,10 @@ pub struct BoundDeclaration {
     /// the item's serialized form.
     #[serde(skip)]
     pub site: Option<Location>,
+    /// The nearest enclosing node whose role yields an item, as on a
+    /// record; not part of the item's serialized form.
+    #[serde(skip)]
+    pub parent: Option<NodeId>,
 }
 
 /// An assignment or overlay preserved unresolved, so a resolver can apply
@@ -269,6 +278,7 @@ impl BoundRecord {
             validation,
             span,
             site: None,
+            parent: None,
         }
     }
 
@@ -276,6 +286,13 @@ impl BoundRecord {
     #[must_use]
     pub fn with_site(mut self, site: Location) -> Self {
         self.site = Some(site);
+        self
+    }
+
+    /// The record with the enclosing node its item belongs under.
+    #[must_use]
+    pub fn with_parent(mut self, parent: Option<NodeId>) -> Self {
+        self.parent = parent;
         self
     }
 }
@@ -294,6 +311,7 @@ impl BoundDeclaration {
             validation,
             span,
             site,
+            parent,
         } = record;
         Self {
             node,
@@ -305,6 +323,7 @@ impl BoundDeclaration {
             validation,
             span,
             site,
+            parent,
         }
     }
 

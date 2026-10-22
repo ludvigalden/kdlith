@@ -174,6 +174,11 @@ published yet.
   the same loaders; an import inside an in-memory definition fails
   closed (`KDLITH-IMP001`). The typed reader gains
   `read_sources_local` for local-scope readings of in-memory documents.
+- Bound and typed records and declarations carry `parent`, the node of
+  the nearest enclosing item (none at a document's root level), outside
+  their serialized form. The design record documents the stream order:
+  node indexes count in document order as nodes open, and an item
+  follows the items nested in it.
 
 ### Fixed
 

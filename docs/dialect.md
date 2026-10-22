@@ -682,6 +682,23 @@ compiled definition once and never reads the definition's KDL:
   yield their effects only. Fields holding references stay provisional
   until linking resolves them. Every diagnostic is an item in the same
   stream.
+- **Stream order and parents.** A node's `NodeId.index` numbers it
+  within its source in document order as nodes open (pre-order), from
+  0; a node that does not bind is numbered, but the nodes written inside
+  it are not. A node's item is emitted
+  when the node completes, after everything nested in it: a record or
+  declaration follows every item its children yield (post-order), so
+  the items of `section "a" { card "a1"; section "b" { card "b1" } }`
+  arrive as `a1`, `b1`, `b`, `a`. A container's scope completion is its
+  item, in the same position. Each record and declaration carries, as
+  `parent`, the `NodeId` of the nearest enclosing node whose role yields
+  an item — a record, declaration, contribution, import, or container;
+  a context control yields none and is passed over — and `None` at the
+  document's root level, including the root of an imported document.
+  The parent is always in the same source, has a lower index, and is
+  emitted later in the stream. `parent` is not part of an item's
+  serialized form; the typed reader's records and declarations carry
+  it unchanged. Readers may rely on this order and linkage.
 
 Literals a definition writes (fallbacks, documented defaults, and `set`
 values) are decoded against their types when the definition compiles,

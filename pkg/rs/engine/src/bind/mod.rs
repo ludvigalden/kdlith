@@ -15,8 +15,9 @@ use kdlith_diagnostic::registry::{lookup, render};
 use kdlith_diagnostic::{ByteSpan, DiagnosticRecord, Label};
 use kdlith_model::{
     BoundContribution, BoundDeclaration, BoundItem, BoundRecord, Derivation, Entry,
-    ExpansionRequest, Field, Identity, ImportRequest, Location, Origin, OriginId, PendingBinding,
-    QualifiedName, Reference, Repeated, ScopeCompletion, SourceId, Trace, ValidationState, Value,
+    ExpansionRequest, Field, Identity, ImportRequest, Location, NodeId, Origin, OriginId,
+    PendingBinding, QualifiedName, Reference, Repeated, ScopeCompletion, SourceId, Trace,
+    ValidationState, Value,
 };
 use kdlith_parse::{Event, Locator, Parser};
 use kdlith_runtime::{
@@ -213,6 +214,9 @@ pub struct Binder<'d, 's> {
     /// When one node is bound alone, the scope its parent dispatches
     /// it in; the document's root rules then do not apply to it.
     window: Option<ScopeId>,
+    /// When one node is bound alone, the item node enclosing it in its
+    /// whole document.
+    window_parent: Option<NodeId>,
     errors: u64,
 }
 
@@ -318,6 +322,7 @@ impl<'d, 's> Binder<'d, 's> {
             resolved: ResolvedStream::new(),
             left: None,
             window: None,
+            window_parent: None,
             resolved_secret: false,
             errors: 0,
         }
@@ -2120,7 +2125,8 @@ impl<'d, 's> Binder<'d, 's> {
                 BoundRecord::new(
                     node, node_name, type_name, fields, origin, validation, frame.span,
                 )
-                .with_site(node_site),
+                .with_site(node_site)
+                .with_parent(frame.parent),
             ),
             Role::Declaration => {
                 let identity = identity.expect("a declaration composes its identity above");
@@ -2128,7 +2134,8 @@ impl<'d, 's> Binder<'d, 's> {
                     BoundDeclaration::from_record(
                         BoundRecord::new(
                             node, node_name, type_name, fields, origin, validation, frame.span,
-                        ),
+                        )
+                        .with_parent(frame.parent),
                         identity,
                     )
                     .with_site(node_site),
@@ -2674,6 +2681,14 @@ impl<'s> Processor for Binder<'_, 's> {
         let state = inner
             .and_then(|id| def.bindings.scope(id))
             .map(|scope| scope.rules.start());
+        let yields = match kind {
+            Kind::Declared { decl, .. } => yields_item(def, decl),
+            Kind::Nested | Kind::Scalar => false,
+        };
+        let enclosing = match parent.as_deref() {
+            Some(frame) => frame.enclosing(),
+            None => self.window_parent,
+        };
         let bound = Some(Sibling {
             name: sym,
             span,
@@ -2685,6 +2700,9 @@ impl<'s> Processor for Binder<'_, 's> {
         }
         Disposition::Bind(BindFrame::new(Opened {
             name: sym,
+            node: cx.node(),
+            yields,
+            parent: enclosing,
             owner,
             kind,
             scope: inner,
@@ -2906,33 +2924,54 @@ fn enum_members<'d>(def: &'d Definition, ty: &TypeExpr) -> Vec<&'d str> {
     }
 }
 
-/// The scope the `node`th node of `text`, in document order, is
-/// dispatched in: its parent's children scope, or the document's root
-/// scope. `None` when the text holds fewer nodes, or the node sits where
+/// Whether a declared node's role yields an item of its own: every role
+/// but a context control, whose result is its effects.
+fn yields_item(def: &Definition, decl: NodeDeclId) -> bool {
+    def.bindings
+        .get(decl)
+        .and_then(|d| d.role)
+        .is_some_and(|role| role != Role::ContextControl)
+}
+
+/// Where the `node`th node of `text`, in document order, is dispatched:
+/// its parent's children scope, or the document's root scope, with the
+/// index of the nearest enclosing node whose role yields an item.
+/// `None` when the text holds fewer nodes, or the node sits where
 /// nothing binds.
-pub(crate) fn dispatch_scope(def: &Definition, text: &str, node: u32) -> Option<ScopeId> {
+pub(crate) fn dispatch_scope(
+    def: &Definition,
+    text: &str,
+    node: u32,
+) -> Option<(ScopeId, Option<u32>)> {
     let mut parser = Parser::new(text);
-    let mut open: Vec<Option<ScopeId>> = Vec::new();
+    // Each open node's children scope and the enclosing item node its
+    // children belong under.
+    let mut open: Vec<(Option<ScopeId>, Option<u32>)> = Vec::new();
     let mut seen: u32 = 0;
     while let Ok(Some(event)) = parser.next_event() {
         match event.item {
             Event::Node { name, .. } => {
-                let parent = match open.last() {
-                    Some(scope) => *scope,
-                    None => Some(def.bindings.root_scope()),
+                let (parent, enclosing) = match open.last() {
+                    Some(open) => *open,
+                    None => (Some(def.bindings.root_scope()), None),
                 };
                 if seen == node {
-                    return parent;
+                    return parent.map(|scope| (scope, enclosing));
                 }
-                seen = seen.saturating_add(1);
-                let inner = parent.zip(def.names.get(&name)).and_then(|(scope, sym)| {
-                    match def.bindings.child(scope, sym)? {
-                        ChildPlan::Declared { decl, .. } => def.bindings.decl_scope(decl),
-                        ChildPlan::Nested(inner) => Some(inner),
-                        ChildPlan::Scalar => None,
-                    }
+                let plan = parent
+                    .zip(def.names.get(&name))
+                    .and_then(|(scope, sym)| def.bindings.child(scope, sym));
+                let inner = plan.and_then(|plan| match plan {
+                    ChildPlan::Declared { decl, .. } => def.bindings.decl_scope(decl),
+                    ChildPlan::Nested(inner) => Some(inner),
+                    ChildPlan::Scalar => None,
                 });
-                open.push(inner);
+                let yields = matches!(
+                    plan,
+                    Some(ChildPlan::Declared { decl, .. }) if yields_item(def, decl)
+                );
+                open.push((inner, if yields { Some(seen) } else { enclosing }));
+                seen = seen.saturating_add(1);
             }
             Event::End => {
                 open.pop();
@@ -3175,12 +3214,13 @@ impl<'d, 's> BindingSession<'d, 's> {
         context: Context,
         selection: &ProfileSelection,
         handlers: Handlers,
-        (node, scope): (u32, ScopeId),
+        (node, scope, enclosing): (u32, ScopeId, Option<u32>),
     ) -> Self {
         let events = ParseEvents::new(Parser::new(text), text, path).windowed(node);
         let mut binder = Binder::with_selection(def, source, path, text, selection, None);
         binder.handlers = handlers;
         binder.window = Some(scope);
+        binder.window_parent = enclosing.map(|index| NodeId::new(source, index));
         Self {
             session: Session::with_context(source, events, binder, context).starting_at(node),
             pending: Vec::new(),

@@ -2,7 +2,7 @@
 //! frame stack until the node closes.
 
 use kdlith_diagnostic::ByteSpan;
-use kdlith_model::{Trace, Value};
+use kdlith_model::{NodeId, Trace, Value};
 
 use crate::bindings::{NodeDeclId, ScopeId};
 use crate::names::Sym;
@@ -58,6 +58,12 @@ pub(crate) type Carried = (Bind, Value, ByteSpan);
 #[derive(Debug)]
 pub struct BindFrame {
     pub(crate) name: Sym,
+    pub(crate) node: NodeId,
+    /// Whether the node's role yields an item of its own.
+    pub(crate) yields: bool,
+    /// The nearest enclosing node whose role yields an item; `None` at
+    /// the document's root level.
+    pub(crate) parent: Option<NodeId>,
     /// The declaration whose fields this node's syntax supplies.
     pub(crate) owner: NodeDeclId,
     pub(crate) kind: Kind,
@@ -99,6 +105,9 @@ pub struct BindFrame {
 /// What a new frame is made of.
 pub(crate) struct Opened {
     pub(crate) name: Sym,
+    pub(crate) node: NodeId,
+    pub(crate) yields: bool,
+    pub(crate) parent: Option<NodeId>,
     pub(crate) owner: NodeDeclId,
     pub(crate) kind: Kind,
     pub(crate) scope: Option<ScopeId>,
@@ -114,6 +123,9 @@ impl BindFrame {
         fields.resize_with(opened.width, || None);
         Self {
             name: opened.name,
+            node: opened.node,
+            yields: opened.yields,
+            parent: opened.parent,
             owner: opened.owner,
             kind: opened.kind,
             scope: opened.scope,
@@ -142,5 +154,14 @@ impl BindFrame {
 
     pub(crate) fn declared(&self) -> bool {
         matches!(self.kind, Kind::Declared { .. })
+    }
+
+    /// The enclosing item node a child of this node belongs under.
+    pub(crate) fn enclosing(&self) -> Option<NodeId> {
+        if self.yields {
+            Some(self.node)
+        } else {
+            self.parent
+        }
     }
 }

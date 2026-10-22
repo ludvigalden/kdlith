@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "The documented stream order over nested records: sections nest in sections and cards sit in sections, every node a record. Node indexes number nodes in document order as they open (pre-order: section a is 0, card a1 1, section b 2, card b1 3, card a2 4, section c 5, card c1 6), while each record is emitted when its node completes, so an enclosing record follows every record nested in it (post-order: a1, b1, b, a2, a, c1, c), and the document's scope completion comes last",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"document\",\"data\":{\"source\":0,\"path\":\"input.kdl\"}}\n{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":1},\"type_name\":\"Card\",\"fields\":[{\"name\":\"title\",\"value\":{\"kind\":\"string\",\"value\":\"a1\"},\"origin\":1}],\"origin\":1,\"validation\":\"valid\"}}\n{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":3},\"type_name\":\"Card\",\"fields\":[{\"name\":\"title\",\"value\":{\"kind\":\"string\",\"value\":\"b1\"},\"origin\":3}],\"origin\":3,\"validation\":\"valid\"}}\n{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":2},\"type_name\":\"Section\",\"fields\":[{\"name\":\"title\",\"value\":{\"kind\":\"string\",\"value\":\"b\"},\"origin\":2}],\"origin\":2,\"validation\":\"valid\"}}\n{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":4},\"type_name\":\"Card\",\"fields\":[{\"name\":\"title\",\"value\":{\"kind\":\"string\",\"value\":\"a2\"},\"origin\":4}],\"origin\":4,\"validation\":\"valid\"}}\n{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":0},\"type_name\":\"Section\",\"fields\":[{\"name\":\"title\",\"value\":{\"kind\":\"string\",\"value\":\"a\"},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":6},\"type_name\":\"Card\",\"fields\":[{\"name\":\"title\",\"value\":{\"kind\":\"string\",\"value\":\"c1\"},\"origin\":6}],\"origin\":6,\"validation\":\"valid\"}}\n{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":5},\"type_name\":\"Section\",\"fields\":[{\"name\":\"title\",\"value\":{\"kind\":\"string\",\"value\":\"c\"},\"origin\":5}],\"origin\":5,\"validation\":\"valid\"}}\n{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":null}}\n"
+    ]
+  }
+}

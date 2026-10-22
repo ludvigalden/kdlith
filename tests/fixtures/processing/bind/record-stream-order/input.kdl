@@ -1,0 +1,10 @@
+section "a" {
+    card "a1"
+    section "b" {
+        card "b1"
+    }
+    card "a2"
+}
+section "c" {
+    card "c1"
+}

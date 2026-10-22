@@ -1,0 +1,64 @@
+{
+  "binary": "kdlith",
+  "kind": "codegen-oracle",
+  "description": "Record parent linkage through a generated crate: gen schema generates a committed self-contained schema whose item nodes nest, twice into scratch trees the harness requires byte-identical; the generated crate compiles inside a scratch workspace materialized from this scenario's committed template beside a consumer depending on the generated crate alone. The compiled processor reads committed nested data through its typed reader, and each record and declaration carries as its parent the nearest enclosing node whose role yields an item: a section declaration for the cards and sections inside it, a shelf container for the card inside it, and the section around a tone control for the card inside the control, which yields no item; root-level items, and the root items of an imported document, carry none. The stream is in the documented order: every item follows the items nested in it (post-order), node indexes number nodes as they open (pre-order), and a parent is always an earlier-opened node of the same source yielded later in the stream",
+  "form": "schema",
+  "entrypoint": "inputs/tree.kdl",
+  "crate": "tree-proc",
+  "steps": [
+    {
+      "generate": "ws/rs/tree-proc"
+    },
+    {
+      "generate": "gen-again"
+    },
+    {
+      "determinism": [
+        "ws/rs/tree-proc",
+        "gen-again"
+      ]
+    },
+    {
+      "compile": {
+        "workspace": "ws",
+        "copy": {
+          "crates": [
+            "diagnostic",
+            "engine",
+            "model",
+            "parse",
+            "runtime",
+            "superproc"
+          ],
+          "kdl": true
+        },
+        "command": [
+          "cargo",
+          "build",
+          "--offline",
+          "--manifest-path",
+          "ws/rs/tree-proc/Cargo.toml"
+        ]
+      }
+    },
+    {
+      "exercise": {
+        "command": [
+          "cargo",
+          "run",
+          "--offline",
+          "--quiet",
+          "--manifest-path",
+          "ws/rs/exercise/Cargo.toml",
+          "--",
+          "inputs/tree.kdl",
+          "inputs/data.kdl"
+        ],
+        "stdout-contains": [
+          "schema ok digest=ab83b28fe805b272\n",
+          "read failed=false\ncard a1 at=0:1 parent=section a at=0:0\ncard b1 at=0:3 parent=section b at=0:2\nsection b at=0:2 parent=section a at=0:0\ncard a2 at=0:5 parent=section a at=0:0\ncard a3 at=0:7 parent=container at=0:6\ncontainer at=0:6 completes\nsection a at=0:0 parent=root\ncard c1 at=0:9 parent=section c at=0:8\nsection c at=0:8 parent=root\ncard loose at=0:10 parent=root\ncard p1 at=1:1 parent=section p at=1:0\nsection p at=1:0 parent=root\npost-order parents-after-children=true\n"
+        ]
+      }
+    }
+  ]
+}

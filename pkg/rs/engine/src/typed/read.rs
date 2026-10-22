@@ -68,6 +68,10 @@ pub enum TypedItem<T> {
         /// Where the record was written, as the bound record carries it.
         #[serde(skip)]
         site: Option<Location>,
+        /// The nearest enclosing node whose role yields an item, as the
+        /// bound record carries it; `None` at the document's root level.
+        #[serde(skip)]
+        parent: Option<NodeId>,
         /// The document the record was read from.
         #[serde(skip)]
         origin: Origin,
@@ -97,6 +101,10 @@ pub enum TypedItem<T> {
         /// carries it.
         #[serde(skip)]
         site: Option<Location>,
+        /// The nearest enclosing node whose role yields an item, as the
+        /// bound declaration carries it.
+        #[serde(skip)]
+        parent: Option<NodeId>,
         /// The document the declaration was read from.
         #[serde(skip)]
         origin: Origin,
@@ -714,6 +722,7 @@ impl<'d, T: 'static> TypedReader<'d, T> {
                     value,
                     span: record.span,
                     site: record.site,
+                    parent: record.parent,
                     origin: origin(record.node),
                     context,
                 }));
@@ -734,6 +743,7 @@ impl<'d, T: 'static> TypedReader<'d, T> {
                     value,
                     span: declaration.span,
                     site: declaration.site,
+                    parent: declaration.parent,
                     origin: origin(declaration.node),
                     context,
                 }));
