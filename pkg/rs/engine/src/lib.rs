@@ -44,8 +44,8 @@ pub use compile::input::{
     AnchorInput, AnnotationInput, CaptureInput, CaseInput, ChildRuleInput, ConstraintInput,
     Construct, DefaultInput, DefinitionInput, DependentInput, DescendantRuleInput, DiscoveryInput,
     DocumentInput, DocumentRuleInput, EffectGroupInput, EffectInput, FieldBindingInput, FieldInput,
-    FormatInput, IdentityInput, ImportInput, Located, MatchRuleInput, MemberInput, NodeInput,
-    NodeAnnotationInput, ProfileInput, ProviderInput, QualifierInput, ReferenceInput,
+    FormatInput, IdentityInput, ImportInput, Located, MatchRuleInput, MemberInput,
+    NodeAnnotationInput, NodeInput, ProfileInput, ProviderInput, QualifierInput, ReferenceInput,
     ResolutionInput, SequenceInput, SlotInput, SourceContextInput, SourceFieldInput, SourceInput,
     StepInput, TypeInput, ValidatorInput, VariantInput,
 };
@@ -54,11 +54,11 @@ pub use data::{
     BoundResult, DataReader, EntryContext, ReadOptions, RecordContext, Restored, Source,
 };
 pub use definition::{
-    AccumulateOp, AnchorDecl, AnnotationDecl, CheckScope, Definition, DefinitionKind, DiscoveryDecl,
-    DocumentRule, DuplicateTreatment, ImportDecl, MatchKind, MatchRule, MergeDuplicates,
-    MissingRequirement, Patterns, ProfileDecl, ProfileSelection, ProviderDecl, Qualification,
-    QualifierDecl, ReferenceDecl, ResolutionPolicyDecl, ResolutionSelection, SlotDecl,
-    SlotDuplicates, SourceContextDecl, SourceContextMode, SourceFieldDecl,
+    AccumulateOp, AnchorDecl, AnnotationDecl, CheckScope, Definition, DefinitionKind,
+    DiscoveryDecl, DocumentRule, DuplicateTreatment, ImportDecl, MatchKind, MatchRule,
+    MergeDuplicates, MissingRequirement, Patterns, ProfileDecl, ProfileSelection, ProviderDecl,
+    Qualification, QualifierDecl, ReferenceDecl, ResolutionPolicyDecl, ResolutionSelection,
+    SlotDecl, SlotDuplicates, SourceContextDecl, SourceContextMode, SourceFieldDecl,
 };
 pub use diag::Site;
 pub use discovery::{Expansion, ExpansionError, Segment, expand, is_expression, parse};

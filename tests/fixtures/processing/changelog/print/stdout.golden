@@ -158,7 +158,6 @@ published yet.
   read, so an import can no longer leak the contents of a file outside
   the entry tree. Definition documents loading through their governing
   dialect are exempt, and `--scope local` refuses as well.
-
 - A fallback identity composed from a non-string field no longer
   composes an empty identity silently: the compiler notes the field at
   its declaration and the binder refuses the binding.

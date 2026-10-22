@@ -918,15 +918,10 @@ pub(crate) fn kind_name(kind: &TypeKind) -> &'static str {
     }
 }
 
-/// The constants a definition's annotation facts generate, in
-/// contribution order: one per fact, named after its node and its
-/// annotation and typed by the annotation's declared scalar type —
-/// `bool` for a Bool, `u64` for a U64, `i64` for an Integer, the
-/// generated enum's member for a declared enum type, and the written
-/// spelling as `&str` for a String, a Decimal, or a declared string
-/// type, whose generated newtypes own their text and cannot be built in
-/// a constant. Two facts spelling one constant, as two same-named nodes
-/// under different parents do, fail closed.
+/// The constants a definition's annotation facts generate: one per
+/// fact, typed by the annotation's declared scalar type. Two facts
+/// spelling one constant, as two same-named nodes under different
+/// parents do, fail closed.
 fn annotation_constants(definition: &Definition) -> Result<Vec<AnnotationConst>, Error> {
     let names = &definition.names;
     let mut constants: Vec<AnnotationConst> = Vec::new();
@@ -1006,10 +1001,9 @@ fn annotation_value(
 }
 
 /// Why a type the crate declares under `name` has no spelling, if it
-/// has none. `Self` is a keyword, never a type name. A schema crate
-/// spells every name it does not declare by absolute path, so nothing
-/// can shadow it; a dialect crate stays byte-equal to the reference
-/// processor, which spells the names in `SHADOWED_IN_DIALECT` bare.
+/// has none: `Self` is never a type name, schema crates spell
+/// undeclared names by absolute path, and dialect crates stay
+/// byte-equal to the reference processor.
 fn unspellable_name(kind: DefinitionKind, name: &str) -> Option<&'static str> {
     if !is_identifier(name) || name == "Self" {
         Some(NOT_IDENTIFIER)

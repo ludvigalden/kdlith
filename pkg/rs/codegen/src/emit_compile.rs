@@ -203,8 +203,9 @@ fn use_statement(path: &str, names: &[String]) -> String {
     let mut buffer = String::new();
     for name in names {
         // The line is the four-space indent plus the buffer; adding a
-        // name costs its own width plus ", ".
-        if !buffer.is_empty() && 4 + buffer.len() + 2 + name.len() + 1 > 100 {
+        // name costs its own width plus ", ". A wrapped line ends in a
+        // trailing comma, so 100 is the one length rustfmt declines.
+        if !buffer.is_empty() && 4 + buffer.len() + 2 + name.len() + 1 > 99 {
             text.push_str(&format!("    {buffer},\n"));
             buffer.clear();
         }

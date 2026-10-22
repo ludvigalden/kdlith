@@ -1,11 +1,7 @@
-//! Annotation checks: every node declaration's annotation facts are
-//! checked against the schema's `annotation` declarations. A declared
-//! type that is not one scalar value, a fact naming no declared
-//! annotation, one annotation carried twice by one node, a value that
-//! does not decode as its declared type, and a node declaration missing
-//! a required annotation are malformed constructs (`KDLITH-DLC005`). A
-//! declared type naming no type is an unknown type like any other.
-//! Annotations are metadata: nothing here changes binding.
+//! Annotation checks for node declarations: a non-scalar type, an
+//! undeclared or duplicate fact, a mistyped value, and a missing
+//! required annotation are malformed constructs (`KDLITH-DLC005`).
+//! An unknown type name is SCH001. Metadata.
 
 use kdlith_model::{Location, Position, SourceId, Span};
 
@@ -33,7 +29,11 @@ fn scalar(cx: &Cx<'_>, ty: &TypeExpr) -> bool {
         kind,
         Some(
             TypeKind::Builtin(
-                Builtin::String | Builtin::Bool | Builtin::Integer | Builtin::Decimal | Builtin::U64
+                Builtin::String
+                    | Builtin::Bool
+                    | Builtin::Integer
+                    | Builtin::Decimal
+                    | Builtin::U64
             ) | TypeKind::String(_)
                 | TypeKind::Enum(_)
         )

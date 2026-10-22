@@ -22,7 +22,7 @@ use crate::compile::input::{
 use crate::compile::types::{declare, field_name, format_rule, validator_use};
 use crate::decode::found;
 use crate::definition::{
-    AccumulateOp, AnnotationDecl, AnchorDecl, DiscoveryDecl, DocumentRule, DuplicateTreatment,
+    AccumulateOp, AnchorDecl, AnnotationDecl, DiscoveryDecl, DocumentRule, DuplicateTreatment,
     ImportDecl, MatchKind, MatchRule, MergeDuplicates, MissingRequirement, Patterns, ProfileDecl,
     ProviderDecl, Qualification, QualifierDecl, ReferenceDecl, ResolutionPolicyDecl,
     ResolutionSelection, SlotDecl, SlotDuplicates, SourceContextDecl, SourceContextMode,

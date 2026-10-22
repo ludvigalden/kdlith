@@ -117,11 +117,9 @@ pub struct NodeDecl {
     /// Metadata only: nothing in binding, linking, or provenance reads
     /// it.
     pub description: Option<String>,
-    /// The annotation facts the declaration carries. Metadata only: the
-    /// names are checked against the schema's annotation declarations
-    /// and the values against their declared types when the definition
-    /// compiles, and nothing in binding, linking, or provenance reads
-    /// them.
+    /// The annotation facts the declaration carries. Metadata only:
+    /// checked when the definition compiles; nothing in binding,
+    /// linking, or provenance reads them.
     pub annotations: Vec<NodeAnnotation>,
     pub site: Site,
 }
