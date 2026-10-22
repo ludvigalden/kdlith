@@ -1,0 +1,8 @@
+{
+  "binary": "kdlith",
+  "description": "A schema entry document named on the command line that does not exist is a document that cannot be read (KDLITH-SRC001), not an unresolved import",
+  "args": ["vet", "schema", "missing.kdl"],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

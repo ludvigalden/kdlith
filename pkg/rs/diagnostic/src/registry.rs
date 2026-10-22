@@ -240,7 +240,7 @@ pub const CODES: &[CodeDefinition] = &[
         severity: Severity::Error,
         exit_class: 1,
         trigger: "an import request names no resolvable document",
-        message_template: "import <target> does not resolve",
+        message_template: "import <target> does not resolve: <reason>",
         correction: "Point the import at an existing document",
         retired: false,
     },

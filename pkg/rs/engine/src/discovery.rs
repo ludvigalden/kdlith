@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use crate::definition::{DiscoveryDecl, Patterns};
-use crate::diag::{IMPORT_ANCHOR, IMPORT_GRAMMAR};
+use crate::diag::{IMPORT_ANCHOR, IMPORT_GRAMMAR, SOURCE_UNREADABLE};
 use crate::names::Names;
 use crate::names::Sym;
 
@@ -55,16 +55,17 @@ pub enum ExpansionError {
     /// declares but the host does not supply, or places one past the
     /// first segment (`KDLITH-IMP005`).
     Anchor { name: String, reason: String },
-    /// A directory the expansion reads cannot be read.
+    /// A directory the expansion reads cannot be read (`KDLITH-SRC001`).
     Unreadable { path: String, reason: String },
 }
 
 impl ExpansionError {
-    /// The registered import code this error reports under.
+    /// The registered code this error reports under.
     pub fn code(&self) -> &'static str {
         match self {
             ExpansionError::NotAdmitted { .. } => IMPORT_GRAMMAR,
-            ExpansionError::Anchor { .. } | ExpansionError::Unreadable { .. } => IMPORT_ANCHOR,
+            ExpansionError::Anchor { .. } => IMPORT_ANCHOR,
+            ExpansionError::Unreadable { .. } => SOURCE_UNREADABLE,
         }
     }
 

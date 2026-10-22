@@ -96,7 +96,11 @@ pub(crate) fn expression_targets(
     let expansion = discovery::parse(expression, grammar, names).map_err(failed)?;
     let matches = discovery::expand(&expansion, names, anchors, base.dir).map_err(failed)?;
     if matches.is_empty() && !grammar.is_some_and(|grammar| grammar.allow_empty) {
-        return Err(Box::new(record(IMPORT_UNRESOLVED, &[expression], origin)));
+        return Err(Box::new(record(
+            IMPORT_UNRESOLVED,
+            &[expression, "the expression matches no document"],
+            origin,
+        )));
     }
     let mut targets = Vec::with_capacity(matches.len());
     for matched in matches {

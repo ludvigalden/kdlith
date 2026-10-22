@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "An entry document that names a directory cannot be read (KDLITH-SRC001, reason not a file); the failure does not depend on permissions, so it holds for any reader",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/imports.kdl",
+    "folder.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "An entry document named on the command line that does not exist is a document that cannot be read (KDLITH-SRC001, with the path and the OS reason), not an unresolved import: no import request named it",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/imports.kdl",
+    "missing.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

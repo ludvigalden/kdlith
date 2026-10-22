@@ -317,9 +317,13 @@ The engine resolves `import` nodes when it loads a definition with
 complete checking. Paths are resolved relative to the importing document
 and followed in written order, and every document reached contributes to
 the one definition. An import that does not resolve fails with
-`KDLITH-IMP001`, a cycle on the active invocation stack with
-`KDLITH-IMP002`, and a repeat under `repeated=reject` with
-`KDLITH-IMP003`. Each imported document gets a context of its own holding
+`KDLITH-IMP001`, whose message carries the computed reason, a cycle on
+the active invocation stack with `KDLITH-IMP002`, and a repeat under
+`repeated=reject` with `KDLITH-IMP003`. An entry document — one the
+invocation names rather than an import requests — that cannot be read
+is `KDLITH-SRC001` with its path and the reason, never `KDLITH-IMP001`;
+an entry named twice is still the `KDLITH-IMP003` repeat. Each imported
+document gets a context of its own holding
 only the projected slots, so its mutations never reach the caller. Local
 checking (`--scope local`) reads the named documents alone and follows
 no imports.
@@ -339,7 +343,8 @@ ignored. An expression matching zero sources does not resolve
 (`KDLITH-IMP001`) unless the grammar declares an explicit empty-match
 allowance, and each match retains the original expression, resolved
 anchor values, ordered matched sources, import-site provenance, and
-source revisions.
+source revisions. A directory the expansion must list but cannot read
+is a source fault, `KDLITH-SRC001`, not an anchor fault.
 
 A schema's own imports expand the same way when the schema is loaded:
 the host passes its anchors to the definition reader (`--anchor` on

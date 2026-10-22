@@ -1,1 +1,1 @@
-error[KDLITH-IMP001]: import missing.kdl does not resolve
+error[KDLITH-SRC001]: cannot read missing.kdl: No such file or directory (os error 2)

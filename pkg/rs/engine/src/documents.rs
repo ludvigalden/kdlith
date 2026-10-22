@@ -43,15 +43,23 @@ pub(crate) fn read_text(
 /// An import the invocation stack refused, as its registered diagnostic.
 pub(crate) fn import_failure(failure: ImportFailure, origin: &str) -> DiagnosticRecord {
     match failure {
-        ImportFailure::Unresolved { target, .. } => record(IMPORT_UNRESOLVED, &[&target], origin),
+        ImportFailure::Unresolved { target, reason } => {
+            record(IMPORT_UNRESOLVED, &[&target, &reason], origin)
+        }
         ImportFailure::Cycle { chain } => record(IMPORT_CYCLE, &[&chain.join(" -> ")], origin),
         ImportFailure::Repeated { target, .. } => record(IMPORT_REPEATED, &[&target], origin),
         ImportFailure::Limit { limit, max } => {
             record(SOURCE_LIMIT, &[limit, &max.to_string()], origin)
         }
-        ImportFailure::Projection(error) => {
-            record(IMPORT_UNRESOLVED, &[&error.to_string()], origin)
-        }
-        _ => record(IMPORT_UNRESOLVED, &["(unknown request)"], origin),
+        ImportFailure::Projection(error) => record(
+            IMPORT_UNRESOLVED,
+            &["(projected request)", &error.to_string()],
+            origin,
+        ),
+        _ => record(
+            IMPORT_UNRESOLVED,
+            &["(unknown request)", "the invocation stack refused it"],
+            origin,
+        ),
     }
 }

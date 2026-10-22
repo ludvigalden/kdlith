@@ -9,8 +9,9 @@ use std::rc::Rc;
 use kdlith_diagnostic::DiagnosticRecord;
 use kdlith_model::{ImportRequest, Item, SourceDocument, SourceId};
 use kdlith_runtime::{
-    Admission, Context, ContributionRecord, Derivation, Handlers, InvocationId, InvocationIdentity,
-    Invocations, SlotId, SlotValue, snapshot_key, stable_hash, stable_hash_step,
+    Admission, Context, ContributionRecord, Derivation, Handlers, ImportFailure, InvocationId,
+    InvocationIdentity, Invocations, SlotId, SlotValue, snapshot_key, stable_hash,
+    stable_hash_step,
 };
 
 use crate::anchors::{self, Base, DeclaredGrammars, Target};
@@ -716,7 +717,7 @@ impl<'d> DataReader<'d> {
             };
             match entered {
                 Ok(id) => reading.visit(id),
-                Err(failure) => reading.diagnose(import_failure(failure, ORIGIN)),
+                Err(failure) => reading.diagnose(entry_failure(failure)),
             }
             if let Some(error) = reading.broken {
                 return Err(error);
@@ -1246,11 +1247,17 @@ impl Reading<'_, '_> {
         // import against: the request fails closed rather than resolve
         // against a path it merely spells.
         if importer.is_some_and(|id| self.held.contains_key(&id)) {
-            return Err(Box::new(unresolvable(&request.expression)));
+            return Err(Box::new(unresolvable(
+                &request.expression,
+                "a document held in memory resolves no imports",
+            )));
         }
         if !discovery::is_expression(&request.expression) {
             let Some(importer) = importer else {
-                return Err(Box::new(unresolvable(&request.expression)));
+                return Err(Box::new(unresolvable(
+                    &request.expression,
+                    "no importing document is active",
+                )));
             };
             let invocation = self
                 .invocations
@@ -1263,12 +1270,13 @@ impl Reading<'_, '_> {
                 .display()
                 .to_string();
             let base = invocation.path.parent().unwrap_or(Path::new(""));
-            let Ok(resolved) = std::fs::canonicalize(base.join(&request.expression)) else {
-                return Err(Box::new(unresolvable(&shown)));
+            let resolved = match std::fs::canonicalize(base.join(&request.expression)) {
+                Ok(resolved) => resolved,
+                Err(error) => return Err(Box::new(unresolvable(&shown, &error.to_string()))),
             };
             self.confine(&request.expression, &shown, &resolved)?;
             if !resolved.is_file() {
-                return Err(Box::new(unresolvable(&shown)));
+                return Err(Box::new(unresolvable(&shown, "not a file")));
             }
             return Ok(vec![Target { resolved, shown }]);
         }
@@ -1364,9 +1372,21 @@ impl Reading<'_, '_> {
     }
 }
 
+/// An entry document the invocation stack refused. An entry is named
+/// by the invocation, not requested by an import, so one that does not
+/// resolve is a document that cannot be read (`KDLITH-SRC001`).
+fn entry_failure(failure: ImportFailure) -> DiagnosticRecord {
+    match failure {
+        ImportFailure::Unresolved { target, reason } => {
+            record(crate::diag::SOURCE_UNREADABLE, &[&target, &reason], ORIGIN)
+        }
+        failure => import_failure(failure, ORIGIN),
+    }
+}
+
 /// An import target that does not resolve (`KDLITH-IMP001`).
-fn unresolvable(target: &str) -> DiagnosticRecord {
-    record(crate::diag::IMPORT_UNRESOLVED, &[target], ORIGIN)
+fn unresolvable(target: &str, reason: &str) -> DiagnosticRecord {
+    record(crate::diag::IMPORT_UNRESOLVED, &[target, reason], ORIGIN)
 }
 
 /// The identity fingerprint of a resolved profile selection: its kind,

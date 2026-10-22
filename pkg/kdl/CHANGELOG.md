@@ -177,3 +177,10 @@ published yet.
   `KDLITH-BND014`, naming the node, the field, and the selected type,
   and the node is not emitted. The case selector itself stays
   admitted.
+- An entry document named on the command line that cannot be read —
+  missing, or a directory — is reported as `KDLITH-SRC001` with its
+  path and the OS reason on `vet`, `inspect`, `list`, `export`, and
+  the other data verbs, instead of as an unresolved import. A genuine
+  import that does not resolve stays `KDLITH-IMP001`, and its message
+  now names the reason; a directory a discovery expansion cannot list
+  is `KDLITH-SRC001` rather than an anchor fault.

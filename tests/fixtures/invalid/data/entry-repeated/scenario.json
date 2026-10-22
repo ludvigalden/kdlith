@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "An entry document named twice is a rejected repeat (KDLITH-IMP003): entries are never imported, so the second naming reports the already-invoked document rather than a missing one",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/imports.kdl",
+    "input.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}
