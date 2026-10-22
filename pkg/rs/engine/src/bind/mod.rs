@@ -35,7 +35,8 @@ use crate::definition::{
 };
 use crate::diag::{
     CONFLICTING_BINDING, DUPLICATE_KEY, MALFORMED, MISSING_FIELD, NOT_INSTALLED, TYPE_EXPRESSION,
-    UNBOUND_ENTRY, UNKNOWN_MEMBER, UNKNOWN_NODE, VALUE_TYPE, sibling_note,
+    UNBOUND_ENTRY, UNKNOWN_MEMBER, UNKNOWN_NODE, VALUE_TYPE, near_miss_note, nearest_names,
+    sibling_note,
 };
 use crate::names::Sym;
 use crate::overlap;
@@ -342,9 +343,56 @@ impl<'d, 's> Binder<'d, 's> {
         node: &str,
         owner: &str,
         previous: Option<Sibling>,
+        scope: Option<ScopeId>,
     ) {
-        let note = previous.and_then(|sibling| self.sibling_label(span, node, sibling));
-        self.diagnose_noted(cx, UNKNOWN_NODE, span, &[node, owner], note);
+        let mut notes: Vec<Label> = previous
+            .and_then(|sibling| self.sibling_label(span, node, sibling))
+            .into_iter()
+            .collect();
+        let candidates = self.admitted_children(scope);
+        notes.extend(self.near_miss_label(span, node, candidates));
+        self.diagnose_labeled(cx, UNKNOWN_NODE, span, &[node, owner], notes);
+    }
+
+    /// The child names a scope admits under the active profiles.
+    fn admitted_children(&self, scope: Option<ScopeId>) -> Vec<&'d str> {
+        let def = self.def;
+        let Some(id) = scope else {
+            return Vec::new();
+        };
+        let Some(scope) = def.bindings.scope(id) else {
+            return Vec::new();
+        };
+        let at_root = self.window.is_none() && id == def.bindings.root_scope();
+        scope
+            .plans
+            .iter()
+            .filter(|(_, plan)| match plan {
+                ChildPlan::Declared { decl, .. } => def.bindings.get(*decl).is_some_and(|d| {
+                    d.profile.is_none_or(|p| self.profile_chain.contains(&p))
+                        && (!at_root
+                            || self
+                                .profile_roots
+                                .as_ref()
+                                .is_none_or(|roots| d.ty.is_some_and(|ty| roots.contains(&ty))))
+                }),
+                _ => true,
+            })
+            .map(|(sym, _)| def.names.resolve(*sym))
+            .collect()
+    }
+
+    /// A note at the diagnostic's own position naming the admitted names
+    /// nearest to `given`, when any lies within the edit-distance bound.
+    fn near_miss_label<'n>(
+        &mut self,
+        span: ByteSpan,
+        given: &str,
+        admitted: impl IntoIterator<Item = &'n str>,
+    ) -> Option<Label> {
+        let message = near_miss_note(&nearest_names(given, admitted))?;
+        let at = self.locator.locate(span).start;
+        Some(Label::new(Some(self.path.clone()), span, message).with_position(at.line, at.column))
     }
 
     fn sibling_label(&mut self, span: ByteSpan, node: &str, sibling: Sibling) -> Option<Label> {
@@ -397,8 +445,16 @@ impl<'d, 's> Binder<'d, 's> {
                 let expected = summary::expr(&def.names, ty);
                 self.diagnose(cx, VALUE_TYPE, span, &[what, &expected, &found]);
             }
-            Mismatch::Member { ty } => {
-                self.diagnose(cx, UNKNOWN_MEMBER, span, &[what, &ty, &found]);
+            Mismatch::Member { ty: member_of } => {
+                let note = match (value, conceal) {
+                    (Value::String(text), false) => {
+                        let members = enum_members(def, ty);
+                        self.near_miss_label(span, text, members)
+                    }
+                    _ => None,
+                };
+                let notes = note.into_iter().collect();
+                self.diagnose_labeled(cx, UNKNOWN_MEMBER, span, &[what, &member_of, &found], notes);
             }
             Mismatch::TypeExpression { reason } => {
                 let text = match value {
@@ -420,16 +476,16 @@ impl<'d, 's> Binder<'d, 's> {
     }
 
     fn diagnose(&mut self, cx: &mut Cx<'_>, code: &'static str, span: ByteSpan, values: &[&str]) {
-        self.diagnose_noted(cx, code, span, values, None);
+        self.diagnose_labeled(cx, code, span, values, Vec::new());
     }
 
-    fn diagnose_noted(
+    fn diagnose_labeled(
         &mut self,
         cx: &mut Cx<'_>,
         code: &'static str,
         span: ByteSpan,
         values: &[&str],
-        note: Option<Label>,
+        notes: Vec<Label>,
     ) {
         let mut record = DiagnosticRecord::from_code(code)
             .expect("binder diagnostic codes are registered and never retired");
@@ -441,10 +497,7 @@ impl<'d, 's> Binder<'d, 's> {
             .with_source(self.path.clone())
             .with_span(span, Some(at.line), Some(at.column))
             .with_origin("data-document");
-        let record = match note {
-            Some(label) => record.with_label(label),
-            None => record,
-        };
+        let record = notes.into_iter().fold(record, DiagnosticRecord::with_label);
         self.errors += 1;
         cx.emit(BoundItem::Diagnostic(Box::new(record)));
     }
@@ -456,12 +509,13 @@ impl<'d, 's> Binder<'d, 's> {
         owner: &str,
         violation: &Violation,
         previous: Option<Sibling>,
+        scope: Option<ScopeId>,
     ) {
         let code = violation.code();
         let (what, count, expected) = match violation {
             Violation::NotPermitted { child } => {
                 let child = self.name(*child);
-                self.unknown(cx, span, child, owner, previous);
+                self.unknown(cx, span, child, owner, previous, scope);
                 return;
             }
             Violation::FirstNotAllowed { child } | Violation::NotFollowing { child } => {
@@ -2534,7 +2588,7 @@ impl<'s> Processor for Binder<'_, 's> {
             return Disposition::Skip;
         }
         let (Some(sym), Some(scope_id)) = (def.names.get(&node.name), scope) else {
-            self.unknown(cx, span, &node.name, owner_label, previous);
+            self.unknown(cx, span, &node.name, owner_label, previous, scope);
             return Disposition::Skip;
         };
         let Some(scope) = def.bindings.scope(scope_id) else {
@@ -2555,7 +2609,7 @@ impl<'s> Processor for Binder<'_, 's> {
                     Violation::FirstNotAllowed { .. } | Violation::NotFollowing { .. }
                 );
             }
-            self.violation(cx, span, owner_label, &violation, previous);
+            self.violation(cx, span, owner_label, &violation, previous, Some(scope_id));
             return Disposition::Skip;
         }
         let parent_owner = parent.as_ref().map(|p| p.owner);
@@ -2568,7 +2622,7 @@ impl<'s> Processor for Binder<'_, 's> {
             (Some(ChildPlan::Nested(inner)), Some(owner)) => (Kind::Nested, owner, Some(inner)),
             (Some(ChildPlan::Scalar), Some(owner)) => (Kind::Scalar, owner, None),
             _ => {
-                self.unknown(cx, span, &node.name, owner_label, previous);
+                self.unknown(cx, span, &node.name, owner_label, previous, Some(scope_id));
                 return Disposition::Skip;
             }
         };
@@ -2586,7 +2640,7 @@ impl<'s> Processor for Binder<'_, 's> {
                             .is_none_or(|ty| !roots.contains(&ty))
                     }))
             {
-                self.unknown(cx, span, &node.name, owner_label, previous);
+                self.unknown(cx, span, &node.name, owner_label, previous, Some(scope_id));
                 return Disposition::Skip;
             }
         }
@@ -2690,7 +2744,15 @@ impl<'s> Processor for Binder<'_, 's> {
             }
             _ => {
                 let what = format!("property {name}");
-                self.diagnose(cx, UNBOUND_ENTRY, span, &[&what, node]);
+                let bound: Vec<&str> = frame
+                    .table(&self.tables)
+                    .map(|table| table.props.iter().map(|(sym, _)| self.name(*sym)).collect())
+                    .unwrap_or_default();
+                let notes = self
+                    .near_miss_label(span, &name, bound)
+                    .into_iter()
+                    .collect();
+                self.diagnose_labeled(cx, UNBOUND_ENTRY, span, &[&what, node], notes);
             }
         }
     }
@@ -2740,7 +2802,7 @@ impl<'s> Processor for Binder<'_, 's> {
                 if let Some(violations) = compiled {
                     let owner = self.name(frame.name);
                     for violation in violations {
-                        self.violation(cx, frame.span, owner, &violation, None);
+                        self.violation(cx, frame.span, owner, &violation, None, frame.scope);
                     }
                 }
                 ScopeRules::subtree(&state).clone()
@@ -2801,9 +2863,32 @@ impl<'s> Processor for Binder<'_, 's> {
                 if self.order_broken && violation == Violation::FirstMissing {
                     continue;
                 }
-                self.violation(cx, span, DOCUMENT_ROOT, &violation, None);
+                self.violation(cx, span, DOCUMENT_ROOT, &violation, None, None);
             }
         }
+    }
+}
+
+/// The member names of the enum a type expression names, through any
+/// optional or nullable wrapping.
+fn enum_members<'d>(def: &'d Definition, ty: &TypeExpr) -> Vec<&'d str> {
+    let mut ty = ty;
+    while let TypeExpr::Optional(inner) | TypeExpr::Nullable(inner) = ty {
+        ty = inner;
+    }
+    let TypeExpr::Named(name) = ty else {
+        return Vec::new();
+    };
+    match def.types.lookup(*name).and_then(|id| def.types.get(id)) {
+        Some(decl) => match &decl.kind {
+            TypeKind::Enum(enumeration) => enumeration
+                .members
+                .iter()
+                .map(|member| member.name.as_str())
+                .collect(),
+            _ => Vec::new(),
+        },
+        None => Vec::new(),
     }
 }
 

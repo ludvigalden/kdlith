@@ -1,2 +1,3 @@
 note[KDLITH-SCH014]: declaration ticket takes its identity from argument 0's field number, whose type Integer admits values that are not strings
   --> schema.kdl:14:5
+  help: Type the field as a string, or give the declaration an identity block

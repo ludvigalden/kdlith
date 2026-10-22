@@ -1,0 +1,4 @@
+error[KDLITH-BND008]: card.suit expects a member of Suit, found string "club"
+  --> input.kdl:2:16
+  note: did you mean clubs? (input.kdl:2:16)
+  help: Use one of the enum's members

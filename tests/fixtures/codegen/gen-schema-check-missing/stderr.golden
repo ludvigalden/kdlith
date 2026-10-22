@@ -1,11 +1,22 @@
 error[KDLITH-GEN002]: Cargo.toml is missing
+  help: Re-run generation without --check
 error[KDLITH-GEN002]: kdlith-manifest is missing
+  help: Re-run generation without --check
 error[KDLITH-GEN002]: src/bindings/mod.rs is missing
+  help: Re-run generation without --check
 error[KDLITH-GEN002]: src/bindings/schema_kdl.rs is missing
+  help: Re-run generation without --check
 error[KDLITH-GEN002]: src/compile.rs is missing
+  help: Re-run generation without --check
 error[KDLITH-GEN002]: src/contexts/mod.rs is missing
+  help: Re-run generation without --check
 error[KDLITH-GEN002]: src/lib.rs is missing
+  help: Re-run generation without --check
 error[KDLITH-GEN002]: src/processors/mod.rs is missing
+  help: Re-run generation without --check
 error[KDLITH-GEN002]: src/processors/schema_kdl.rs is missing
+  help: Re-run generation without --check
 error[KDLITH-GEN002]: src/types/mod.rs is missing
+  help: Re-run generation without --check
 error[KDLITH-GEN002]: src/types/schema_kdl.rs is missing
+  help: Re-run generation without --check

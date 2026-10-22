@@ -1,3 +1,4 @@
 error[KDLITH-REF002]: config-vars stock.region declared more than once
   --> data.kdl:3:1
   note: first declared here (data.kdl:2:1)
+  help: Rename or remove one declaration

@@ -1,0 +1,4 @@
+error[KDLITH-BND001]: unknown node crad under deck
+  --> input.kdl:2:5
+  note: did you mean card? (input.kdl:2:5)
+  help: Remove the node or use one the schema binds here

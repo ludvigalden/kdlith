@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "Pinned rendering: club names no member of the enum Suit (KDLITH-BND008), and because the member clubs lies within edit distance 2, the error carries a note at the value naming clubs, followed by the code's help line",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/diagnostics/deck.kdl",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": [
+      "error[KDLITH-BND008]",
+      "note: did you mean"
+    ],
+    "stderr-golden": "stderr.golden"
+  }
+}

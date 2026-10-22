@@ -1,0 +1,7 @@
+error[KDLITH-BND005]: property suiit of card is not bound
+  --> input.kdl:2:16
+  note: did you mean suit? (input.kdl:2:16)
+  help: Remove it, or bind it in the schema
+error[KDLITH-BND004]: card is missing required suit
+  --> input.kdl:2:5
+  help: Add the required field

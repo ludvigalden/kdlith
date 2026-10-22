@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "Pinned rendering: property suiit of card is unbound (KDLITH-BND005), and because card's bound property suit lies within edit distance 2, the error carries a note at the property naming suit, followed by the code's help line; the misspelling leaves the required suit unsupplied, so KDLITH-BND004 follows",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/diagnostics/deck.kdl",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": [
+      "error[KDLITH-BND005]",
+      "note: did you mean"
+    ],
+    "stderr-golden": "stderr.golden"
+  }
+}

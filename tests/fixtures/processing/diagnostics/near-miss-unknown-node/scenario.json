@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "Pinned rendering: crad under deck is unknown (KDLITH-BND001), and because the admitted child card lies within edit distance 2, the error carries a note at crad's own position naming card, followed by the code's help line",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/diagnostics/deck.kdl",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": [
+      "error[KDLITH-BND001]",
+      "note: did you mean"
+    ],
+    "stderr-golden": "stderr.golden"
+  }
+}

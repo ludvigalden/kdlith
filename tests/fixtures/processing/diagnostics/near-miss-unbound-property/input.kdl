@@ -1,0 +1,3 @@
+deck {
+    card "Ace" suiit="spades"
+}

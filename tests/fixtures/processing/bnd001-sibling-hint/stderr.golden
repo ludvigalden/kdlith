@@ -1,3 +1,4 @@
 error[KDLITH-BND001]: unknown node tag under the document root
   --> input.kdl:2:5
   note: the sibling item above admits tag as a child — did you mean to nest it there (input.kdl:1:1)
+  help: Remove the node or use one the schema binds here

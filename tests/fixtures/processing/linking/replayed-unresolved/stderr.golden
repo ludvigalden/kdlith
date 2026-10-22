@@ -1,4 +1,6 @@
 error[KDLITH-REF001]: reference nothere in input-sets does not resolve
   --> a.kdl:1:7
+  help: Declare the target or import the document that declares it
 error[KDLITH-REF001]: reference nothere in input-sets does not resolve
   --> b.kdl:1:7
+  help: Declare the target or import the document that declares it

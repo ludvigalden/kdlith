@@ -1,0 +1,24 @@
+// The near-miss scenarios' shared schema: deck admits card and badge as
+// children, card binds title and an enum-typed suit, so each typo below
+// lies within edit distance 2 of exactly one admitted name.
+schema deck version="1" {
+    types {
+        enum Suit {
+            member clubs
+            member diamonds
+            member hearts
+            member spades
+        }
+    }
+    node deck role=container {
+        children card
+        children badge
+    }
+    node card role=record parent=deck {
+        field title String arg=0
+        field suit Suit property=suit
+    }
+    node badge role=record parent=deck {
+        field label String arg=0
+    }
+}

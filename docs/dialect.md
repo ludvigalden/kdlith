@@ -866,6 +866,26 @@ and the note, placed at the sibling's line, asks whether it was meant
 to nest there. Both reading paths attach it, and it renders as an
 indented `note:` line ending in the sibling's `(path:line:column)`.
 
+When the binder reports them, which it does for data documents and
+for definitions read as data of their dialect, an unknown node
+(`KDLITH-BND001`), an unbound property (`KDLITH-BND005`), and an
+unknown enum value (`KDLITH-BND008`) also carry a note naming the nearest admitted names when any lies
+within an edit distance of 2, counted in Unicode scalars: the child
+names the scope admits under the active profiles, the node's bound
+properties, or the enum's members. The note sits at the diagnostic's
+own position and reads `did you mean card?`, or `did you mean one of
+a, b?` when several are equally near; candidates are ordered by
+distance, then by name, so the note is deterministic. A concealed value
+gets no note, and neither does an unbound argument, which has no name
+to compare.
+
+Every rendered diagnostic ends with a `help:` line carrying its code's
+registered correction. Text on stderr is the only diagnostic
+presentation the CLI offers. The machine-readable form is the data
+path's JSON item stream on stdout, whose `diagnostic` items carry the
+whole record: code, severity, source path, span, line and column,
+labels with their positions, related records, and the correction.
+
 The expanded surface adds `KDLITH-SCH011` to this table and retires
 `KDLITH-DLC003` together with the deferral marker
 ([Deferral disposition](#deferral-disposition)). Its other new codes
@@ -1625,6 +1645,7 @@ What there is to show depends on the view.
   ```text
   error[KDLITH-SCH001]: unknown type Missing
     --> input.kdl:3:9
+    help: Declare the type or import the schema that declares it
   kdlith: the plan view needs the compiled definition, which did not compile
   ```
 

@@ -49,5 +49,8 @@ fn render(record: &DiagnosticRecord) -> String {
             line.push(')');
         }
     }
+    if !record.correction.is_empty() {
+        let _ = write!(line, "\n  help: {}", record.correction);
+    }
     line
 }

@@ -1,2 +1,3 @@
 error[KDLITH-BND010]: key 8080 of ports.values decodes under Port to number 8080, which no map key holds
   --> data.kdl:2:7
+  help: Declare the map's key type as a string type, a codec yielding a string, or a reference type

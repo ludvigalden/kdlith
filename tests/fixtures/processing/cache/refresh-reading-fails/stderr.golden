@@ -1,3 +1,4 @@
 error[KDLITH-BND004]: part is missing required id
   --> other.kdl:2:1
+  help: Add the required field
 kdlith: the reading failed; state was left unchanged

@@ -1,2 +1,3 @@
 error[KDLITH-CTX001]: context region is not available here
   --> broken.kdl:2:1
+  help: Nest the node under a control that provides the context

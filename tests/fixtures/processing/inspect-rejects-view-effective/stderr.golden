@@ -1,1 +1,2 @@
 error[KDLITH-DLC010]: contribution resolution failed: Option mode is contributed more than once in layer user
+  help: Contribute each target once per layer, contribute every referenced target, and use only declared layers; or relax the policy

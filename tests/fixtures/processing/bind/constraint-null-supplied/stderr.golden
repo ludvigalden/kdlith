@@ -1,4 +1,6 @@
 error[KDLITH-BND011]: item violates requires a b of Item: a is supplied but b is absent
   --> data.kdl:2:1
+  help: Supply the absent field, or remove the field that requires it
 error[KDLITH-BND011]: item violates all-or-none a b of Item: a is supplied but b is absent
   --> data.kdl:2:1
+  help: Supply the absent field, or remove the field that requires it

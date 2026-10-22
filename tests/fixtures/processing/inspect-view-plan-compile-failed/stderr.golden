@@ -1,3 +1,4 @@
 error[KDLITH-SCH001]: unknown type Missing
   --> input.kdl:3:9
+  help: Declare the type or import the schema that declares it
 kdlith: the plan view needs the compiled definition, which did not compile

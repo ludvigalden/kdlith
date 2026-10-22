@@ -184,3 +184,9 @@ published yet.
   import that does not resolve stays `KDLITH-IMP001`, and its message
   now names the reason; a directory a discovery expansion cannot list
   is `KDLITH-SRC001` rather than an anchor fault.
+- Every diagnostic on stderr ends with a `help:` line carrying its
+  code's correction, which until now only the JSON item stream showed.
+  An unknown node, an unbound property, and an unknown enum value also
+  carry a `did you mean …?` note naming the nearest admitted names
+  within edit distance 2, which the JSON stream carries as a positioned
+  label.

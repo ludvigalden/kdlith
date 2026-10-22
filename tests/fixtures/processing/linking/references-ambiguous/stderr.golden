@@ -1,2 +1,3 @@
 error[KDLITH-REF003]: reference region in config-vars is ambiguous between stock.region, plan.region
   --> data.kdl:1:5
+  help: Qualify the reference so its lookup policy derives exactly one declaration

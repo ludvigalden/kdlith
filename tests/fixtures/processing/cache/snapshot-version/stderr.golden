@@ -1,2 +1,4 @@
 error[KDLITH-CAC002]: cache entry state/18f93b1853515e00.kdlith-snapshot is unusable: written as "kdlith-snapshot format=1 canonicalization=1", not this version's "kdlith-snapshot format=2 canonicalization=2"
+  help: Run cache clean to remove it, then cache refresh to derive it again
 error[KDLITH-CAC002]: cache entry state/da80e2319bfa34ae.kdlith-snapshot is unusable: written as "kdlith-snapshot format=2 canonicalization=3", not this version's "kdlith-snapshot format=2 canonicalization=2"
+  help: Run cache clean to remove it, then cache refresh to derive it again

@@ -1,3 +1,4 @@
 error[KDLITH-REF001]: reference region in config-vars does not resolve
   --> data.kdl:4:5
+  help: Declare the target or import the document that declares it
 kdlith: exported 3 items to stdout

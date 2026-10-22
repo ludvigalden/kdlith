@@ -1,4 +1,6 @@
 error[KDLITH-REF001]: reference s9 in Setting does not resolve
   --> data.kdl:3:11
+  help: Declare the target or import the document that declares it
 error[KDLITH-REF005]: pending payload of put-count under codec fixture-value does not match Integer: found string "two"
   --> data.kdl:2:11
+  help: Write the payload as the referenced declaration's member type declares it: a list member takes zero or more values, any other member exactly one, and an optional member none or one

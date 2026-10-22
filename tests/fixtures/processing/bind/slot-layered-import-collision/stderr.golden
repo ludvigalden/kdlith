@@ -1,2 +1,3 @@
 error[KDLITH-CTX006]: context lay under duplicates=layered receives a second value from layer base at line 1 column 6 while it holds one from layer base at source 0 line 1 column 6
   --> part.kdl:1:1
+  help: Remove the held value before setting the slot again, or declare duplicates=last-wins or duplicates=layered on the slot

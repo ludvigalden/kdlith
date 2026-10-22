@@ -184,6 +184,53 @@ pub(crate) fn sibling_note(sibling: &str, child: &str) -> String {
     format!("the sibling {sibling} above admits {child} as a child — did you mean to nest it there")
 }
 
+/// The admitted names nearest to `given`, for a note naming what was
+/// probably meant: Unicode-scalar edit distance within 2, ties broken by
+/// the sorted name, never the name itself.
+pub(crate) fn nearest_names<'a>(
+    given: &str,
+    admitted: impl IntoIterator<Item = &'a str>,
+) -> Vec<String> {
+    let mut found: Vec<(usize, String)> = admitted
+        .into_iter()
+        .filter_map(|name| {
+            let distance = levenshtein(given, name);
+            (distance > 0 && distance <= 2).then(|| (distance, name.to_owned()))
+        })
+        .collect();
+    found.sort();
+    found.dedup_by(|a, b| a.1 == b.1);
+    found.into_iter().map(|(_, name)| name).collect()
+}
+
+/// The note text naming the nearest admitted names, when any are close.
+pub(crate) fn near_miss_note(candidates: &[String]) -> Option<String> {
+    match candidates {
+        [] => None,
+        [one] => Some(format!("did you mean {one}?")),
+        many => Some(format!("did you mean one of {}?", many.join(", "))),
+    }
+}
+
+/// Levenshtein distance over Unicode scalars.
+fn levenshtein(a: &str, b: &str) -> usize {
+    let a: Vec<char> = a.chars().collect();
+    let b: Vec<char> = b.chars().collect();
+    if a.is_empty() {
+        return b.len();
+    }
+    let mut row: Vec<usize> = (0..=b.len()).collect();
+    for (i, ca) in a.iter().enumerate() {
+        let mut next = vec![i + 1];
+        for (j, cb) in b.iter().enumerate() {
+            let cost = usize::from(ca != cb);
+            next.push((row[j] + cost).min(row[j + 1] + 1).min(next[j] + 1));
+        }
+        row = next;
+    }
+    row[b.len()]
+}
+
 /// A record placed at a span of a parsed document.
 pub(crate) fn located(
     record: DiagnosticRecord,

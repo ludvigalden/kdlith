@@ -1,1 +1,2 @@
 error[KDLITH-CAC003]: cannot read state: not a directory
+  help: Check the state path and its permissions

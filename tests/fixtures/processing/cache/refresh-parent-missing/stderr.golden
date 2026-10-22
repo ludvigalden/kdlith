@@ -1,1 +1,2 @@
 error[KDLITH-CAC003]: cannot create missing/state: No such file or directory (os error 2)
+  help: Check the state path and its permissions
