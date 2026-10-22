@@ -667,6 +667,16 @@ pub const CODES: &[CodeDefinition] = &[
         correction: "Supply exactly the permitted number of the listed fields",
         retired: false,
     },
+    CodeDefinition {
+        code: "KDLITH-BND014",
+        label: "off-type-field",
+        severity: Severity::Error,
+        exit_class: 1,
+        trigger: "a node that a cases dispatch binds as an object type holds a value for a field that type does not declare, however the field came to hold it; the case selector itself is always admitted",
+        message_template: "<node> binds <field>, which <type> does not declare",
+        correction: "Remove the field, or spell the case the type belongs under",
+        retired: false,
+    },
     // CTX
     CodeDefinition {
         code: "KDLITH-CTX001",

@@ -1,0 +1,4 @@
+button "Save" variant="plain"
+button "Save" variant="icon" {
+    icon "floppy"
+}

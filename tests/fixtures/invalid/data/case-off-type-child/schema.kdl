@@ -1,0 +1,26 @@
+schema ui version="1" {
+    types {
+        object Icon { field glyph String }
+        object Plain {
+            field variant String
+            field label String
+        }
+        object WithIcon {
+            field variant String
+            field label String
+            field icon Icon
+        }
+    }
+    node button role=record {
+        field variant String property=variant
+        field label String arg=0
+        field icon "optional<Icon>" child=icon
+        cases {
+            case property=variant equals="icon" type=WithIcon
+            otherwise type=Plain
+        }
+    }
+    node icon type=Icon parent=button {
+        field glyph arg=0
+    }
+}

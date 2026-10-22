@@ -1,0 +1,20 @@
+{
+  "binary": "kdlith",
+  "description": "The case selector property is dispatch input, not payload: a node holding it binds valid as a selected type that does not declare it, and a held field the selected type declares binds with it",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"type_name\":\"Plain\",\"fields\":[{\"name\":\"variant\",\"value\":{\"kind\":\"string\",\"value\":\"plain\"}",
+      "\"type_name\":\"WithIcon\",\"fields\":[{\"name\":\"variant\",\"value\":{\"kind\":\"string\",\"value\":\"icon\"}",
+      "{\"name\":\"icon\",\"value\":{\"kind\":\"map\",\"value\":[{\"key\":\"glyph\",\"value\":{\"kind\":\"string\",\"value\":\"floppy\"}}]}",
+      "\"validation\":\"valid\""
+    ]
+  }
+}

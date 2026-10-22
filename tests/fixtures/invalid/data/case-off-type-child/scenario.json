@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A node whose case dispatch selects an object type holds a child-bound field that type does not declare, so the field is off-type",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

@@ -172,3 +172,8 @@ published yet.
   runs first, then the first such variant in declaration order binds
   the value, so a union can hold a literal number beside a prefixed
   template variant.
+- A node whose `cases` dispatch selects an object type no longer binds
+  a field that type does not declare: such a field is refused with
+  `KDLITH-BND014`, naming the node, the field, and the selected type,
+  and the node is not emitted. The case selector itself stays
+  admitted.

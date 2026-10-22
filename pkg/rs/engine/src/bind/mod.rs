@@ -65,6 +65,7 @@ const UNSUPPORTED_KEY: &str = "KDLITH-BND010";
 const CONSTRAINT_VIOLATED: &str = "KDLITH-BND011";
 const OUT_OF_BOUND: &str = "KDLITH-BND012";
 const EXCLUSIVITY_VIOLATED: &str = "KDLITH-BND013";
+const OFF_TYPE_FIELD: &str = "KDLITH-BND014";
 
 const DOCUMENT_ROOT: &str = "the document root";
 
@@ -1158,6 +1159,41 @@ impl<'d, 's> Binder<'d, 's> {
         }
     }
 
+    /// A case-selected object type's closed shape: a field the node holds
+    /// a value for that the selected type does not declare is refused
+    /// (`KDLITH-BND014`), however it came to hold one. The case selector
+    /// is dispatch input, not payload, so it is always admitted.
+    fn selected_off_type(
+        &mut self,
+        cx: &mut Cx<'_>,
+        frame: &BindFrame,
+        values: &[Option<Value>],
+        typed_as: Option<Sym>,
+        selected_on: Option<Sym>,
+    ) {
+        let own = self.def.bindings.get(frame.owner).and_then(|decl| decl.ty);
+        let Some(selected) = typed_as.filter(|selected| Some(*selected) != own) else {
+            return;
+        };
+        let Some(object) = self.object_type(selected) else {
+            return;
+        };
+        let off_type: Vec<Sym> = self.tables.decls[frame.owner.index()]
+            .fields
+            .iter()
+            .zip(values)
+            .filter(|(info, value)| value.is_some() && Some(info.name) != selected_on)
+            .map(|(info, _)| info.name)
+            .filter(|name| object.fields.iter().all(|field| field.name != *name))
+            .collect();
+        let node = self.name(frame.name);
+        let type_name = self.name(selected);
+        for field in off_type {
+            let field = self.name(field);
+            self.diagnose(cx, OFF_TYPE_FIELD, frame.span, &[node, field, type_name]);
+        }
+    }
+
     /// Whether the node holds a value for the field named `name`. `#null`
     /// and an empty collection are values; only a field holding none is
     /// absent.
@@ -2223,6 +2259,7 @@ impl<'d, 's> Binder<'d, 's> {
         };
         let errors = self.errors;
         self.selected_required(cx, frame, &values, typed_as);
+        self.selected_off_type(cx, frame, &values, typed_as, selected_on);
         self.constraints(cx, frame, &values, typed_as);
         if self.errors > errors {
             let bind = parent
