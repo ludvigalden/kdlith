@@ -253,6 +253,10 @@ struct ProfileArgs {
     /// default's one dependency. No other source is ever read
     #[arg(long, value_name = "FILE")]
     resolve_from: Option<PathBuf>,
+    /// The most sources one reading invokes, entry documents and
+    /// imports together (default 1024)
+    #[arg(long, value_name = "N", value_parser = clap::value_parser!(u32).range(1..))]
+    max_invocations: Option<u32>,
 }
 
 impl ProfileArgs {
@@ -279,7 +283,8 @@ impl ProfileArgs {
         };
         Ok(DataOptions::new(anchors, self.profile, handlers)
             .with_profiles(set)
-            .with_resolver(resolver))
+            .with_resolver(resolver)
+            .with_max_invocations(self.max_invocations))
     }
 }
 

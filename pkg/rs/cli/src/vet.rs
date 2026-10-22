@@ -166,6 +166,7 @@ pub struct DataOptions {
     handlers: Vec<String>,
     resolver: Option<SharedResolver>,
     scope: CheckScope,
+    max_invocations: Option<u32>,
 }
 
 impl DataOptions {
@@ -182,7 +183,17 @@ impl DataOptions {
             handlers,
             resolver: None,
             scope: CheckScope::Complete,
+            max_invocations: None,
         }
+    }
+
+    /// The same options bounding one reading at `max` invocations,
+    /// entries and imports together, or at the engine's default when it
+    /// is `None`.
+    #[must_use]
+    pub fn with_max_invocations(mut self, max: Option<u32>) -> Self {
+        self.max_invocations = max;
+        self
     }
 
     /// The same options checking the reading under `scope`: complete
@@ -277,12 +288,15 @@ impl DataOptions {
         definition_extensions().with_installed_handlers(&self.registry())
     }
 
-    /// The reader options: the named profile or profile set and the
-    /// supplied anchors.
+    /// The reader options: the named profile or profile set, the
+    /// supplied anchors, and the invocation bound.
     pub(crate) fn read_options(&self) -> ReadOptions {
         let mut options = ReadOptions::new().with_profiles(self.profiles.iter().cloned());
         if let Some(profile) = &self.profile {
             options = options.with_profile(profile.clone());
+        }
+        if let Some(max) = self.max_invocations {
+            options = options.with_max_invocations(max as usize);
         }
         for (name, path) in &self.anchors {
             options = options.with_anchor(name.clone(), path.clone());

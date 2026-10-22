@@ -329,6 +329,21 @@ only the projected slots, so its mutations never reach the caller. Local
 checking (`--scope local`) reads the named documents alone and follows
 no imports.
 
+One reading invokes at most 1024 sources by default. Entry documents
+and import instantiations count against the same bound: a reading of
+1025 entry documents with no imports exceeds it, as does one entry
+whose imports instantiate 1024 more. The invocation past the bound is
+refused with `KDLITH-SRC003`, whose message names the invocation count
+of entries plus imports. The documents invoked before it are bound and
+streamed, and the reading fails. The bound is configurable:
+`--max-invocations N` (a positive integer) on every data verb
+(`vet data`, `inspect data`, `read data`, `list items`,
+`cache refresh`, and `export`), and `ReadOptions::with_max_invocations`
+for a host reading in process. Reading entries in separate batches
+instead also stays under the bound, but then each batch links its
+references on its own, so a reference that crosses batches does not
+resolve. The import depth bound (64) is separate and fixed.
+
 An import expression is evaluated under the discovery grammar the
 active profile (or the schema root, when no profiles are declared)
 binds; a schema binding no grammar evaluates literal paths only. An

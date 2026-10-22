@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "--max-invocations bounds one reading's invocations, entry documents counted alongside imports: four entry documents with no imports under a bound of 3 bind the first three and refuse the fourth with the source limit code",
+  "args": [
+    "vet",
+    "data",
+    "--max-invocations",
+    "3",
+    "--schema",
+    "{fx-suite}/processing/bind/imports.kdl",
+    "a.kdl",
+    "b.kdl",
+    "c.kdl",
+    "d.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

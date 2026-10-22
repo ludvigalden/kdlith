@@ -179,6 +179,13 @@ published yet.
   their serialized form. The design record documents the stream order:
   node indexes count in document order as nodes open, and an item
   follows the items nested in it.
+- The bound on how many sources one reading invokes (default 1024,
+  entry documents and import instantiations together) is configurable
+  through `--max-invocations N` on every data verb and
+  `ReadOptions::with_max_invocations`, and documented. Its
+  `KDLITH-SRC003` message now names the invocation count of entries
+  plus imports instead of an import count, and the correction points at
+  reading smaller batches or raising the limit.
 
 ### Fixed
 

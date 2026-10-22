@@ -12,7 +12,9 @@ use crate::context::{Context, ContextError, SlotId, stable_hash, stable_hash_ste
 /// Imports nest at most this deep; deeper chains fail closed.
 pub const MAX_IMPORT_DEPTH: usize = 64;
 
-/// One session invokes at most this many sources.
+/// One session invokes at most this many sources by default: entry
+/// documents and import instantiations alike. A host raises or lowers
+/// the bound with [`Invocations::with_limit`].
 pub const MAX_INVOCATIONS: usize = 1024;
 
 /// One invocation of a source.
@@ -251,10 +253,12 @@ pub enum ImportFailure {
 }
 
 /// The invocations of one session and its active stack.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Invocations {
     invocations: Vec<Invocation>,
     active: Vec<InvocationId>,
+    /// The most invocations the session admits, entries included.
+    limit: usize,
     /// The schema fingerprint every invocation of the session binds
     /// under; recorded on each invocation as it is admitted.
     schema: u64,
@@ -263,9 +267,31 @@ pub struct Invocations {
     profiles: u64,
 }
 
+impl Default for Invocations {
+    fn default() -> Self {
+        Self {
+            invocations: Vec::new(),
+            active: Vec::new(),
+            limit: MAX_INVOCATIONS,
+            schema: 0,
+            profiles: 0,
+        }
+    }
+}
+
 impl Invocations {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Admit at most `limit` invocations in the session — entry
+    /// documents and import instantiations together — in place of
+    /// [`MAX_INVOCATIONS`]. The invocation past the bound fails closed
+    /// with [`ImportFailure::Limit`].
+    #[must_use]
+    pub fn with_limit(mut self, limit: usize) -> Self {
+        self.limit = limit;
+        self
     }
 
     /// Record the schema fingerprint every invocation of the session
@@ -481,10 +507,10 @@ impl Invocations {
         caller: Option<InvocationId>,
         policy: Repeated,
     ) -> Result<InvocationId, ImportFailure> {
-        if self.invocations.len() >= MAX_INVOCATIONS {
+        if self.invocations.len() >= self.limit {
             return Err(ImportFailure::Limit {
-                limit: "import count",
-                max: MAX_INVOCATIONS,
+                limit: "invocation count (entries plus imports)",
+                max: self.limit,
             });
         }
         let context_fingerprint = context.fingerprint();

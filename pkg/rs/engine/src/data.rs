@@ -10,7 +10,7 @@ use kdlith_diagnostic::DiagnosticRecord;
 use kdlith_model::{ImportRequest, Item, SourceDocument, SourceId};
 use kdlith_runtime::{
     Admission, Context, ContributionRecord, Derivation, Handlers, ImportFailure, InvocationId,
-    InvocationIdentity, Invocations, SlotId, SlotValue, snapshot_key, stable_hash,
+    InvocationIdentity, Invocations, MAX_INVOCATIONS, SlotId, SlotValue, snapshot_key, stable_hash,
     stable_hash_step,
 };
 
@@ -52,6 +52,7 @@ pub struct ReadOptions {
     profiles: Vec<String>,
     anchors: Vec<(String, PathBuf)>,
     output_policy: Option<OutputPolicy>,
+    max_invocations: Option<usize>,
 }
 
 impl ReadOptions {
@@ -93,6 +94,16 @@ impl ReadOptions {
     #[must_use]
     pub fn with_output_policy(mut self, policy: OutputPolicy) -> Self {
         self.output_policy = Some(policy);
+        self
+    }
+
+    /// Admit at most `max` invocations in one reading — the entry
+    /// documents and every import instantiation together — in place of
+    /// the default [`MAX_INVOCATIONS`]. The invocation past the bound
+    /// fails closed (`KDLITH-SRC003`).
+    #[must_use]
+    pub fn with_max_invocations(mut self, max: usize) -> Self {
+        self.max_invocations = Some(max);
         self
     }
 
@@ -669,7 +680,9 @@ impl<'d> DataReader<'d> {
             supplied: options.anchors.clone(),
             texts: &mut give,
             entering: if armed { Some(&mut enter) } else { None },
-            invocations: Invocations::new().with_schema_fingerprint(self.schema_fingerprint()),
+            invocations: Invocations::new()
+                .with_limit(options.max_invocations.unwrap_or(MAX_INVOCATIONS))
+                .with_schema_fingerprint(self.schema_fingerprint()),
             syntax: HashMap::new(),
             held: HashMap::new(),
             bound: HashMap::new(),

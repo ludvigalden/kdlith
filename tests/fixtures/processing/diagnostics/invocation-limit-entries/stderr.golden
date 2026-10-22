@@ -1,0 +1,2 @@
+error[KDLITH-SRC003]: invocation count (entries plus imports) limit 1 exceeded
+  help: Read the documents in smaller batches or raise the invocation limit (--max-invocations); make a document past a size or nesting limit smaller

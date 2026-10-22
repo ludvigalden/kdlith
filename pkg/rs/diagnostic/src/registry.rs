@@ -197,9 +197,9 @@ pub const CODES: &[CodeDefinition] = &[
         label: "source-limit-exceeded",
         severity: Severity::Error,
         exit_class: 1,
-        trigger: "a configured source, token, string, nesting, or record limit is exceeded before allocation",
+        trigger: "a configured source, token, string, nesting, record, or invocation limit is exceeded before allocation",
         message_template: "<limit> limit <max> exceeded",
-        correction: "Split the document or raise the configured limit",
+        correction: "Read the documents in smaller batches or raise the invocation limit (--max-invocations); make a document past a size or nesting limit smaller",
         retired: false,
     },
     // SYN

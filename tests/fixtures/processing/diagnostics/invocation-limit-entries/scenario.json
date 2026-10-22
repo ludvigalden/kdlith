@@ -1,0 +1,22 @@
+{
+  "binary": "kdlith",
+  "description": "Pinned rendering: an entries-only reading past --max-invocations 1 (two entry documents, no imports) is refused with KDLITH-SRC003, whose message counts entries plus imports rather than imports alone and whose help line points at batching and at the invocation limit, never at splitting a document",
+  "args": [
+    "vet",
+    "data",
+    "--max-invocations",
+    "1",
+    "--schema",
+    "{fx-suite}/processing/bind/imports.kdl",
+    "a.kdl",
+    "b.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": [
+      "error[KDLITH-SRC003]",
+      "entries plus imports"
+    ],
+    "stderr-golden": "stderr.golden"
+  }
+}
