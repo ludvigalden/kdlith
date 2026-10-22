@@ -3,7 +3,7 @@
 //! unambiguous, and dependent targets must resolve.
 
 use crate::bindings::{
-    BindingCatalog, Effect, EffectTarget, NodeDecl, NodeDeclId, Placement, SetFrom, Source,
+    BindingCatalog, Effect, EffectTarget, NodeDecl, NodeDeclId, SetFrom, Source,
 };
 use crate::compile::Cx;
 use crate::definition::{DefinitionKind, SlotDuplicates};
@@ -308,16 +308,14 @@ fn node_refs(cx: &mut Cx<'_>, bindings: &BindingCatalog, symbols: &SymbolCatalog
         let spelled = format!("{} of node {label}", cx.names.resolve(profile));
         unresolved(cx, node.site, "profile", &spelled);
     }
-    if let Placement::Under(parents) = &node.placement {
-        for parent in parents {
-            let owned = bindings
-                .scopes()
-                .iter()
-                .any(|scope| scope.name == Some(*parent));
-            if !owned {
-                let spelled = format!("{} of node {label}", cx.names.resolve(*parent));
-                unresolved(cx, node.site, "parent", &spelled);
-            }
+    for parent in node.placement.parents() {
+        let owned = bindings
+            .scopes()
+            .iter()
+            .any(|scope| scope.name == Some(*parent));
+        if !owned {
+            let spelled = format!("{} of node {label}", cx.names.resolve(*parent));
+            unresolved(cx, node.site, "parent", &spelled);
         }
     }
     for field in &node.fields {
@@ -598,7 +596,7 @@ fn document_rule(cx: &mut Cx<'_>, bindings: &BindingCatalog) {
     for name in named {
         let root = bindings
             .iter()
-            .any(|(_, node)| node.name == *name && node.placement == Placement::Root);
+            .any(|(_, node)| node.name == *name && node.placement.at_root());
         if !root {
             let spelled = cx.names.resolve(*name).to_owned();
             unresolved(cx, rule.site, "root node", &spelled);

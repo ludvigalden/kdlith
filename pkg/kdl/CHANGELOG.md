@@ -160,6 +160,13 @@ published yet.
   members is the new `KDLITH-SCH015`, and a member naming no declared
   node or a child spelled both directly and through a group is
   `KDLITH-SCH005`.
+- `root=#true` on a node declaration that also gives `parent=` or
+  `parents` admits the node at the document root as well, so a
+  recursive container that may also start a document needs one
+  declaration instead of two; this changes the canonical dialect
+  digest. `list nodes` reports such a node as `parent=root,` followed by
+  its parents. An unbound property whose name the node admits as a
+  child now carries a note saying to write it as that child.
 
 ### Fixed
 

@@ -1,6 +1,8 @@
 //! Reading `node` declarations: roles, placement, field bindings and
 //! their sources, child rules, effect groups, and exactly-one groups.
 
+use kdlith_model::Value;
+
 use crate::bindings::{
     BindingCodec, CaseRule, ChildRule, Collision, ContextPolicy, DependentBinding, DuplicateKeys,
     Effect, EffectGroup, EffectTarget, FieldBinding, NodeAnnotation, NodeDecl, Placement, Role,
@@ -9,6 +11,7 @@ use crate::bindings::{
 use crate::compile::Cx;
 use crate::compile::reader::Construct;
 use crate::compile::types::field_name;
+use crate::decode::found;
 use crate::diag::{INVALID_BINDING, NOT_INSTALLED, Site, duplicate_key};
 use crate::names::Sym;
 use crate::syntax::{SyntaxNode, parse_u64};
@@ -24,6 +27,7 @@ pub(crate) fn declaration(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) {
     let role = construct.string_prop(cx, "role");
     let ty = construct.string_prop(cx, "type");
     let parent = construct.string_prop(cx, "parent");
+    let root = construct.value_prop("root");
     let description = construct.string_prop(cx, "description");
     construct.finish(cx);
     let Some(name) = name else { return };
@@ -38,6 +42,14 @@ pub(crate) fn declaration(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) {
             None
         }
     });
+    let root = match root {
+        None => false,
+        Some(Value::Bool(flag)) => flag,
+        Some(other) => {
+            cx.mistyped(site, "the root property of node", "Bool", &found(&other));
+            return;
+        }
+    };
     let typed = ty.is_some();
     let ty = ty
         .filter(|ty| cx.type_name(site, &label, ty))
@@ -189,10 +201,10 @@ pub(crate) fn declaration(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) {
         name: cx.names.intern(&name),
         role,
         ty,
-        placement: if under.is_empty() {
-            Placement::Root
-        } else {
-            Placement::Under(under)
+        placement: match (under.is_empty(), root) {
+            (true, _) => Placement::Root,
+            (false, false) => Placement::Under(under),
+            (false, true) => Placement::RootAndUnder(under),
         },
         parent_group: None,
         profile: None,

@@ -1,0 +1,10 @@
+schema notes version="1" {
+    types {
+        object Note {
+            field title String
+        }
+    }
+    node note role=record type=Note root=#true {
+        field title arg=0
+    }
+}

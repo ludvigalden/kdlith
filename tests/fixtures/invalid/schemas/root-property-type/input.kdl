@@ -1,0 +1,11 @@
+schema cards version="1" {
+    types {
+        object Stack {
+            field title "optional<String>"
+        }
+    }
+    node stack role=record type=Stack root="yes" {
+        parents stack
+        field title property=title
+    }
+}

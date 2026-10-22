@@ -598,6 +598,7 @@ fn node_input(node: NodeDef) -> NodeInput {
             .parent_group
             .as_ref()
             .map(|group| group.as_str().to_owned()),
+        root: node.root,
         profile: node
             .profile
             .as_ref()

@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A root=#true declaration already admits stack at the root, so a second root declaration of stack is a duplicate (parent, name) dispatch pair (KDLITH-SCH004), not a merge",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

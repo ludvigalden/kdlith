@@ -761,6 +761,7 @@ impl Emission<'_> {
             .map(|node| NodeEntry {
                 name: self.names.resolve(node.name).to_owned(),
                 parents: placement_parents(&node.placement, self.names),
+                root: matches!(node.placement, kdlith_engine::Placement::RootAndUnder(_)),
                 role: node.role,
                 ty: node.ty.map(|ty| self.names.resolve(ty).to_owned()),
             })
@@ -1399,6 +1400,7 @@ fn push_unique(values: &mut Vec<String>, value: &str) {
 struct NodeEntry {
     name: String,
     parents: Vec<String>,
+    root: bool,
     role: Option<Role>,
     ty: Option<String>,
 }
@@ -1408,16 +1410,11 @@ pub(crate) fn placement_parents(
     placement: &kdlith_engine::Placement,
     names: &Names,
 ) -> Vec<String> {
-    match placement {
-        kdlith_engine::Placement::Root => Vec::new(),
-        kdlith_engine::Placement::Under(parents) => parents
-            .iter()
-            .map(|parent| names.resolve(*parent).to_owned())
-            .collect(),
-        // A placement kind this version does not know binds nowhere the
-        // tables spell; no parent list is emitted for it.
-        _ => Vec::new(),
-    }
+    placement
+        .parents()
+        .iter()
+        .map(|parent| names.resolve(*parent).to_owned())
+        .collect()
 }
 
 /// One node declaration's `NodeShape` entry, wrapped per the pinned
@@ -1436,6 +1433,9 @@ fn node_shape(entry: &NodeEntry, constant: Option<&str>) -> String {
                     .collect::<Vec<_>>()
                     .join(", ")
             )),
+        }
+        if entry.root {
+            segments.push(".also_root()".to_owned());
         }
     }
     if let Some(role) = entry.role {

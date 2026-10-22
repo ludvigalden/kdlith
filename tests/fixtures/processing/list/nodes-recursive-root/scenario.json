@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "list nodes renders a root=#true declaration placed under parents as parent=root followed by its sorted parents, so one line shows both admissions; stdout is pinned byte for byte and stderr is empty",
+  "args": [
+    "list",
+    "nodes",
+    "--schema",
+    "{fx-suite}/schemas/vet/recursive-root/schema.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

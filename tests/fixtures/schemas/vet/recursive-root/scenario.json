@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "One declaration admits a recursive container both at the root and nested in itself: stack carries root=#true beside parents stack, so the schema needs no second root declaration and the summary counts two node declarations; the no-op spelling (root=#true on a node with neither parent= nor parents, still a root node) is pinned by the twin scenario schemas/vet/recursive-root-no-op",
+  "args": [
+    "vet",
+    "schema",
+    "schema.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "ok: schema cards version 1 scope=complete documents=1 types=3 nodes=2 slots=0 profiles=0 digest=5cfa1a387b8eed9c"
+    ]
+  }
+}

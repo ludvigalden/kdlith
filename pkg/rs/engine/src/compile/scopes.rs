@@ -6,7 +6,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use crate::bindings::{
     Arity, BindingCatalog, ChildPlan, ChildRule, DescendantRule, NodeDecl, NodeDeclId, ParentKey,
-    Placement, Scope, ScopeId, SequenceDecl, SequenceStep, Source,
+    Scope, ScopeId, SequenceDecl, SequenceStep, Source,
 };
 use crate::compile::Cx;
 use crate::definition::CheckScope;
@@ -96,10 +96,13 @@ pub(crate) fn build(cx: &mut Cx<'_>) -> BindingCatalog {
 fn dispatch_table(cx: &mut Cx<'_>, nodes: &[NodeDecl]) -> BTreeMap<(ParentKey, Sym), NodeDeclId> {
     let mut dispatch = BTreeMap::new();
     for (at, decl) in nodes.iter().enumerate() {
-        let parents: Vec<ParentKey> = match &decl.placement {
-            Placement::Root => vec![ParentKey::Root],
-            Placement::Under(parents) => parents.iter().map(|p| ParentKey::Under(*p)).collect(),
-        };
+        let root = decl.placement.at_root().then_some(ParentKey::Root);
+        let under = decl
+            .placement
+            .parents()
+            .iter()
+            .map(|p| ParentKey::Under(*p));
+        let parents: Vec<ParentKey> = root.into_iter().chain(under).collect();
         for parent in parents {
             if let Some(earlier) = dispatch.insert((parent, decl.name), NodeDeclId::from_index(at))
             {
@@ -129,7 +132,7 @@ fn entry_keys(nodes: &[NodeDecl]) -> BTreeMap<usize, Vec<u64>> {
                 continue;
             };
             for (at, target) in nodes.iter().enumerate() {
-                let placed = matches!(&target.placement, Placement::Under(parents) if parents.contains(&owner.name));
+                let placed = target.placement.parents().contains(&owner.name);
                 if target.name == *node && placed {
                     let list = keys.entry(at).or_default();
                     if !list.contains(key) {

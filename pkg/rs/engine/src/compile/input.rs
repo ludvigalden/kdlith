@@ -237,6 +237,9 @@ pub struct NodeInput {
     /// The node group the `parents` child names with `group=`: the node
     /// is placed under every member as well.
     pub parent_group: Option<String>,
+    /// `root=`: with `#true`, a node placed under parents is admitted at
+    /// the root as well.
+    pub root: Option<bool>,
     /// The profile the declaration belongs to (`profile=NAME`).
     pub profile: Option<String>,
     pub fields: Vec<FieldBindingInput>,

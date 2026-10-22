@@ -1,0 +1,5 @@
+error[KDLITH-BND005]: property parents of node is not bound
+  --> schema.kdl:7:39
+  note: parents is a child here: write it as a `parents` child (schema.kdl:7:39)
+  note: did you mean parent? (schema.kdl:7:39)
+  help: Remove it, or bind it in the schema

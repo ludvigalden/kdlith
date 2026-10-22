@@ -149,6 +149,8 @@ pub struct NodeShape {
     pub name: &'static str,
     /// The parents it may appear under; empty for a root node.
     pub parents: &'static [&'static str],
+    /// Admitted at the root as well as under `parents` (`root=#true`).
+    pub root: bool,
     pub role: Option<Role>,
     pub ty: Option<&'static str>,
 }
@@ -159,6 +161,7 @@ impl NodeShape {
         Self {
             name,
             parents: &[],
+            root: false,
             role: None,
             ty: None,
         }
@@ -167,6 +170,17 @@ impl NodeShape {
     pub const fn under(mut self, parents: &'static [&'static str]) -> Self {
         self.parents = parents;
         self
+    }
+
+    /// Admit a node placed `under` parents at the root as well.
+    pub const fn also_root(mut self) -> Self {
+        self.root = true;
+        self
+    }
+
+    /// Whether the node may appear at the root of a document.
+    pub const fn at_root(&self) -> bool {
+        self.parents.is_empty() || self.root
     }
 
     pub const fn record(self) -> Self {

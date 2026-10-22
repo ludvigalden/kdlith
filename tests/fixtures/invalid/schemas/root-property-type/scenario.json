@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "root= on a node declaration is a Bool; a string value is a value of the wrong type for the NodeDef field (KDLITH-BND003), refused before placement is decided",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

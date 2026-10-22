@@ -1,0 +1,26 @@
+schema cards version="1" {
+    types {
+        object Card {
+            field title String
+        }
+        object Stack {
+            field items "optional<list<Child>>"
+        }
+        union Child {
+            variant card Card
+            variant stack Stack
+        }
+    }
+    node stack role=record type=Stack root=#true {
+        parents stack
+        field items {
+            from {
+                children card
+                children stack
+            }
+        }
+    }
+    node card type=Card parent=stack {
+        field title arg=0
+    }
+}

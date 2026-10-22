@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "Pinned rendering: parents written as a property on a node declaration is unbound (KDLITH-BND005); because node admits parents as a child, the error carries a note pointing at the child form before the near-miss note naming parent=",
+  "args": [
+    "vet",
+    "schema",
+    "schema.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": [
+      "error[KDLITH-BND005]",
+      "note: parents is a child here: write it as a `parents` child"
+    ],
+    "stderr-golden": "stderr.golden"
+  }
+}

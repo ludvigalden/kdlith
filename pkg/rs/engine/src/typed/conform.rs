@@ -4,7 +4,7 @@
 
 use std::fmt;
 
-use crate::bindings::{NodeDecl, Placement, Role};
+use crate::bindings::{NodeDecl, Role};
 use crate::definition::{Definition, ReferenceDecl};
 use crate::names::Names;
 use crate::summary::expr;
@@ -258,16 +258,22 @@ fn nodes<T>(found: &mut Vec<Disagreement>, def: &Definition, declarations: &Decl
     let shapes: Vec<&NodeShape> = declarations.nodes.iter().flat_map(|n| n.iter()).collect();
     let decls: Vec<&NodeDecl> = def.bindings.iter().map(|(_, decl)| decl).collect();
     let placed = |decl: &NodeDecl, shape: &NodeShape| {
-        names.resolve(decl.name) == shape.name && parents(names, decl) == shape.parents
+        names.resolve(decl.name) == shape.name
+            && parents(names, decl) == shape.parents
+            && decl.placement.at_root() == shape.at_root()
     };
     for decl in &decls {
         if !shapes.iter().any(|shape| placed(decl, shape)) {
-            let subject = node_subject(names.resolve(decl.name), &parents(names, decl));
+            let subject = node_subject(
+                names.resolve(decl.name),
+                &parents(names, decl),
+                decl.placement.at_root(),
+            );
             found.push(Disagreement::new(subject, "not declared by the processor"));
         }
     }
     for shape in shapes {
-        let subject = node_subject(shape.name, shape.parents);
+        let subject = node_subject(shape.name, shape.parents, shape.at_root());
         let Some(decl) = decls.iter().find(|decl| placed(decl, shape)) else {
             found.push(Disagreement::new(subject, "not declared by the definition"));
             continue;
@@ -293,17 +299,18 @@ fn nodes<T>(found: &mut Vec<Disagreement>, def: &Definition, declarations: &Decl
 }
 
 fn parents<'n>(names: &'n Names, decl: &NodeDecl) -> Vec<&'n str> {
-    match &decl.placement {
-        Placement::Root => Vec::new(),
-        Placement::Under(parents) => parents.iter().map(|p| names.resolve(*p)).collect(),
-    }
+    decl.placement
+        .parents()
+        .iter()
+        .map(|p| names.resolve(*p))
+        .collect()
 }
 
-fn node_subject(name: &str, parents: &[&str]) -> String {
-    if parents.is_empty() {
-        format!("node {name} at the root")
-    } else {
-        format!("node {name} under {}", parents.join(" "))
+fn node_subject(name: &str, parents: &[&str], at_root: bool) -> String {
+    match (parents.is_empty(), at_root) {
+        (true, _) => format!("node {name} at the root"),
+        (false, false) => format!("node {name} under {}", parents.join(" ")),
+        (false, true) => format!("node {name} at the root and under {}", parents.join(" ")),
     }
 }
 

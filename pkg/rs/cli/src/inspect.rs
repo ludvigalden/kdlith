@@ -8,9 +8,8 @@ use std::path::{Path, PathBuf};
 use kdlith_diagnostic::{DiagnosticRecord, ExitStatus, Severity};
 use kdlith_engine::{
     AccumulateOp, CheckScope, ContextPolicy, DeferredBinding, Definition, EffectStep, EntryContext,
-    Extensions, ImportDecl, LinkOutcome, Names, NodeDecl, Placement, Role, ScopeId, ScopeRules,
-    SetFrom, Site, SlotDecl, SourceRevisions, Sym, TypedItem, list_nodes, list_profiles,
-    list_types,
+    Extensions, ImportDecl, LinkOutcome, Names, NodeDecl, Role, ScopeId, ScopeRules, SetFrom, Site,
+    SlotDecl, SourceRevisions, Sym, TypedItem, list_nodes, list_profiles, list_types,
 };
 use kdlith_model::Location;
 use kdlith_superproc::{Item, load_dialect, load_schema_anchored, reader};
@@ -658,6 +657,9 @@ fn effective_lines(def: &Definition) -> Vec<serde_json::Value> {
             "type": node.ty,
             "profile": node.profile,
         });
+        if node.root {
+            value["root"] = json!(true);
+        }
         // Only a declaration carrying metadata carries the keys, so every
         // other node renders as it always has.
         if let Some(decl) = node_decl(def, &node) {
@@ -724,11 +726,12 @@ fn effective_lines(def: &Definition) -> Vec<serde_json::Value> {
 fn node_decl<'d>(def: &'d Definition, node: &kdlith_engine::NodeEntry) -> Option<&'d NodeDecl> {
     let n = &def.names;
     def.bindings.iter().map(|(_, decl)| decl).find(|decl| {
-        let mut parents: Vec<&str> = match &decl.placement {
-            Placement::Root => Vec::new(),
-            Placement::Under(names) => names.iter().map(|p| n.resolve(*p)).collect(),
-            _ => Vec::new(),
-        };
+        let mut parents: Vec<&str> = decl
+            .placement
+            .parents()
+            .iter()
+            .map(|p| n.resolve(*p))
+            .collect();
         parents.sort_unstable();
         parents.dedup();
         n.resolve(decl.name) == node.name

@@ -1,0 +1,8 @@
+[package]
+name = "stacks-exercise"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+
+[dependencies]
+stacks-proc = { path = "../stacks-proc" }

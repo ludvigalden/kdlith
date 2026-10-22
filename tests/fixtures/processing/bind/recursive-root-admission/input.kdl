@@ -1,0 +1,9 @@
+stack {
+    card "top"
+    stack {
+        card "middle"
+        stack {
+            card "bottom"
+        }
+    }
+}

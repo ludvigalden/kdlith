@@ -70,6 +70,24 @@ pub enum Placement {
     Root,
     /// Under any node with one of these names.
     Under(Vec<Sym>),
+    /// A root node of a document, and under any node with one of these
+    /// names (`root=#true` beside `parent=` or `parents`).
+    RootAndUnder(Vec<Sym>),
+}
+
+impl Placement {
+    /// The parents the node may appear under; empty for a root-only node.
+    pub fn parents(&self) -> &[Sym] {
+        match self {
+            Placement::Root => &[],
+            Placement::Under(parents) | Placement::RootAndUnder(parents) => parents,
+        }
+    }
+
+    /// Whether the node may appear at the root of a document.
+    pub fn at_root(&self) -> bool {
+        matches!(self, Placement::Root | Placement::RootAndUnder(_))
+    }
 }
 
 /// The parent half of a dispatch key.

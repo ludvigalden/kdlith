@@ -395,6 +395,21 @@ impl<'d, 's> Binder<'d, 's> {
         Some(Label::new(Some(self.path.clone()), span, message).with_position(at.line, at.column))
     }
 
+    /// A note on an unbound property whose name the node admits as a
+    /// child: the value belongs in the child form.
+    fn child_form_label(
+        &mut self,
+        scope: Option<ScopeId>,
+        span: ByteSpan,
+        name: &str,
+    ) -> Option<Label> {
+        let def = self.def;
+        def.bindings.child(scope?, def.names.get(name)?)?;
+        let message = format!("{name} is a child here: write it as a `{name}` child");
+        let at = self.locator.locate(span).start;
+        Some(Label::new(Some(self.path.clone()), span, message).with_position(at.line, at.column))
+    }
+
     fn sibling_label(&mut self, span: ByteSpan, node: &str, sibling: Sibling) -> Option<Label> {
         let def = self.def;
         let sym = def.names.get(node)?;
@@ -2748,10 +2763,9 @@ impl<'s> Processor for Binder<'_, 's> {
                     .table(&self.tables)
                     .map(|table| table.props.iter().map(|(sym, _)| self.name(*sym)).collect())
                     .unwrap_or_default();
-                let notes = self
-                    .near_miss_label(span, &name, bound)
-                    .into_iter()
-                    .collect();
+                let child_form = self.child_form_label(frame.scope, span, &name);
+                let near_miss = self.near_miss_label(span, &name, bound);
+                let notes = child_form.into_iter().chain(near_miss).collect();
                 self.diagnose_labeled(cx, UNBOUND_ENTRY, span, &[&what, node], notes);
             }
         }

@@ -568,16 +568,21 @@ fn node(cx: &mut Cx<'_>, site: Site, input: &NodeInput) {
         // reported as untyped.
         return;
     }
+    let parent_group = input.parent_group.as_deref().map(|g| cx.names.intern(g));
+    // root=#true on a node placed only through a group stays marked until
+    // the group expands; on a node with no parents at all it is a no-op.
+    let placement = match (input.root, under.is_empty()) {
+        (Some(true), true) if parent_group.is_some() => Placement::RootAndUnder(under),
+        (_, true) => Placement::Root,
+        (Some(true), false) => Placement::RootAndUnder(under),
+        (_, false) => Placement::Under(under),
+    };
     cx.nodes.push(NodeDecl {
         name: cx.names.intern(&name),
         role,
         ty,
-        placement: if under.is_empty() {
-            Placement::Root
-        } else {
-            Placement::Under(under)
-        },
-        parent_group: input.parent_group.as_deref().map(|g| cx.names.intern(g)),
+        placement,
+        parent_group,
         profile,
         fields,
         children,

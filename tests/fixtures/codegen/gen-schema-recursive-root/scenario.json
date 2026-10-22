@@ -1,0 +1,32 @@
+{
+  "binary": "kdlith",
+  "kind": "codegen-oracle",
+  "description": "The root-and-nested generation fixture: gen schema generates the processor of a schema whose recursive stack container is declared once with root=#true beside parents stack, twice into two scratch trees the harness requires byte-identical; the generated node table marks the declaration as admitted at the root as well, so the generated reader conforms to the compiled schema, the crate compiles inside a scratch workspace materialized from this scenario's committed template, and the compiled consumer — depending on nothing but the generated crate — loads the schema with the digest vet schema reports and reads three levels of stack as three Stack records, innermost first, each holding its own card",
+  "form": "schema",
+  "entrypoint": "inputs/schema.kdl",
+  "crate": "stacks-proc",
+  "steps": [
+    { "generate": "ws/rs/stacks-proc" },
+    { "generate": "gen-again" },
+    { "determinism": ["ws/rs/stacks-proc", "gen-again"] },
+    {
+      "compile": {
+        "workspace": "ws",
+        "copy": {
+          "crates": ["diagnostic", "engine", "model", "parse", "runtime", "superproc"],
+          "kdl": true
+        },
+        "command": ["cargo", "build", "--offline", "--manifest-path", "ws/rs/stacks-proc/Cargo.toml"]
+      }
+    },
+    {
+      "exercise": {
+        "command": ["cargo", "run", "--offline", "--quiet", "--manifest-path", "ws/rs/exercise/Cargo.toml", "--", "inputs/schema.kdl", "inputs/data.kdl"],
+        "stdout-contains": [
+          "schema ok digest=5cfa1a387b8eed9c\n",
+          "read ok stacks=[bottom,middle,top]\n"
+        ]
+      }
+    }
+  ]
+}

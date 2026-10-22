@@ -31,6 +31,7 @@ object_type! {
         "parent" => parent: Option<NodeName>,
         "parents" => parents: Option<Vec<NodeName>>,
         "parent-group" => parent_group: Option<NodeGroupName>,
+        "root" => root: Option<bool>,
         "profile" => profile: Option<ProfileName>,
         "fields" => fields: OrderedMap<FieldName, FieldBinding>,
         "children" => children: OrderedMap<NodeName, ChildRule>,

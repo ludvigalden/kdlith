@@ -28,7 +28,8 @@ dialect kdlith version="0" {
 
         // A node declaration. parent names the one node it may appear
         // under; parents lists several. A declaration gives at most one of
-        // the two, and a node with neither is a root node. The parents
+        // the two, and a node with neither is a root node; root=#true
+        // admits a placed node at the root as well. The parents
         // child may also name a node group, placing the node under every
         // member of the group as well. With type=, its
         // field bindings bind the fields of that logical object type;
@@ -43,6 +44,7 @@ dialect kdlith version="0" {
             field parent "optional<NodeName>"
             field parents "optional<list<NodeName>>"
             field parent-group "optional<NodeGroupName>"
+            field root "optional<Bool>"
             field profile "optional<ProfileName>"
             field fields "ordered-map<FieldName, FieldBinding>"
             field children "ordered-map<NodeName, ChildRule>"
@@ -267,6 +269,7 @@ dialect kdlith version="0" {
         field role property=role
         field type property=type
         field parent property=parent
+        field root property=root
         field profile property=profile
         field parents {
             from {

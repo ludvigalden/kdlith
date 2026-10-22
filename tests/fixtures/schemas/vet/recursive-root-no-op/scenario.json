@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "root=#true on a node declaration with neither parent= nor parents is admitted as a harmless no-op: note stays a root node and the schema vets green with no diagnostic",
+  "args": [
+    "vet",
+    "schema",
+    "schema.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "ok: schema notes version 1 scope=complete documents=1 types=1 nodes=1 slots=0 profiles=0 digest=62391a6afac15f9d"
+    ]
+  }
+}

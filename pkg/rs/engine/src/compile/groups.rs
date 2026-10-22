@@ -146,13 +146,14 @@ fn parents(cx: &mut Cx<'_>, decl: &mut NodeDecl, complete: bool) {
     let Some(group) = decl.parent_group else {
         return;
     };
+    let at_root = matches!(decl.placement, Placement::RootAndUnder(_));
     let Some(members) = resolve(cx, decl.site, group, complete) else {
+        if at_root && decl.placement.parents().is_empty() {
+            decl.placement = Placement::Root;
+        }
         return;
     };
-    let mut under = match &decl.placement {
-        Placement::Under(parents) => parents.clone(),
-        Placement::Root => Vec::new(),
-    };
+    let mut under = decl.placement.parents().to_vec();
     for member in members {
         if under.contains(&member) {
             let label = format!("node {}", cx.names.resolve(decl.name));
@@ -162,5 +163,9 @@ fn parents(cx: &mut Cx<'_>, decl: &mut NodeDecl, complete: bool) {
         }
         under.push(member);
     }
-    decl.placement = Placement::Under(under);
+    decl.placement = match (at_root, under.is_empty()) {
+        (true, true) => Placement::Root,
+        (true, false) => Placement::RootAndUnder(under),
+        (false, _) => Placement::Under(under),
+    };
 }

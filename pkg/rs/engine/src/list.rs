@@ -8,7 +8,6 @@ use std::path::Path;
 use kdlith_diagnostic::DiagnosticRecord;
 use kdlith_model::{Item, Value};
 
-use crate::bindings::Placement;
 use crate::data::{DataReader, ReadOptions};
 use crate::definition::Definition;
 use crate::typed::ReadError;
@@ -33,6 +32,8 @@ pub struct TypeEntry {
 pub struct NodeEntry {
     pub name: String,
     pub parents: Vec<String>,
+    /// Admitted at the root as well as under `parents` (`root=#true`).
+    pub root: bool,
     pub role: Option<&'static str>,
     pub ty: Option<String>,
     pub profile: Option<String>,
@@ -133,14 +134,17 @@ pub fn list_nodes(def: &Definition) -> Vec<NodeEntry> {
         .bindings
         .iter()
         .map(|(_, node)| {
-            let mut parents: Vec<String> = match &node.placement {
-                Placement::Root => Vec::new(),
-                Placement::Under(names) => names.iter().map(|p| n.resolve(*p).to_owned()).collect(),
-            };
+            let mut parents: Vec<String> = node
+                .placement
+                .parents()
+                .iter()
+                .map(|p| n.resolve(*p).to_owned())
+                .collect();
             parents.sort();
             parents.dedup();
             NodeEntry {
                 name: n.resolve(node.name).to_owned(),
+                root: !parents.is_empty() && node.placement.at_root(),
                 parents,
                 role: node.role.map(|role| role.name()),
                 ty: node.ty.map(|ty| n.resolve(ty).to_owned()),
@@ -258,13 +262,13 @@ impl fmt::Display for TypeEntry {
     }
 }
 
-/// `NAME parent=root|P,... role=ROLE|- type=TYPE|- profile=NAME|-`.
+/// `NAME parent=root|[root,]P,... role=ROLE|- type=TYPE|- profile=NAME|-`.
 impl fmt::Display for NodeEntry {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let parent = if self.parents.is_empty() {
-            "root".to_owned()
-        } else {
-            self.parents.join(",")
+        let parent = match (self.parents.is_empty(), self.root) {
+            (true, _) => "root".to_owned(),
+            (false, false) => self.parents.join(","),
+            (false, true) => format!("root,{}", self.parents.join(",")),
         };
         write!(
             f,

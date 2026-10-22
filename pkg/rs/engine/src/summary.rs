@@ -304,6 +304,7 @@ fn node_line(n: &Names, node: &NodeDecl) -> String {
     let placement = match &node.placement {
         Placement::Root => "root".to_owned(),
         Placement::Under(parents) => list(n, parents),
+        Placement::RootAndUnder(parents) => format!("root+{}", list(n, parents)),
     };
     let fields: Vec<String> = node.fields.iter().map(|f| field(n, f)).collect();
     let children: Vec<String> = node
