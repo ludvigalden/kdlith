@@ -824,8 +824,20 @@ impl Emission<'_> {
         out.line("];");
         for constant in &self.annotations {
             out.blank();
+            let site = match constant.placement.as_deref() {
+                None => String::new(),
+                Some([]) => " at the document root".to_owned(),
+                Some(parents) => format!(
+                    " under {}",
+                    parents
+                        .iter()
+                        .map(|parent| format!("`{parent}`"))
+                        .collect::<Vec<_>>()
+                        .join(" or ")
+                ),
+            };
             out.line(&format!(
-                "/// The `{}` annotation of the `{}` node declaration.",
+                "/// The `{}` annotation of the `{}` node declaration{site}.",
                 constant.annotation, constant.node
             ));
             out.line(&format!(
@@ -1392,7 +1404,10 @@ struct NodeEntry {
 }
 
 /// The resolved parent names of a node's placement, in declared order.
-fn placement_parents(placement: &kdlith_engine::Placement, names: &Names) -> Vec<String> {
+pub(crate) fn placement_parents(
+    placement: &kdlith_engine::Placement,
+    names: &Names,
+) -> Vec<String> {
     match placement {
         kdlith_engine::Placement::Root => Vec::new(),
         kdlith_engine::Placement::Under(parents) => parents

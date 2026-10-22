@@ -1,0 +1,36 @@
+schema panels version="1" {
+    types {
+        enum Density {
+            member compact
+            member roomy
+        }
+        object Panel {
+            field name String
+        }
+        object Item {
+            field name String
+        }
+    }
+    annotation density Density required
+    annotation weight U64
+    node panel role=record type=Panel {
+        field name arg=0
+        annotation density roomy
+        annotation weight 1
+        children item
+    }
+    node drawer role=record type=Panel {
+        field name arg=0
+        annotation density compact
+        children item
+    }
+    node item role=record type=Item parent=panel {
+        field name arg=0
+        annotation density compact
+        annotation weight 3
+    }
+    node item role=record type=Item parent=drawer {
+        field name arg=0
+        annotation density roomy
+    }
+}

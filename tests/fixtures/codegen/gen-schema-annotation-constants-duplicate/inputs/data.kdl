@@ -1,0 +1,6 @@
+panel north {
+    item lamp
+}
+drawer south {
+    item spoon
+}

@@ -158,6 +158,13 @@ published yet.
   read, so an import can no longer leak the contents of a file outside
   the entry tree. Definition documents loading through their governing
   dialect are exempt, and `--scope local` refuses as well.
+- A schema declaring one node name under different parents, each
+  declaration carrying the same annotation, no longer fails generation
+  with an unspellable-constant error: the first declaration in
+  contribution order keeps `<NODE>_<ANNOTATION>` and each later fact of
+  the same node and annotation names takes an ordinal suffix from `_2`;
+  the generated doc comment names the declaration's parent so the
+  constants stay tellable apart.
 - A fallback identity composed from a non-string field no longer
   composes an empty identity silently: the compiler notes the field at
   its declaration and the binder refuses the binding.

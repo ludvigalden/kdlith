@@ -9,7 +9,7 @@ use kdlith_engine::{
     SlotDecl, Sym, TypeDecl, TypeExpr, TypeKind,
 };
 
-use crate::emit::declaration_expressions;
+use crate::emit::{declaration_expressions, placement_parents};
 use crate::render::{
     Spelling, field_name, include_path, inline_union_name, is_identifier, mangle, normalize_path,
     pascal, rust_type, subexpressions, variant_name,
@@ -131,10 +131,15 @@ pub(crate) struct Emission<'d> {
 /// constant named after the node and the annotation, typed by the
 /// annotation's declared scalar type.
 pub(crate) struct AnnotationConst {
-    /// The constant's name: `<NODE>_<ANNOTATION>`, upper snake case.
+    /// The constant's name: `<NODE>_<ANNOTATION>`, upper snake case,
+    /// with an ordinal suffix for a same-named declaration's later facts.
     pub name: String,
     pub node: String,
     pub annotation: String,
+    /// The declaration's parent names, recorded only when same-named
+    /// declarations share the stem and the doc comment must tell them
+    /// apart; empty for a root declaration.
+    pub placement: Option<Vec<String>>,
     /// The Rust type the constant holds.
     pub ty: String,
     /// The constant's value, as a Rust expression.
@@ -918,12 +923,18 @@ pub(crate) fn kind_name(kind: &TypeKind) -> &'static str {
     }
 }
 
-/// The constants a definition's annotation facts generate: one per
-/// fact, typed by the annotation's declared scalar type. Two facts
-/// spelling one constant, as two same-named nodes under different
-/// parents do, fail closed.
+/// The constants a definition's annotation facts generate, one per fact.
+/// Same-named declarations share a stem: the first in contribution order
+/// keeps it, later ones take `_2`, `_3`, … per node and annotation pair.
 fn annotation_constants(definition: &Definition) -> Result<Vec<AnnotationConst>, Error> {
     let names = &definition.names;
+    let mut spelled: BTreeMap<(Sym, Sym), usize> = BTreeMap::new();
+    for (_, node) in definition.bindings.iter() {
+        for fact in &node.annotations {
+            *spelled.entry((node.name, fact.name)).or_default() += 1;
+        }
+    }
+    let mut ordinals: BTreeMap<(Sym, Sym), usize> = BTreeMap::new();
     let mut constants: Vec<AnnotationConst> = Vec::new();
     for (_, node) in definition.bindings.iter() {
         let node_name = names.resolve(node.name);
@@ -937,11 +948,17 @@ fn annotation_constants(definition: &Definition) -> Result<Vec<AnnotationConst>,
                 continue;
             };
             let (ty, value) = annotation_value(definition, &decl.ty, &fact.value);
-            let name = format!(
+            let stem = format!(
                 "{}_{}",
                 node_name.replace('-', "_").to_uppercase(),
                 annotation.replace('-', "_").to_uppercase()
             );
+            let ordinal = ordinals.entry((node.name, fact.name)).or_default();
+            *ordinal += 1;
+            let name = match *ordinal {
+                1 => stem,
+                n => format!("{stem}_{n}"),
+            };
             if constants.iter().any(|other| other.name == name) {
                 return Err(Error::UnspellableName {
                     what: "annotation constant",
@@ -950,10 +967,12 @@ fn annotation_constants(definition: &Definition) -> Result<Vec<AnnotationConst>,
                     reason: "another annotation fact spells the same constant",
                 });
             }
+            let shared = spelled.get(&(node.name, fact.name)).copied().unwrap_or(0) > 1;
             constants.push(AnnotationConst {
                 name,
                 node: node_name.to_owned(),
                 annotation: annotation.to_owned(),
+                placement: shared.then(|| placement_parents(&node.placement, names)),
                 ty,
                 value,
             });

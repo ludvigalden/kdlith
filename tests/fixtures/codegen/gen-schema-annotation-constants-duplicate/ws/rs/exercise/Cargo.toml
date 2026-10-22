@@ -1,0 +1,8 @@
+[package]
+name = "panels-exercise"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+
+[dependencies]
+panels-proc = { path = "../panels-proc" }

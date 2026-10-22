@@ -1,0 +1,34 @@
+{
+  "binary": "kdlith",
+  "kind": "codegen-oracle",
+  "description": "The same-named annotation-constant fixture: gen schema generates the processor of a schema declaring the node item under two parents, each declaration carrying the density annotation, twice into two scratch trees the harness requires byte-identical; the generated crate compiles in a scratch workspace materialized from this scenario's committed template with the repository's engine and reference-processor crates copied in, and the compiled consumer names ITEM_DENSITY (the first declaration in contribution order, under panel) and ITEM_DENSITY_2 (the second, under drawer) beside the unsuffixed ITEM_WEIGHT, PANEL_DENSITY, PANEL_WEIGHT, and DRAWER_DENSITY, typed by each annotation's declared type, prints their values, loads the schema with the digest vet schema reports, and reads both placements of item as records through the generated typed reader. Generation formerly refused this schema because the two facts spelled one constant",
+  "form": "schema",
+  "entrypoint": "inputs/schema.kdl",
+  "crate": "panels-proc",
+  "steps": [
+    { "generate": "ws/rs/panels-proc" },
+    { "generate": "gen-again" },
+    { "determinism": ["ws/rs/panels-proc", "gen-again"] },
+    {
+      "compile": {
+        "workspace": "ws",
+        "copy": {
+          "crates": ["diagnostic", "engine", "model", "parse", "runtime", "superproc"],
+          "kdl": true
+        },
+        "command": ["cargo", "build", "--offline", "--manifest-path", "ws/rs/panels-proc/Cargo.toml"]
+      }
+    },
+    {
+      "exercise": {
+        "command": ["cargo", "run", "--offline", "--quiet", "--manifest-path", "ws/rs/exercise/Cargo.toml", "--", "inputs/schema.kdl", "inputs/data.kdl"],
+        "stdout-contains": [
+          "constants item.density=compact item.density_2=roomy item.weight=3\n",
+          "constants panel.density=roomy panel.weight=1 drawer.density=compact\n",
+          "schema ok digest=763a690e11a85165\n",
+          "read ok items=[lamp,spoon]\n"
+        ]
+      }
+    }
+  ]
+}
