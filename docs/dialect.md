@@ -869,10 +869,11 @@ indented `note:` line ending in the sibling's `(path:line:column)`.
 When the binder reports them, which it does for data documents and
 for definitions read as data of their dialect, an unknown node
 (`KDLITH-BND001`), an unbound property (`KDLITH-BND005`), and an
-unknown enum value (`KDLITH-BND008`) also carry a note naming the nearest admitted names when any lies
-within an edit distance of 2, counted in Unicode scalars: the child
-names the scope admits under the active profiles, the node's bound
-properties, or the enum's members. The note sits at the diagnostic's
+unknown enum value (`KDLITH-BND008`) also carry a note naming the
+nearest admitted names when any lies within an edit distance of 2,
+counted in Unicode scalars: the child names the scope admits under
+the active profiles, the node's bound properties, or the enum's
+members. The note sits at the diagnostic's
 own position and reads `did you mean card?`, or `did you mean one of
 a, b?` when several are equally near; candidates are ordered by
 distance, then by name, so the note is deterministic. A concealed value
