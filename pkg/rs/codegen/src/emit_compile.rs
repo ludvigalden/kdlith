@@ -287,7 +287,21 @@ pub fn load_dialect(
     scope: CheckScope,
 ) -> Result<Definition, Vec<DiagnosticRecord>> {
     let dialect = seed(extensions)?;
-    let input = gather(&dialect, entries, scope, &[])?;
+    let input = gather(&dialect, Entries::Paths(entries), scope, &[])?;
+    compile_dialect_input(&input, extensions, scope)
+}
+
+/// Load a dialect definition as [`load_dialect`] does, over documents
+/// held in memory instead of read from disk. An import inside an
+/// in-memory document has no directory to resolve against and fails
+/// closed (`KDLITH-IMP001`).
+pub fn load_dialect_sources(
+    sources: &[kdlith_engine::Source],
+    extensions: &Extensions,
+    scope: CheckScope,
+) -> Result<Definition, Vec<DiagnosticRecord>> {
+    let dialect = seed(extensions)?;
+    let input = gather(&dialect, Entries::Sources(sources), scope, &[])?;
     compile_dialect_input(&input, extensions, scope)
 }
 "##;
@@ -317,18 +331,39 @@ pub fn load_schema_anchored(
     scope: CheckScope,
     anchors: &[(String, PathBuf)],
 ) -> Result<Definition, Vec<DiagnosticRecord>> {
-    let input = gather(dialect, entries, scope, anchors)?;
+    let input = gather(dialect, Entries::Paths(entries), scope, anchors)?;
+    compile_schema_input(dialect, &input, extensions, scope)
+}
+
+/// Load a schema definition as [`load_schema`] does, over documents
+/// held in memory instead of read from disk. An import inside an
+/// in-memory document has no directory to resolve against and fails
+/// closed (`KDLITH-IMP001`).
+pub fn load_schema_sources(
+    dialect: &Definition,
+    sources: &[kdlith_engine::Source],
+    extensions: &Extensions,
+    scope: CheckScope,
+) -> Result<Definition, Vec<DiagnosticRecord>> {
+    let input = gather(dialect, Entries::Sources(sources), scope, &[])?;
     compile_schema_input(dialect, &input, extensions, scope)
 }
 "##;
 
 const GATHER: &str = r##"
+/// The documents a load reads: entry files, or documents held in memory.
+#[derive(Clone, Copy)]
+enum Entries<'a> {
+    Paths(&'a [&'a Path]),
+    Sources(&'a [kdlith_engine::Source]),
+}
+
 /// Read `entries` through the typed reader over `dialect`, collecting
 /// the item stream into compiler input. An error diagnostic, or a
 /// broken reader contract, fails the load with the records collected.
 fn gather(
     dialect: &Definition,
-    entries: &[&Path],
+    entries: Entries<'_>,
     scope: CheckScope,
     anchors: &[(String, PathBuf)],
 ) -> Result<DefinitionInput, Vec<DiagnosticRecord>> {
@@ -336,9 +371,13 @@ fn gather(
     let mut input = Gathering::default();
     let mut records: Vec<DiagnosticRecord> = Vec::new();
     let mut sink = |item: TypedItem<Item>| take(item, &mut input, &mut records);
-    let read = match scope {
-        CheckScope::Complete => typed.read(entries, &mut sink),
-        CheckScope::Local => typed.read_local(entries, &mut sink),
+    let read = match (scope, entries) {
+        (CheckScope::Complete, Entries::Paths(paths)) => typed.read(paths, &mut sink),
+        (CheckScope::Local, Entries::Paths(paths)) => typed.read_local(paths, &mut sink),
+        (CheckScope::Complete, Entries::Sources(sources)) => typed.read_sources(sources, &mut sink),
+        (CheckScope::Local, Entries::Sources(sources)) => {
+            typed.read_sources_local(sources, &mut sink)
+        }
         _ => return Err(vec![broken_contract("an unknown checking scope")]),
     };
     let broken = match read {

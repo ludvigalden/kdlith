@@ -530,6 +530,18 @@ impl<'d, T: 'static> TypedReader<'d, T> {
             .map(|(failed, report)| failed || self.gates(report.as_ref()))
     }
 
+    /// Read as [`TypedReader::read_local`] does, over documents held in
+    /// memory instead of read from disk: import requests are given as
+    /// items without being followed.
+    pub fn read_sources_local(
+        &self,
+        sources: &[Source],
+        sink: &mut dyn FnMut(TypedItem<T>),
+    ) -> Result<bool, ReadError> {
+        self.sources_scoped(sources, sink, false)
+            .map(|(failed, report)| failed || self.gates(report.as_ref()))
+    }
+
     /// Read as [`TypedReader::collect`] does, over documents held in
     /// memory instead of read from disk.
     pub fn collect_sources(&self, sources: &[Source]) -> Result<Reading<T>, ReadError> {

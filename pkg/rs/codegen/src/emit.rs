@@ -240,9 +240,12 @@ impl Emission<'_> {
         out.blank();
         match self.kind {
             DefinitionKind::Dialect => {
+                out.line("pub use compile::{");
                 out.line(
-                    "pub use compile::{load_dialect, load_schema, load_schema_anchored, seed};",
+                    "    load_dialect, load_dialect_sources, load_schema, load_schema_anchored, load_schema_sources,",
                 );
+                out.line("    seed,");
+                out.line("};");
             }
             _ => out.line("pub use compile::{load, load_anchored};"),
         }

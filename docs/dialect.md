@@ -562,7 +562,11 @@ reader binds dialect documents against the canonical dialect (the
 definition language every dialect is written in) and schema documents
 against their governing dialect, so a construct the governing dialect
 does not admit is rejected with the binding code any processor binding
-it reports.
+it reports. A host holding definition text in memory loads it through
+`load_dialect_sources` and `load_schema_sources`, which read `Source`
+documents through the same reader and compiler as their path
+counterparts; an in-memory definition has no directory to resolve an
+import against, so an import inside one fails closed (`KDLITH-IMP001`).
 
 One cycle cannot close: a reader needs a compiled dialect before it can
 read one, so the canonical dialect's own compilation cannot flow through

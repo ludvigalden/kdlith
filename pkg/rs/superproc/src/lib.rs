@@ -7,7 +7,10 @@ pub mod contexts;
 pub mod processors;
 pub mod types;
 
-pub use compile::{load_dialect, load_schema, load_schema_anchored, seed};
+pub use compile::{
+    load_dialect, load_dialect_sources, load_schema, load_schema_anchored, load_schema_sources,
+    seed,
+};
 pub use kdlith_engine::{
     ContributionResolver, LAYERED, Layered, ResolutionCall, SharedContributionResolver,
     SharedResolver, Unresolvable, ValueResolver,

@@ -167,6 +167,13 @@ published yet.
   digest. `list nodes` reports such a node as `parent=root,` followed by
   its parents. An unbound property whose name the node admits as a
   child now carries a note saying to write it as that child.
+- The reference processor loads dialect and schema definitions held in
+  memory through `load_dialect_sources` and `load_schema_sources`,
+  reading `Source` documents through the same typed reader and
+  compiler as the path loaders, and generated dialect processors carry
+  the same loaders; an import inside an in-memory definition fails
+  closed (`KDLITH-IMP001`). The typed reader gains
+  `read_sources_local` for local-scope readings of in-memory documents.
 
 ### Fixed
 
