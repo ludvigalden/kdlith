@@ -543,7 +543,10 @@ symlinks and special files. The binary then runs:
   `KDLITH_FX_SCENARIO` exported.
 
 A codegen-oracle run also exports `KDLITH_FX_REPO`, the repository root
-above the suite, to every subprocess its steps start.
+above the suite, to every subprocess its steps start, and sets
+`CARGO_TARGET_DIR` to `cargo-target/` inside the run directory, so the
+compile and exercise steps of two suite runs at once never build into
+one shared target directory. The directory is torn down with the run.
 
 The `fx-env` helper in `bin/` prints those resolved paths. It fails when run
 outside a harness run.

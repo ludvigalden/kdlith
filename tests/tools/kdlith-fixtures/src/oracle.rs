@@ -334,9 +334,9 @@ fn exercise(
     Ok(())
 }
 
-/// Run one command with the harness environment — the run's bin
-/// directory first on PATH, the fx variables and the repository root
-/// exported — with no stdin and both streams captured.
+/// Run one command with the harness environment and no stdin, both
+/// streams captured. Cargo builds into the run's own scratch root, so
+/// concurrent suite runs never share a target directory.
 fn spawn(
     program: &Path,
     args: &[String],
@@ -358,6 +358,7 @@ fn spawn(
         .env(ENV_SCRATCH, env.scratch)
         .env(ENV_SCENARIO, cwd)
         .env(ENV_REPO, expansion.repo)
+        .env("CARGO_TARGET_DIR", scratch::cargo_target(env.scratch))
         .stdin(Stdio::null())
         .output()
 }

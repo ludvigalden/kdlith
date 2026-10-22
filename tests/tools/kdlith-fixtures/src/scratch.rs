@@ -61,9 +61,17 @@ impl RunDir {
             &self.bin_dir(),
             cleanrun::remove_scenario_dir(&self.bin_dir()),
         );
+        let target = cargo_target(&self.root);
+        emit_scenario_leftovers(&target, cleanrun::remove_scenario_dir(&target));
         prune(&self.root.join("scenarios"), kept);
         let _ = std::fs::remove_dir(&self.root);
     }
+}
+
+/// The cargo target directory of one run: inside the run directory, so
+/// two concurrent suite runs never build into the same target tree.
+pub(crate) fn cargo_target(run_root: &Path) -> PathBuf {
+    run_root.join("cargo-target")
 }
 
 /// Remove the subtrees of `dir` that hold no kept failure: a kept
