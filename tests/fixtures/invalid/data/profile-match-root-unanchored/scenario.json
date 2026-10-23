@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "Without --match-root the rules read the path relative to the current directory: tree/outlet/stock.kdl does not start with outlet, so no rule matches, the default fallback applies, and the gadget only outlet admits is unbound (KDLITH-BND001)",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/profiles.kdl",
+    "tree/outlet/stock.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

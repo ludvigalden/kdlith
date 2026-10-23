@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "An absolute entry and an absolute root select as their relative spellings do: the committed profile-match-root tree's outlet/stock.kdl, named absolutely under an absolute --match-root, selects outlet and binds the same Gadget",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/profiles.kdl",
+    "--match-root",
+    "{fx-suite}/processing/bind/profile-match-root/tree",
+    "{fx-suite}/processing/bind/profile-match-root/tree/outlet/stock.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":0},\"type_name\":\"Gadget\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"g1\"},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n"
+    ]
+  }
+}

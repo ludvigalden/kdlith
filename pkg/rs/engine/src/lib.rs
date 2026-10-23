@@ -61,7 +61,7 @@ pub use definition::{
     DiscoveryDecl, DocumentRule, DuplicateTreatment, ImportDecl, MatchKind, MatchRule,
     MergeDuplicates, MissingRequirement, Patterns, ProfileDecl, ProfileSelection, ProviderDecl,
     Qualification, QualifierDecl, ReferenceDecl, ResolutionPolicyDecl, ResolutionSelection,
-    SlotDecl, SlotDuplicates, SourceContextDecl, SourceContextMode, SourceFieldDecl,
+    SlotDecl, SlotDuplicates, SourceContextDecl, SourceContextMode, SourceFieldDecl, match_path,
 };
 pub use diag::Site;
 pub use discovery::{Expansion, ExpansionError, Segment, expand, is_expression, parse};

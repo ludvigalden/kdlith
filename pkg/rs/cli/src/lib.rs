@@ -244,7 +244,7 @@ struct ProfileArgs {
     profile: Option<String>,
     /// The profile set the invocation admits, comma-separated: the
     /// listed profiles whose match rules the entry's path satisfies,
-    /// else the listed default, else the first listed; excludes
+    /// else the listed default, else none (an error); excludes
     /// --profile
     #[arg(long, value_name = "NAMES", value_parser = handlers::parse_profiles)]
     profiles: Option<handlers::ProfileSet>,
@@ -262,6 +262,11 @@ struct ProfileArgs {
     /// document lives, confined to DIR instead of the entry's directory
     #[arg(long = "alias", value_name = "NAME=DIR", value_parser = handlers::parse_alias)]
     aliases: Vec<(String, PathBuf)>,
+    /// The directory profile match rules read entry paths relative to
+    /// (default: the current directory), so an entry selects the same
+    /// profile however its path is spelled
+    #[arg(long, value_name = "DIR")]
+    match_root: Option<PathBuf>,
 }
 
 impl ProfileArgs {
@@ -290,7 +295,8 @@ impl ProfileArgs {
             .with_profiles(set)
             .with_resolver(resolver)
             .with_max_invocations(self.max_invocations)
-            .with_aliases(self.aliases))
+            .with_aliases(self.aliases)
+            .with_match_root(self.match_root))
     }
 }
 

@@ -168,6 +168,7 @@ pub struct DataOptions {
     scope: CheckScope,
     max_invocations: Option<u32>,
     aliases: Vec<(String, PathBuf)>,
+    match_root: Option<PathBuf>,
 }
 
 impl DataOptions {
@@ -186,7 +187,16 @@ impl DataOptions {
             scope: CheckScope::Complete,
             max_invocations: None,
             aliases: Vec::new(),
+            match_root: None,
         }
+    }
+
+    /// The same options anchoring profile match rules at `root`, or at
+    /// the current directory when it is `None`.
+    #[must_use]
+    pub fn with_match_root(mut self, root: Option<PathBuf>) -> Self {
+        self.match_root = root;
+        self
     }
 
     /// The same options registering each `(name, directory)` as an
@@ -299,7 +309,8 @@ impl DataOptions {
     }
 
     /// The reader options: the named profile or profile set, the
-    /// supplied anchors and import aliases, and the invocation bound.
+    /// supplied anchors and import aliases, the match root, and the
+    /// invocation bound.
     pub(crate) fn read_options(&self) -> ReadOptions {
         let mut options = ReadOptions::new().with_profiles(self.profiles.iter().cloned());
         if let Some(profile) = &self.profile {
@@ -313,6 +324,9 @@ impl DataOptions {
         }
         for (name, dir) in &self.aliases {
             options = options.with_alias(name.clone(), AliasRoot::Fs(dir.clone()));
+        }
+        if let Some(root) = &self.match_root {
+            options = options.with_match_root(root.clone());
         }
         options
     }

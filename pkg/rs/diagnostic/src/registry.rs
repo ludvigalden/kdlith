@@ -521,7 +521,7 @@ pub const CODES: &[CodeDefinition] = &[
         label: "profile-not-selected",
         severity: Severity::Error,
         exit_class: 1,
-        trigger: "a schema that declares profiles is invoked with no profile named, no declared match rule matching the source path, and no default profile, or with a name none of its profiles declares; selection reads invocation context, never document content",
+        trigger: "a schema that declares profiles is invoked with no profile named, no declared match rule matching the source path, and no default profile; with a profile set no member's rules match and no member is the default; or with a name none of its profiles declares; selection reads invocation context, never document content",
         message_template: "invocation profile <profile> is not one of the profiles schema <schema> declares",
         correction: "Name one of the schema's declared profiles at invocation, or declare a match rule or a default profile that selects one",
         retired: false,

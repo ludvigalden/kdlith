@@ -155,9 +155,10 @@ dialect kdlith version="0" {
         }
 
         // The match rules that select a profile from invocation context:
-        // the processed document's source path as the invocation spells
-        // it. Rules are evaluated in declaration order, and the first
-        // rule that matches selects its profile.
+        // the processed document's source path, normalized and relative
+        // to the invocation's match root. Rules are evaluated in
+        // declaration order, and the first rule that matches selects its
+        // profile.
         object ProfileMatch {
             field rules "list<MatchRule>"
         }

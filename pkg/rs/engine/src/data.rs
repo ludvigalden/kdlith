@@ -53,6 +53,7 @@ pub struct ReadOptions {
     profiles: Vec<String>,
     anchors: Vec<(String, PathBuf)>,
     aliases: Vec<(String, AliasRoot)>,
+    match_root: Option<PathBuf>,
     output_policy: Option<OutputPolicy>,
     max_invocations: Option<usize>,
 }
@@ -77,9 +78,9 @@ impl ReadOptions {
     /// Each entry document's selection resolves among the set's members
     /// (see [`Definition::select_profile`]): the members whose match
     /// rules its source path satisfies, else the member marked default,
-    /// else the first listed. A member the definition does not declare
-    /// fails closed (`KDLITH-SCH011`). An explicitly named profile
-    /// takes precedence over the set.
+    /// else nothing. A member the definition does not declare, or an
+    /// entry no member selects, fails closed (`KDLITH-SCH011`). An
+    /// explicitly named profile takes precedence over the set.
     #[must_use]
     pub fn with_profiles<I, S>(mut self, profiles: I) -> Self
     where
@@ -132,6 +133,28 @@ impl ReadOptions {
     pub fn with_alias(mut self, name: impl Into<String>, root: AliasRoot) -> Self {
         self.aliases.push((name.into(), root));
         self
+    }
+
+    /// Compare profile match rules against each entry's path relative
+    /// to `root` instead of the current directory, so selection does
+    /// not depend on where the invocation runs or how it spells the
+    /// entry (see [`crate::match_path`]). The root is resolved
+    /// lexically and never read.
+    #[must_use]
+    pub fn with_match_root(mut self, root: impl Into<PathBuf>) -> Self {
+        self.match_root = Some(root.into());
+        self
+    }
+
+    /// Select `def`'s profiles for the entry the reading shows as
+    /// `shown`, under these options.
+    fn selection(&self, def: &Definition, shown: &str) -> ProfileSelection {
+        def.select_profile_at(
+            self.profile.as_deref(),
+            &self.profiles,
+            shown,
+            self.match_root.as_deref(),
+        )
     }
 
     /// Supply exactly `anchors`, in place of any supplied before.
@@ -583,7 +606,7 @@ impl<'d> DataReader<'d> {
     ) -> Option<(String, String, ProfileSelection)> {
         let def = self.def;
         let text = read_text(entry, shown, "document size", ORIGIN).ok()?;
-        let selection = def.select_profile(options.profile.as_deref(), &options.profiles, shown);
+        let selection = options.selection(def, shown);
         let profiles = selection_fingerprint(def, &selection);
         let key = snapshot_key(shown, stable_hash(text.as_bytes()), profiles);
         Some((text, key, selection))
@@ -766,16 +789,14 @@ impl<'d> DataReader<'d> {
         for entry in entries {
             // Selected once per entry document, before any of its nodes
             // binds, from the explicit name or set and the entry's
-            // source path as the invocation spells it — never from its
-            // content. The documents its imports reach bind under this
-            // selection.
+            // anchored source path — never from its content. The
+            // documents its imports reach bind under this selection.
             let shown = match entry {
                 EntrySource::Path(path) => path.display().to_string(),
                 EntrySource::Memory { shown, .. } => (*shown).to_owned(),
             };
             reading.chain.push(shown.clone());
-            reading.selection =
-                def.select_profile(options.profile.as_deref(), &options.profiles, &shown);
+            reading.selection = options.selection(def, &shown);
             reading
                 .invocations
                 .select_profiles(selection_fingerprint(def, &reading.selection));

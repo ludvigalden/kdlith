@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "Match rules read the entry path lexically normalized: ./outlet/../outlet/stock.kdl is outlet/stock.kdl, so outlet's path-prefix rule selects outlet with no flag and its Gadget root binds",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/profiles.kdl",
+    "./outlet/../outlet/stock.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":0},\"type_name\":\"Gadget\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"g1\"},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n"
+    ]
+  }
+}

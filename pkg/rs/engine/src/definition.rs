@@ -1,6 +1,8 @@
 //! A compiled dialect or schema definition: the catalogs plus the
 //! declarations later compile stages consume.
 
+use std::path::{Component, Path, PathBuf};
+
 use kdlith_diagnostic::DiagnosticRecord;
 pub use kdlith_model::{DuplicateTreatment, MissingRequirement, ResolutionSelection};
 use kdlith_runtime::Repeated;
@@ -133,18 +135,33 @@ impl Definition {
     /// A listed set resolves among its own members, in listed order:
     /// every member whose effective match rules `path` satisfies
     /// applies; when none does, the member carrying the schema's
-    /// default mark applies; when none carries it, the first listed
-    /// applies. A set resolving to one member selects it exactly as
-    /// naming it would.
+    /// default mark applies; when none carries it, nothing is selected
+    /// (`KDLITH-SCH011`). A set resolving to one member selects it
+    /// exactly as naming it would.
     ///
-    /// `path` is the entry's source path as the invocation spells it —
-    /// the path the `path-stem` source-context provider reads — and the
-    /// only input inference reads: document content is never consulted.
+    /// Match rules compare `path` as [`match_path`] anchors it at the
+    /// current directory; [`Definition::select_profile_at`] names the
+    /// root. The path is the only input inference reads: document
+    /// content is never consulted.
     pub fn select_profile(
         &self,
         named: Option<&str>,
         set: &[String],
         path: &str,
+    ) -> ProfileSelection {
+        self.select_profile_at(named, set, path, None)
+    }
+
+    /// [`Definition::select_profile`] with match rules comparing `path`
+    /// relative to `root`, or to the current directory when `root` is
+    /// `None`, so one document selects one profile however the
+    /// invocation spells its path.
+    pub fn select_profile_at(
+        &self,
+        named: Option<&str>,
+        set: &[String],
+        path: &str,
+        root: Option<&Path>,
     ) -> ProfileSelection {
         if let Some(name) = named {
             return match self.declared_profile(name) {
@@ -154,14 +171,15 @@ impl Definition {
                 },
             };
         }
+        let path = match_path(path, root);
         if !set.is_empty() {
-            return self.select_from_set(set, path);
+            return self.select_from_set(set, &path);
         }
         if self.profiles.is_empty() {
             return ProfileSelection::Unprofiled;
         }
         for profile in &self.profiles {
-            if self.applies(profile.name, path) {
+            if self.applies(profile.name, &path) {
                 return ProfileSelection::Selected(profile.name);
             }
         }
@@ -173,8 +191,8 @@ impl Definition {
 
     /// The set arm of [`Definition::select_profile`]: every member must
     /// be declared, then the members' rules apply, else the member
-    /// marked default, else the first listed. A member listed twice
-    /// counts once, at its first position.
+    /// marked default, else nothing. A member listed twice counts once,
+    /// at its first position.
     fn select_from_set(&self, set: &[String], path: &str) -> ProfileSelection {
         let mut members: Vec<Sym> = Vec::with_capacity(set.len());
         for name in set {
@@ -202,8 +220,7 @@ impl Definition {
         {
             vec![default]
         } else {
-            members.truncate(1);
-            members
+            return ProfileSelection::Unselected { named: None };
         };
         match chosen.as_slice() {
             [one] => ProfileSelection::Selected(*one),
@@ -485,9 +502,9 @@ impl MatchRule {
         }
     }
 
-    /// Whether the rule matches `path`, the source path as the
-    /// invocation spells it. Both sides split into components on `/`
-    /// and `\`; nothing is normalized, and comparison is exact.
+    /// Whether the rule matches `path`, a source path as [`match_path`]
+    /// anchors it. Both sides split into components on `/` and `\`,
+    /// and comparison is exact.
     pub fn matches(&self, path: &str) -> bool {
         let path: Vec<&str> = components(path).collect();
         match self.kind {
@@ -506,6 +523,65 @@ impl MatchRule {
 
 fn components(path: &str) -> impl Iterator<Item = &str> {
     path.split(['/', '\\'])
+}
+
+/// The path profile match rules compare for an entry spelled `shown`:
+/// made absolute against the current directory and lexically
+/// normalized (`.` dropped, `..` taking back the component before it,
+/// no symlink resolved), then relative to `root` — itself resolved the
+/// same way, the current directory when `None` — joined with `/`. An
+/// entry outside the root keeps its normalized absolute path, so only
+/// rules that read trailing components can match it.
+pub fn match_path(shown: &str, root: Option<&Path>) -> String {
+    let cwd = std::env::current_dir().ok();
+    let absolute = |path: &Path| match &cwd {
+        Some(cwd) if path.is_relative() => normalized(&cwd.join(path)),
+        _ => normalized(path),
+    };
+    let entry = absolute(Path::new(shown));
+    let anchor = match root {
+        Some(root) => Some(absolute(root)),
+        None => cwd.as_deref().map(normalized),
+    };
+    let relative = anchor
+        .as_deref()
+        .and_then(|anchor| entry.strip_prefix(anchor).ok())
+        .unwrap_or(&entry);
+    let mut out = String::new();
+    for component in relative.components() {
+        match component {
+            Component::RootDir => out.push('/'),
+            Component::Prefix(prefix) => out.push_str(&prefix.as_os_str().to_string_lossy()),
+            other => {
+                if !out.is_empty() && !out.ends_with('/') {
+                    out.push('/');
+                }
+                out.push_str(&other.as_os_str().to_string_lossy());
+            }
+        }
+    }
+    out
+}
+
+/// `path` with `.` components dropped and each `..` taking back the
+/// normal component before it; a `..` with none before it is kept on a
+/// relative path and dropped at a root.
+fn normalized(path: &Path) -> PathBuf {
+    let mut out = PathBuf::new();
+    for component in path.components() {
+        match component {
+            Component::CurDir => {}
+            Component::ParentDir => match out.components().next_back() {
+                Some(Component::Normal(_)) => {
+                    out.pop();
+                }
+                Some(Component::RootDir | Component::Prefix(_)) => {}
+                _ => out.push(".."),
+            },
+            other => out.push(other),
+        }
+    }
+    out
 }
 
 /// The profiles selected for one entry document, by

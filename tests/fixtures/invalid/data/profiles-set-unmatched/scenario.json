@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A set no member selects fails closed: plain.kdl satisfies neither outlet's nor base's rules and neither carries the default mark, so --profiles outlet,base selects nothing (KDLITH-SCH011) instead of the first listed, and the unlisted schema default fallback is never consulted",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/profiles.kdl",
+    "--profiles",
+    "outlet,base",
+    "plain.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

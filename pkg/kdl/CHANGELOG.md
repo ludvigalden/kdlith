@@ -215,6 +215,20 @@ published yet.
   `merge=union` under a union-selecting resolution policy, stating the
   key-wise merge it receives; any other non-list field declaring it is
   still `KDLITH-DLC005`.
+- `--match-root DIR` on every data verb, and
+  `ReadOptions::with_match_root`, name the directory profile match
+  rules read entry paths relative to; without one it is the current
+  directory.
+
+### Changed
+
+- Profile match rules compare an entry's path normalized and relative
+  to the match root instead of as the invocation spells it, so an
+  absolute, `./`-prefixed, or parent-relative spelling of one document
+  selects the profile its root-relative spelling does.
+- Under `--profiles`, an entry that satisfies no listed member's rules
+  and finds no listed default now fails with `KDLITH-SCH011` instead of
+  binding under the first listed profile.
 
 ### Fixed
 
