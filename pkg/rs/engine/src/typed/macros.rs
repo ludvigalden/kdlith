@@ -419,30 +419,34 @@ macro_rules! object_type {
 macro_rules! union_type {
     (
         $(#[$meta:meta])* $vis:vis enum $name:ident {
-            $($(#[$vmeta:meta])* $node:literal => $variant:ident($ty:ty)),+ $(,)?
+            $($(#[$vmeta:meta])* $node:literal $(prefix $prefix:literal)? => $variant:ident($ty:ty)),+ $(,)?
         }
     ) => {
         $crate::union_type! {
             as stringify!($name);
-            $(#[$meta])* $vis enum $name { $($(#[$vmeta])* $node => $variant($ty)),+ }
+            $(#[$meta])* $vis enum $name {
+                $($(#[$vmeta])* $node $(prefix $prefix)? => $variant($ty)),+
+            }
         }
     };
     (
         exhaustive;
         $(#[$meta:meta])* $vis:vis enum $name:ident {
-            $($(#[$vmeta:meta])* $node:literal => $variant:ident($ty:ty)),+ $(,)?
+            $($(#[$vmeta:meta])* $node:literal $(prefix $prefix:literal)? => $variant:ident($ty:ty)),+ $(,)?
         }
     ) => {
         $crate::union_type! {
             as stringify!($name);
             exhaustive;
-            $(#[$meta])* $vis enum $name { $($(#[$vmeta])* $node => $variant($ty)),+ }
+            $(#[$meta])* $vis enum $name {
+                $($(#[$vmeta])* $node $(prefix $prefix)? => $variant($ty)),+
+            }
         }
     };
     (
         as $spelled:expr;
         $(#[$meta:meta])* $vis:vis enum $name:ident {
-            $($(#[$vmeta:meta])* $node:literal => $variant:ident($ty:ty)),+ $(,)?
+            $($(#[$vmeta:meta])* $node:literal $(prefix $prefix:literal)? => $variant:ident($ty:ty)),+ $(,)?
         }
     ) => {
         $(#[$meta])*
@@ -456,7 +460,15 @@ macro_rules! union_type {
             fn from_value(
                 value: &$crate::__private::Value,
             ) -> ::core::result::Result<Self, $crate::Mismatch> {
-                let (node, inner) = $crate::variant_value(value)?;
+                let (node, inner) = $crate::variant_value(
+                    value,
+                    &[$(($node, ::core::option::Option::<&'static str>::None
+                        $(.or(::core::option::Option::Some($prefix)))?)),+],
+                    |node, value| match node {
+                        $($node => <$ty as $crate::FromValue>::from_value(value).is_ok(),)+
+                        _ => false,
+                    },
+                )?;
                 match node {
                     $($node => <$ty as $crate::FromValue>::from_value(inner)
                         .map(Self::$variant)
@@ -500,7 +512,7 @@ macro_rules! union_type {
         as $spelled:expr;
         exhaustive;
         $(#[$meta:meta])* $vis:vis enum $name:ident {
-            $($(#[$vmeta:meta])* $node:literal => $variant:ident($ty:ty)),+ $(,)?
+            $($(#[$vmeta:meta])* $node:literal $(prefix $prefix:literal)? => $variant:ident($ty:ty)),+ $(,)?
         }
     ) => {
         $(#[$meta])*
@@ -513,7 +525,15 @@ macro_rules! union_type {
             fn from_value(
                 value: &$crate::__private::Value,
             ) -> ::core::result::Result<Self, $crate::Mismatch> {
-                let (node, inner) = $crate::variant_value(value)?;
+                let (node, inner) = $crate::variant_value(
+                    value,
+                    &[$(($node, ::core::option::Option::<&'static str>::None
+                        $(.or(::core::option::Option::Some($prefix)))?)),+],
+                    |node, value| match node {
+                        $($node => <$ty as $crate::FromValue>::from_value(value).is_ok(),)+
+                        _ => false,
+                    },
+                )?;
                 match node {
                     $($node => <$ty as $crate::FromValue>::from_value(inner)
                         .map(Self::$variant)

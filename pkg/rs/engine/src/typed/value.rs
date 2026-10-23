@@ -161,10 +161,34 @@ pub fn object_value<T: FromFields>(value: &Value) -> Result<T, Mismatch> {
 }
 
 /// A union value: the node name that spelled the variant, and its value.
-pub fn variant_value(value: &Value) -> Result<(&str, &Value), Mismatch> {
+/// A scalar, bound from a value rather than a node, selects its variant
+/// as binding did: the variant whose prefix its text starts with, with
+/// no fallback when that variant's type rejects it, else the first
+/// un-prefixed variant, in declaration order, whose type `accepts` it.
+/// `variants` lists each discriminator with its prefix, in declaration
+/// order.
+pub fn variant_value<'v>(
+    value: &'v Value,
+    variants: &[(&'static str, Option<&'static str>)],
+    accepts: impl Fn(&str, &Value) -> bool,
+) -> Result<(&'v str, &'v Value), Mismatch> {
     match value {
         Value::Map(entries) if entries.len() == 1 => {
             Ok((entries[0].key.as_str(), &entries[0].value))
+        }
+        Value::String(_) | Value::Number(_) | Value::Bool(_) => {
+            if let Value::String(text) = value
+                && let Some((node, _)) = variants
+                    .iter()
+                    .find(|(_, prefix)| prefix.is_some_and(|prefix| text.starts_with(prefix)))
+            {
+                return Ok((*node, value));
+            }
+            variants
+                .iter()
+                .find(|(node, prefix)| prefix.is_none() && accepts(node, value))
+                .map(|(node, _)| (*node, value))
+                .ok_or_else(|| Mismatch::expected("one union variant", value))
         }
         other => Err(Mismatch::expected("one union variant", other)),
     }

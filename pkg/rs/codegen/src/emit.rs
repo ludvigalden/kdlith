@@ -613,9 +613,14 @@ impl Emission<'_> {
                 out.line(&format!("    pub enum {name} {{"));
                 for variant in &union.variants {
                     let discriminator = self.names.resolve(variant.discriminator);
+                    let prefix = variant
+                        .prefix
+                        .as_ref()
+                        .map_or(String::new(), |prefix| format!(" prefix {prefix:?}"));
                     out.line(&format!(
-                        "        \"{}\" => {}({}),",
+                        "        \"{}\"{} => {}({}),",
                         discriminator,
+                        prefix,
                         pascal(discriminator),
                         rust_type(
                             &variant.ty,

@@ -1,0 +1,33 @@
+{
+  "binary": "kdlith",
+  "kind": "codegen-oracle",
+  "description": "Typed-reader parity for unions bound from a bare scalar: gen schema generates a schema whose unions mix prefixed and un-prefixed variants twice into two scratch trees the harness requires byte-identical, the generated crate compiles inside a scratch workspace materialized from this scenario's committed template, and the compiled processor reads a committed data document through its own typed reader, decoding each scalar as the variant binding selected: a prefix selects its variant, a number falls to the first un-prefixed variant whose type accepts it, and an un-prefixed string beside a prefixed variant reads as the un-prefixed one. A committed document whose boolean no variant accepts is rejected with the binding's value-type code",
+  "form": "schema",
+  "entrypoint": "inputs/probes.kdl",
+  "crate": "probes-proc",
+  "steps": [
+    { "generate": "ws/rs/probes-proc" },
+    { "generate": "gen-again" },
+    { "determinism": ["ws/rs/probes-proc", "gen-again"] },
+    {
+      "compile": {
+        "workspace": "ws",
+        "copy": {
+          "crates": ["diagnostic", "engine", "model", "parse", "runtime", "superproc"],
+          "kdl": true
+        },
+        "command": ["cargo", "build", "--offline", "--manifest-path", "ws/rs/probes-proc/Cargo.toml"]
+      }
+    },
+    {
+      "exercise": {
+        "command": ["cargo", "run", "--offline", "--quiet", "--manifest-path", "ws/rs/exercise/Cargo.toml", "--", "inputs/probes.kdl", "inputs/data.kdl", "inputs/bad-data.kdl"],
+        "stdout-contains": [
+          "schema ok digest=e6d8d2bde1363357\n",
+          "read ok records=6\nprobe number=320\nprobe template=${wait}\nlabel number=7\nlabel text=hello\nslot text=plain\nslot template=${name}\n",
+          "rejected KDLITH-BND003\n"
+        ]
+      }
+    }
+  ]
+}
