@@ -149,12 +149,93 @@ canonical declarations that define them.
 | Declaration-group expansion      | An `expand include target=TYPE member=NAME` source inside a `from` block splices the entries of the named keyed member of the named declaration into the collection being bound, at the expansion point, in declaration order; the authored short form is an `include NAME` child among like members. Expansion is demand-driven and cycle-checked (`KDLITH-SCH009`); each expanded entry's provenance records both the original declaration site and the inclusion site, and an expanded key colliding with a locally declared one is a duplicate-key rejection. Every reading path splices the short form: the typed reader streams each `include` child as an `expansion` item at its position, carrying its owner and how many like members precede it, and the compiler's one expansion pass splices there; the `effective` view shows each spliced group's two sites. The declaration-group splice is the whole built `include` mechanism: source discovery, which shares the spelling in the drafts, remains the anchors and profile grammar's mechanism and is not built as an `include`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | R3 §4         |
 | Multiple spellings and collision | Several sources may populate one field; `collision reject` makes supplying more than one an error, even with equal values. There is no implicit precedence.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | R2 §3         |
 | Dependent value binding          | A `value` block on a node declaration binds the node's remaining payload against a declaration's type: `against target=FIELD member=FIELD` names a field of the same node holding a reference and the member of the referenced declaration that carries the expected type, and `codec NAME` — a registered binding codec such as `argument-tail` (the remaining arguments, typed per expected type, with no scalar-to-list promotion), `fixture-value` (the type-directed recursive form), or `from-kind` (the shape selected by the value the referenced declaration holds in its member field) — names how the payload binds to it. Whatever the codec, the target field must hold a reference type whose referenced object type declares the member, or the definition fails with `KDLITH-DLC005`. When the target declaration is compiled the payload binds immediately; otherwise the binder emits a pending typed-binding item right after the item holding its reference, carrying the payload as a raw value — the payload's one value when there is exactly one, otherwise a list of the values in order — under the node and field the binding names. A pending binding is not a validated value and nothing executes it: under complete scope linking resolves its reference and validates the raw payload against the resolved declaration's member type — under `from-kind`, against the shape the member's value selects (see "Kind-directed payloads") — failing with `KDLITH-REF005`; the bound view shows it, export and `read data` exclude it, and typed item readers carry it through as a `pending-binding` item of their own | R2 §8, R3 §6  |
-| Case dispatch                    | A `cases` block inside a node declaration selects the logical type a node binds as by property value: `case property=NAME equals=V type=TYPE` children, evaluated top-down, first match wins, and an optional `otherwise type=TYPE` is the fallback; a node whose properties match no case and that has no `otherwise` is rejected as unbound. A case-selected object type binds closed: its required fields are checked as the node's own (`KDLITH-BND004`), and a field the node holds a value for that the selected type does not declare is refused (`KDLITH-BND014`); the case selector itself is always admitted. Cases select among types of one node spelling; unions discriminate among node spellings and value prefixes. A case shape therefore closes child admission through the field the child binds into: a child admitted by the node's `children` rule is refused when the selected type does not declare its field, and occurrence bounds stay name-keyed (`min-occurs`/`max-occurs` per child name), so a per-case occurrence bound is not expressible.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | R3 §8         |
+| Case dispatch                    | A `cases` block inside a node declaration selects the logical type a node binds as by property value: `case property=NAME equals=V type=TYPE` children, evaluated top-down, first match wins, and an optional `otherwise type=TYPE` is the fallback; a node whose properties match no case and that has no `otherwise` is rejected as unbound. A case-selected object type binds closed: its required fields are checked as the node's own (`KDLITH-BND004`), and a field the node holds a value for that the selected type does not declare is refused (`KDLITH-BND014`); the case selector itself is always admitted. Cases select among types of one node spelling; unions discriminate among node spellings and value prefixes. A case shape therefore closes child admission through the field the child binds into: a child admitted by the node's `children` rule is refused when the selected type does not declare its field, and occurrence bounds stay keyed by child name; a bound that varies with the node's property values is spelled as a `when` branch of the child's rule (see "Conditional occurrence bounds").                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | R3 §8         |
 | Duplicate keys                   | `duplicate-keys reject` on keyed collections                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | R1 §2, R2 §3  |
 | Compile-time binding checks      | The compiler rejects overlapping bindings (`KDLITH-SCH003`, also reported when a definition is read as data of the dialect, so every processor of definitions rejects it), unconsumed arguments, and contradictory ownership of children                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | R2 §3         |
 | Child permission and cardinality | A child is permitted only when a field binding consumes it or a `children NAME` rule names it. `min-occurs` and `max-occurs` bound occurrences; minimums are checked at scope completion. These are schema occurrence rules, never reinterpretations of authored data that uses a property named `min-occurs` or `max-count`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | R1 §3, R3 §7  |
 | Node groups                      | `group NAME MEMBER...` under `schema` names a set of declared node names once; members are names, never node declarations. A `children-group NAME` rule in a node declaration expands to one `children MEMBER` rule per member, each with the rule's `min-occurs` and `max-occurs` (bounds apply per member; an aggregate bound over a group is not expressible), and `parents group=NAME` places the node under every member as well as under any positional parents. Expansion happens when the schema compiles, so dispatch stays by parent and name and a child outside every group stays unknown (`KDLITH-BND001`). An undeclared group is an undeclared reference (`KDLITH-SCH006`), a group without members is `KDLITH-SCH015`, and a member naming no declared node, or a child spelled both directly and through a group, contradicts the declaration (`KDLITH-SCH005`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | R1 §3, R3 §7  |
+| Conditional occurrence bounds    | A `children NAME` or `children-group NAME` rule may carry `when property=FIELD equals=V` branches and `when-all` / `when-any` combinators over them, each branch root with its own `min-occurs` / `max-occurs`. The rule's own bounds are the fallback when no branch matches; a matching branch replaces both. Conditions read only the node's own scalar or enum property values and are checked when the scope completes (see "Conditional occurrence bounds")                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | R3 §7, R3 §8  |
 | Compiled plans                   | Bindings compile into a plan; the schema's own KDL is not reinterpreted per record                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | R1 §2, R2 §12 |
+
+### Conditional occurrence bounds
+
+A children rule's bounds may depend on the owning node's own property
+values. The rule body holds `when` branches; the child stays permitted
+by name either way, and only its bounds vary:
+
+```kdl
+node button role=record type=Button {
+    field variant property=variant
+    field icons { from { children icon } }
+    children icon max-occurs=0 {
+        when property=variant equals=icon min-occurs=1 max-occurs=1
+    }
+    children menu min-occurs=0 max-occurs=0 {
+        when-all min-occurs=1 max-occurs=1 {
+            when property=variant equals=split
+            when-any {
+                when property=layout equals=grid
+                when property=layout equals=list
+            }
+        }
+    }
+}
+```
+
+- **Grammar.** A `when property=FIELD equals=V` leaf compares one
+  property of the node with one value; `when-all` (every member
+  matches) and `when-any` (at least one matches) compose leaves and
+  nest to any depth. There is no negation, no ordering, and no other
+  predicate. Only a branch root — a `when`, `when-all`, or `when-any`
+  directly under the rule — carries `min-occurs` / `max-occurs`; bounds
+  on a nested member are unbound properties (`KDLITH-BND005`).
+- **Gateable values.** The gating property must be a field the node
+  declares (`KDLITH-SCH006` otherwise) whose type is a scalar —
+  `String`, `Bool`, `Integer`, `Decimal`, `U64`, or `ValueExpr` — or an
+  enum, optionally wrapped in `optional` (`KDLITH-SCH016` otherwise:
+  references, objects, lists, maps, and codec-bound types never gate).
+  `equals` must decode as that type (`KDLITH-DLC005` otherwise). Values
+  reached through a reference, a context slot read directly, or the
+  parent or sibling nodes are not conditions; a condition reads the
+  node's own values only.
+- **Absence and `#null`.** An absent property matches no leaf, so its
+  branch does not match. `equals=#null` matches only an explicitly held
+  `#null`; absence never equals `#null`.
+- **Bounds.** Branches are tried in declaration order, first match
+  winning. A matching branch's bounds replace both of the rule's bounds:
+  a bound the branch does not spell takes its default (minimum 0,
+  unbounded maximum), never the rule's. When no branch matches, the
+  rule's own bounds apply. A rule with branches must spell at least one
+  bound of its own (`KDLITH-SCH019`), so the fall-through is always a
+  decision; its base `max-occurs=0` is admitted there, refusing the
+  child unless a branch says otherwise. A combinator without members is
+  `KDLITH-SCH018`.
+- **Disjointness.** Two branches of one rule must provably never match
+  the same node, or the schema fails to compile (`KDLITH-SCH017`). A
+  leaf is required when every combinator between it and its branch
+  root is a `when-all`; two branches are disjoint when each carries a
+  required leaf on one shared property with distinct values. The check
+  is conservative: branches gated on different properties, or whose
+  only shared leaves sit under a `when-any`, are refused even when no
+  document could match both. A single branch never conflicts.
+- **Groups.** A `children-group` rule's branches are copied into every
+  member rule it expands to; conditions never see the group.
+- **Cases.** Cases select a node's type when it opens; conditions
+  select its bounds when its scope completes. Both read the same
+  values, and a branch may gate on the case selector. Conditions never
+  re-admit a child the selected type does not declare
+  (`KDLITH-BND014`).
+
+Evaluation happens per node instance when its scope completes, against
+the node's final values: a value spelled on the node, one filled from a
+context slot under `policy=fallback`, and a type `fallback` all gate
+alike. A gating property whose value fails its type check holds no
+value, so it matches no branch and the rule's own bounds apply; the
+node then reports the type failure and, when its children break those
+bounds, `KDLITH-BND002` as well. Both bounds of a rule with branches
+are checked at scope completion, not while children stream. A count
+outside the selected bounds is `KDLITH-BND002`, exactly as for a rule
+without branches: conditions add no run-time diagnostic code.
 
 ### Node declaration metadata
 
@@ -884,6 +965,10 @@ item stream `inspect` shows) and when the engine compiles it (`vet`, and
 | A profile whose `extends` chain returns to a profile already on it                                                                    | `KDLITH-SCH012` |
 | A second profile of one schema marked `default`                                                                                       | `KDLITH-SCH013` |
 | A node group declared with zero members                                                                                               | `KDLITH-SCH015` |
+| A `when` condition gating on a declared property that is not a scalar or an enum                                                      | `KDLITH-SCH016` |
+| Two `when` branches of one children rule not provably disjoint                                                                        | `KDLITH-SCH017` |
+| A `when-all` or `when-any` combinator with no member conditions                                                                       | `KDLITH-SCH018` |
+| A children rule carrying `when` branches without bounds of its own                                                                    | `KDLITH-SCH019` |
 
 A bad type expression (`KDLITH-DLC007`) and an unknown enum value
 (`KDLITH-BND008`) are distinct from a plain value-type mismatch
@@ -1012,9 +1097,25 @@ came to hold a value, and the case selector is never counted; a
 selected type that is not an object is not checked. A required field
 the selected type declares and the node lacks stays `KDLITH-BND004`.
 This is how a case shape closes child admission: a child binds into a
-field, so a child the selected type has no field for is refused here;
-occurrence bounds stay name-keyed, and a bound that holds only under
-one case is not expressible.
+field, so a child the selected type has no field for is refused here.
+Occurrence bounds stay keyed by child name; a bound that holds only
+under one property value is a `when` branch of the child's rule (see
+[Conditional occurrence bounds](#conditional-occurrence-bounds)).
+
+Conditional occurrence bounds add `KDLITH-SCH016` through
+`KDLITH-SCH019`, each minted once per offending rule when the schema
+compiles (a `children-group` rule reports once, not once per member it
+expands to): a gating property whose declared type is not a scalar or
+an enum (`KDLITH-SCH016`), two branches the compiler cannot prove
+disjoint (`KDLITH-SCH017`), a combinator without members
+(`KDLITH-SCH018`), and branches on a rule that spells no bounds of its
+own (`KDLITH-SCH019`). A gating property the node does not declare is
+an undeclared reference (`KDLITH-SCH006`, kind field), and an `equals`
+that does not decode as the property's declared type is a malformed
+construct (`KDLITH-DLC005`). Nothing new fails at bind time: the
+selected bounds flow through the ordinary count check, so a shortfall
+or overflow — including a child refused by `max-occurs=0` — is
+`KDLITH-BND002`.
 
 The shipped contribution resolver adds `KDLITH-DLC010`, minted when a
 registered resolver refuses the records it was handed (a duplicate
@@ -1598,20 +1699,23 @@ numbered.
 `requires` lists what processing the node needs, derived from the
 plan, always in this order:
 
-| Flag                         | Present when                                                                                                                                           |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `record-buffering`           | the node defers a contribution, or one of its effects sets a slot that accumulates                                                                     |
-| `scope-completion`           | the node's scope runs checks when it closes: a minimum count, an exactly-one group, a required first child, an ordered sequence, or a descendant bound |
-| `declaration-lookup`         | the node registers a declaration                                                                                                                       |
-| `imported-schema-metadata`   | the definition imports documents (marks every node)                                                                                                    |
-| `deferred-binding`           | the node defers a reference                                                                                                                            |
-| `global-validation`          | the definition declares a document rule (marks every node)                                                                                             |
-| `registered-domain-handlers` | one of the node's effects is a registered handler                                                                                                      |
+| Flag                         | Present when                                                                                                                                                                                 |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `record-buffering`           | the node defers a contribution, or one of its effects sets a slot that accumulates                                                                                                           |
+| `scope-completion`           | the node's scope runs checks when it closes: a minimum count, a children rule with `when` branches, an exactly-one group, a required first child, an ordered sequence, or a descendant bound |
+| `declaration-lookup`         | the node registers a declaration                                                                                                                                                             |
+| `imported-schema-metadata`   | the definition imports documents (marks every node)                                                                                                                                          |
+| `deferred-binding`           | the node defers a reference                                                                                                                                                                  |
+| `global-validation`          | the definition declares a document rule (marks every node)                                                                                                                                   |
+| `registered-domain-handlers` | one of the node's effects is a registered handler                                                                                                                                            |
 
 A node with no flag is processed within its own header and record. The
 accumulation need belongs to the node that sets the slot, not to the
 nodes that read it. A scope that only caps counts or permits children
-runs no check when it closes, so it does not need scope completion.
+runs no check when it closes, so it does not need scope completion. A
+children rule with `when` branches does: both its bounds are checked
+when the scope closes, even when its own minimum is 0 and only a
+branch requires the child.
 
 This vocabulary follows the design drafts' list for the `plan` view
 (F §8). The drafts' earlier table of plan requirements (R2 §12) names
