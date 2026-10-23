@@ -195,6 +195,12 @@ impl ScopeRules {
         &self.descendants
     }
 
+    /// Whether any counter's bounds come from when branches, which are
+    /// checked only when the scope completes.
+    pub fn has_conditional(&self) -> bool {
+        !self.conditional.is_empty()
+    }
+
     pub fn permits(&self, child: Sym) -> bool {
         self.by_name.contains_key(&child)
     }

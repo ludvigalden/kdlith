@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "A children rule whose minimum comes only from a when branch still needs scope completion: the button's icon rule has base max-occurs=0 and no base minimum, but its variant=icon branch requires one icon, and both bounds of a conditional rule are checked when the scope completes, so the button's plan node requires scope-completion while the icon node, with no children rules, requires nothing",
+  "args": [
+    "inspect",
+    "schema",
+    "--view",
+    "plan",
+    "{fx-suite}/processing/bind/when-leaf-gate/schema.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"name\":\"button\",\"role\":\"record\",\"scope\":0,\"children-effects\":[],\"following-effects\":[],\"context-reads\":[],\"deferred\":[],\"dependent\":null,\"declaration\":false,\"requires\":[\"scope-completion\"]}"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

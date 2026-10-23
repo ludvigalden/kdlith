@@ -1,0 +1,3 @@
+{"item":"plan-context","data":{"slots":[],"namespaces":[]}}
+{"item":"plan-node","data":{"name":"button","role":"record","scope":0,"children-effects":[],"following-effects":[],"context-reads":[],"deferred":[],"dependent":null,"declaration":false,"requires":["scope-completion"]}}
+{"item":"plan-node","data":{"name":"icon","role":null,"scope":1,"children-effects":[],"following-effects":[],"context-reads":[],"deferred":[],"dependent":null,"declaration":false,"requires":[]}}

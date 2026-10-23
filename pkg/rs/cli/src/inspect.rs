@@ -519,11 +519,13 @@ fn id_names(n: &Names, ids: impl Iterator<Item = (usize, Sym)>) -> Vec<String> {
     names
 }
 
-/// Whether closing the scope runs checks: a minimum, an exactly-one
+/// Whether closing the scope runs checks: a minimum, a children rule with
+/// when branches (both its bounds are checked then), an exactly-one
 /// group, a required first node, an ordered sequence, or descendant
 /// bounds.
 fn completes(rules: &ScopeRules) -> bool {
     rules.counters().iter().any(|occurs| occurs.min > 0)
+        || rules.has_conditional()
         || !rules.groups().is_empty()
         || rules
             .order_rule()

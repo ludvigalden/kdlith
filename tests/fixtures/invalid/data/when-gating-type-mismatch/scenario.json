@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A gating property whose value fails its type check holds no value, so it matches no branch: variant=bogus is not a member of Variant (KDLITH-BND008), the instance falls to the rule's base max-occurs=0, and its icon child overflows that too (KDLITH-BND002); both diagnostics are reported",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/when-leaf-gate/schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}
