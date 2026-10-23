@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A children rule carrying when branches but no base min-occurs/max-occurs names no bounds for the instances no branch matches; refused at schema compile (KDLITH-SCH019) rather than admitting everything",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "A schema whose children rules carry when branches vets green: icon is refused by the base bounds and required exactly once by a variant=icon leaf branch, and menu carries a composed when-all branch (variant=split with a when-any over layouts, one member itself a when-all) beside a disjoint variant=plain branch that refuses it, under base bounds of at most two; branches add no node declarations, so the summary counts three",
+  "args": [
+    "vet",
+    "schema",
+    "schema.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "ok: schema ui version 1 scope=complete documents=1 types=4 nodes=3 slots=0 profiles=0 digest=120dca5d402dc79f"
+    ]
+  }
+}

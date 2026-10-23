@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A when condition whose equals value does not decode as the gating property's declared type (huge is no member of the Variant enum) is a malformed construct, refused at schema compile (KDLITH-DLC005)",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

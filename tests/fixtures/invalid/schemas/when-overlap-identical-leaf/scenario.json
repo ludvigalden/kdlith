@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "Two when branches of one children rule whose required leaves are identical (same property, same value) always match together; refused at schema compile (KDLITH-SCH017)",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A when-any combinator with no member conditions composes nothing; refused at schema compile (KDLITH-SCH018)",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

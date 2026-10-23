@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "Two when branches of one children rule gated on different properties cannot be proven disjoint (variant=icon with layout=grid matches both), so their bounds could both apply; refused at schema compile (KDLITH-SCH017)",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

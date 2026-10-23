@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A when condition gating on a declared field whose type is neither a scalar nor an enum (here a list) is refused at schema compile (KDLITH-SCH016): scalar equality is undefined over it",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

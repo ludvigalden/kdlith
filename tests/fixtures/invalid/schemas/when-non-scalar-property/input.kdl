@@ -1,0 +1,32 @@
+schema ui version="1" {
+    types {
+        enum Variant {
+            member plain
+            member icon
+            member split
+        }
+        enum Layout {
+            member grid
+            member list
+        }
+        object Icon { field glyph String }
+        object Button {
+            field variant Variant
+            field layout "optional<Layout>"
+            field tags "optional<list<String>>"
+            field icons "list<Icon>"
+        }
+    }
+    node button role=record type=Button {
+        field variant property=variant
+        field layout property=layout
+        field tags { from { args } }
+        field icons { from { children icon } }
+        children icon max-occurs=1 {
+            when property=tags equals=x max-occurs=2
+        }
+    }
+    node icon type=Icon {
+        field glyph arg=0
+    }
+}

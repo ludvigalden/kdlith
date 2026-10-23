@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A when condition naming a property the node declaration does not declare is an undeclared field reference (KDLITH-SCH006), refused at schema compile",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

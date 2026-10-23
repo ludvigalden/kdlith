@@ -1,0 +1,52 @@
+schema ui version="1" {
+    types {
+        enum Variant {
+            member plain
+            member icon
+            member split
+        }
+        enum Layout {
+            member grid
+            member list
+            member masonry
+        }
+        object Icon { field glyph String }
+        object Button {
+            field variant Variant
+            field layout "optional<Layout>"
+            field dense "optional<Bool>"
+            field icons "list<Icon>"
+            field menus "list<Icon>"
+        }
+    }
+    node button role=record type=Button {
+        field variant property=variant
+        field layout property=layout
+        field dense property=dense
+        field icons { from { children icon } }
+        field menus { from { children menu } }
+        children icon max-occurs=0 {
+            when property=variant equals=icon min-occurs=1 max-occurs=1
+        }
+        children menu max-occurs=2 {
+            when-all min-occurs=1 max-occurs=1 {
+                when property=variant equals=split
+                when-any {
+                    when property=layout equals=grid
+                    when property=layout equals=masonry
+                    when-all {
+                        when property=layout equals=list
+                        when property=dense equals=#true
+                    }
+                }
+            }
+            when property=variant equals=plain max-occurs=0
+        }
+    }
+    node icon type=Icon {
+        field glyph arg=0
+    }
+    node menu type=Icon {
+        field glyph arg=0
+    }
+}
