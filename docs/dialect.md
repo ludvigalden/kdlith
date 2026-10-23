@@ -1103,16 +1103,19 @@ supplied is reported at the node, naming the field
 `Type.field`, and an entries envelope's absent key as `key argument`).
 A child bound as one field value (`child=NAME`, or a `child` source)
 and written with no argument is reported at the child itself, naming
-the child: `card is missing required value of child title`. Both
-reading paths word the child form the same way, the binder for data and
-for definitions read as data, and the compiler's self-description walk
-for definitions. A valueless child supplies nothing, so when its field
-is required the node reports its own missing field as well, and the run
-carries both records — the child's first, at the child's line, then the
-node's:
+the field and the spellings that would supply it:
+`card is missing required title (expected child title VALUE)`. When the
+source declares `compact=#true` the property spelling conforms too, and
+the message names both: `card is missing required title (expected
+property title=VALUE or child title VALUE)`. Both reading paths word the
+child form the same way, the binder for data and for definitions read
+as data, and the compiler's self-description walk for definitions. A
+valueless child supplies nothing, so when its field is required the
+node reports its own missing field as well, and the run carries both
+records — the child's first, at the child's line, then the node's:
 
 ```text
-error[KDLITH-BND004]: card is missing required value of child title
+error[KDLITH-BND004]: card is missing required title (expected child title VALUE)
   --> data.kdl:2:5
   help: Add the required field
 error[KDLITH-BND004]: card is missing required title

@@ -170,7 +170,7 @@ impl Walk<'_> {
                     Some(inner)
                 }
                 Some(ChildPlan::Scalar) => {
-                    self.scalar(found, child);
+                    self.scalar(found, child, compiled.admits_compact(sym));
                     None
                 }
                 None => {
@@ -202,8 +202,9 @@ impl Walk<'_> {
         })
     }
 
-    /// A child bound as exactly one positional value of its owner's field.
-    fn scalar(&self, found: &mut Vec<Finding>, child: &SyntaxNode) {
+    /// A child bound as exactly one positional value of its owner's field;
+    /// `compact` is whether the owner also admits it spelled as a property.
+    fn scalar(&self, found: &mut Vec<Finding>, child: &SyntaxNode, compact: bool) {
         for (at, scalar) in child.args.iter().enumerate().skip(1) {
             let what = format!("argument {at}");
             found.push(Finding::new(
@@ -228,7 +229,12 @@ impl Walk<'_> {
             ));
         }
         if child.args.is_empty() {
-            let what = format!("value of child {}", child.name);
+            let name = &child.name;
+            let what = if compact {
+                format!("{name} (expected property {name}=VALUE or child {name} VALUE)")
+            } else {
+                format!("{name} (expected child {name} VALUE)")
+            };
             found.push(Finding::new(
                 child.span,
                 MISSING_FIELD,

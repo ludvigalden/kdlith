@@ -2708,7 +2708,12 @@ impl<'d, 's> Binder<'d, 's> {
             Some((value, span)) => self.take(cx, parent, bind, value, span),
             None => {
                 let node = self.name(parent.name);
-                let what = format!("value of child {}", self.name(frame.name));
+                let child = self.name(frame.name);
+                let what = if self.admits_compact(parent, frame.name) {
+                    format!("{child} (expected property {child}=VALUE or child {child} VALUE)")
+                } else {
+                    format!("{child} (expected child {child} VALUE)")
+                };
                 self.diagnose(cx, MISSING_FIELD, frame.span, &[node, &what]);
             }
         }

@@ -248,6 +248,12 @@ published yet.
   union value exactly as the binder decodes it: a matching prefix
   selects its variant, otherwise the first un-prefixed variant whose
   type accepts the value.
+- A child bound as one field value and written with no argument is
+  reported as `KDLITH-BND004` naming the field and the spellings that
+  supply it instead of naming only the valueless child:
+  `card is missing required title (expected child title VALUE)`, with
+  `property title=VALUE or` added when the source declares
+  `compact=#true`.
 
 ### Fixed
 
