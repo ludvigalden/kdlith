@@ -1,0 +1,10 @@
+tool fmt {
+    select {
+        tag go
+        kind file
+        under src
+        all {
+            kind test
+        }
+    }
+}

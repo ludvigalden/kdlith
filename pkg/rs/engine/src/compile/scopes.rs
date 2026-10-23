@@ -29,6 +29,7 @@ struct ChildUse<'s> {
     many: bool,
     nested: &'s [Source],
     entries: Option<(u64, Sym)>,
+    compact: bool,
 }
 
 /// What a scope is built from.
@@ -195,6 +196,7 @@ impl Builder<'_> {
             arity: Arity::default(),
             properties: Vec::new(),
             plans,
+            compact: Vec::new(),
         })
     }
 
@@ -212,9 +214,19 @@ impl Builder<'_> {
             arity: Arity::default(),
             properties: Vec::new(),
             plans: BTreeMap::new(),
+            compact: Vec::new(),
         });
         let (arity, properties) = arguments_and_properties(cx, &input);
-        let (plans, mut rules) = self.children(cx, &input);
+        let (plans, mut rules, compact) = self.children(cx, &input);
+        for name in &compact {
+            if properties.contains(name) {
+                let spelled = cx.names.resolve(*name);
+                let reason = format!(
+                    "property {spelled} is bound and also spells the compact child {spelled}"
+                );
+                cx.malformed(input.site, &input.label, &reason);
+            }
+        }
         let sequenced = input
             .sequence
             .as_ref()
@@ -242,20 +254,31 @@ impl Builder<'_> {
         scope.properties = properties;
         scope.plans = plans;
         scope.rules = rules;
+        scope.compact = compact;
         id
     }
 
-    /// Plan every consumed or ruled child and compile the counters.
+    /// Plan every consumed or ruled child and compile the counters; the
+    /// children admitting the compact spelling come back with them.
     fn children(
         &mut self,
         cx: &mut Cx<'_>,
         input: &ScopeInput<'_>,
-    ) -> (BTreeMap<Sym, ChildPlan>, ScopeRules) {
+    ) -> (BTreeMap<Sym, ChildPlan>, ScopeRules, Vec<Sym>) {
         let mut order: Vec<Sym> = Vec::new();
         let mut uses: BTreeMap<Sym, Vec<ChildUse<'_>>> = BTreeMap::new();
         for usage in &input.uses {
             let (name, child) = match usage.source {
-                Source::Child { name, sources } | Source::Children { name, sources } => (
+                Source::Child {
+                    name,
+                    sources,
+                    compact,
+                }
+                | Source::Children {
+                    name,
+                    sources,
+                    compact,
+                } => (
                     *name,
                     ChildUse {
                         field: usage.field,
@@ -263,6 +286,7 @@ impl Builder<'_> {
                         many: matches!(usage.source, Source::Children { .. }),
                         nested: sources,
                         entries: None,
+                        compact: *compact,
                     },
                 ),
                 Source::Entries { node, key, value } => (
@@ -273,6 +297,7 @@ impl Builder<'_> {
                         many: true,
                         nested: &[],
                         entries: Some((*key, *value)),
+                        compact: false,
                     },
                 ),
                 _ => continue,
@@ -289,12 +314,23 @@ impl Builder<'_> {
         }
         let mut plans = BTreeMap::new();
         let mut rules = ScopeRules::default();
+        let mut compact = Vec::new();
         for name in order {
             let rule = input.rules.iter().find(|r| r.name == name);
             let consumed = uses.remove(&name).unwrap_or_default();
             let Some((plan, single)) = self.plan(cx, input, name, &consumed, rule) else {
                 continue;
             };
+            if let Some(usage) = consumed.iter().find(|u| u.compact) {
+                match self.compact_refusal(cx, plan, &consumed) {
+                    None => compact.push(name),
+                    Some(reason) => {
+                        let spelled = cx.names.resolve(name);
+                        let construct = format!("compact child {spelled} of {}", input.label);
+                        cx.malformed(usage.site, &construct, &reason);
+                    }
+                }
+            }
             plans.insert(name, plan);
             let max = rule.and_then(|r| r.max).or(single.then_some(1));
             let occurs = Occurs {
@@ -317,7 +353,65 @@ impl Builder<'_> {
                     .error(INVALID_BINDING, input.site, &[&input.label, &reason]);
             }
         }
-        (plans, rules)
+        (plans, rules, compact)
+    }
+
+    /// Why a child cannot be spelled as a property carrying its one
+    /// argument: every field it binds must come from that argument alone,
+    /// with nothing else of the child's to bind or dispatch on.
+    fn compact_refusal(
+        &self,
+        cx: &Cx<'_>,
+        plan: ChildPlan,
+        consumed: &[ChildUse<'_>],
+    ) -> Option<String> {
+        let only_first = |sources: &[Source]| {
+            !sources.is_empty() && sources.iter().all(|s| *s == Source::Argument(0))
+        };
+        match plan {
+            ChildPlan::Scalar => None,
+            ChildPlan::Nested(_) => {
+                let nested: Vec<Source> = consumed
+                    .iter()
+                    .flat_map(|u| u.nested.iter().cloned())
+                    .collect();
+                (!only_first(&nested))
+                    .then(|| "its nested sources select more than its argument 0".to_owned())
+            }
+            ChildPlan::Declared { key: Some(_), .. } => {
+                Some("an entries node keys its map by its own argument".to_owned())
+            }
+            ChildPlan::Declared { decl, key: None } => {
+                let node = &self.nodes[decl.index()];
+                let shaped = node.role.is_some()
+                    || node.value.is_some()
+                    || !node.cases.is_empty()
+                    || node.otherwise.is_some()
+                    || !node.children.is_empty()
+                    || !node.groups.is_empty()
+                    || !node.descendants.is_empty()
+                    || node.sequence.is_some()
+                    || !node.effects.is_empty();
+                if shaped {
+                    return Some(
+                        "its declaration carries more than field bindings: a role, dispatch, effects, or children rules"
+                            .to_owned(),
+                    );
+                }
+                if node.fields.is_empty() {
+                    return Some("its declaration binds no field".to_owned());
+                }
+                node.fields
+                    .iter()
+                    .find(|field| !only_first(&field.sources))
+                    .map(|field| {
+                        format!(
+                            "field {} binds from more than argument 0",
+                            cx.names.resolve(field.name)
+                        )
+                    })
+            }
+        }
     }
 
     /// The plan for one child name and whether it binds at most once.

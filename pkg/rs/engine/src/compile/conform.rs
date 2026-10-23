@@ -256,9 +256,9 @@ impl Walk<'_> {
             }
         }
         for (key, scalar) in &node.props {
-            let bound = names
-                .get(key)
-                .is_some_and(|sym| compiled.properties.contains(&sym));
+            let bound = names.get(key).is_some_and(|sym| {
+                compiled.properties.contains(&sym) || compiled.admits_compact(sym)
+            });
             if !bound {
                 let what = format!("property {key}");
                 found.push(Finding::new(

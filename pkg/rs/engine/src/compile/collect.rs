@@ -865,13 +865,23 @@ fn source(cx: &mut Cx<'_>, site: Site, label: &str, input: &SourceInput) -> Opti
         SourceInput::Argument(index) => Some(Source::Argument(*index)),
         SourceInput::Args => Some(Source::Args),
         SourceInput::Property(name) => Some(Source::Property(cx.names.intern(name))),
-        SourceInput::Child { name, sources } => Some(Source::Child {
+        SourceInput::Child {
+            name,
+            sources,
+            compact,
+        } => Some(Source::Child {
             name: cx.names.intern(name),
             sources: nested(cx, site, label, sources),
+            compact: *compact,
         }),
-        SourceInput::Children { name, sources } => Some(Source::Children {
+        SourceInput::Children {
+            name,
+            sources,
+            compact,
+        } => Some(Source::Children {
             name: cx.names.intern(name),
             sources: nested(cx, site, label, sources),
+            compact: *compact,
         }),
         SourceInput::Entries { node, key, value } => entries(cx, site, label, node, key, value),
         SourceInput::Expand { target, member } => {

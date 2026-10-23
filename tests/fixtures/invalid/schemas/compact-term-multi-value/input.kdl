@@ -1,0 +1,39 @@
+schema filters version="1" {
+    types {
+        union Term {
+            variant tag TagTest
+            variant attr AttrTest
+        }
+
+        object TagTest {
+            field tag String
+        }
+
+        object AttrTest {
+            field name String
+            field value String
+        }
+
+        object Tool {
+            field select "list<Term>"
+        }
+    }
+
+    node tool role=record type=Tool {
+        field select {
+            from {
+                children tag compact=#true
+                children attr compact=#true
+            }
+        }
+    }
+
+    node tag type=TagTest parent=tool {
+        field tag arg=0
+    }
+
+    node attr type=AttrTest parent=tool {
+        field name arg=0
+        field value arg=1
+    }
+}

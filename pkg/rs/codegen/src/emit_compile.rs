@@ -744,6 +744,7 @@ fn field_binding(name: String, binding: &FieldBinding) -> FieldBindingInput {
         sources.push(SourceInput::Child {
             name: child.as_str().to_owned(),
             sources: Vec::new(),
+            compact: false,
         });
     }
     if let Some(slot) = &binding.context {
@@ -776,10 +777,12 @@ fn source(input: &Source) -> SourceInput {
         Source::Child(child) => SourceInput::Child {
             name: child.name.as_str().to_owned(),
             sources: child.sources.iter().map(&source).collect(),
+            compact: child.compact.unwrap_or(false),
         },
         Source::Children(children) => SourceInput::Children {
             name: children.name.as_str().to_owned(),
             sources: children.sources.iter().map(&source).collect(),
+            compact: children.compact.unwrap_or(false),
         },
         Source::Entries(entries) => SourceInput::Entries {
             node: entries.node.as_str().to_owned(),

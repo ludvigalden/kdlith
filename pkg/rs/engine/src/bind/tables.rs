@@ -281,7 +281,7 @@ fn fill(
                     mode: single,
                 },
             )),
-            Source::Child { name, sources } | Source::Children { name, sources } => {
+            Source::Child { name, sources, .. } | Source::Children { name, sources, .. } => {
                 let repeated = many || matches!(source, Source::Children { .. });
                 if sources.is_empty() {
                     let mode = if repeated { Mode::Append } else { Mode::Single };

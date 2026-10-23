@@ -222,6 +222,15 @@ published yet.
 - `vet data --diagnostics json` writes each link diagnostic to
   standard output as a `diagnostic` item after the item stream, beside
   the unchanged standard error text and exit.
+- A `child` or `children` source declaring `compact=#true` admits the
+  child spelled as a property of the node it selects from:
+  `select tag=go` binds exactly as `select { tag go }`, one child per
+  property at the property's position, which changes the canonical
+  dialect digest. Only a child whose every field binds from its
+  argument 0 alone admits the spelling; any other admission is
+  `KDLITH-DLC005` at schema compile. A property no compact admission
+  names stays `KDLITH-BND005`, and a value its child's field rejects is
+  `KDLITH-BND003`.
 
 ### Changed
 

@@ -1,0 +1,3 @@
+tool fmt {
+    select under=src
+}

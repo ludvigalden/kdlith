@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "inspect --view bound over the compact spelling shows the spliced children as ordinary bound children: the view is byte-identical to the block spelling's, with no marker item",
+  "args": [
+    "inspect",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/compact-term/schema.kdl",
+    "--view",
+    "bound",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

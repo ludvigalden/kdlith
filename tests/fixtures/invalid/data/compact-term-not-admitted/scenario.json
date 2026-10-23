@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A property spelling a child whose source does not declare compact=#true is an unbound property: under=src is KDLITH-BND005, its note pointing at the child form",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/compact-term/schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

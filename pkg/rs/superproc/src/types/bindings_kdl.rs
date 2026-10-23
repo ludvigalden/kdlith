@@ -186,6 +186,7 @@ object_type! {
     pub struct ChildSource {
         "name" => name: NodeName,
         "sources" => sources: Vec<Source>,
+        "compact" => compact: Option<bool>,
     }
 }
 
@@ -193,6 +194,7 @@ object_type! {
     pub struct ChildrenSource {
         "name" => name: NodeName,
         "sources" => sources: Vec<Source>,
+        "compact" => compact: Option<bool>,
     }
 }
 

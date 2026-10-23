@@ -461,11 +461,27 @@ fn source(n: &Names, source: &Source) -> String {
         Source::Argument(index) => format!("argument {index}"),
         Source::Args => "args".to_owned(),
         Source::Property(name) => format!("property {}", n.resolve(*name)),
-        Source::Child { name, sources } => {
-            format!("child {}{{{}}}", n.resolve(*name), nested(sources))
+        // A source without the compact spelling summarizes exactly as
+        // before the spelling existed, so no such digest moves.
+        Source::Child {
+            name,
+            sources,
+            compact,
+        } => {
+            let compact = if *compact { " compact" } else { "" };
+            format!("child {}{compact}{{{}}}", n.resolve(*name), nested(sources))
         }
-        Source::Children { name, sources } => {
-            format!("children {}{{{}}}", n.resolve(*name), nested(sources))
+        Source::Children {
+            name,
+            sources,
+            compact,
+        } => {
+            let compact = if *compact { " compact" } else { "" };
+            format!(
+                "children {}{compact}{{{}}}",
+                n.resolve(*name),
+                nested(sources)
+            )
         }
         Source::Entries { node, key, value } => format!(
             "entries {} key={key} value={}",

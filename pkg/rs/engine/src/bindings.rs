@@ -294,14 +294,18 @@ pub enum Source {
     Args,
     Property(Sym),
     /// One child by name; nested sources select from its contents.
+    /// `compact` admits the child spelled as a property of the node the
+    /// source selects from, carrying the child's one argument.
     Child {
         name: Sym,
         sources: Vec<Source>,
+        compact: bool,
     },
     /// Repeated children by name, collected in order.
     Children {
         name: Sym,
         sources: Vec<Source>,
+        compact: bool,
     },
     /// A keyed envelope: argument `key` of each `node` child is the map
     /// key; the rest binds as `value`.
@@ -466,12 +470,20 @@ pub struct Scope {
     /// The owning node's properties the bindings consume.
     pub properties: Vec<Sym>,
     pub(crate) plans: BTreeMap<Sym, ChildPlan>,
+    /// The children that may also be spelled as a property carrying
+    /// their one argument.
+    pub(crate) compact: Vec<Sym>,
 }
 
 impl Scope {
     /// The plan for a child; `None` when no binding admits it here.
     pub fn child(&self, name: Sym) -> Option<ChildPlan> {
         self.plans.get(&name).copied()
+    }
+
+    /// Whether a property named `name` spells a child of that name.
+    pub fn admits_compact(&self, name: Sym) -> bool {
+        self.compact.contains(&name)
     }
 }
 

@@ -281,10 +281,12 @@ pub enum SourceInput {
     Child {
         name: String,
         sources: Vec<SourceInput>,
+        compact: bool,
     },
     Children {
         name: String,
         sources: Vec<SourceInput>,
+        compact: bool,
     },
     Entries {
         node: String,

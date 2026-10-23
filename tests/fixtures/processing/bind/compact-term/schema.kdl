@@ -1,0 +1,76 @@
+schema filters version="1" {
+    types {
+        union Term {
+            variant all Terms
+            variant tag TagTest
+            variant kind KindTest
+            variant under PathTest
+        }
+
+        object Terms {
+            field terms "list<Term>"
+        }
+
+        object TagTest {
+            field tag String
+        }
+
+        object KindTest {
+            field kind String
+        }
+
+        object PathTest {
+            field paths "list<String>"
+        }
+
+        object Tool {
+            field name String
+            field select "list<Term>"
+        }
+    }
+
+    node tool role=record type=Tool {
+        field name arg=0
+        field select {
+            from {
+                child select {
+                    children all
+                    children tag compact=#true
+                    children kind compact=#true
+                    children under
+                }
+            }
+        }
+    }
+
+    node all type=Terms {
+        parents select all
+        field terms {
+            from {
+                children all
+                children tag compact=#true
+                children kind compact=#true
+                children under
+            }
+        }
+    }
+
+    node tag type=TagTest {
+        parents select all
+        field tag arg=0
+    }
+
+    node kind type=KindTest {
+        parents select all
+        field kind arg=0
+    }
+
+    node under type=PathTest {
+        parents select all
+        field paths {
+            from {
+                args
+            }
+        }
+    }
+}

@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A child source declared compact=#true admits the child spelled as a property carrying its one argument: select tag=go kind=file binds as the tag and kind children at the property positions, before the block children, and all kind=test nests the same way, so the item stream is byte-identical to the block spelling's golden (compact-term-block)",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

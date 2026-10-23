@@ -279,6 +279,7 @@ fn field_binding(
             sources.push(Source::Child {
                 name: cx.names.intern(&child),
                 sources: Vec::new(),
+                compact: false,
             });
         }
     }
@@ -413,6 +414,19 @@ fn source_list(
                 .map(|p| Source::Property(cx.names.intern(&p))),
             "child" | "children" => {
                 let name = part.string_arg(cx, 0, "child name");
+                let compact = match part.value_prop("compact") {
+                    None => false,
+                    Some(Value::Bool(flag)) => flag,
+                    Some(other) => {
+                        cx.mistyped(
+                            site,
+                            "the compact property of child",
+                            "Bool",
+                            &found(&other),
+                        );
+                        false
+                    }
+                };
                 part.finish(cx);
                 let nested = source_list(cx, doc, child, false, depth + 1);
                 let Some(name) = name.filter(|n| cx.kebab(site, &label, n, "child name")) else {
@@ -423,11 +437,13 @@ fn source_list(
                     Source::Child {
                         name,
                         sources: nested,
+                        compact,
                     }
                 } else {
                     Source::Children {
                         name,
                         sources: nested,
+                        compact,
                     }
                 });
                 continue;

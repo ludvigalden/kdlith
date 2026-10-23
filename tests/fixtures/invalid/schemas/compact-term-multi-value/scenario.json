@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A compact admission whose child binds a field from more than its argument 0 is malformed: attr binds value from argument 1, so a property carrying one value cannot spell it, KDLITH-DLC005 at schema compile",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

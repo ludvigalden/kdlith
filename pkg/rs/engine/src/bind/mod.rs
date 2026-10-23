@@ -2321,7 +2321,7 @@ impl<'d, 's> Binder<'d, 's> {
         parent: Option<&mut BindFrame>,
         frame: &mut BindFrame,
         closing: Closing<'_>,
-        following: &mut FollowingEffects<'_>,
+        mut following: Option<&mut FollowingEffects<'_>>,
     ) {
         let owner = frame.owner;
         let key = closing.key;
@@ -2401,7 +2401,9 @@ impl<'d, 's> Binder<'d, 's> {
                     FieldView::Bound(&values),
                 );
                 for effect in self.typed(cx, effects, frame.span) {
-                    following.push(effect);
+                    if let Some(following) = following.as_mut() {
+                        following.push(effect);
+                    }
                 }
             }
             let errors = self.errors;
@@ -2586,6 +2588,108 @@ impl<'d, 's> Binder<'d, 's> {
             self.name(parent.name)
         );
         self.diagnose(cx, UNKNOWN_NODE, frame.span, &[node, &place]);
+    }
+
+    fn close_frame(
+        &mut self,
+        cx: &mut Cx<'_>,
+        mut parent: Option<&mut BindFrame>,
+        mut frame: BindFrame,
+        following: Option<&mut FollowingEffects<'_>>,
+    ) -> Completion {
+        let def = self.def;
+        let state = frame.state.take();
+        let subtree = state
+            .as_ref()
+            .map(|state| {
+                let compiled = frame
+                    .scope
+                    .and_then(|scope| def.bindings.scope(scope))
+                    .map(|scope| scope.rules.complete(state));
+                if let Some(violations) = compiled {
+                    let owner = self.name(frame.name);
+                    for violation in violations {
+                        self.violation(cx, frame.span, owner, &violation, None, frame.scope);
+                    }
+                }
+                ScopeRules::subtree(state).clone()
+            })
+            .unwrap_or_default();
+        // Occurrences anywhere below count toward every enclosing scope's
+        // descendant rules; an import is a separate invocation with its
+        // own scopes, so the counts never cross that boundary.
+        match parent.as_deref_mut() {
+            Some(parent) => {
+                if let Some(state) = parent.state.as_mut() {
+                    ScopeRules::bubble(state, &subtree);
+                }
+            }
+            None => ScopeRules::bubble(&mut self.root, &subtree),
+        }
+        let item = match frame.kind {
+            Kind::Declared { decl, key } => {
+                let closing = Closing {
+                    key,
+                    state: state.as_ref(),
+                };
+                self.close_declared(cx, parent.as_deref_mut(), &mut frame, closing, following);
+                def.bindings.get(decl).is_some_and(|d| d.role.is_some())
+            }
+            Kind::Nested => {
+                // A nested scope's node holds no values of its own, so no
+                // branch can match: its base bounds apply.
+                self.conditional_bounds(cx, &frame, state.as_ref(), |_| None);
+                if let Some(parent) = parent.as_deref_mut() {
+                    for (bind, value, span) in std::mem::take(&mut frame.carried) {
+                        self.route(cx, parent, bind, value, span);
+                    }
+                    parent.rejected.append(&mut frame.rejected);
+                }
+                false
+            }
+            Kind::Scalar => {
+                self.close_scalar(cx, parent.as_deref_mut(), &mut frame);
+                false
+            }
+        };
+        let total = self.errors - frame.mark;
+        if let Some(parent) = parent {
+            // An item answers for its own errors; a part's errors are
+            // its owner's.
+            parent.excluded += if item { total } else { frame.excluded };
+        }
+        if total > frame.excluded {
+            Completion::Failed
+        } else {
+            Completion::Complete
+        }
+    }
+
+    /// Whether `frame`'s scope admits a property named `name` as the
+    /// compact spelling of a child.
+    fn admits_compact(&self, frame: &BindFrame, name: Sym) -> bool {
+        frame
+            .scope
+            .and_then(|scope| self.def.bindings.scope(scope))
+            .is_some_and(|scope| scope.admits_compact(name))
+    }
+
+    /// Bind a compact property as the child it spells: a `name` child
+    /// carrying `value` as its one argument, opened and closed at the
+    /// property's position, so it binds exactly as the block form does.
+    fn compact_child(
+        &mut self,
+        cx: &mut Cx<'_>,
+        frame: &mut BindFrame,
+        name: Cow<'s, str>,
+        value: Value,
+    ) {
+        let child = Processor::open(self, cx, Some(&mut *frame), NodeStart::new(name, false));
+        let Disposition::Bind(mut child) = child else {
+            return;
+        };
+        Processor::entry(self, cx, &mut child, EntryValue::new(None, false, value));
+        self.close_frame(cx, Some(frame), child, None);
     }
 
     fn close_scalar(
@@ -2817,12 +2921,25 @@ impl<'s> Processor for Binder<'_, 's> {
                 frame.props.push(sym);
                 self.take(cx, frame, bind, entry.value, span);
             }
+            (Some(sym), None) if self.admits_compact(frame, sym) => {
+                frame.props.push(sym);
+                self.compact_child(cx, frame, name, entry.value);
+            }
             _ => {
                 let what = format!("property {name}");
+                let compact = frame
+                    .scope
+                    .and_then(|scope| self.def.bindings.scope(scope))
+                    .map(|scope| scope.compact.as_slice())
+                    .unwrap_or_default();
                 let bound: Vec<&str> = frame
                     .table(&self.tables)
-                    .map(|table| table.props.iter().map(|(sym, _)| self.name(*sym)).collect())
-                    .unwrap_or_default();
+                    .map_or(&[][..], |table| table.props.as_slice())
+                    .iter()
+                    .map(|(sym, _)| *sym)
+                    .chain(compact.iter().copied())
+                    .map(|sym| self.name(sym))
+                    .collect();
                 let child_form = self.child_form_label(frame.scope, span, &name);
                 let near_miss = self.near_miss_label(span, &name, bound);
                 let notes = child_form.into_iter().chain(near_miss).collect();
@@ -2860,76 +2977,11 @@ impl<'s> Processor for Binder<'_, 's> {
     fn close(
         &mut self,
         cx: &mut Cx<'_>,
-        mut parent: Option<&mut BindFrame>,
-        mut frame: BindFrame,
+        parent: Option<&mut BindFrame>,
+        frame: BindFrame,
         following: &mut FollowingEffects<'_>,
     ) -> Completion {
-        let def = self.def;
-        let state = frame.state.take();
-        let subtree = state
-            .as_ref()
-            .map(|state| {
-                let compiled = frame
-                    .scope
-                    .and_then(|scope| def.bindings.scope(scope))
-                    .map(|scope| scope.rules.complete(state));
-                if let Some(violations) = compiled {
-                    let owner = self.name(frame.name);
-                    for violation in violations {
-                        self.violation(cx, frame.span, owner, &violation, None, frame.scope);
-                    }
-                }
-                ScopeRules::subtree(state).clone()
-            })
-            .unwrap_or_default();
-        // Occurrences anywhere below count toward every enclosing scope's
-        // descendant rules; an import is a separate invocation with its
-        // own scopes, so the counts never cross that boundary.
-        match parent.as_deref_mut() {
-            Some(parent) => {
-                if let Some(state) = parent.state.as_mut() {
-                    ScopeRules::bubble(state, &subtree);
-                }
-            }
-            None => ScopeRules::bubble(&mut self.root, &subtree),
-        }
-        let item = match frame.kind {
-            Kind::Declared { decl, key } => {
-                let closing = Closing {
-                    key,
-                    state: state.as_ref(),
-                };
-                self.close_declared(cx, parent.as_deref_mut(), &mut frame, closing, following);
-                def.bindings.get(decl).is_some_and(|d| d.role.is_some())
-            }
-            Kind::Nested => {
-                // A nested scope's node holds no values of its own, so no
-                // branch can match: its base bounds apply.
-                self.conditional_bounds(cx, &frame, state.as_ref(), |_| None);
-                if let Some(parent) = parent.as_deref_mut() {
-                    for (bind, value, span) in std::mem::take(&mut frame.carried) {
-                        self.route(cx, parent, bind, value, span);
-                    }
-                    parent.rejected.append(&mut frame.rejected);
-                }
-                false
-            }
-            Kind::Scalar => {
-                self.close_scalar(cx, parent.as_deref_mut(), &mut frame);
-                false
-            }
-        };
-        let total = self.errors - frame.mark;
-        if let Some(parent) = parent {
-            // An item answers for its own errors; a part's errors are
-            // its owner's.
-            parent.excluded += if item { total } else { frame.excluded };
-        }
-        if total > frame.excluded {
-            Completion::Failed
-        } else {
-            Completion::Complete
-        }
+        self.close_frame(cx, parent, frame, Some(following))
     }
 
     fn finish(&mut self, cx: &mut Cx<'_>) {

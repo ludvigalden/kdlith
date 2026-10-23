@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A compact property's value binds through the spelled child's own field: tag=5 fails the String field tag.tag with KDLITH-BND003, as the block spelling tag 5 does",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/compact-term/schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

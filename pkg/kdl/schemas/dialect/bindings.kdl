@@ -188,17 +188,24 @@ dialect kdlith version="0" {
         // the node declared under this parent with that name when one
         // exists, and otherwise must carry exactly one positional value.
         // With a body, the nested sources select from that child's own
-        // entries and children.
+        // entries and children. With compact=#true the child may also be
+        // spelled as a property of the node the source selects from:
+        // NAME=VALUE binds exactly as a NAME child carrying VALUE as its
+        // one argument, at the property's position. Only a child whose
+        // fields all bind from its argument 0 admits the spelling.
         object ChildSource {
             field name NodeName
             field sources "list<Source>"
+            field compact "optional<Bool>"
         }
 
         // Repeated children by name, collected as a list in order. Each
-        // child binds as described for a child source.
+        // child binds as described for a child source, the compact
+        // spelling included.
         object ChildrenSource {
             field name NodeName
             field sources "list<Source>"
+            field compact "optional<Bool>"
         }
 
         // An envelope binding for keyed collections: the selected argument
@@ -445,6 +452,7 @@ dialect kdlith version="0" {
     node child type=ChildSource {
         parents from child children
         field name arg=0
+        field compact property=compact
         field sources {
             from {
                 children argument
@@ -459,6 +467,7 @@ dialect kdlith version="0" {
     node children type=ChildrenSource {
         parents from child children
         field name arg=0
+        field compact property=compact
         field sources {
             from {
                 children argument

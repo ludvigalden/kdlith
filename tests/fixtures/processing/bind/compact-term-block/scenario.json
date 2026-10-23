@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "The block spelling of the compact-term document: every term written as a child node, the reference the compact spelling must reproduce byte for byte",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/compact-term/schema.kdl",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}
