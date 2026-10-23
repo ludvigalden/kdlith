@@ -28,7 +28,13 @@ target/debug/kdlith-fixtures --fx-suite tests/fixtures --fx-kdlith target/debug/
 ```
 
 then diffing the listed names (all except `parse/kdl-spec/*`) against the
-scenario names occurring in this file, in both directions.
+scenario names occurring in this file, in both directions. Paths the prose
+cites that are not scenarios — committed suite files and directories such
+as `parse/kdl-spec/PROVENANCE.md`, `processing/bind/profiles.kdl`, or a
+schema directory read by suite path, and the `target/debug` build path —
+are citations, not census entries; the reverse direction skips them. If
+the census is ever automated, its tokenizer must tell such paths from
+scenario names.
 
 Suite state at the time of writing: 1072 scenarios — 243 `parse/kdl-spec`,
 829 others — all green.
