@@ -145,6 +145,7 @@ canonical declarations that define them.
 | Parent-sensitive dispatch        | Dispatch is by parent, node name, and explicit discriminators, never by trying every schema until one accepts. The same name may declare different nodes under different parents (for example `children` under `node` versus under `from`).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | R2 §7, R3 §3  |
 | Binding shorthands               | `arg=N`, `property=NAME`, `child=NAME`, `context=SLOT` on a `field` binding                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | R2 §3, R3 §5  |
 | Explicit sources                 | A `from` block listing `argument`, `args`, `property`, `child`, `children`, `entries`, and `context` sources; `child` and `children` sources may nest further sources                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | R2 §3         |
+| Compact child-term spelling      | A `child` or `children` source may carry `compact=#true`: the child may then also be spelled as a property `NAME=VALUE` of the node the source selects from, binding exactly as a `NAME` child carrying VALUE as its one argument, at the property's position (see "Compact child-term spelling")                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | R2 §3         |
 | Collection bindings              | `args` collects the remaining positional arguments; `children` collects repeated children in order                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | R2 §3         |
 | Entries envelope                 | `entries NODE key="arg(0)" value=TYPE`: the selected argument supplies the map key and is consumed exactly once; the rest of the node binds as the value type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | R2 §3         |
 | Declaration-group expansion      | An `expand include target=TYPE member=NAME` source inside a `from` block splices the entries of the named keyed member of the named declaration into the collection being bound, at the expansion point, in declaration order; the authored short form is an `include NAME` child among like members. Expansion is demand-driven and cycle-checked (`KDLITH-SCH009`); each expanded entry's provenance records both the original declaration site and the inclusion site, and an expanded key colliding with a locally declared one is a duplicate-key rejection. Every reading path splices the short form: the typed reader streams each `include` child as an `expansion` item at its position, carrying its owner and how many like members precede it, and the compiler's one expansion pass splices there; the `effective` view shows each spliced group's two sites. The declaration-group splice is the whole built `include` mechanism: source discovery, which shares the spelling in the drafts, remains the anchors and profile grammar's mechanism and is not built as an `include`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | R3 §4         |
@@ -237,6 +238,67 @@ bounds, `KDLITH-BND002` as well. Both bounds of a rule with branches
 are checked at scope completion, not while children stream. A count
 outside the selected bounds is `KDLITH-BND002`, exactly as for a rule
 without branches: conditions add no run-time diagnostic code.
+
+### Compact child-term spelling
+
+A child whose fields all come from its one argument may be spelled as a
+property of the node it nests in, when the source that consumes it says
+so. Given a `Term` union with `tag`, `kind`, `under`, and `all`
+variants, each bound by a node of that name:
+
+```kdl
+node all type=Terms {
+    parents select all
+    field terms {
+        from {
+            children all
+            children tag compact=#true
+            children kind compact=#true
+            children under
+        }
+    }
+}
+```
+
+a data document may then write `all tag=go kind=file { under src }`,
+which binds exactly as `all { tag go; kind file; under src }`.
+
+- **Declaration.** `compact=#true` is an optional `Bool` on a `child`
+  or `children` source. It admits the property spelling in the scope
+  the source selects from; the block spelling stays admitted beside it.
+- **Desugaring.** Each admitted property binds on its own as one `NAME`
+  child carrying the property's value as argument 0, opened and closed
+  at the property's position. It therefore precedes the node's block
+  children, keeps the order the properties were written in, and meets
+  union dispatch, occurrence bounds, and duplicate detection exactly as
+  the child would. Nothing is implied: several properties are several
+  sibling children, never an implicit `all` around them. The bound item
+  stream is the block spelling's; the bound view shows the child, with
+  no marker of the spelling. Only the `origins` view tells the two
+  apart, since a literal's origin is the property's span.
+- **What admits it.** A child admits the spelling only when its one
+  argument fills everything it binds: a scalar child; a child whose
+  nested sources are all `argument 0`; or a declared node that binds at
+  least one field, every field from `argument 0` alone, and carries no
+  role, `value` block, cases, `otherwise`, children or group rules,
+  descendants, sequence, or effects. An entries node, a child binding a
+  second argument, and a child with nested children keep the block form
+  only; the spelling is a shorthand for single-value leaves, and the
+  block form remains the whole language.
+- **Refusals.** A compact source on a child that does not qualify is
+  malformed at the source (`KDLITH-DLC005`, naming the reason), as is a
+  scope that binds a property `NAME` and also admits a compact child
+  `NAME`, since the property would be ambiguous. In a data document, a
+  property spelling a child whose source does not declare `compact` is
+  unbound (`KDLITH-BND005`, its note pointing at the child form), and a
+  compact value the child's type rejects fails as the child's argument
+  would (`KDLITH-BND003`).
+- **Reading paths.** The binder performs the splice, so `vet data`,
+  `inspect`, export, `read data`, and a generated crate's typed reader
+  all see the child; a definition document read as data of its dialect
+  admits the spelling the same way. A compact source summarizes as
+  `child NAME compact{...}` in the definition's canonical summary, so
+  declaring one changes the definition's digest.
 
 ### Node declaration metadata
 
@@ -1376,6 +1438,17 @@ kinds join the generated crate's type shapes, so the conformance check
 compares them against the compiled schema like any other declared type.
 A reference type's name passes the same spelling checks as a type's.
 
+A generated union type reads a bare scalar the way the binder decodes
+it (see "Union dispatch by value prefix"): each variant carries its
+declared prefix, a value whose text starts with a prefix reads as that
+variant or fails there, and any other scalar reads as the first
+un-prefixed variant, in declaration order, whose type accepts it. A
+union field the binder accepts therefore never fails to read. The
+engine's `variant_value` takes the union's variant table, each name
+with its optional prefix, and an acceptance test per variant; the
+`union_type!` macro builds both from its `prefix "…"` variant
+annotations.
+
 A generated crate's `reader` constructors return the engine's typed
 reader, which types the items of the same data reading `vet data`
 performs: imports expand under the grammar of the profile each entry
@@ -1563,9 +1636,10 @@ follows the held keys. A list-typed field may instead declare
 than replacing it; the declaration takes effect at the field's own
 depth, on a contribution type's field and on a field of an object a
 contribution nests alike. A map-typed or object-typed field may declare
-`merge=union` too, stating the key-wise merge it already receives. The canonical dialect spells the policy with
-the `MergePolicy` vocabulary type, whose one member is `union`; a value
-outside it is `KDLITH-BND008`.
+`merge=union` too, stating the key-wise merge it already receives. The
+canonical dialect spells the policy with the `MergePolicy` vocabulary
+type, whose one member is `union`; a value outside it is
+`KDLITH-BND008`.
 
 ```kdl
 types {

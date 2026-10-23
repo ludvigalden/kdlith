@@ -241,6 +241,13 @@ published yet.
 - Under `--profiles`, an entry that satisfies no listed member's rules
   and finds no listed default now fails with `KDLITH-SCH011` instead of
   binding under the first listed profile.
+- The engine's `variant_value` takes the union's variant table, each
+  variant name with its optional prefix, and a per-variant acceptance
+  test instead of a bare name list, and `union_type!` variants may
+  carry `prefix "…"`. Generated typed readers now read a bare scalar
+  union value exactly as the binder decodes it: a matching prefix
+  selects its variant, otherwise the first un-prefixed variant whose
+  type accepts the value.
 
 ### Fixed
 
