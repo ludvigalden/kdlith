@@ -229,6 +229,10 @@ struct VetDataArgs {
     /// resolve to exactly one declaration (complete)
     #[arg(long, value_enum, default_value_t = ScopeArg::Complete)]
     scope: ScopeArg,
+    /// Also write each link diagnostic to stdout as a diagnostic item,
+    /// after the item stream; stderr and the exit are unchanged
+    #[arg(long = "diagnostics", value_enum, value_name = "FORMAT")]
+    diagnostics: Option<DiagnosticsArg>,
     /// Data documents
     #[arg(required = true)]
     files: Vec<PathBuf>,
@@ -305,6 +309,13 @@ impl ProfileArgs {
 enum ScopeArg {
     Local,
     Complete,
+}
+
+/// The `--diagnostics` value of `vet data`.
+#[derive(Clone, Copy, Debug, ValueEnum)]
+enum DiagnosticsArg {
+    /// Diagnostic items in the item stream's JSON line form
+    Json,
 }
 
 /// `kdlith inspect dialect|schema|data`.

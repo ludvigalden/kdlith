@@ -1,0 +1,21 @@
+{
+  "binary": "kdlith",
+  "description": "vet data --diagnostics json over a reading whose references all resolve writes no diagnostic item: stdout is the item stream alone, byte-identical to the run without the flag, stderr stays empty, and the run exits 0",
+  "args": [
+    "vet",
+    "data",
+    "--diagnostics",
+    "json",
+    "--schema",
+    "{fx-suite}/processing/linking/schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-not-contains": [
+      "\"item\":\"diagnostic\""
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

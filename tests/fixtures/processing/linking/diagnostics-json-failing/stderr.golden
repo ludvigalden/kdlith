@@ -1,0 +1,7 @@
+error[KDLITH-REF002]: config-vars stock.region declared more than once
+  --> data.kdl:3:1
+  note: first declared here (data.kdl:2:1)
+  help: Rename or remove one declaration
+error[KDLITH-REF001]: reference region in config-vars does not resolve
+  --> data.kdl:5:5
+  help: Declare the target or import the document that declares it

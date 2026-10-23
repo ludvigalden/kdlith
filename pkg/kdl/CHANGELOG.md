@@ -219,6 +219,9 @@ published yet.
   `ReadOptions::with_match_root`, name the directory profile match
   rules read entry paths relative to; without one it is the current
   directory.
+- `vet data --diagnostics json` writes each link diagnostic to
+  standard output as a `diagnostic` item after the item stream, beside
+  the unchanged standard error text and exit.
 
 ### Changed
 

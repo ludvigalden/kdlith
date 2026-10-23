@@ -1704,6 +1704,14 @@ the `references` view still links and prints the same report, and its
 link diagnostics still reach standard error, but they do not decide
 the exit.
 
+`vet data --diagnostics json` also writes each link diagnostic to
+standard output as a `diagnostic` item, the tagged form the item stream
+already uses for binding diagnostics, after every other item and in the
+order standard error lists them (duplicates, then failed links, then
+pending payloads). Standard error and the exit are unchanged, so a host
+reads the verdict from the stream without parsing the text. Only link
+diagnostics are added; binding diagnostics already stream in place.
+
 `export` links the reading the same way, after its stream, whatever the
 scope. Under complete scope a link diagnostic fails the run like any
 other processing error: atomic delivery publishes nothing, and
