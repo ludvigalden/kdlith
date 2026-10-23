@@ -45,6 +45,24 @@ pub(crate) const NODES: &[NodeShape] = &[
     NodeShape::new("children-group")
         .under(&["node"])
         .ty("ChildRule"),
+    NodeShape::new("when")
+        .under(&["children", "children-group"])
+        .ty("PropertyCondition"),
+    NodeShape::new("when-all")
+        .under(&["children", "children-group"])
+        .ty("ConditionGroup"),
+    NodeShape::new("when-any")
+        .under(&["children", "children-group"])
+        .ty("ConditionGroup"),
+    NodeShape::new("when")
+        .under(&["when-all", "when-any"])
+        .ty("PropertyCondition"),
+    NodeShape::new("when-all")
+        .under(&["when-all", "when-any"])
+        .ty("ConditionGroup"),
+    NodeShape::new("when-any")
+        .under(&["when-all", "when-any"])
+        .ty("ConditionGroup"),
     NodeShape::new("value")
         .under(&["node"])
         .ty("DependentBinding"),

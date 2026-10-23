@@ -134,6 +134,7 @@ const CANONICAL: [(&str, &str); {}] = [",
             out.push_str(FIELD_BINDING);
             out.push_str(SOURCE);
             out.push_str(EFFECT);
+            out.push_str(CHILD_RULE);
         }
         out.push_str(REPEATED_NAME);
 
@@ -650,20 +651,12 @@ fn node_input(node: NodeDef) -> NodeInput {
         children: node
             .children
             .iter()
-            .map(|(name, rule)| ChildRuleInput {
-                name: name.as_str().to_owned(),
-                min: rule.min_occurs,
-                max: rule.max_occurs,
-            })
+            .map(|(name, rule)| child_rule(name.as_str(), rule))
             .collect(),
         children_groups: node
             .children_groups
             .iter()
-            .map(|(name, rule)| ChildRuleInput {
-                name: name.as_str().to_owned(),
-                min: rule.min_occurs,
-                max: rule.max_occurs,
-            })
+            .map(|(name, rule)| child_rule(name.as_str(), rule))
             .collect(),
         effects: node
             .effects
@@ -822,6 +815,39 @@ fn effect(effect: &Effect) -> EffectInput {
         },
         Effect::Handler(handler) => EffectInput::Handler {
             name: handler.name.as_str().to_owned(),
+        },
+    }
+}
+"##;
+
+const CHILD_RULE: &str = r##"
+/// One children rule with its when branches, in written order.
+fn child_rule(name: &str, rule: &ChildRule) -> ChildRuleInput {
+    ChildRuleInput {
+        name: name.to_owned(),
+        min: rule.min_occurs,
+        max: rule.max_occurs,
+        branches: rule.branches.iter().flatten().map(condition).collect(),
+    }
+}
+
+fn condition(input: &Condition) -> ConditionInput {
+    match input {
+        Condition::When(when) => ConditionInput::When {
+            property: when.property.as_str().to_owned(),
+            equals: when.equals.clone(),
+            min: when.min_occurs,
+            max: when.max_occurs,
+        },
+        Condition::WhenAll(group) => ConditionInput::All {
+            members: group.members.iter().map(condition).collect(),
+            min: group.min_occurs,
+            max: group.max_occurs,
+        },
+        Condition::WhenAny(group) => ConditionInput::Any {
+            members: group.members.iter().map(condition).collect(),
+            min: group.min_occurs,
+            max: group.max_occurs,
         },
     }
 }

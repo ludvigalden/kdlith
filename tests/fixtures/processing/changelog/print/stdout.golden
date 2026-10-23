@@ -186,6 +186,18 @@ published yet.
   `KDLITH-SRC003` message now names the invocation count of entries
   plus imports instead of an import count, and the correction points at
   reading smaller batches or raising the limit.
+- Children rules carry `when` branches: `when property=P equals=V`
+  leaves compose through `when-all` and `when-any`, and a branch's
+  `min-occurs`/`max-occurs` replace the rule's own bounds for the
+  instances it matches, which changes the canonical dialect digest.
+  The schema compile refuses what it cannot decide: an undeclared
+  condition property is `KDLITH-SCH006`, a property that is not a
+  scalar or enum field is the new `KDLITH-SCH016`, an `equals` value
+  that does not decode as the property's type is `KDLITH-DLC005`, two
+  branches not provably disjoint by a required leaf on one shared
+  property are the new `KDLITH-SCH017`, a combinator with no members
+  is the new `KDLITH-SCH018`, and a rule with branches but no base
+  bounds is the new `KDLITH-SCH019`.
 
 ### Fixed
 

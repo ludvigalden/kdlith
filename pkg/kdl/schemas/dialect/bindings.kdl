@@ -241,8 +241,37 @@ dialect kdlith version="0" {
         // rule adds occurrence bounds; absent bounds mean zero and
         // unbounded. Minimum counts are checked at scope completion. These are schema
         // occurrence rules, never reinterpretations of authored data that
-        // happens to use a property named min-occurs or max-count.
+        // happens to use a property named min-occurs or max-count. A rule
+        // may carry when branches: each gates bounds of its own on the
+        // node's bound property values, and the rule's own bounds apply
+        // when no branch matches.
         object ChildRule {
+            field min-occurs "optional<U64>"
+            field max-occurs "optional<U64>"
+            field branches "optional<list<Condition>>"
+        }
+
+        // A condition over the node's own bound property values: a when
+        // leaf compares one property for scalar equality, when-all holds
+        // when every member does, and when-any when at least one does.
+        // Directly under a children rule a condition is a branch and may
+        // carry occurrence bounds, which replace the rule's own for the
+        // instances it matches; as a member it is a bare predicate.
+        union Condition {
+            variant when PropertyCondition
+            variant when-all ConditionGroup
+            variant when-any ConditionGroup
+        }
+
+        object PropertyCondition {
+            field property FieldName
+            field equals ValueExpr
+            field min-occurs "optional<U64>"
+            field max-occurs "optional<U64>"
+        }
+
+        object ConditionGroup {
+            field members "list<Condition>"
             field min-occurs "optional<U64>"
             field max-occurs "optional<U64>"
         }
@@ -463,13 +492,110 @@ dialect kdlith version="0" {
     node children type=ChildRule parent=node {
         field min-occurs property=min-occurs
         field max-occurs property=max-occurs
+        field branches {
+            from {
+                children when
+                children when-all
+                children when-any
+            }
+        }
+        children when
+        children when-all
+        children when-any
     }
 
     // A children rule over a node group: one rule per member, each with
-    // these occurrence bounds.
+    // these occurrence bounds and when branches.
     node children-group type=ChildRule parent=node {
         field min-occurs property=min-occurs
         field max-occurs property=max-occurs
+        field branches {
+            from {
+                children when
+                children when-all
+                children when-any
+            }
+        }
+        children when
+        children when-all
+        children when-any
+    }
+
+    // A when branch of a children rule: one condition and the bounds
+    // that apply to the instances it matches.
+    node when type=PropertyCondition {
+        parents children children-group
+        field property property=property
+        field equals property=equals
+        field min-occurs property=min-occurs
+        field max-occurs property=max-occurs
+    }
+
+    node when-all type=ConditionGroup {
+        parents children children-group
+        field members {
+            from {
+                children when
+                children when-all
+                children when-any
+            }
+        }
+        field min-occurs property=min-occurs
+        field max-occurs property=max-occurs
+        children when
+        children when-all
+        children when-any
+    }
+
+    node when-any type=ConditionGroup {
+        parents children children-group
+        field members {
+            from {
+                children when
+                children when-all
+                children when-any
+            }
+        }
+        field min-occurs property=min-occurs
+        field max-occurs property=max-occurs
+        children when
+        children when-all
+        children when-any
+    }
+
+    // Condition members compose without bounds of their own.
+    node when type=PropertyCondition {
+        parents when-all when-any
+        field property property=property
+        field equals property=equals
+    }
+
+    node when-all type=ConditionGroup {
+        parents when-all when-any
+        field members {
+            from {
+                children when
+                children when-all
+                children when-any
+            }
+        }
+        children when
+        children when-all
+        children when-any
+    }
+
+    node when-any type=ConditionGroup {
+        parents when-all when-any
+        field members {
+            from {
+                children when
+                children when-all
+                children when-any
+            }
+        }
+        children when
+        children when-all
+        children when-any
     }
 
     // A dependent payload binding: how a node's remaining payload binds

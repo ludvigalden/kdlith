@@ -236,6 +236,32 @@ object_type! {
     pub struct ChildRule {
         "min-occurs" => min_occurs: Option<u64>,
         "max-occurs" => max_occurs: Option<u64>,
+        "branches" => branches: Option<Vec<Condition>>,
+    }
+}
+
+union_type! {
+    pub enum Condition {
+        "when" => When(PropertyCondition),
+        "when-all" => WhenAll(ConditionGroup),
+        "when-any" => WhenAny(ConditionGroup),
+    }
+}
+
+object_type! {
+    pub struct PropertyCondition {
+        "property" => property: FieldName,
+        "equals" => equals: ValueExpr,
+        "min-occurs" => min_occurs: Option<u64>,
+        "max-occurs" => max_occurs: Option<u64>,
+    }
+}
+
+object_type! {
+    pub struct ConditionGroup {
+        "members" => members: Vec<Condition>,
+        "min-occurs" => min_occurs: Option<u64>,
+        "max-occurs" => max_occurs: Option<u64>,
     }
 }
 
@@ -282,6 +308,9 @@ pub(crate) const TYPES: &[TypeShape] = &[
     Collision::SHAPE,
     DuplicateKeys::SHAPE,
     ChildRule::SHAPE,
+    Condition::SHAPE,
+    PropertyCondition::SHAPE,
+    ConditionGroup::SHAPE,
     NodeGroupName::SHAPE,
     NodeGroupDef::SHAPE,
 ];

@@ -299,6 +299,7 @@ pub(crate) fn glue(name: &str) -> Option<Glue> {
                 "DependentInput",
                 "CaseInput",
                 "ChildRuleInput",
+                "ConditionInput",
                 "DescendantRuleInput",
                 "EffectGroupInput",
                 "EffectInput",
@@ -309,7 +310,14 @@ pub(crate) fn glue(name: &str) -> Option<Glue> {
                 "SourceInput",
                 "NodeAnnotationInput",
             ],
-            types: &["NodeDef", "FieldBinding", "Source", "Effect"],
+            types: &[
+                "NodeDef",
+                "FieldBinding",
+                "Source",
+                "Effect",
+                "ChildRule",
+                "Condition",
+            ],
         },
         "AnnotationDef" => Glue {
             arm: ANNOTATION_DEF_ARM,

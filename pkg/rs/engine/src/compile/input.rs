@@ -303,12 +303,37 @@ pub enum SourceInput {
     },
 }
 
-/// A `children NAME` rule's occurrence bounds.
+/// A `children NAME` rule's occurrence bounds and its when branches,
+/// in written order.
 #[derive(Clone, Debug, Default)]
 pub struct ChildRuleInput {
     pub name: String,
     pub min: Option<u64>,
     pub max: Option<u64>,
+    pub branches: Vec<ConditionInput>,
+}
+
+/// One condition, as declared: a branch root under a children rule (its
+/// bounds apply to the instances it matches) or a member of a
+/// combinator, which binds no bounds.
+#[derive(Clone, Debug)]
+pub enum ConditionInput {
+    When {
+        property: String,
+        equals: Value,
+        min: Option<u64>,
+        max: Option<u64>,
+    },
+    All {
+        members: Vec<ConditionInput>,
+        min: Option<u64>,
+        max: Option<u64>,
+    },
+    Any {
+        members: Vec<ConditionInput>,
+        min: Option<u64>,
+        max: Option<u64>,
+    },
 }
 
 /// An effect group: its target and effects.

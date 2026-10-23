@@ -26,6 +26,8 @@
 {"item":"effective","data":{"section":"type","entry":{"name":"ComposeForm","parameters":[],"kind":"enum"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"ComposeRule","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"ComputedDefault","parameters":[],"kind":"object"}}}
+{"item":"effective","data":{"section":"type","entry":{"name":"Condition","parameters":[],"kind":"union"}}}
+{"item":"effective","data":{"section":"type","entry":{"name":"ConditionGroup","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"Constraint","parameters":[],"kind":"union"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"ContextPolicy","parameters":[],"kind":"enum"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"ContextSource","parameters":[],"kind":"object"}}}
@@ -86,6 +88,7 @@
 {"item":"effective","data":{"section":"type","entry":{"name":"ProfileDef","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"ProfileMatch","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"ProfileName","parameters":[],"kind":"string"}}}
+{"item":"effective","data":{"section":"type","entry":{"name":"PropertyCondition","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"PropertySource","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"ProviderName","parameters":[],"kind":"string"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"Qualification","parameters":[],"kind":"enum"}}}
@@ -202,3 +205,9 @@
 {"item":"effective","data":{"section":"node","entry":{"name":"union","parents":["types"],"role":"declaration","type":"UnionType","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"value","parents":["node"],"role":null,"type":"DependentBinding","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"variant","parents":["union"],"role":null,"type":"Variant","profile":null}}}
+{"item":"effective","data":{"section":"node","entry":{"name":"when","parents":["children","children-group"],"role":null,"type":"PropertyCondition","profile":null}}}
+{"item":"effective","data":{"section":"node","entry":{"name":"when","parents":["when-all","when-any"],"role":null,"type":"PropertyCondition","profile":null}}}
+{"item":"effective","data":{"section":"node","entry":{"name":"when-all","parents":["children","children-group"],"role":null,"type":"ConditionGroup","profile":null}}}
+{"item":"effective","data":{"section":"node","entry":{"name":"when-all","parents":["when-all","when-any"],"role":null,"type":"ConditionGroup","profile":null}}}
+{"item":"effective","data":{"section":"node","entry":{"name":"when-any","parents":["children","children-group"],"role":null,"type":"ConditionGroup","profile":null}}}
+{"item":"effective","data":{"section":"node","entry":{"name":"when-any","parents":["when-all","when-any"],"role":null,"type":"ConditionGroup","profile":null}}}

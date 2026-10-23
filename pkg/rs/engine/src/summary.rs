@@ -5,7 +5,8 @@
 use std::fmt::Write as _;
 
 use crate::bindings::{
-    ContextPolicy, Effect, EffectTarget, FieldBinding, NodeDecl, Placement, Role, SetFrom, Source,
+    Condition, ContextPolicy, Effect, EffectTarget, FieldBinding, NodeDecl, Placement, Role,
+    SetFrom, Source,
 };
 use crate::definition::{Definition, MergeDuplicates, SlotDuplicates};
 use crate::names::{Names, Sym};
@@ -310,7 +311,21 @@ fn node_line(n: &Names, node: &NodeDecl) -> String {
     let children: Vec<String> = node
         .children
         .iter()
-        .map(|c| format!("{}:{:?}..{:?}", n.resolve(c.name), c.min, c.max))
+        .map(|c| {
+            let mut rule = format!("{}:{:?}..{:?}", n.resolve(c.name), c.min, c.max);
+            // Branches are written only when declared, so every rule
+            // carrying none keeps its summary line and digest.
+            for branch in &c.branches {
+                let _ = write!(
+                    rule,
+                    " when {} {:?}..{:?}",
+                    condition(n, &branch.condition),
+                    branch.min,
+                    branch.max
+                );
+            }
+            rule
+        })
         .collect();
     let effects: Vec<String> = node
         .effects
@@ -408,6 +423,18 @@ fn node_line(n: &Names, node: &NodeDecl) -> String {
         descendants.join(","),
         cases.join(";")
     )
+}
+
+fn condition(n: &Names, held: &Condition) -> String {
+    let members = |members: &[Condition]| {
+        let members: Vec<String> = members.iter().map(|m| condition(n, m)).collect();
+        members.join(",")
+    };
+    match held {
+        Condition::Equals { property, equals } => format!("{}={equals:?}", n.resolve(*property)),
+        Condition::All(all) => format!("all({})", members(all)),
+        Condition::Any(any) => format!("any({})", members(any)),
+    }
 }
 
 fn field(n: &Names, field: &FieldBinding) -> String {

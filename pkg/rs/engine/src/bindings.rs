@@ -345,14 +345,39 @@ pub enum ContextPolicy {
     Fixed,
 }
 
-/// A `children NAME` rule: permission plus occurrence bounds.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// A `children NAME` rule: permission plus occurrence bounds. Its base
+/// bounds apply to the instances no when branch matches.
+#[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct ChildRule {
     pub name: Sym,
     pub min: Option<u64>,
     pub max: Option<u64>,
+    pub branches: Vec<WhenBranch>,
     pub site: Site,
+}
+
+/// One when branch of a children rule: for the instances its condition
+/// matches, its bounds replace the rule's base bounds, both at once.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct WhenBranch {
+    pub condition: Condition,
+    pub min: Option<u64>,
+    pub max: Option<u64>,
+}
+
+/// A condition over a node's own bound property values.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum Condition {
+    /// The property holds a value scalar-equal to `equals`; an absent
+    /// property is an unmet condition.
+    Equals { property: Sym, equals: Value },
+    /// Every member holds.
+    All(Vec<Condition>),
+    /// At least one member holds.
+    Any(Vec<Condition>),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

@@ -6,18 +6,20 @@ use kdlith_model::{FieldMerge, Value};
 use kdlith_runtime::Repeated;
 
 use crate::bindings::{
-    BindingCodec, CaseRule, ChildRule, Collision, ContextPolicy, DependentBinding, DescendantRule,
-    DuplicateKeys, Effect, EffectGroup, EffectTarget, FieldBinding, IdentityDecl, NodeAnnotation,
-    NodeDecl, Placement, Role, SequenceDecl, SequenceStep, SetFrom, Source,
+    BindingCodec, CaseRule, ChildRule, Collision, Condition, ContextPolicy, DependentBinding,
+    DescendantRule, DuplicateKeys, Effect, EffectGroup, EffectTarget, FieldBinding, IdentityDecl,
+    NodeAnnotation, NodeDecl, Placement, Role, SequenceDecl, SequenceStep, SetFrom, Source,
+    WhenBranch,
 };
 use crate::compile::Cx;
+use crate::compile::conditions;
 use crate::compile::expansions::Pending;
 use crate::compile::input::{
-    AnnotationInput, ChildRuleInput, ConstraintInput, Construct, DefaultInput, DefinitionInput,
-    DependentInput, DiscoveryInput, DocumentRuleInput, EffectGroupInput, EffectInput,
-    FieldBindingInput, FieldInput, ImportInput, Located, MatchRuleInput, MemberInput, NodeInput,
-    ProfileInput, ProviderInput, ReferenceInput, ResolutionInput, SequenceInput, SlotInput,
-    SourceContextInput, SourceInput, TypeInput,
+    AnnotationInput, ChildRuleInput, ConditionInput, ConstraintInput, Construct, DefaultInput,
+    DefinitionInput, DependentInput, DiscoveryInput, DocumentRuleInput, EffectGroupInput,
+    EffectInput, FieldBindingInput, FieldInput, ImportInput, Located, MatchRuleInput, MemberInput,
+    NodeInput, ProfileInput, ProviderInput, ReferenceInput, ResolutionInput, SequenceInput,
+    SlotInput, SourceContextInput, SourceInput, TypeInput,
 };
 use crate::compile::types::{declare, field_name, format_rule, validator_use};
 use crate::decode::found;
@@ -28,7 +30,10 @@ use crate::definition::{
     ResolutionSelection, SlotDecl, SlotDuplicates, SourceContextDecl, SourceContextMode,
     SourceFieldDecl,
 };
-use crate::diag::{INVALID_BINDING, NOT_INSTALLED, SECOND_DEFAULT, Site, duplicate, duplicate_key};
+use crate::diag::{
+    EMPTY_WHEN_COMPOSITION, FALLBACK_LESS_WHEN_RULE, INVALID_BINDING, NOT_INSTALLED,
+    OVERLAPPING_WHEN_BRANCHES, SECOND_DEFAULT, Site, duplicate, duplicate_key,
+};
 use crate::discovery::{self, ExpansionError};
 use crate::names::Sym;
 use crate::syntax::parse_u64;
@@ -924,26 +929,130 @@ fn child_rule(
     input: &ChildRuleInput,
     owner: &str,
 ) -> Option<ChildRule> {
-    if let (Some(min), Some(max)) = (input.min, input.max)
-        && min > max
-    {
-        let reason = format!(
-            "children {} has min-occurs {min} above max-occurs {max}",
-            input.name
-        );
-        cx.diags.error(INVALID_BINDING, site, &[owner, &reason]);
+    let label = format!("children {}", input.name);
+    // A rule with branches may refuse its fallback instances outright.
+    let refusable = !input.branches.is_empty();
+    if !bounds(cx, site, owner, &label, (input.min, input.max), refusable) {
         return None;
     }
-    if input.max == Some(0) {
-        let reason = format!("children {} permits no occurrence", input.name);
-        cx.diags.error(INVALID_BINDING, site, &[owner, &reason]);
+    let mut branches = Vec::with_capacity(input.branches.len());
+    let mut ok = true;
+    for branch in &input.branches {
+        let (min, max) = match branch {
+            ConditionInput::When { min, max, .. }
+            | ConditionInput::All { min, max, .. }
+            | ConditionInput::Any { min, max, .. } => (*min, *max),
+        };
+        let what = format!("a when branch of {label}");
+        ok &= bounds_ordered(cx, site, owner, &what, min, max);
+        match condition(cx, site, owner, branch) {
+            Some(condition) => branches.push(WhenBranch {
+                condition,
+                min,
+                max,
+            }),
+            None => ok = false,
+        }
+    }
+    if !ok {
+        return None;
+    }
+    if !branches.is_empty() && input.min.is_none() && input.max.is_none() {
+        cx.diags
+            .error(FALLBACK_LESS_WHEN_RULE, site, &[owner, &input.name]);
+        return None;
+    }
+    if !conditions::disjoint(&branches) {
+        cx.diags
+            .error(OVERLAPPING_WHEN_BRANCHES, site, &[owner, &input.name]);
         return None;
     }
     Some(ChildRule {
         name: cx.names.intern(&input.name),
         min: input.min,
         max: input.max,
+        branches,
         site,
+    })
+}
+
+/// A rule's base bounds: ordered, and admitting at least one occurrence
+/// unless `refusable`. A branch may always refuse its instances outright
+/// with `max-occurs=0`.
+fn bounds(
+    cx: &mut Cx<'_>,
+    site: Site,
+    owner: &str,
+    label: &str,
+    (min, max): (Option<u64>, Option<u64>),
+    refusable: bool,
+) -> bool {
+    if !bounds_ordered(cx, site, owner, label, min, max) {
+        return false;
+    }
+    if max == Some(0) && !refusable {
+        let reason = format!("{label} permits no occurrence");
+        cx.diags.error(INVALID_BINDING, site, &[owner, &reason]);
+        return false;
+    }
+    true
+}
+
+fn bounds_ordered(
+    cx: &mut Cx<'_>,
+    site: Site,
+    owner: &str,
+    label: &str,
+    min: Option<u64>,
+    max: Option<u64>,
+) -> bool {
+    if let (Some(min), Some(max)) = (min, max)
+        && min > max
+    {
+        let reason = format!("{label} has min-occurs {min} above max-occurs {max}");
+        cx.diags.error(INVALID_BINDING, site, &[owner, &reason]);
+        return false;
+    }
+    true
+}
+
+/// One condition, its combinators each composing at least one member.
+fn condition(
+    cx: &mut Cx<'_>,
+    site: Site,
+    owner: &str,
+    input: &ConditionInput,
+) -> Option<Condition> {
+    let (members, combinator, any) = match input {
+        ConditionInput::When {
+            property, equals, ..
+        } => {
+            if !field_name(property) {
+                let spelled = found(&Value::String(property.clone()));
+                cx.mistyped(site, "the property of when", "FieldName", &spelled);
+                return None;
+            }
+            return Some(Condition::Equals {
+                property: cx.names.intern(property),
+                equals: equals.clone(),
+            });
+        }
+        ConditionInput::All { members, .. } => (members, "when-all", false),
+        ConditionInput::Any { members, .. } => (members, "when-any", true),
+    };
+    if members.is_empty() {
+        cx.diags
+            .error(EMPTY_WHEN_COMPOSITION, site, &[owner, combinator]);
+        return None;
+    }
+    let mut composed = Vec::with_capacity(members.len());
+    for member in members {
+        composed.push(condition(cx, site, owner, member)?);
+    }
+    Some(if any {
+        Condition::Any(composed)
+    } else {
+        Condition::All(composed)
     })
 }
 

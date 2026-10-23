@@ -34,20 +34,21 @@ mod value_resolver;
 
 pub use bind::{BindFrame, Binder, BindingSession, EntryValue, NodeStart, ParseEvents};
 pub use bindings::{
-    Arity, BindingCatalog, BindingCodec, CaseRule, ChildPlan, ChildRule, Collision, ContextPolicy,
-    DependentBinding, DescendantRule, DuplicateKeys, Effect, EffectGroup, EffectTarget,
-    FieldBinding, IdentityDecl, NodeAnnotation, NodeDecl, NodeDeclId, ParentKey, Placement, Role,
-    Scope, ScopeId, SequenceDecl, SequenceStep, SetFrom, Source as FieldSource,
+    Arity, BindingCatalog, BindingCodec, CaseRule, ChildPlan, ChildRule, Collision, Condition,
+    ContextPolicy, DependentBinding, DescendantRule, DuplicateKeys, Effect, EffectGroup,
+    EffectTarget, FieldBinding, IdentityDecl, NodeAnnotation, NodeDecl, NodeDeclId, ParentKey,
+    Placement, Role, Scope, ScopeId, SequenceDecl, SequenceStep, SetFrom, Source as FieldSource,
+    WhenBranch,
 };
 pub use cache::{DerivedState, derive_state};
 pub use compile::input::{
-    AnchorInput, AnnotationInput, CaptureInput, CaseInput, ChildRuleInput, ConstraintInput,
-    Construct, DefaultInput, DefinitionInput, DependentInput, DescendantRuleInput, DiscoveryInput,
-    DocumentInput, DocumentRuleInput, EffectGroupInput, EffectInput, FieldBindingInput, FieldInput,
-    FormatInput, GroupInput, IdentityInput, ImportInput, Located, MatchRuleInput, MemberInput,
-    NodeAnnotationInput, NodeInput, ProfileInput, ProviderInput, QualifierInput, ReferenceInput,
-    ResolutionInput, SequenceInput, SlotInput, SourceContextInput, SourceFieldInput, SourceInput,
-    StepInput, TypeInput, ValidatorInput, VariantInput,
+    AnchorInput, AnnotationInput, CaptureInput, CaseInput, ChildRuleInput, ConditionInput,
+    ConstraintInput, Construct, DefaultInput, DefinitionInput, DependentInput, DescendantRuleInput,
+    DiscoveryInput, DocumentInput, DocumentRuleInput, EffectGroupInput, EffectInput,
+    FieldBindingInput, FieldInput, FormatInput, GroupInput, IdentityInput, ImportInput, Located,
+    MatchRuleInput, MemberInput, NodeAnnotationInput, NodeInput, ProfileInput, ProviderInput,
+    QualifierInput, ReferenceInput, ResolutionInput, SequenceInput, SlotInput, SourceContextInput,
+    SourceFieldInput, SourceInput, StepInput, TypeInput, ValidatorInput, VariantInput,
 };
 pub use compile::{DIALECT_VERSION, compile_dialect, compile_dialect_input, compile_schema_input};
 pub use data::{

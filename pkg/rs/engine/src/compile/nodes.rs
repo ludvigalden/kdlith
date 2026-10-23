@@ -705,6 +705,7 @@ fn child_rule(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode, owner: &str) -> Op
         name: cx.names.intern(&name),
         min,
         max,
+        branches: Vec::new(),
         site,
     })
 }

@@ -132,6 +132,7 @@ fn children(cx: &mut Cx<'_>, decl: &mut NodeDecl, complete: bool) {
                 name: member,
                 min: rule.min,
                 max: rule.max,
+                branches: rule.branches.clone(),
                 site: rule.site,
             });
         }

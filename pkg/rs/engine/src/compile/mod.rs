@@ -4,6 +4,7 @@
 
 mod annotations;
 mod collect;
+mod conditions;
 mod conform;
 mod document;
 mod expansions;
@@ -236,6 +237,7 @@ fn finish<'d>(
         if !cx.diags.has_errors() {
             literals::run(&mut cx, &bindings);
             annotations::run(&mut cx, &bindings);
+            conditions::run(&mut cx, &bindings);
         }
     }
     if cx.diags.has_errors() {

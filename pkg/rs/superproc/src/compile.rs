@@ -7,22 +7,23 @@ use std::path::{Path, PathBuf};
 use kdlith_diagnostic::{ByteSpan, DiagnosticRecord, Severity};
 use kdlith_engine::{
     AnchorInput, AnnotationInput, CaptureInput, CaseInput, CheckScope, ChildRuleInput,
-    ConstraintInput, Construct, DefaultInput, Definition, DefinitionInput, DependentInput,
-    DescendantRuleInput, DiscoveryInput, DocumentInput, DocumentRuleInput, EffectGroupInput,
-    EffectInput, Extensions, FieldBindingInput, FieldInput, FormatInput, GroupInput, IdentityInput,
-    ImportInput, Located, MatchRuleInput, MemberInput, NodeAnnotationInput, NodeInput,
-    ParsedDocument, ProfileInput, ProviderInput, QualifierInput, ReferenceInput, ResolutionInput,
-    SequenceInput, SlotInput, SourceContextInput, SourceFieldInput, SourceInput, StepInput,
-    TypeInput, TypedItem, ValidatorInput, VariantInput, compile_dialect, compile_dialect_input,
-    compile_schema_input,
+    ConditionInput, ConstraintInput, Construct, DefaultInput, Definition, DefinitionInput,
+    DependentInput, DescendantRuleInput, DiscoveryInput, DocumentInput, DocumentRuleInput,
+    EffectGroupInput, EffectInput, Extensions, FieldBindingInput, FieldInput, FormatInput,
+    GroupInput, IdentityInput, ImportInput, Located, MatchRuleInput, MemberInput,
+    NodeAnnotationInput, NodeInput, ParsedDocument, ProfileInput, ProviderInput, QualifierInput,
+    ReferenceInput, ResolutionInput, SequenceInput, SlotInput, SourceContextInput,
+    SourceFieldInput, SourceInput, StepInput, TypeInput, TypedItem, ValidatorInput, VariantInput,
+    compile_dialect, compile_dialect_input, compile_schema_input,
 };
 use kdlith_runtime::Repeated;
 
 use crate::processors::{Item, reader};
 use crate::types::{
-    AnnotationDef, CodecType, Constraint, DefaultSpec, DiscoveryDef, DocumentRule, Effect,
-    EnumType, FieldBinding, MapType, MatchRule, NodeDef, NodeGroupDef, ObjectType, ProfileDef,
-    ReferenceDef, ResolutionPolicyDef, SecretProvider, Source, StringType, UnionType,
+    AnnotationDef, ChildRule, CodecType, Condition, Constraint, DefaultSpec, DiscoveryDef,
+    DocumentRule, Effect, EnumType, FieldBinding, MapType, MatchRule, NodeDef, NodeGroupDef,
+    ObjectType, ProfileDef, ReferenceDef, ResolutionPolicyDef, SecretProvider, Source, StringType,
+    UnionType,
 };
 
 /// The canonical dialect's contributing documents, embedded so the
@@ -732,20 +733,12 @@ fn node_input(node: NodeDef) -> NodeInput {
         children: node
             .children
             .iter()
-            .map(|(name, rule)| ChildRuleInput {
-                name: name.as_str().to_owned(),
-                min: rule.min_occurs,
-                max: rule.max_occurs,
-            })
+            .map(|(name, rule)| child_rule(name.as_str(), rule))
             .collect(),
         children_groups: node
             .children_groups
             .iter()
-            .map(|(name, rule)| ChildRuleInput {
-                name: name.as_str().to_owned(),
-                min: rule.min_occurs,
-                max: rule.max_occurs,
-            })
+            .map(|(name, rule)| child_rule(name.as_str(), rule))
             .collect(),
         effects: node
             .effects
@@ -898,6 +891,37 @@ fn effect(effect: &Effect) -> EffectInput {
         },
         Effect::Handler(handler) => EffectInput::Handler {
             name: handler.name.as_str().to_owned(),
+        },
+    }
+}
+
+/// One children rule with its when branches, in written order.
+fn child_rule(name: &str, rule: &ChildRule) -> ChildRuleInput {
+    ChildRuleInput {
+        name: name.to_owned(),
+        min: rule.min_occurs,
+        max: rule.max_occurs,
+        branches: rule.branches.iter().flatten().map(condition).collect(),
+    }
+}
+
+fn condition(input: &Condition) -> ConditionInput {
+    match input {
+        Condition::When(when) => ConditionInput::When {
+            property: when.property.as_str().to_owned(),
+            equals: when.equals.clone(),
+            min: when.min_occurs,
+            max: when.max_occurs,
+        },
+        Condition::WhenAll(group) => ConditionInput::All {
+            members: group.members.iter().map(condition).collect(),
+            min: group.min_occurs,
+            max: group.max_occurs,
+        },
+        Condition::WhenAny(group) => ConditionInput::Any {
+            members: group.members.iter().map(condition).collect(),
+            min: group.min_occurs,
+            max: group.max_occurs,
         },
     }
 }
