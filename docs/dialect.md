@@ -55,18 +55,18 @@ the draft round and section so the reasoning can be found again:
 Each file is a `dialect kdlith version="0"` document. Together they are
 the only authority for the dialect.
 
-| File                                    | Contributes                                                                                                                                                                                                                                                            |
-| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pkg/kdl/schemas/dialect/types.kdl`     | Logical types, the type-expression grammar, built-in scalars and formats, field definitions, object constraints, numeric bounds, and field exclusivity, generic type parameters, pattern codecs, field sensitivity                                                     |
-| `pkg/kdl/schemas/dialect/bindings.kdl`  | Roles, node declarations, field bindings and their sources, collision and duplicate-key policies, child cardinality, member-group expansion, dependent value binding, case dispatch                                                                                    |
-| `pkg/kdl/schemas/dialect/context.kdl`   | Typed context slots, effect groups and targets, effects, context policies, execution timing, source-context declarations, accumulating context, context snapshots                                                                                                      |
-| `pkg/kdl/schemas/dialect/documents.kdl` | Dialect and schema roots, containers, structural document rules, source imports with their discovery grammars and aliases, document profiles, descendant rules, ordered sequences, symbol catalogs and reference policies, contribution policies, provider descriptors |
+| File                                    | Contributes                                                                                                                                                                                                                                                                                       |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pkg/kdl/schemas/dialect/types.kdl`     | Logical types, the type-expression grammar, built-in scalars and formats, field definitions, object constraints, numeric bounds, and field exclusivity, generic type parameters, pattern codecs, field sensitivity, per-field merge policy                                                        |
+| `pkg/kdl/schemas/dialect/bindings.kdl`  | Roles, node declarations, field bindings and their sources, collision and duplicate-key policies, child cardinality, member-group expansion, dependent value binding, case dispatch, node groups, conditional occurrence bounds, node annotations and descriptions                                |
+| `pkg/kdl/schemas/dialect/context.kdl`   | Typed context slots, effect groups and targets, effects, context policies, execution timing, source-context declarations, accumulating context, context snapshots                                                                                                                                 |
+| `pkg/kdl/schemas/dialect/documents.kdl` | Dialect and schema roots, containers, structural document rules, source imports with their discovery grammars and aliases, document profiles, descendant rules, ordered sequences, symbol catalogs and reference policies, contribution policies and their scope vocabulary, provider descriptors |
 
 ### Dialect-generation entrypoint
 
-| File                                  | Role                                                                                                                                                                                                                                                                             |
-| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `contracts/super-schemas/dialect.kdl` | Selects the four canonical documents through `import` nodes, in the order types, bindings, context, documents. It declares nothing of its own and is never a second authority. It is the input to dialect generation (`kdlith gen dialect contracts/super-schemas/dialect.kdl`). |
+| File                                  | Role                                                                                                                                                                                                                                                                                                    |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `contracts/super-schemas/dialect.kdl` | Selects the four canonical documents through `import` nodes, in the order types, bindings, context, documents. It declares nothing of its own and is never a second authority. It is the input to dialect generation (`kdlith gen dialect --crate NAME --out DIR contracts/super-schemas/dialect.kdl`). |
 
 ### Fixture scenarios
 
@@ -107,7 +107,8 @@ and one negative control per new code (`KDLITH-SCH011`, `KDLITH-SCH012`,
 `KDLITH-SCH013`, `KDLITH-IMP004`, `KDLITH-IMP005`,
 `KDLITH-IMP006`, `KDLITH-CTX006`, `KDLITH-CTX004`, `KDLITH-REF005`,
 `KDLITH-BND010`, `KDLITH-BND011`, `KDLITH-BND012`, `KDLITH-BND013`,
-`KDLITH-BND014`; the retired
+`KDLITH-BND014`, `KDLITH-SCH015`, `KDLITH-SCH016`, `KDLITH-SCH017`,
+`KDLITH-SCH018`, `KDLITH-SCH019`; the retired
 `KDLITH-CTX003` is subsumed by `KDLITH-CTX006`, whose negative control is
 the `accumulate-no-op` scenario), landing with the
 canonical declarations that define them.
@@ -140,7 +141,7 @@ canonical declarations that define them.
 | Mechanism                        | What the dialect declares                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | Draft         |
 | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
 | Roles vocabulary                 | `record`, `declaration`, `contribution`, `context-control`, `source-import`, `container`. Structure (bindings) and role (processing) are separate. A declaration registers an identity others may reference; a record is validated data with no identity, such as the `document` rule.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | R3 §2         |
-| Node declarations                | `node NAME` with optional `role=`, `type=`, and either `parent=` or a `parents` child. A node with neither is a root node. `root=#true` beside `parent=` or `parents` admits the node at the root as well, so one declaration covers a recursive container that may also start a document; on a node with neither it changes nothing. A second root declaration of the same name is a duplicate (`KDLITH-SCH004`), and a non-Bool `root=` is a value of the wrong type (`KDLITH-BND003`). A node without `role=` binds as part of its parent (a field value or an envelope entry) and is not a processing item. A node declaration may carry `description=` documentation and `annotation NAME VALUE` facts, which are metadata the processor never enforces (see "Node declaration metadata").                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | R3 §2, R3 §3  |
+| Node declarations                | `node NAME` with optional `role=`, `type=`, and either `parent=` or a `parents` child. A node with neither is a root node. `root=#true` beside `parent=`, `parents`, or `parents group=` admits the node at the root as well, so one declaration covers a recursive container that may also start a document and nest in itself (`processing/bind/recursive-root-admission`); on a node with none of them it changes nothing and draws no diagnostic. The node is then admitted at both positions by one declaration: `list nodes` prints `parent=root,` before its sorted parents, the `effective` view's node entry adds `"root":true`, and a generated crate's node table marks it so. A second root declaration of the same name is a duplicate (`KDLITH-SCH004`), and a non-Bool `root=` is a value of the wrong type (`KDLITH-BND003`). A node without `role=` binds as part of its parent (a field value or an envelope entry) and is not a processing item. A node declaration may carry `description=` documentation and `annotation NAME VALUE` facts, which are metadata the processor never enforces (see "Node declaration metadata").                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | R3 §2, R3 §3  |
 | Parent-sensitive dispatch        | Dispatch is by parent, node name, and explicit discriminators, never by trying every schema until one accepts. The same name may declare different nodes under different parents (for example `children` under `node` versus under `from`).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | R2 §7, R3 §3  |
 | Binding shorthands               | `arg=N`, `property=NAME`, `child=NAME`, `context=SLOT` on a `field` binding                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | R2 §3, R3 §5  |
 | Explicit sources                 | A `from` block listing `argument`, `args`, `property`, `child`, `children`, `entries`, and `context` sources; `child` and `children` sources may nest further sources                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | R2 §3         |
@@ -153,7 +154,7 @@ canonical declarations that define them.
 | Duplicate keys                   | `duplicate-keys reject` on keyed collections                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | R1 §2, R2 §3  |
 | Compile-time binding checks      | The compiler rejects overlapping bindings (`KDLITH-SCH003`, also reported when a definition is read as data of the dialect, so every processor of definitions rejects it), unconsumed arguments, and contradictory ownership of children                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | R2 §3         |
 | Child permission and cardinality | A child is permitted only when a field binding consumes it or a `children NAME` rule names it. `min-occurs` and `max-occurs` bound occurrences; minimums are checked at scope completion. These are schema occurrence rules, never reinterpretations of authored data that uses a property named `min-occurs` or `max-count`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | R1 §3, R3 §7  |
-| Node groups                      | `group NAME MEMBER...` under `schema` names a set of declared node names once; members are names, never node declarations. A `children-group NAME` rule in a node declaration expands to one `children MEMBER` rule per member, each with the rule's `min-occurs` and `max-occurs` (bounds apply per member; an aggregate bound over a group is not expressible), and `parents group=NAME` places the node under every member as well as under any positional parents. Expansion happens when the schema compiles, so dispatch stays by parent and name and a child outside every group stays unknown (`KDLITH-BND001`). An undeclared group is an undeclared reference (`KDLITH-SCH006`), a group without members is `KDLITH-SCH015`, and a member naming no declared node, or a child spelled both directly and through a group, contradicts the declaration (`KDLITH-SCH005`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | R1 §3, R3 §7  |
+| Node groups                      | `group NAME MEMBER...` under `schema` names a set of declared node names once; members are names, never node declarations. A `children-group NAME` rule in a node declaration expands to one `children MEMBER` rule per member, each with the rule's `min-occurs` and `max-occurs` (bounds apply per member; an aggregate bound over a group is not expressible), and `parents group=NAME` places the node under every member as well as under any positional parents; the `NodeDef` field that holds that group is `parent-group`, bound from the `parents` child's `group` property. Expansion happens when the schema compiles, so dispatch stays by parent and name and a child outside every group stays unknown (`KDLITH-BND001`); `root=#true` still admits a group-placed node at the root as well. An undeclared group is an undeclared reference (`KDLITH-SCH006`), a group without members is `KDLITH-SCH015`, a member naming no declared node, or a child spelled both directly and through a group, contradicts the declaration (`KDLITH-SCH005`), and a group naming one member twice, or a parent reached both positionally and through the group, is malformed (`KDLITH-DLC005`)                                                                                                                                                                                                                                                                                                                                                                                                                                                  | R1 §3, R3 §7  |
 | Conditional occurrence bounds    | A `children NAME` or `children-group NAME` rule may carry `when property=FIELD equals=V` branches and `when-all` / `when-any` combinators over them, each branch root with its own `min-occurs` / `max-occurs`. The rule's own bounds are the fallback when no branch matches; a matching branch replaces both. Conditions read only the node's own scalar or enum property values and are checked when the scope completes (see "Conditional occurrence bounds")                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | R3 §7, R3 §8  |
 | Compiled plans                   | Bindings compile into a plan; the schema's own KDL is not reinterpreted per record                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | R1 §2, R2 §12 |
 
@@ -278,12 +279,20 @@ module, named `<NODE>_<ANNOTATION>`, typed by the annotation's declared
 type (`u64` for a U64, the generated enum's member for a declared enum
 type, and the written spelling as `&str` for a String, a Decimal, or a
 declared string type, whose generated newtypes own their text and
-cannot be built in a constant).
+cannot be built in a constant). Same-named node declarations under
+different parents share the stem: the first in contribution order
+keeps `<NODE>_<ANNOTATION>`, and each later one carrying the same
+annotation takes an ordinal suffix, `_2`, `_3`, and so on
+(`codegen/gen-schema-annotation-constants-duplicate`); a constant
+another fact still spells fails generation closed.
 
 **Descriptions.** `description=` on a node declaration holds
 documentation, riding the EnumMember and FieldDef precedent. It is
-metadata only; the summary the digest is taken over includes it, so two
-definitions differing in a description are different definitions.
+metadata only: binding never reads it, and the `effective` view shows
+it as the node entry's `description` key. The summary the digest is
+taken over includes it, so two definitions differing in a description
+are different definitions; the same holds for annotation declarations
+and facts.
 
 ### Context (`context.kdl`)
 
@@ -417,13 +426,15 @@ whose imports instantiate 1024 more. The invocation past the bound is
 refused with `KDLITH-SRC003`, whose message names the invocation count
 of entries plus imports. The documents invoked before it are bound and
 streamed, and the reading fails. The bound is configurable:
-`--max-invocations N` (a positive integer) on every data verb
+`--max-invocations N` (a positive integer; `0` or a non-number is
+`KDLITH-CLI001`, exit 2) on every data verb
 (`vet data`, `inspect data`, `read data`, `list items`,
 `cache refresh`, and `export`), and `ReadOptions::with_max_invocations`
 for a host reading in process. Reading entries in separate batches
 instead also stays under the bound, but then each batch links its
 references on its own, so a reference that crosses batches does not
-resolve. The import depth bound (64) is separate and fixed.
+resolve: raising the bound keeps one reading, and one link stage, over
+every entry. The import depth bound (64) is separate and fixed.
 
 An import expression is evaluated under the discovery grammar the
 active profile (or the schema root, when no profiles are declared)
@@ -661,8 +672,19 @@ does not admit is rejected with the binding code any processor binding
 it reports. A host holding definition text in memory loads it through
 `load_dialect_sources` and `load_schema_sources`, which read `Source`
 documents through the same reader and compiler as their path
-counterparts; an in-memory definition has no directory to resolve an
-import against, so an import inside one fails closed (`KDLITH-IMP001`).
+counterparts (`load_dialect`, `load_schema`); an in-memory definition
+has no directory to resolve an import against, so an import inside one
+fails closed (`KDLITH-IMP001`). A `Source` is a document's shown path
+and its text: its revision digest and invocation identity derive from
+the text exactly as a file reading's do, so a `Source` holding a file's
+bytes reads as that file would. Data held in memory reads the same way:
+`DataReader::read_sources`, and on the typed reader `read_sources`,
+`read_sources_local`, and `collect_sources`, take `Source` documents in
+place of entry paths, with the same imports-fail-closed rule. The
+reference processor and a generated dialect crate export both loaders;
+the command-line tool reads only paths, so no fixture reaches these
+entry points beyond the oracle's byte comparison of the generated
+loaders.
 
 One cycle cannot close: a reader needs a compiled dialect before it can
 read one, so the canonical dialect's own compilation cannot flow through
@@ -947,7 +969,7 @@ item stream `inspect` shows) and when the engine compiles it (`vet`, and
 | A node no binding accepts in its position, including a missing or extra root                                                          | `KDLITH-BND001` |
 | A child that occurs more or fewer times than its rule allows, including the first-node rule                                           | `KDLITH-BND002` |
 | A value that does not decode as its declared type, such as a name with the wrong format                                               | `KDLITH-BND003` |
-| A required field or argument that is absent, such as a definition root without `version=`                                             | `KDLITH-BND004` |
+| A required field or argument that is absent, such as a definition root without `version=` or a valueless single-value child           | `KDLITH-BND004` |
 | An argument, property, or type annotation that no binding consumes                                                                    | `KDLITH-BND005` |
 | A repeated key of a keyed collection, such as two fields of one object or two bindings of a field                                     | `KDLITH-BND006` |
 | A value that names no member of its enum, such as an unknown `role=` or string `format`                                               | `KDLITH-BND008` |
@@ -980,6 +1002,32 @@ unbound (`KDLITH-BND001`). Every definition root — dialect or schema —
 states its `version` property; a root without one is a missing required field,
 rejected with `KDLITH-BND004` on both reading paths.
 
+`KDLITH-BND004` renders from one template, `<node> is missing required
+<field>`, so the message names what is absent. A required field nothing
+supplied is reported at the node, naming the field
+(`card is missing required title`; a case-selected type's field as
+`Type.field`, and an entries envelope's absent key as `key argument`).
+A child bound as one field value (`child=NAME`, or a `child` source)
+and written with no argument is reported at the child itself, naming
+the child: `card is missing required value of child title`. Both
+reading paths word the child form the same way, the binder for data and
+for definitions read as data, and the compiler's self-description walk
+for definitions. A valueless child supplies nothing, so when its field
+is required the node reports its own missing field as well, and the run
+carries both records — the child's first, at the child's line, then the
+node's:
+
+```text
+error[KDLITH-BND004]: card is missing required value of child title
+  --> data.kdl:2:5
+  help: Add the required field
+error[KDLITH-BND004]: card is missing required title
+  --> data.kdl:1:1
+  help: Add the required field
+```
+
+When the field is optional only the child's record is reported.
+
 An unbound node (`KDLITH-BND001`) carries a note when it looks like a
 child written without braces: its immediately preceding sibling in the
 same scope was bound, that sibling's binding admits the unbound node's
@@ -1005,8 +1053,23 @@ to compare. An unbound property whose name the node admits as a child
 (`parents="stack"` on a node declaration) first carries a note saying
 to write it as that child.
 
-Every rendered diagnostic ends with a `help:` line carrying its code's
-registered correction. Text on stderr is the only diagnostic
+Each candidate note is a label: it renders as an indented `note:` line
+under the diagnostic's location, carries the position it names, and
+precedes the `help:` line:
+
+```text
+error[KDLITH-BND001]: unknown node crad under deck
+  --> input.kdl:2:5
+  note: did you mean card? (input.kdl:2:5)
+  help: Remove the node or use one the schema binds here
+```
+
+Every diagnostic rendered from a record ends with a `help:` line
+carrying its code's registered correction. Argument faults
+(`KDLITH-CLI001` through `KDLITH-CLI004`) are reported before any
+record exists, as one `error[CODE]:` line, which the argument parser
+may follow with its own usage guidance, and carry no `help:` line.
+Text on stderr is the only diagnostic
 presentation the CLI offers. The machine-readable form is the data
 path's JSON item stream on stdout, whose `diagnostic` items carry the
 whole record: code, severity, source path, span, line and column,
@@ -1166,8 +1229,10 @@ this dialect:
    the expected declaration and record items.
 2. It holds only the dialect's own type and binding declarations plus
    glue. Every reusable decision lives in the engine or runtime.
-3. It hosts the compiler entry point (`load_dialect`, `load_schema`,
-   `seed`): the engine compiles the item stream this processor reads,
+3. It hosts the compiler entry points (`load_dialect`,
+   `load_dialect_sources`, `load_schema`, `load_schema_anchored`,
+   `load_schema_sources`, and `seed`): the engine compiles the item
+   stream this processor reads,
    as [Self-hosted compilation](#self-hosted-compilation) records.
 4. Conformance fixtures bind positive cases to expected items, and
    negative controls each name the diagnostic codes of one rejected
@@ -1178,6 +1243,26 @@ this dialect:
    never overwritten by the generator.
 
 ### Generated crates
+
+`gen dialect` and `gen schema` both require `--crate NAME`, the package
+name the generated crate publishes as, and `--out DIR`, the directory
+it is written to, before the definition documents. A writing run
+records every path it owns in `DIR/kdlith-manifest` and refuses to
+overwrite an existing file the manifest does not own (`KDLITH-GEN001`,
+one record per path, nothing written); generation never deletes
+anything. `--dry-run` prints the plan — `plan: <form> crate NAME -> DIR
+(N owned files, dry run)` and each owned path — and writes nothing.
+`--check` compares the generated tree against `DIR` without writing:
+each generated path that is absent is missing, one whose bytes differ
+is changed, and a manifest-owned path the tree no longer generates is
+stale, each one `KDLITH-GEN002` record, and any finding exits 1;
+unowned files are ignored. The two modes exclude each other
+(`KDLITH-CLI002`, exit 2). A definition the generator refuses fails
+before anything is written or compared, in every mode. `gen schema`
+also takes `--anchor NAME=PATH` for the schema's own import expressions
+([Import resolution](#import-resolution)), `--handler NAME` (below),
+and the packaging flags `--kdlith-path` and `--kdlith-version`
+(below); `gen dialect` takes none of these.
 
 `gen` renders every name a definition declares as a Rust identifier:
 types and enum members or union variants in Pascal case, field keys in
@@ -1275,9 +1360,10 @@ fails generation with `KDLITH-DLC006`.
 
 A tool needs only the generated schema crate: it re-exports the reading,
 linking, and diagnostic types a reader returns (`CheckScope`,
-`Extensions`, `ReadOptions`, `TypedItem`, `ItemVariant`, `Ref`,
-`Reading`, `LinkReport`, `LinkOutcome`, `UnmetQualifier`,
-`ResolveError`, `Origin`, `Location`, and `DiagnosticRecord`). The reader's
+`Extensions`, `ReadOptions`, `ReadError`, `TypedReader`, `TypedItem`,
+`ItemVariant`, `Ref`, `Value`, `Reading`, `LinkReport`, `LinkOutcome`,
+`UnmetQualifier`, `ResolveError`, `Origin`, `Location`, and
+`DiagnosticRecord`). The reader's
 `link(CheckScope)` builder links each reading the way `vet data` does
 (see Linking data), and `collect` keeps a whole reading: its items in
 stream order, pending typed bindings among them, the link report, and
@@ -1320,12 +1406,16 @@ prints on its document item (the entry as given, an imported document
 as its import spelled it) — with the alias of the import that loaded
 that document, or none for an entry document or an unaliased import. A
 document's items keep its origin after a nested import completes, and
-a document replayed from the cache carries its own path and sites. The
+a document replayed from the cache carries its own path and sites. Each
+also carries `node_name`, the declared node that bound it, since
+several nodes may bind one type. The
 reader's `capturing(&[slot, …])` builder names context slots every
 document item then carries, in that order, each with its value as the
 document's first node binds under it — the context its importer
 projected, with the document's source-context values applied — or
-none where the slot is unset. Capture is opt-in; a name the schema
+none where the slot is unset; every record and declaration then
+carries the same slots as its `context`, each with its value as that
+node binds under it. Capture is opt-in; a name the schema
 declares no slot for fails the reading before any document is read.
 `inspect data --view context` reports the same slot values at a
 different point, each entry's context as the entry left it: a slot an
@@ -1400,6 +1490,28 @@ item per scope, and two records for one target in one layer under
 different scopes are not duplicates. `missing reject` checks a
 reference-valued field against the targets contributed under any
 scope.
+
+With `layers user base` under the default `replace` selection, the
+data document
+
+```kdl
+scope dev
+scope staging
+option font
+option mode
+setting mode dark scope=staging layer=user
+setting mode light scope=dev layer=base
+setting mode contrast scope=dev layer=user
+setting mode plain scope=staging layer=base
+setting font serif layer=base
+setting font sans layer=user
+```
+
+settles three partitions, in this order: `font` without a scope
+resolves to `sans`, `mode` under `dev` to `contrast`, and `mode` under
+`staging` to `dark`, each reporting `layers` `["user"]` — under
+`replace` only the winning layer reached the value
+(`processing/resolution/scope-partition`).
 
 ## Per-field merge
 
@@ -1634,14 +1746,14 @@ the context restored after the document closes.
 `type`, `node`, `slot`, `import`, `profile`, or `annotation`, and
 `entry` carries that section's keys:
 
-| Section      | Entry keys                                                                                                                                              |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `type`       | `name`, `parameters`, `kind` (as `list types` reports them)                                                                                             |
-| `node`       | `name`, `parents`, `role`, `type`, `profile` (as `list nodes` reports them), plus `description` and `annotations` when the declaration carries metadata |
-| `slot`       | `name`, `type` (the type expression as written), `namespace`, `accumulate`, `duplicates`, `layers`                                                      |
-| `import`     | `path`, `project`, `repeated` (kebab-case, as on the import item), `alias`                                                                              |
-| `profile`    | `name`, `roots`, `grammar` (as `list profiles` reports them)                                                                                            |
-| `annotation` | `name`, `type` (the type expression as written), `required`                                                                                             |
+| Section      | Entry keys                                                                                                                                                                                                                           |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `type`       | `name`, `parameters`, `kind` (as `list types` reports them)                                                                                                                                                                          |
+| `node`       | `name`, `parents`, `role`, `type`, `profile` (as `list nodes` reports them), plus `root` (`true`) when `root=#true` also admits a placed node at the root, and `description` and `annotations` when the declaration carries metadata |
+| `slot`       | `name`, `type` (the type expression as written), `namespace`, `accumulate`, `duplicates`, `layers`                                                                                                                                   |
+| `import`     | `path`, `project`, `repeated` (kebab-case, as on the import item), `alias`                                                                                                                                                           |
+| `profile`    | `name`, `roots`, `grammar` (as `list profiles` reports them)                                                                                                                                                                         |
+| `annotation` | `name`, `type` (the type expression as written), `required`                                                                                                                                                                          |
 
 A `type` entry carries one more key, `expanded`, only when the type's
 includes spliced members: one `{target, declared, included}` object per
@@ -1763,8 +1875,9 @@ hash map:
 2. **Entry order** (`context`): the order the entry documents are given
    on the command line.
 3. **Section order** (`effective` on a definition target): types,
-   nodes, slots, imports, profiles. Within a section, entries sort by
-   name as `list` sorts them; imports sort by path, then alias.
+   nodes, slots, imports, profiles, annotations. Within a section,
+   entries sort by name as `list` sorts them; imports sort by path,
+   then alias.
 4. **Slot order** (`context` slots, `plan-context` slots): the order the
    slots are declared, which is the order of their slot ids, not name
    order. `plan-context` lists namespaces in namespace-id order.
