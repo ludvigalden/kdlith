@@ -1,0 +1,27 @@
+schema ui version="1" {
+    types {
+        enum Size {
+            member small
+            member medium
+            member large
+        }
+        object Tag { field text String }
+        object Card {
+            field title String
+            field size Size
+            field tags "list<Tag>"
+        }
+    }
+    node card role=record type=Card {
+        field title arg=0
+        field size property=size
+        field tags { from { children tag } }
+        children tag max-occurs=1 {
+            when property=size equals=medium max-occurs=2
+            when property=size equals=large min-occurs=2 max-occurs=3
+        }
+    }
+    node tag type=Tag parent=card {
+        field text arg=0
+    }
+}

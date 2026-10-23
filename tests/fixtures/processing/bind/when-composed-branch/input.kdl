@@ -1,0 +1,8 @@
+button "A" variant=split layout=grid {
+    menu "one"
+}
+button "B" variant=split layout=list dense=#true {
+    menu "one"
+}
+button "C" variant=split layout=list
+button "D" variant=plain

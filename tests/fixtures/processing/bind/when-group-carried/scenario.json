@@ -1,0 +1,20 @@
+{
+  "binary": "kdlith",
+  "description": "A children-group rule's when branch is carried into every member rule its expansion yields: under variant=icon both icon and badge are required exactly once, and under variant=plain the base max-occurs=0 refuses both",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":0},\"type_name\":\"Button\",\"fields\":[{\"name\":\"label\",\"value\":{\"kind\":\"string\",\"value\":\"Save\"},\"origin\":0},{\"name\":\"variant\",\"value\":{\"kind\":\"string\",\"value\":\"icon\"},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}",
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":3},\"type_name\":\"Button\",\"fields\":[{\"name\":\"label\",\"value\":{\"kind\":\"string\",\"value\":\"Cancel\"},\"origin\":3},{\"name\":\"variant\",\"value\":{\"kind\":\"string\",\"value\":\"plain\"},\"origin\":3}],\"origin\":3,\"validation\":\"valid\"}}",
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":1},\"type_name\":\"Adornment\",\"fields\":[{\"name\":\"glyph\",\"value\":{\"kind\":\"string\",\"value\":\"floppy\"},\"origin\":1}],\"origin\":1,\"validation\":\"valid\"}}",
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":2},\"type_name\":\"Adornment\",\"fields\":[{\"name\":\"glyph\",\"value\":{\"kind\":\"string\",\"value\":\"new\"},\"origin\":2}],\"origin\":2,\"validation\":\"valid\"}}"
+    ]
+  }
+}

@@ -1,0 +1,21 @@
+schema ui version="1" {
+    types {
+        object Icon { field glyph String }
+        object Chip {
+            field label String
+            field tone "optional<nullable<String>>"
+            field icons "list<Icon>"
+        }
+    }
+    node chip role=record type=Chip {
+        field label arg=0
+        field tone property=tone
+        field icons { from { children icon } }
+        children icon max-occurs=0 {
+            when property=tone equals=#null min-occurs=1 max-occurs=1
+        }
+    }
+    node icon type=Icon parent=chip {
+        field glyph arg=0
+    }
+}

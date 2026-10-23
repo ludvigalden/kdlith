@@ -287,8 +287,8 @@ impl Walk<'_> {
                 let place = format!("{owner} after its first node");
                 Finding::new(span, UNKNOWN_NODE, &[names.resolve(*child), &place])
             }
-            Violation::TooMany { child, max } => {
-                let count = max.saturating_add(1).to_string();
+            Violation::TooMany { child, count, max } => {
+                let count = count.to_string();
                 let what = under(*child);
                 Finding::new(
                     span,

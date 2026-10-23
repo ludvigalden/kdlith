@@ -297,11 +297,15 @@ impl Builder<'_> {
             };
             plans.insert(name, plan);
             let max = rule.and_then(|r| r.max).or(single.then_some(1));
-            rules.permit(Occurs {
+            let occurs = Occurs {
                 name,
                 min: rule.and_then(|r| r.min).unwrap_or(0),
                 max,
-            });
+            };
+            match rule.filter(|r| !r.branches.is_empty()) {
+                Some(rule) => rules.permit_conditional(occurs, rule.branches.clone()),
+                None => rules.permit(occurs),
+            }
         }
         for group in &input.groups {
             for missing in rules.group(group) {

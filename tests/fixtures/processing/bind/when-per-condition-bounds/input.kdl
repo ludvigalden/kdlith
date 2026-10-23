@@ -1,0 +1,12 @@
+card "S" size=small {
+    tag "a"
+}
+card "M" size=medium {
+    tag "a"
+    tag "b"
+}
+card "L" size=large {
+    tag "a"
+    tag "b"
+    tag "c"
+}

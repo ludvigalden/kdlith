@@ -1,0 +1,9 @@
+button "Save" {
+    icon "floppy"
+}
+button "Cancel" variant=plain
+style icon
+tab "Home" {
+    icon "house"
+}
+tab "About" variant=plain

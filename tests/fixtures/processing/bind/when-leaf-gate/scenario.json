@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "A when leaf gates a children rule at bind time: the base max-occurs=0 refuses icon children, and the variant=icon branch replaces it with exactly one, so the icon button binds its icon while the plain button, matching no branch, holds none",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"name\":\"variant\",\"value\":{\"kind\":\"string\",\"value\":\"icon\"},\"origin\":0},{\"name\":\"icons\",\"value\":{\"kind\":\"list\",\"value\":[{\"kind\":\"map\",\"value\":[{\"key\":\"glyph\",\"value\":{\"kind\":\"string\",\"value\":\"floppy\"}}]}]},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}",
+      "{\"name\":\"variant\",\"value\":{\"kind\":\"string\",\"value\":\"plain\"},\"origin\":2},{\"name\":\"icons\",\"value\":{\"kind\":\"list\",\"value\":[]},\"origin\":2}],\"origin\":2,\"validation\":\"valid\"}"
+    ]
+  }
+}

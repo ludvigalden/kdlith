@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "Each when branch carries its own occurrence bounds over one shared gating property: size=small matches no branch and keeps the base max-occurs=1, size=medium raises the maximum to 2, and size=large requires two to three tags",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":0},\"type_name\":\"Card\",\"fields\":[{\"name\":\"title\",\"value\":{\"kind\":\"string\",\"value\":\"S\"},\"origin\":0},{\"name\":\"size\",\"value\":{\"kind\":\"string\",\"value\":\"small\"},\"origin\":0},{\"name\":\"tags\",\"value\":{\"kind\":\"list\",\"value\":[{\"kind\":\"map\",\"value\":[{\"key\":\"text\",\"value\":{\"kind\":\"string\",\"value\":\"a\"}}]}]},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}",
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":2},\"type_name\":\"Card\",\"fields\":[{\"name\":\"title\",\"value\":{\"kind\":\"string\",\"value\":\"M\"},\"origin\":2},{\"name\":\"size\",\"value\":{\"kind\":\"string\",\"value\":\"medium\"},\"origin\":2},{\"name\":\"tags\",\"value\":{\"kind\":\"list\",\"value\":[{\"kind\":\"map\",\"value\":[{\"key\":\"text\",\"value\":{\"kind\":\"string\",\"value\":\"a\"}}]},{\"kind\":\"map\",\"value\":[{\"key\":\"text\",\"value\":{\"kind\":\"string\",\"value\":\"b\"}}]}]},\"origin\":2}],\"origin\":2,\"validation\":\"valid\"}}",
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":5},\"type_name\":\"Card\",\"fields\":[{\"name\":\"title\",\"value\":{\"kind\":\"string\",\"value\":\"L\"},\"origin\":5},{\"name\":\"size\",\"value\":{\"kind\":\"string\",\"value\":\"large\"},\"origin\":5},{\"name\":\"tags\",\"value\":{\"kind\":\"list\",\"value\":[{\"kind\":\"map\",\"value\":[{\"key\":\"text\",\"value\":{\"kind\":\"string\",\"value\":\"a\"}}]},{\"kind\":\"map\",\"value\":[{\"key\":\"text\",\"value\":{\"kind\":\"string\",\"value\":\"b\"}}]},{\"kind\":\"map\",\"value\":[{\"key\":\"text\",\"value\":{\"kind\":\"string\",\"value\":\"c\"}}]}]},\"origin\":5}],\"origin\":5,\"validation\":\"valid\"}}"
+    ]
+  }
+}

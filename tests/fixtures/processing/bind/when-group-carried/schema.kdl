@@ -1,0 +1,27 @@
+schema ui version="1" {
+    types {
+        enum Variant {
+            member plain
+            member icon
+        }
+        object Adornment { field glyph String }
+        object Button {
+            field label String
+            field variant Variant
+        }
+    }
+    group adornments icon badge
+    node button role=record type=Button {
+        field label arg=0
+        field variant property=variant
+        children-group adornments max-occurs=0 {
+            when property=variant equals=icon min-occurs=1 max-occurs=1
+        }
+    }
+    node icon role=record type=Adornment parent=button {
+        field glyph arg=0
+    }
+    node badge role=record type=Adornment parent=button {
+        field glyph arg=0
+    }
+}

@@ -1,0 +1,55 @@
+schema ui version="1" {
+    types {
+        enum Variant {
+            member plain
+            member icon
+        }
+        object Icon { field glyph String }
+        object Button {
+            field label String
+            field variant Variant {
+                fallback icon
+            }
+            field icons "list<Icon>"
+        }
+        object Tab {
+            field label String
+            field variant Variant
+            field icons "list<Icon>"
+        }
+    }
+    context {
+        slot style Variant
+    }
+    node style role=context-control {
+        field value Variant arg=0
+        effects target=following {
+            set style field=value
+        }
+    }
+    node button role=record type=Button {
+        field label arg=0
+        field variant property=variant
+        field icons { from { children icon } }
+        children icon max-occurs=0 {
+            when property=variant equals=icon min-occurs=1 max-occurs=1
+        }
+    }
+    node tab role=record type=Tab {
+        field label arg=0
+        field variant {
+            from {
+                property variant
+                context style policy=fallback
+            }
+        }
+        field icons { from { children icon } }
+        children icon max-occurs=0 {
+            when property=variant equals=icon min-occurs=1 max-occurs=1
+        }
+    }
+    node icon type=Icon {
+        parents button tab
+        field glyph arg=0
+    }
+}

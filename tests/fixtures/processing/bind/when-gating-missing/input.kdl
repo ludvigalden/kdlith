@@ -1,0 +1,4 @@
+button "Toolbar" {
+    icon "cut"
+    icon "paste"
+}

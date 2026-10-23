@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "The base bounds are the fallback for instances no branch matches: variant=plain matches none and keeps min-occurs=1 max-occurs=2, binding two links, while variant=icon's branch replaces both base bounds with max-occurs=0 and an unspelled minimum of 0, so it holds none without falling short",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":0},\"type_name\":\"Button\",\"fields\":[{\"name\":\"label\",\"value\":{\"kind\":\"string\",\"value\":\"Docs\"},\"origin\":0},{\"name\":\"variant\",\"value\":{\"kind\":\"string\",\"value\":\"plain\"},\"origin\":0},{\"name\":\"links\",\"value\":{\"kind\":\"list\",\"value\":[{\"kind\":\"map\",\"value\":[{\"key\":\"href\",\"value\":{\"kind\":\"string\",\"value\":\"/a\"}}]},{\"kind\":\"map\",\"value\":[{\"key\":\"href\",\"value\":{\"kind\":\"string\",\"value\":\"/b\"}}]}]},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}",
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":3},\"type_name\":\"Button\",\"fields\":[{\"name\":\"label\",\"value\":{\"kind\":\"string\",\"value\":\"Save\"},\"origin\":3},{\"name\":\"variant\",\"value\":{\"kind\":\"string\",\"value\":\"icon\"},\"origin\":3},{\"name\":\"links\",\"value\":{\"kind\":\"list\",\"value\":[]},\"origin\":3}],\"origin\":3,\"validation\":\"valid\"}}"
+    ]
+  }
+}

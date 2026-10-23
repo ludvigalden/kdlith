@@ -1,0 +1,20 @@
+{
+  "binary": "kdlith",
+  "description": "Values the node holds without spelling them gate when branches, read from the bound values at scope completion: a button without variant takes its fallback icon and so requires its one icon child, and a tab without variant takes it from the style context slot under policy=fallback and does too; explicit variant=plain on either matches no branch and keeps the base max-occurs=0",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":0},\"type_name\":\"Button\",\"fields\":[{\"name\":\"label\",\"value\":{\"kind\":\"string\",\"value\":\"Save\"},\"origin\":0},{\"name\":\"variant\",\"value\":{\"kind\":\"string\",\"value\":\"icon\"},\"origin\":0},{\"name\":\"icons\",\"value\":{\"kind\":\"list\",\"value\":[{\"kind\":\"map\",\"value\":[{\"key\":\"glyph\",\"value\":{\"kind\":\"string\",\"value\":\"floppy\"}}]}]},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}",
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":2},\"type_name\":\"Button\",\"fields\":[{\"name\":\"label\",\"value\":{\"kind\":\"string\",\"value\":\"Cancel\"},\"origin\":2},{\"name\":\"variant\",\"value\":{\"kind\":\"string\",\"value\":\"plain\"},\"origin\":2},{\"name\":\"icons\",\"value\":{\"kind\":\"list\",\"value\":[]},\"origin\":2}],\"origin\":2,\"validation\":\"valid\"}}",
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":4},\"type_name\":\"Tab\",\"fields\":[{\"name\":\"label\",\"value\":{\"kind\":\"string\",\"value\":\"Home\"},\"origin\":4},{\"name\":\"variant\",\"value\":{\"kind\":\"string\",\"value\":\"icon\"},\"origin\":4},{\"name\":\"icons\",\"value\":{\"kind\":\"list\",\"value\":[{\"kind\":\"map\",\"value\":[{\"key\":\"glyph\",\"value\":{\"kind\":\"string\",\"value\":\"house\"}}]}]},\"origin\":4}],\"origin\":4,\"validation\":\"valid\"}}",
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":6},\"type_name\":\"Tab\",\"fields\":[{\"name\":\"label\",\"value\":{\"kind\":\"string\",\"value\":\"About\"},\"origin\":6},{\"name\":\"variant\",\"value\":{\"kind\":\"string\",\"value\":\"plain\"},\"origin\":6},{\"name\":\"icons\",\"value\":{\"kind\":\"list\",\"value\":[]},\"origin\":6}],\"origin\":6,\"validation\":\"valid\"}}"
+    ]
+  }
+}

@@ -1,0 +1,5 @@
+button "Docs" variant=plain {
+    link "/a"
+    link "/b"
+}
+button "Save" variant=icon

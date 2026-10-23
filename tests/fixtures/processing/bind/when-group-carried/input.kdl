@@ -1,0 +1,5 @@
+button "Save" variant=icon {
+    icon "floppy"
+    badge "new"
+}
+button "Cancel" variant=plain

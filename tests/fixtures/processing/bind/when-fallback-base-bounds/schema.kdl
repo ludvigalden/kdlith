@@ -1,0 +1,25 @@
+schema ui version="1" {
+    types {
+        enum Variant {
+            member plain
+            member icon
+        }
+        object Link { field href String }
+        object Button {
+            field label String
+            field variant Variant
+            field links "list<Link>"
+        }
+    }
+    node button role=record type=Button {
+        field label arg=0
+        field variant property=variant
+        field links { from { children link } }
+        children link min-occurs=1 max-occurs=2 {
+            when property=variant equals=icon max-occurs=0
+        }
+    }
+    node link type=Link parent=button {
+        field href arg=0
+    }
+}

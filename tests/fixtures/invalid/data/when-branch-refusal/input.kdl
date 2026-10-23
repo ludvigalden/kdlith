@@ -1,0 +1,3 @@
+button "Cancel" variant=plain {
+    icon "cross"
+}

@@ -1,0 +1,5 @@
+chip "Untoned" tone=#null {
+    icon "dot"
+}
+chip "Absent"
+chip "Warm" tone="warm"

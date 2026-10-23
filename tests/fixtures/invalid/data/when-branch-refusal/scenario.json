@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "Conditional refusal is an occurrence bound: variant=plain matches no branch, so the rule's base max-occurs=0 applies and a present icon child overflows it",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/when-leaf-gate/schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

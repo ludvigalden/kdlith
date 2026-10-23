@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A matching when branch's min-occurs replaces the rule's base bounds: variant=icon selects the branch requiring exactly one icon child, and a button holding none falls short of it",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/when-leaf-gate/schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

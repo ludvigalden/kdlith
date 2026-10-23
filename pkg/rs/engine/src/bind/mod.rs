@@ -75,6 +75,14 @@ const DOCUMENT_ROOT: &str = "the document root";
 /// withholds.
 const CONCEALED: &str = "a withheld sensitive value";
 
+/// What closing a declared node needs beyond its frame: the entries key
+/// it must carry, and its scope's state for the conditional bounds.
+#[derive(Clone, Copy)]
+struct Closing<'a> {
+    key: Option<u64>,
+    state: Option<&'a ScopeState>,
+}
+
 /// The outcome of a node's case dispatch.
 enum CaseSelection {
     /// The node declares no cases.
@@ -548,9 +556,9 @@ impl<'d, 's> Binder<'d, 's> {
                 self.diagnose(cx, code, span, &[child, &place]);
                 return;
             }
-            Violation::TooMany { child, max } => (
+            Violation::TooMany { child, count, max } => (
                 format!("{} under {owner}", self.name(*child)),
-                max.saturating_add(1).to_string(),
+                count.to_string(),
                 format!("at most {max}"),
             ),
             Violation::TooFew { child, count, min } => (
@@ -2287,20 +2295,54 @@ impl<'d, 's> Binder<'d, 's> {
         false
     }
 
+    /// Check the closing scope's conditional children rules against the
+    /// bounds their when branches select from the node's bound values.
+    fn conditional_bounds<'v>(
+        &mut self,
+        cx: &mut Cx<'_>,
+        frame: &BindFrame,
+        state: Option<&ScopeState>,
+        held: impl Fn(Sym) -> Option<&'v Value>,
+    ) {
+        let def = self.def;
+        let (Some(state), Some(scope)) = (state, frame.scope.and_then(|s| def.bindings.scope(s)))
+        else {
+            return;
+        };
+        let owner = self.name(frame.name);
+        for violation in scope.rules.complete_conditional(state, held) {
+            self.violation(cx, frame.span, owner, &violation, None, frame.scope);
+        }
+    }
+
     fn close_declared(
         &mut self,
         cx: &mut Cx<'_>,
         parent: Option<&mut BindFrame>,
         frame: &mut BindFrame,
-        key: Option<u64>,
+        closing: Closing<'_>,
         following: &mut FollowingEffects<'_>,
     ) {
         let owner = frame.owner;
+        let key = closing.key;
         if key.is_some() && frame.key.is_none() && !frame.key_rejected {
             let node = self.name(frame.name);
             self.diagnose(cx, MISSING_FIELD, frame.span, &[node, "key argument"]);
         }
         let values = self.finish_fields(cx, frame);
+        // Branch bounds are selected from the values the node holds once
+        // every field is resolved — explicit, context-filled, or
+        // defaulted — the same values the case dispatch reads.
+        let fields: Vec<Sym> = self.tables.decls[owner.index()]
+            .fields
+            .iter()
+            .map(|info| info.name)
+            .collect();
+        let held = |property: Sym| {
+            let at = fields.iter().position(|name| *name == property)?;
+            values.get(at)?.as_ref()
+        };
+        self.conditional_bounds(cx, frame, closing.state, held);
         if self.errors - frame.mark > frame.excluded {
             // A part that failed is reported already; its owner's field
             // is not also missing.
@@ -2823,21 +2865,21 @@ impl<'s> Processor for Binder<'_, 's> {
         following: &mut FollowingEffects<'_>,
     ) -> Completion {
         let def = self.def;
-        let subtree = frame
-            .state
-            .take()
+        let state = frame.state.take();
+        let subtree = state
+            .as_ref()
             .map(|state| {
                 let compiled = frame
                     .scope
                     .and_then(|scope| def.bindings.scope(scope))
-                    .map(|scope| scope.rules.complete(&state));
+                    .map(|scope| scope.rules.complete(state));
                 if let Some(violations) = compiled {
                     let owner = self.name(frame.name);
                     for violation in violations {
                         self.violation(cx, frame.span, owner, &violation, None, frame.scope);
                     }
                 }
-                ScopeRules::subtree(&state).clone()
+                ScopeRules::subtree(state).clone()
             })
             .unwrap_or_default();
         // Occurrences anywhere below count toward every enclosing scope's
@@ -2853,10 +2895,17 @@ impl<'s> Processor for Binder<'_, 's> {
         }
         let item = match frame.kind {
             Kind::Declared { decl, key } => {
-                self.close_declared(cx, parent.as_deref_mut(), &mut frame, key, following);
+                let closing = Closing {
+                    key,
+                    state: state.as_ref(),
+                };
+                self.close_declared(cx, parent.as_deref_mut(), &mut frame, closing, following);
                 def.bindings.get(decl).is_some_and(|d| d.role.is_some())
             }
             Kind::Nested => {
+                // A nested scope's node holds no values of its own, so no
+                // branch can match: its base bounds apply.
+                self.conditional_bounds(cx, &frame, state.as_ref(), |_| None);
                 if let Some(parent) = parent.as_deref_mut() {
                     for (bind, value, span) in std::mem::take(&mut frame.carried) {
                         self.route(cx, parent, bind, value, span);

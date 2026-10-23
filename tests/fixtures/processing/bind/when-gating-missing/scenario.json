@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "An absent gating property is an unmet condition, never #null and never an error: a button without variant matches neither the variant=icon branch (exactly one) nor the variant=plain branch (none), so the base max-occurs=2 admits two icons",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":0},\"type_name\":\"Button\",\"fields\":[{\"name\":\"label\",\"value\":{\"kind\":\"string\",\"value\":\"Toolbar\"},\"origin\":0},{\"name\":\"icons\",\"value\":{\"kind\":\"list\",\"value\":[{\"kind\":\"map\",\"value\":[{\"key\":\"glyph\",\"value\":{\"kind\":\"string\",\"value\":\"cut\"}}]},{\"kind\":\"map\",\"value\":[{\"key\":\"glyph\",\"value\":{\"kind\":\"string\",\"value\":\"paste\"}}]}]},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}"
+    ]
+  }
+}

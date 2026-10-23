@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "equals=#null matches only an explicitly held #null: tone=#null selects the branch requiring exactly one icon; an absent tone and a held string both match nothing and keep the base max-occurs=0",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":0},\"type_name\":\"Chip\",\"fields\":[{\"name\":\"label\",\"value\":{\"kind\":\"string\",\"value\":\"Untoned\"},\"origin\":0},{\"name\":\"tone\",\"value\":{\"kind\":\"null\"},\"origin\":0},{\"name\":\"icons\",\"value\":{\"kind\":\"list\",\"value\":[{\"kind\":\"map\",\"value\":[{\"key\":\"glyph\",\"value\":{\"kind\":\"string\",\"value\":\"dot\"}}]}]},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}",
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":2},\"type_name\":\"Chip\",\"fields\":[{\"name\":\"label\",\"value\":{\"kind\":\"string\",\"value\":\"Absent\"},\"origin\":2},{\"name\":\"icons\",\"value\":{\"kind\":\"list\",\"value\":[]},\"origin\":2}],\"origin\":2,\"validation\":\"valid\"}}",
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":3},\"type_name\":\"Chip\",\"fields\":[{\"name\":\"label\",\"value\":{\"kind\":\"string\",\"value\":\"Warm\"},\"origin\":3},{\"name\":\"tone\",\"value\":{\"kind\":\"string\",\"value\":\"warm\"},\"origin\":3},{\"name\":\"icons\",\"value\":{\"kind\":\"list\",\"value\":[]},\"origin\":3}],\"origin\":3,\"validation\":\"valid\"}}"
+    ]
+  }
+}

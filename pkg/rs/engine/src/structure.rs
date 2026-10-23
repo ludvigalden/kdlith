@@ -4,7 +4,9 @@
 
 use std::collections::BTreeMap;
 
-use crate::bindings::SequenceStep;
+use kdlith_model::Value;
+
+use crate::bindings::{Condition, SequenceStep, WhenBranch};
 use crate::names::Sym;
 
 /// Occurrence bounds for one child name; `max: None` is unbounded.
@@ -42,6 +44,10 @@ pub struct ScopeRules {
     /// this scope completes against the subtree totals its closing
     /// children bubbled up.
     descendants: Vec<Occurs>,
+    /// The when branches of conditional counters, by counter position.
+    /// Their bounds depend on the owning node's bound values, so they are
+    /// checked only once those are known.
+    conditional: BTreeMap<usize, Vec<WhenBranch>>,
 }
 
 /// The mutable state of one open scope: one count per counter, the
@@ -70,6 +76,7 @@ pub enum Violation {
     },
     TooMany {
         child: Sym,
+        count: u64,
         max: u64,
     },
     TooFew {
@@ -128,6 +135,14 @@ impl ScopeRules {
     pub(crate) fn permit(&mut self, occurs: Occurs) {
         self.by_name.insert(occurs.name, self.counters.len());
         self.counters.push(occurs);
+    }
+
+    /// Permit a child name whose bounds its when branches select per node
+    /// instance; `occurs` carries the base bounds, which apply when no
+    /// branch matches.
+    pub(crate) fn permit_conditional(&mut self, occurs: Occurs, branches: Vec<WhenBranch>) {
+        self.conditional.insert(self.counters.len(), branches);
+        self.permit(occurs);
     }
 
     /// Add an exactly-one group; returns the names that are not permitted.
@@ -237,8 +252,9 @@ impl ScopeRules {
         let count = state.counts[at].saturating_add(1);
         if let Some(max) = occurs.max
             && count > max
+            && !self.conditional.contains_key(&at)
         {
-            return Err(Violation::TooMany { child, max });
+            return Err(Violation::TooMany { child, count, max });
         }
         for (group, members) in self.groups.iter().enumerate() {
             if members.contains(&at) && members.iter().any(|m| state.counts[*m] > 0) {
@@ -261,7 +277,7 @@ impl ScopeRules {
         }
         for (at, occurs) in self.counters.iter().enumerate() {
             let count = state.counts[at];
-            if count < occurs.min {
+            if count < occurs.min && !self.conditional.contains_key(&at) {
                 violations.push(Violation::TooFew {
                     child: occurs.name,
                     count,
@@ -297,6 +313,7 @@ impl ScopeRules {
             {
                 violations.push(Violation::TooMany {
                     child: occurs.name,
+                    count: max.saturating_add(1),
                     max,
                 });
             }
@@ -305,6 +322,46 @@ impl ScopeRules {
                     child: occurs.name,
                     count,
                     min: occurs.min,
+                });
+            }
+        }
+        violations
+    }
+
+    /// Check the conditional counters against the bounds their branches
+    /// select from the owning node's bound values: the first matching
+    /// branch's bounds replace the base bounds, a bound it leaves unspelled
+    /// falling to min 0 or unbounded; no match keeps the base bounds. An
+    /// absent value never matches, so `held` answers `None` for it.
+    pub fn complete_conditional<'v>(
+        &self,
+        state: &ScopeState,
+        held: impl Fn(Sym) -> Option<&'v Value>,
+    ) -> Vec<Violation> {
+        let mut violations = Vec::new();
+        for (&at, branches) in &self.conditional {
+            let occurs = self.counters[at];
+            let (min, max) = branches
+                .iter()
+                .find(|branch| holds(&branch.condition, &held))
+                .map_or((occurs.min, occurs.max), |branch| {
+                    (branch.min.unwrap_or(0), branch.max)
+                });
+            let count = state.counts[at];
+            if let Some(max) = max
+                && count > max
+            {
+                violations.push(Violation::TooMany {
+                    child: occurs.name,
+                    count,
+                    max,
+                });
+            }
+            if count < min {
+                violations.push(Violation::TooFew {
+                    child: occurs.name,
+                    count,
+                    min,
                 });
             }
         }
@@ -325,6 +382,16 @@ impl ScopeRules {
             let held = parent.subtree.get(name).copied().unwrap_or(0);
             parent.subtree.insert(*name, held + count);
         }
+    }
+}
+
+/// Whether `condition` holds over the bound values: a leaf compares its
+/// property's value structurally, as the case dispatch does.
+fn holds<'v>(condition: &Condition, held: &impl Fn(Sym) -> Option<&'v Value>) -> bool {
+    match condition {
+        Condition::Equals { property, equals } => held(*property) == Some(equals),
+        Condition::All(members) => members.iter().all(|member| holds(member, held)),
+        Condition::Any(members) => members.iter().any(|member| holds(member, held)),
     }
 }
 
