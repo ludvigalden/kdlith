@@ -9,7 +9,7 @@ definitions and either processes data documents directly or generates a typed
 Rust processor for them.
 
 > Status: early development, pre-release. Every `kdlith` command (`gen`,
-> `vet`, `export`, `inspect`, `list`, `read`, `cache`, `changelog`) is
+> `vet`, `export`, `inspect`, `list`, `read`, `cache`, `changelog`, `help`) is
 > implemented, and `gen` generates compilable processor crates from dialect
 > and schema definitions. Interfaces may still change between releases.
 
@@ -19,7 +19,8 @@ Rust processor for them.
   binds data documents against it. Under the default complete scope,
   `vet data` also links every reference a declared reference type looks
   up and reports references that are unresolved, ambiguous, or missing a
-  required qualifier, and declarations that are duplicated.
+  required qualifier, declarations that are duplicated, and deferred
+  payloads that do not fit the declaration their reference resolved to.
 - **Inspect.** `kdlith inspect --view` shows a reading seven ways:
   source, bound, context, effective, origins, plan, and references.
 - **Export.** `kdlith export` writes typed records as NDJSON. Each record
