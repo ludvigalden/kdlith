@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "With an import alias registered, an import whose leading $other is neither a registered alias nor an anchor the schema's grammar declares fails closed with KDLITH-IMP005, naming the registered aliases, rather than resolving against anything",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/imports.kdl",
+    "--alias",
+    "shared=lib",
+    "map/entry.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

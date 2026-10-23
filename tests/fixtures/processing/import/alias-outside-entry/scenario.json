@@ -1,0 +1,24 @@
+{
+  "binary": "kdlith",
+  "description": "An import addressed through a host-registered import alias resolves outside the entry document's directory: --alias shared=lib makes $shared/core/part.kdl, written in map/entry.kdl, resolve to lib/core/part.kdl, which entry-directory confinement would refuse; the import item and the imported document show the alias spelling, never the root's location",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/imports.kdl",
+    "--alias",
+    "shared=lib",
+    "map/entry.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"import\",\"data\":{\"node\":{\"source\":0,\"index\":0},\"expression\":\"$shared/core/part.kdl\",\"targets\":[\"$shared/core/part.kdl\"],\"alias\":null,\"project\":[],\"repeated\":\"reject\"",
+      "{\"item\":\"document\",\"data\":{\"source\":1,\"path\":\"$shared/core/part.kdl\"}}\n{\"item\":\"record\",\"data\":{\"node\":{\"source\":1,\"index\":0},\"type_name\":\"Part\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"shared\"},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n",
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":1},\"type_name\":\"Part\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"entry\"},\"origin\":1}],\"origin\":1,\"validation\":\"valid\"}}\n"
+    ],
+    "stdout-not-contains": [
+      "\"item\":\"diagnostic\""
+    ]
+  }
+}

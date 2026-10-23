@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "An alias-addressed import whose path leaves the alias root ($shared/../outside.kdl, where outside.kdl exists and is readable) is refused with KDLITH-IMP007 before the target is read",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/imports.kdl",
+    "--alias",
+    "shared=lib",
+    "map/entry.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

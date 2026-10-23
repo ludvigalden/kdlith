@@ -294,6 +294,26 @@ pub const CODES: &[CodeDefinition] = &[
         correction: "Keep every document the data imports inside the entry document's directory",
         retired: false,
     },
+    CodeDefinition {
+        code: "KDLITH-IMP007",
+        label: "import-outside-alias",
+        severity: Severity::Error,
+        exit_class: 1,
+        trigger: "an import addressed through a host-registered import alias, or made by a document such an alias loaded, resolves outside that alias's root, lexically or after symbolic links; it is refused before the target is read",
+        message_template: "import <expression> resolves outside the root of import alias <alias>",
+        correction: "Keep every document an import alias reaches inside the alias's root",
+        retired: false,
+    },
+    CodeDefinition {
+        code: "KDLITH-IMP008",
+        label: "import-alias-invalid",
+        severity: Severity::Error,
+        exit_class: 1,
+        trigger: "a host registers an import alias whose name is malformed, registered twice, or also an anchor the host supplies or a discovery grammar of the definition declares, or whose root does not resolve to a directory or holds a document under a key that is not a normalized relative path; it is refused before any document is read",
+        message_template: "import alias <alias> is invalid: <reason>",
+        correction: "Register each import alias once, under a kebab name no anchor uses, with a root that exists",
+        retired: false,
+    },
     // DLC
     CodeDefinition {
         code: "KDLITH-DLC001",

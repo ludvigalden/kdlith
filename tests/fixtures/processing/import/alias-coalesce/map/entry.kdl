@@ -1,0 +1,2 @@
+use "$shared/part.kdl" repeated=coalesce
+use "$shared/./part.kdl" repeated=coalesce

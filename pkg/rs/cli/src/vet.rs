@@ -9,8 +9,8 @@ use kdlith_diagnostic::{DiagnosticRecord, ExitStatus};
 use std::sync::Arc;
 
 use kdlith_engine::{
-    CheckScope, DataReader, Definition, EntryContext, Extensions, Handlers, LAYERED, Layered,
-    LinkInputs, LinkReport, ReadOptions, SharedResolver, link_reading,
+    AliasRoot, CheckScope, DataReader, Definition, EntryContext, Extensions, Handlers, LAYERED,
+    Layered, LinkInputs, LinkReport, ReadOptions, SharedResolver, link_reading,
 };
 use kdlith_model::{Item, SourceId};
 use kdlith_superproc::{load_dialect, load_schema_anchored, seed};
@@ -167,6 +167,7 @@ pub struct DataOptions {
     resolver: Option<SharedResolver>,
     scope: CheckScope,
     max_invocations: Option<u32>,
+    aliases: Vec<(String, PathBuf)>,
 }
 
 impl DataOptions {
@@ -184,7 +185,16 @@ impl DataOptions {
             resolver: None,
             scope: CheckScope::Complete,
             max_invocations: None,
+            aliases: Vec::new(),
         }
+    }
+
+    /// The same options registering each `(name, directory)` as an
+    /// import alias, in place of any registered before.
+    #[must_use]
+    pub fn with_aliases(mut self, aliases: Vec<(String, PathBuf)>) -> Self {
+        self.aliases = aliases;
+        self
     }
 
     /// The same options bounding one reading at `max` invocations,
@@ -289,7 +299,7 @@ impl DataOptions {
     }
 
     /// The reader options: the named profile or profile set, the
-    /// supplied anchors, and the invocation bound.
+    /// supplied anchors and import aliases, and the invocation bound.
     pub(crate) fn read_options(&self) -> ReadOptions {
         let mut options = ReadOptions::new().with_profiles(self.profiles.iter().cloned());
         if let Some(profile) = &self.profile {
@@ -300,6 +310,9 @@ impl DataOptions {
         }
         for (name, path) in &self.anchors {
             options = options.with_anchor(name.clone(), path.clone());
+        }
+        for (name, dir) in &self.aliases {
+            options = options.with_alias(name.clone(), AliasRoot::Fs(dir.clone()));
         }
         options
     }

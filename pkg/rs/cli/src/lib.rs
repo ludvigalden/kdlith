@@ -257,6 +257,11 @@ struct ProfileArgs {
     /// imports together (default 1024)
     #[arg(long, value_name = "N", value_parser = clap::value_parser!(u32).range(1..))]
     max_invocations: Option<u32>,
+    /// An import alias, as NAME=DIR (repeatable): an import written
+    /// $NAME/PATH resolves PATH inside DIR wherever the importing
+    /// document lives, confined to DIR instead of the entry's directory
+    #[arg(long = "alias", value_name = "NAME=DIR", value_parser = handlers::parse_alias)]
+    aliases: Vec<(String, PathBuf)>,
 }
 
 impl ProfileArgs {
@@ -284,7 +289,8 @@ impl ProfileArgs {
         Ok(DataOptions::new(anchors, self.profile, handlers)
             .with_profiles(set)
             .with_resolver(resolver)
-            .with_max_invocations(self.max_invocations))
+            .with_max_invocations(self.max_invocations)
+            .with_aliases(self.aliases))
     }
 }
 
@@ -511,7 +517,7 @@ enum CacheCommand {
     /// Read the data documents through the schema and replace the
     /// state's owned entries with the bound results and record context
     /// snapshots the reading derives
-    Refresh(CacheRefreshArgs),
+    Refresh(Box<CacheRefreshArgs>),
     /// Remove every owned entry, cached results and snapshots alike;
     /// report, never remove, anything else in the state directory
     Clean(CacheStateArgs),

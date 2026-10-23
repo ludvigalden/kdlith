@@ -491,6 +491,33 @@ gates only the link exit. It covers data documents only: dialect and
 schema definitions, and definition documents read as data of a
 dialect, are host-authored inputs whose imports stay unconfined.
 
+A host may also register import aliases: a name bound to a root
+directory, or to documents the host holds in memory keyed by their
+normalized path under the root (`ReadOptions::with_alias` with
+`AliasRoot::Fs` or `AliasRoot::Embedded`, and `--alias NAME=DIR` on
+every data verb). An import whose expression starts with `$NAME/`, for
+a registered `NAME`, resolves the literal path after it inside that
+root, wherever the importing document lives, and is shown as written
+under the alias (`$NAME/<normalized path>`) rather than as its location
+on disk. A document an alias loaded resolves its own literal imports
+relative to itself under the same root, and any grammar-admitted
+expression it makes expands as usual. Everything an alias reaches is
+confined to the alias's root rather than to the entry document's
+directory — the registered root is the host's grant — and a path that
+leaves it, lexically or after symbolic links, is refused with
+`KDLITH-IMP007` before the target is read. Alias names are kebab names
+in a namespace of their own: a name registered twice, a name an
+anchor also uses (supplied by the host or declared by a grammar), a
+malformed name, a root that does not resolve to a directory, or an
+embedded key that is not a normalized relative path is
+`KDLITH-IMP008`, reported for every offending alias before any
+document is read. With aliases registered, a leading `$name` that is
+neither a registered alias nor an anchor the active grammar declares is
+`KDLITH-IMP005`, its message naming the registered aliases. Embedded
+roots let alias-addressed imports work from documents held in memory;
+any other import inside an in-memory document still fails closed
+(`KDLITH-IMP001`).
+
 An import carrying `as=NAME` preserves both the source and its alias in
 the import request. The aliased document resolves its own declarations
 by their unqualified names, exactly as if no import named it; every
@@ -1191,6 +1218,12 @@ import site when a target resolves outside the entry document's
 directory, before the target is read
 ([Import resolution](#import-resolution)); a target that does not
 resolve keeps `KDLITH-IMP001`.
+
+Import aliases add `KDLITH-IMP007`, minted at the import site when a
+target an alias reaches resolves outside the alias's root, and
+`KDLITH-IMP008`, minted before any document is read for each
+registered alias the reading cannot admit
+([Import resolution](#import-resolution)).
 
 The remaining definition codes (`KDLITH-SCH001`, `KDLITH-SCH002`,
 `KDLITH-SCH004`, `KDLITH-SCH005`, `KDLITH-SCH007`, `KDLITH-SCH008`,

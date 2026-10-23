@@ -14,6 +14,7 @@ use kdlith_runtime::{
     stable_hash_step,
 };
 
+use crate::aliases::{AliasOrigin, AliasRoot, Aliases};
 use crate::anchors::{self, Base, DeclaredGrammars, Target};
 use crate::bind::{BindingSession, dispatch_scope};
 use crate::definition::{Definition, DefinitionKind, ProfileSelection};
@@ -51,6 +52,7 @@ pub struct ReadOptions {
     profile: Option<String>,
     profiles: Vec<String>,
     anchors: Vec<(String, PathBuf)>,
+    aliases: Vec<(String, AliasRoot)>,
     output_policy: Option<OutputPolicy>,
     max_invocations: Option<usize>,
 }
@@ -112,6 +114,23 @@ impl ReadOptions {
     #[must_use]
     pub fn with_anchor(mut self, name: impl Into<String>, path: impl Into<PathBuf>) -> Self {
         self.anchors.push((name.into(), path.into()));
+        self
+    }
+
+    /// Register one import alias: an import whose expression starts
+    /// with `$name/` resolves its literal path inside `root`, wherever
+    /// the importing document lives. What an alias reaches is confined to
+    /// its root (`KDLITH-IMP007`) instead of to the entry document's
+    /// directory, and the documents it loads resolve their own literal
+    /// imports relative to themselves under that root. A malformed or
+    /// repeated name, a name an anchor also uses, or a root that does not
+    /// resolve fails the reading before any document is read
+    /// (`KDLITH-IMP008`). An embedded root serves its documents from
+    /// memory, so an alias import works from a document held in memory
+    /// too.
+    #[must_use]
+    pub fn with_alias(mut self, name: impl Into<String>, root: AliasRoot) -> Self {
+        self.aliases.push((name.into(), root));
         self
     }
 
@@ -468,7 +487,16 @@ impl<'d> DataReader<'d> {
             return Ok(Restored::Miss);
         };
         // A reading that rejects its anchors reports it; so does replay.
-        if !anchors::undeclared(&options.anchors, &def.discoveries, &def.names, ORIGIN).is_empty() {
+        if !anchors::undeclared(&options.anchors, &def.discoveries, &def.names, ORIGIN).is_empty()
+            || Aliases::admit(
+                &options.aliases,
+                &options.anchors,
+                &def.discoveries,
+                &def.names,
+                ORIGIN,
+            )
+            .is_err()
+        {
             return Ok(Restored::Miss);
         }
         let chain: Vec<String> = entries.iter().map(|e| e.display().to_string()).collect();
@@ -641,6 +669,38 @@ impl<'d> DataReader<'d> {
                 entered: 0,
             });
         }
+        // Registered import aliases are checked as the anchors are: before
+        // anything is read, every failure reported (`KDLITH-IMP008`).
+        let admitted = match &grammars {
+            Some(declared) => Aliases::admit(
+                &options.aliases,
+                &options.anchors,
+                &declared.grammars,
+                &declared.names,
+                ORIGIN,
+            ),
+            None => Aliases::admit(
+                &options.aliases,
+                &options.anchors,
+                &def.discoveries,
+                &def.names,
+                ORIGIN,
+            ),
+        };
+        let aliases = match admitted {
+            Ok(aliases) => aliases,
+            Err(records) => {
+                for record in records {
+                    sink(Item::Diagnostic(Box::new(record)));
+                }
+                return Ok(Outcome {
+                    failed: true,
+                    results: Vec::new(),
+                    contexts: Vec::new(),
+                    entered: 0,
+                });
+            }
+        };
         let anchors = anchors::anchor_map(&options.anchors, &def.names);
         // A local reading leaves imports unfollowed, so its records are
         // never the whole picture a resolver must see.
@@ -678,6 +738,8 @@ impl<'d> DataReader<'d> {
             anchors,
             grammars,
             supplied: options.anchors.clone(),
+            aliases,
+            aliased: HashMap::new(),
             texts: &mut give,
             entering: if armed { Some(&mut enter) } else { None },
             invocations: Invocations::new()
@@ -837,6 +899,11 @@ struct Reading<'r, 'd> {
     /// The anchors the host supplied, as spelled: definition documents
     /// intern their grammars' names as they are read.
     supplied: Vec<(String, PathBuf)>,
+    /// The import aliases the host registered.
+    aliases: Aliases,
+    /// Where under its alias's root each document an alias loaded sits:
+    /// its imports resolve and are confined there.
+    aliased: HashMap<InvocationId, AliasOrigin>,
     /// Where each document's text goes just before its document item.
     texts: &'r mut dyn FnMut(&str),
     /// Where each document's entry context goes just before its text,
@@ -1051,8 +1118,10 @@ impl Reading<'_, '_> {
                             let resolved =
                                 projected.map(|context| (context, self.targets(&request)));
                             if let Some((_, Ok(targets))) = &resolved {
-                                request.targets =
-                                    targets.iter().map(|target| target.shown.clone()).collect();
+                                request.targets = targets
+                                    .iter()
+                                    .map(|resolved| resolved.target.shown.clone())
+                                    .collect();
                             }
                             self.emit(Item::Import(request.clone()));
                             if let Some((context, targets)) = resolved {
@@ -1224,7 +1293,7 @@ impl Reading<'_, '_> {
         request: &ImportRequest,
         shown: &str,
         context: Context,
-        targets: Result<Vec<Target>, Box<DiagnosticRecord>>,
+        targets: Result<Vec<Resolved>, Box<DiagnosticRecord>>,
     ) {
         let targets = match targets {
             Ok(targets) => targets,
@@ -1233,7 +1302,12 @@ impl Reading<'_, '_> {
                 return;
             }
         };
-        for target in targets {
+        for Resolved {
+            target,
+            alias,
+            text,
+        } in targets
+        {
             let admitted = self.invocations.invoke_resolved(
                 &target.resolved,
                 &target.shown,
@@ -1241,7 +1315,15 @@ impl Reading<'_, '_> {
                 context.clone(),
             );
             match admitted {
-                Ok(Admission::Invoke(id)) => self.visit(id),
+                Ok(Admission::Invoke(id)) => {
+                    if let Some(alias) = alias {
+                        self.aliased.insert(id, alias);
+                    }
+                    if let Some(text) = text {
+                        self.held.insert(id, text);
+                    }
+                    self.visit(id);
+                }
                 Ok(_) => {}
                 Err(failure) => {
                     let record = import_failure(failure, ORIGIN);
@@ -1251,10 +1333,132 @@ impl Reading<'_, '_> {
         }
     }
 
-    /// The targets a request resolves to: the literal path relative to
-    /// its importer, or the matches of a grammar-admitted expression
-    /// against the host-supplied anchors, in deterministic order.
-    fn targets(&self, request: &ImportRequest) -> Result<Vec<Target>, Box<DiagnosticRecord>> {
+    /// The targets a request resolves to: the document an import alias
+    /// addresses, else what it resolves to under the alias root its
+    /// importer was loaded from, else the importer-relative resolution
+    /// every other document's imports take.
+    fn targets(&self, request: &ImportRequest) -> Result<Vec<Resolved>, Box<DiagnosticRecord>> {
+        let expression = request.expression.as_str();
+        if let Some((alias, path)) = self.aliases.addressed(expression) {
+            let target = self.aliases.resolve(alias, path, expression, ORIGIN)?;
+            return Ok(vec![Resolved::aliased(target)]);
+        }
+        let importer = self.invocations.innermost();
+        if let Some(origin) = importer.and_then(|id| self.aliased.get(&id)) {
+            return self.alias_relative(origin, request, importer);
+        }
+        self.unknown_alias(request)?;
+        Ok(self
+            .plain_targets(request)?
+            .into_iter()
+            .map(|target| Resolved {
+                target,
+                alias: None,
+                text: None,
+            })
+            .collect())
+    }
+
+    /// An import made by a document an alias loaded: resolved relative
+    /// to it under the alias root and confined there (`KDLITH-IMP007`).
+    /// An embedded document expands no expression.
+    fn alias_relative(
+        &self,
+        origin: &AliasOrigin,
+        request: &ImportRequest,
+        importer: Option<InvocationId>,
+    ) -> Result<Vec<Resolved>, Box<DiagnosticRecord>> {
+        let expression = request.expression.as_str();
+        if !discovery::is_expression(expression) {
+            let target = self.aliases.resolve_relative(origin, expression, ORIGIN)?;
+            return Ok(vec![Resolved::aliased(target)]);
+        }
+        let Some(root) = self.aliases.fs_root(&origin.alias) else {
+            return Err(Box::new(unresolvable(
+                expression,
+                "a document held in memory resolves no imports",
+            )));
+        };
+        let dir = importer
+            .and_then(|id| self.invocations.get(id))
+            .map(|invocation| invocation.path.parent().unwrap_or(Path::new("")).to_owned())
+            .unwrap_or_default();
+        let base = Base {
+            dir: &dir,
+            shown: &dir,
+        };
+        let def = self.reader.def;
+        let targets = anchors::expression_targets(
+            expression,
+            def.grammar_for(self.selection.profile()),
+            &def.names,
+            &self.anchors,
+            &base,
+            ORIGIN,
+        )?;
+        let mut resolved = Vec::with_capacity(targets.len());
+        for target in targets {
+            self.aliases
+                .confine(&origin.alias, expression, &target.resolved, ORIGIN)?;
+            let relative = target
+                .resolved
+                .strip_prefix(root)
+                .unwrap_or(&target.resolved)
+                .display()
+                .to_string();
+            resolved.push(Resolved {
+                target: Target {
+                    resolved: target.resolved,
+                    shown: format!("${}/{relative}", origin.alias),
+                },
+                alias: Some(AliasOrigin {
+                    alias: origin.alias.clone(),
+                    relative,
+                }),
+                text: None,
+            });
+        }
+        Ok(resolved)
+    }
+
+    /// With aliases registered, a leading `$name` that is neither one of
+    /// them nor a declared anchor is `KDLITH-IMP005` naming the aliases;
+    /// without any, the expansion reports it as before.
+    fn unknown_alias(&self, request: &ImportRequest) -> Result<(), Box<DiagnosticRecord>> {
+        if self.aliases.is_empty() || self.grammars.is_some() {
+            return Ok(());
+        }
+        let Some(rest) = request.expression.strip_prefix('$') else {
+            return Ok(());
+        };
+        let name = rest.split_once('/').map_or(rest, |(name, _)| name);
+        let def = self.reader.def;
+        let declared = def
+            .grammar_for(self.selection.profile())
+            .is_some_and(|grammar| {
+                grammar
+                    .anchors
+                    .iter()
+                    .any(|anchor| def.names.resolve(anchor.name) == name)
+            });
+        if declared {
+            return Ok(());
+        }
+        let reason = format!(
+            "it is neither a registered import alias (registered: {}) nor an anchor the active grammar declares",
+            self.aliases.names().join(", ")
+        );
+        Err(Box::new(record(
+            crate::diag::IMPORT_ANCHOR,
+            &[name, &reason],
+            ORIGIN,
+        )))
+    }
+
+    /// The literal path relative to the importer, or the matches of a
+    /// grammar-admitted expression against the host-supplied anchors, in
+    /// deterministic order.
+    fn plain_targets(&self, request: &ImportRequest) -> Result<Vec<Target>, Box<DiagnosticRecord>> {
         let importer = self.invocations.innermost();
         // A document held in memory has no directory to resolve an
         // import against: the request fails closed rather than resolve
@@ -1382,6 +1586,27 @@ impl Reading<'_, '_> {
     /// already its caller's projection.
     fn all_slots(&self) -> Vec<SlotId> {
         self.reader.def.plan.context.layout.slots().collect()
+    }
+}
+
+/// One target a request resolved to, with where it sits under an alias
+/// root and, for an embedded document, its text.
+struct Resolved {
+    target: Target,
+    alias: Option<AliasOrigin>,
+    text: Option<Rc<str>>,
+}
+
+impl Resolved {
+    fn aliased(target: crate::aliases::AliasTarget) -> Self {
+        Self {
+            target: Target {
+                resolved: target.resolved,
+                shown: target.shown,
+            },
+            alias: Some(target.origin),
+            text: target.text,
+        }
     }
 }
 

@@ -16,7 +16,7 @@ use crate::{CacheCommand, CacheRefreshArgs};
 pub(crate) fn run(command: CacheCommand) -> ExitStatus {
     match command {
         CacheCommand::Inspect(args) => inspect(&args.state),
-        CacheCommand::Refresh(args) => refresh(args),
+        CacheCommand::Refresh(args) => refresh(*args),
         CacheCommand::Clean(args) => clean(&args.state),
     }
 }

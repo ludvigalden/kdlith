@@ -198,6 +198,19 @@ published yet.
   property are the new `KDLITH-SCH017`, a combinator with no members
   is the new `KDLITH-SCH018`, and a rule with branches but no base
   bounds is the new `KDLITH-SCH019`.
+- Import aliases: a host registers a named root — a directory, or
+  documents held in memory such as ones embedded in a binary — through
+  `ReadOptions::with_alias` (`AliasRoot::Fs`, `AliasRoot::Embedded`),
+  the typed reader's `with_alias`, or `--alias NAME=DIR` on every data
+  verb. An import written `$NAME/PATH` resolves inside that root
+  wherever the importing document lives, and a document an alias loaded
+  resolves its own literal imports relative to itself under the root.
+  What an alias reaches is confined to its root instead of the entry
+  document's directory: leaving it is the new `KDLITH-IMP007`. A
+  malformed or repeated alias name, a name an anchor also uses, or a
+  root that does not resolve is the new `KDLITH-IMP008`, before any
+  document is read; with aliases registered, an unregistered leading
+  `$name` is `KDLITH-IMP005` naming them.
 
 ### Fixed
 

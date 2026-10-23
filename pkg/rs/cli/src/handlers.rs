@@ -101,6 +101,18 @@ pub(crate) fn parse_anchor(value: &str) -> Result<(String, PathBuf), String> {
     Ok((name.to_owned(), PathBuf::from(path)))
 }
 
+/// Split one `--alias` value at its first `=` into a name and a
+/// directory, both non-empty; whether the name and directory are
+/// admissible is the reading's decision (`KDLITH-IMP008`).
+pub(crate) fn parse_alias(value: &str) -> Result<(String, PathBuf), String> {
+    match value.split_once('=') {
+        Some((name, dir)) if !name.is_empty() && !dir.is_empty() => {
+            Ok((name.to_owned(), PathBuf::from(dir)))
+        }
+        _ => Err(format!("alias takes NAME=DIR, not {value:?}")),
+    }
+}
+
 /// A `--profiles` value: the listed profile names, in listed order.
 #[derive(Clone, Debug)]
 pub(crate) struct ProfileSet(pub(crate) Vec<String>);

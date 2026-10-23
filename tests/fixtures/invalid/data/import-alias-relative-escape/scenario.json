@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A literal import made by a document an alias loaded may not leave the alias root: $shared/part.kdl imports ../outside.kdl, which exists, and is refused with KDLITH-IMP007 at its import site",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/imports.kdl",
+    "--alias",
+    "shared=lib",
+    "map/entry.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

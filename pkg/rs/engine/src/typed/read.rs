@@ -15,6 +15,7 @@ use kdlith_model::{
 use kdlith_runtime::{Handlers, SessionError, SlotValue};
 use serde::Serialize;
 
+use crate::aliases::AliasRoot;
 use crate::bindings::Role;
 use crate::data::{DataReader, Entering, EntrySource, ReadOptions, Source};
 use crate::definition::{CheckScope, Definition};
@@ -415,6 +416,13 @@ impl<'d, T: 'static> TypedReader<'d, T> {
     #[must_use]
     pub fn with_anchors(mut self, anchors: &[(String, PathBuf)]) -> Self {
         self.options.set_anchors(anchors);
+        self
+    }
+
+    /// Register one import alias, as [`ReadOptions::with_alias`] does.
+    #[must_use]
+    pub fn with_alias(mut self, name: impl Into<String>, root: AliasRoot) -> Self {
+        self.options = self.options.with_alias(name, root);
         self
     }
 

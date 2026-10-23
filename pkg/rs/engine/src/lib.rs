@@ -1,6 +1,7 @@
 //! The kdlith engine: loads and compiles definitions once into linked
 //! catalogs and a processing plan, binds documents through that plan,
 //! and reads them into a typed processor's own types.
+mod aliases;
 mod anchors;
 mod bind;
 mod bindings;
@@ -32,6 +33,7 @@ mod typed;
 mod types;
 mod value_resolver;
 
+pub use aliases::AliasRoot;
 pub use bind::{BindFrame, Binder, BindingSession, EntryValue, NodeStart, ParseEvents};
 pub use bindings::{
     Arity, BindingCatalog, BindingCodec, CaseRule, ChildPlan, ChildRule, Collision, Condition,
