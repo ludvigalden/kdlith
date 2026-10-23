@@ -1,0 +1,57 @@
+// Deep union: under selection=union a contribution's map-typed field
+// and the keyed collection inside its nested block merge key by key
+// across layers, so a key only a lower layer contributes survives, and
+// a key both layers hold merges field by field, each scalar leaf taken
+// from the highest layer that holds it.
+schema config version="1" {
+    types {
+        object Project {
+            field name String
+        }
+        object Section {
+            field title String
+            field hidden "optional<Bool>"
+        }
+        object Changelog {
+            field title "optional<String>"
+            field sections "map<String, Section>"
+        }
+        object Config {
+            field target "ref<Project>"
+            field layer "optional<String>"
+            field changelog "optional<Changelog>"
+            field labels "map<String, Section>"
+        }
+    }
+    node project role=declaration type=Project {
+        field name arg=0
+    }
+    node config role=contribution type=Config {
+        field target arg=0
+        field layer property=layer
+        field changelog child=changelog
+        field labels {
+            from {
+                entries label key="arg(0)" value=Section
+            }
+        }
+    }
+    node changelog type=Changelog parent=config {
+        field title property=title
+        field sections {
+            from {
+                entries section key="arg(0)" value=Section
+            }
+        }
+    }
+    node section type=Section parent=changelog {
+        field title arg=1
+        field hidden property=hidden
+    }
+    node label type=Section parent=config {
+        field title arg=1
+    }
+    resolution resolver=layered selection=union {
+        layers user base
+    }
+}

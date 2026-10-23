@@ -1,0 +1,17 @@
+project app
+config app layer=base {
+    changelog {
+        section feat "Features"
+        section fix "Fixes"
+    }
+    label feat "Features"
+    label fix "Fixes"
+}
+config app layer=user {
+    changelog {
+        section perf "Performance"
+        section fix "Bug fixes"
+    }
+    label perf "Performance"
+    label fix "Bug fixes"
+}

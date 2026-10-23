@@ -211,6 +211,10 @@ published yet.
   root that does not resolve is the new `KDLITH-IMP008`, before any
   document is read; with aliases registered, an unregistered leading
   `$name` is `KDLITH-IMP005` naming them.
+- A map-typed or object-typed contribution field may declare
+  `merge=union` under a union-selecting resolution policy, stating the
+  key-wise merge it receives; any other non-list field declaring it is
+  still `KDLITH-DLC005`.
 
 ### Fixed
 
@@ -259,3 +263,11 @@ published yet.
   carry a `did you mean …?` note naming the nearest admitted names
   within edit distance 2, which the JSON stream carries as a positioned
   label.
+- Union resolution no longer drops nested keys: under
+  `selection=union` the shipped `layered` resolver merges contributed
+  values deeply, an object field by field and a keyed collection key by
+  key at every depth, so a key only a lower layer contributes survives
+  and a leaf both layers hold takes the higher layer's value. Before,
+  every map-valued field was replaced whole by the highest layer. A
+  list declaring `merge=union` inside a nested block now appends at its
+  own depth instead of being silently replaced.

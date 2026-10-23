@@ -1,0 +1,13 @@
+project app
+config app layer=base {
+    changelog title="Changes" {
+        section fix "Fixes" hidden=#true
+    }
+    label fix "Fixes"
+}
+config app layer=user {
+    changelog title="Release notes" {
+        section fix "Bug fixes"
+    }
+    label fix "Bug fixes"
+}

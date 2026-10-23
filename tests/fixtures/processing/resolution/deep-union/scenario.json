@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "Deep union: the base layer contributes sections and labels feat and fix, the user layer perf and fix; under selection=union the nested block's keyed sections and the top-level labels map merge key by key, so the base-only feat survives beside the user-only perf (lower-layer keys first, then the keys the higher layer adds), and the shared fix takes the user layer's title; the resolution lists both layers, highest first",
+  "args": [
+    "read",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/resolution/deep-union.kdl",
+    "data.kdl",
+    "app"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

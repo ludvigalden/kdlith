@@ -80,9 +80,10 @@ pub(crate) fn all(cx: &mut Cx<'_>, input: &DefinitionInput) {
     }
 }
 
-/// A field declaring merge must hold a list, the only value a
-/// refinement can append to, and the declared resolution policy must
-/// combine values by `selection=union`, the only selection that merges.
+/// A field declaring merge must hold a list, which a refinement appends
+/// to, or a keyed collection or object, which it merges key by key; and
+/// the declared resolution policy must combine values by
+/// `selection=union`, the only selection that merges.
 /// Called from `finish` after the expansion pass, so fields an
 /// `include` spliced in are checked with the declared ones and the
 /// policy is known wherever in the stream it was declared.
@@ -95,14 +96,9 @@ pub(crate) fn merge_policy(cx: &mut Cx<'_>) {
         };
         for field in object.fields.iter().filter(|field| field.merge.is_some()) {
             let label = format!("field {}", cx.names.resolve(field.name));
-            // A nullable list may hold null, which has nothing to append.
-            let list = match &field.ty {
-                TypeExpr::List(_) => true,
-                TypeExpr::Optional(inner) => matches!(**inner, TypeExpr::List(_)),
-                _ => false,
-            };
-            if !list {
-                let reason = "declares merge, which only a list-typed field can apply";
+            if !mergeable(&cx.types, &field.ty) {
+                let reason =
+                    "declares merge, which only a list-, map-, or object-typed field can apply";
                 reported.push((site, label.clone(), reason.to_owned()));
             }
             if let Some(selection) = selection
@@ -121,6 +117,23 @@ pub(crate) fn merge_policy(cx: &mut Cx<'_>) {
         if !reported[..at].contains(&(*site, label.clone(), reason.clone())) {
             cx.malformed(*site, label, reason);
         }
+    }
+}
+
+/// Whether a field's type holds a value a union merges: a list, a
+/// keyed collection, or an object, optionally absent. A nullable list
+/// may hold null, which has nothing to append.
+fn mergeable(types: &crate::types::TypeCatalog, ty: &TypeExpr) -> bool {
+    match ty {
+        TypeExpr::List(_) | TypeExpr::Map(..) | TypeExpr::OrderedMap(..) => true,
+        TypeExpr::Optional(inner) => mergeable(types, inner),
+        // An instantiation survives only when monomorphization did not
+        // run; its head declares the kind.
+        TypeExpr::Named(name) | TypeExpr::Instantiation(name, _) => types
+            .lookup(*name)
+            .and_then(|id| types.get(id))
+            .is_some_and(|decl| matches!(decl.kind, TypeKind::Object(_) | TypeKind::Map(_))),
+        _ => false,
     }
 }
 

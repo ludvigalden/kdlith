@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "Deep union scalar conflict: where both layers hold one leaf, the nested block's title and the shared fix section's title resolve to the user layer, the higher one, with no diagnostic, while a leaf only the base layer holds (the fix section's hidden flag) is kept; the merge recurses into the keyed collection's values instead of replacing the whole entry",
+  "args": [
+    "read",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/resolution/deep-union.kdl",
+    "data.kdl",
+    "app"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

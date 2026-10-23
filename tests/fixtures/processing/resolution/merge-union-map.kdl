@@ -1,0 +1,37 @@
+// A map-typed field of a contribution type declaring merge=union: the
+// union merges it key by key, which every keyed collection already does
+// under selection=union, so the declaration is admitted and states the
+// merge explicitly.
+schema config version="1" {
+    types {
+        object Project {
+            field name String
+        }
+        object Label {
+            field title String
+        }
+        object Config {
+            field target "ref<Project>"
+            field layer "optional<String>"
+            field labels "map<String, Label>" merge=union
+        }
+    }
+    node project role=declaration type=Project {
+        field name arg=0
+    }
+    node config role=contribution type=Config {
+        field target arg=0
+        field layer property=layer
+        field labels {
+            from {
+                entries label key="arg(0)" value=Label
+            }
+        }
+    }
+    node label type=Label parent=config {
+        field title arg=1
+    }
+    resolution resolver=layered selection=union {
+        layers user base
+    }
+}

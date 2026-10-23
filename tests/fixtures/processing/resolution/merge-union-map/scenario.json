@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A map-typed contribution field may declare merge=union under a union-selecting policy: vet schema admits it (complete checking passes) and the summary line is pinned byte for byte",
+  "args": [
+    "vet",
+    "schema",
+    "{fx-suite}/processing/resolution/merge-union-map.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

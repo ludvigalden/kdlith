@@ -7,12 +7,14 @@ use std::sync::Arc;
 
 use kdlith_diagnostic::DiagnosticRecord;
 use kdlith_model::ResolvedContribution;
-use kdlith_runtime::{ContributionPolicy, ContributionRecord, ContributionResolver};
+use kdlith_runtime::{
+    ContributionPolicy, ContributionRecord, ContributionResolver, MergeShape, ObjectShape,
+};
 
 use crate::bindings::Role;
 use crate::definition::{Definition, ResolutionPolicyDecl};
 use crate::diag::record;
-use crate::types::TypeKind;
+use crate::types::{FieldDef, TypeCatalog, TypeExpr, TypeId, TypeKind};
 
 /// A registered contribution resolver, shared cheaply across readings.
 pub type SharedContributionResolver = Arc<dyn ContributionResolver>;
@@ -79,10 +81,16 @@ pub fn resolve(
 }
 
 /// The descriptors a resolver receives for a compiled policy. Records
-/// carry no contribution type, so merge policies are keyed by field
-/// name across every contribution type.
+/// carry no contribution type, so the root shape is keyed by field name
+/// across every contribution type, the first declaring a name decides.
 fn policy_of(definition: &Definition, policy: &ResolutionPolicyDecl) -> ContributionPolicy {
     let mut merges = BTreeMap::new();
+    let mut shapes = Shapes {
+        definition,
+        objects: vec![ObjectShape::default()],
+        index: BTreeMap::new(),
+    };
+    let mut root: BTreeMap<String, MergeShape> = BTreeMap::new();
     for (_, decl) in definition.bindings.iter() {
         if decl.role != Some(Role::Contribution) {
             continue;
@@ -94,11 +102,17 @@ fn policy_of(definition: &Definition, policy: &ResolutionPolicyDecl) -> Contribu
             continue;
         };
         for field in &object.fields {
+            let name = definition.names.resolve(field.name).to_owned();
             if let Some(merge) = field.merge {
-                merges.insert(definition.names.resolve(field.name).to_owned(), merge);
+                merges.entry(name.clone()).or_insert(merge);
+            }
+            if let std::collections::btree_map::Entry::Vacant(slot) = root.entry(name) {
+                slot.insert(shapes.field(field));
             }
         }
     }
+    let mut objects = shapes.objects;
+    objects[0] = ObjectShape::new(root);
     ContributionPolicy::new(
         policy.layers.clone(),
         policy.selection,
@@ -106,6 +120,82 @@ fn policy_of(definition: &Definition, policy: &ResolutionPolicyDecl) -> Contribu
         policy.missing,
         merges,
     )
+    .with_shapes(objects)
+}
+
+/// The merge shapes of the object types a contributed value reaches,
+/// each object type described once, so a recursive type terminates.
+struct Shapes<'d> {
+    definition: &'d Definition,
+    objects: Vec<ObjectShape>,
+    index: BTreeMap<TypeId, usize>,
+}
+
+impl Shapes<'_> {
+    /// A field's shape: a list declaring `merge=union` appends, and every
+    /// other field merges by its declared type.
+    fn field(&mut self, field: &FieldDef) -> MergeShape {
+        if field.merge.is_some() && holds_list(&field.ty) {
+            return MergeShape::Append;
+        }
+        self.expr(&field.ty)
+    }
+
+    /// Objects merge field by field and keyed collections key by key;
+    /// scalars, lists, references, and union values are replaced whole,
+    /// since their parts carry no key to merge by.
+    fn expr(&mut self, ty: &TypeExpr) -> MergeShape {
+        match ty {
+            TypeExpr::Optional(inner) | TypeExpr::Nullable(inner) => self.expr(inner),
+            TypeExpr::Map(_, value) | TypeExpr::OrderedMap(_, value) => {
+                MergeShape::Keys(Box::new(self.expr(value)))
+            }
+            TypeExpr::Named(name) => self.named(*name),
+            _ => MergeShape::Replace,
+        }
+    }
+
+    fn named(&mut self, name: crate::names::Sym) -> MergeShape {
+        let types: &TypeCatalog = &self.definition.types;
+        let Some(id) = types.lookup(name) else {
+            return MergeShape::Replace;
+        };
+        if let Some(at) = self.index.get(&id) {
+            return MergeShape::Fields(*at);
+        }
+        let Some(decl) = types.get(id) else {
+            return MergeShape::Replace;
+        };
+        match &decl.kind {
+            TypeKind::Object(object) => {
+                let at = self.objects.len();
+                self.objects.push(ObjectShape::default());
+                self.index.insert(id, at);
+                let mut fields = BTreeMap::new();
+                for field in &object.fields {
+                    let key = self.definition.names.resolve(field.name).to_owned();
+                    let shape = self.field(field);
+                    fields.insert(key, shape);
+                }
+                self.objects[at] = ObjectShape::new(fields);
+                MergeShape::Fields(at)
+            }
+            TypeKind::Map(map) => {
+                let value = map.value.clone();
+                MergeShape::Keys(Box::new(self.expr(&value)))
+            }
+            _ => MergeShape::Replace,
+        }
+    }
+}
+
+/// Whether a type holds a list, through `optional` and `nullable`.
+fn holds_list(ty: &TypeExpr) -> bool {
+    match ty {
+        TypeExpr::List(_) => true,
+        TypeExpr::Optional(inner) | TypeExpr::Nullable(inner) => holds_list(inner),
+        _ => false,
+    }
 }
 
 /// The diagnostic a resolution run that could not complete reports.

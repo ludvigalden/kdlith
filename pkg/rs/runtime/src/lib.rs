@@ -32,7 +32,8 @@ pub use imports::{
 pub use processor::{Completion, Cx, Disposition, Processor};
 pub use provenance::{FieldProvenance, Provenance, SourceRevision, SourceRevisions, export_line};
 pub use resolution::{
-    ContributionPolicy, ContributionRecord, ContributionResolver, LAYERED, Layered,
+    ContributionPolicy, ContributionRecord, ContributionResolver, LAYERED, Layered, MergeShape,
+    ObjectShape,
 };
 pub use session::{Session, SessionError, SessionLimits};
 pub use source::{EventSource, FnSource, Pulled, SourceEvent, Step, from_fn};

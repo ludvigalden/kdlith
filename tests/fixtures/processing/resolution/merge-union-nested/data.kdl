@@ -1,0 +1,13 @@
+project app
+config app layer=base {
+    changelog {
+        kind feat "Features"
+        kind fix "Fixes"
+    }
+}
+config app layer=user {
+    changelog {
+        kind fix "Fixes"
+        kind perf "Performance"
+    }
+}

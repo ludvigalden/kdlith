@@ -39,8 +39,9 @@ impl ContributionRecord {
 /// The declared policy a resolver applies, as descriptors: the layer
 /// names in precedence order (highest first; empty when the schema
 /// declares none), per-target selection, duplicate treatment, the
-/// missing-target requirement, and the per-field merge policies of the
-/// contribution types, keyed by field name.
+/// missing-target requirement, the per-field merge policies of the
+/// contribution types' own fields, keyed by field name, and the shapes
+/// a union merges contributed values by.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct ContributionPolicy {
@@ -49,6 +50,10 @@ pub struct ContributionPolicy {
     pub duplicates: DuplicateTreatment,
     pub missing: MissingRequirement,
     pub merges: BTreeMap<String, FieldMerge>,
+    /// The object shapes of the contributed values: the first is the
+    /// contribution types' own fields, and [`MergeShape::Fields`] indexes
+    /// the rest. Empty, every field but a merged list is replaced whole.
+    pub shapes: Vec<ObjectShape>,
 }
 
 impl ContributionPolicy {
@@ -65,7 +70,46 @@ impl ContributionPolicy {
             duplicates,
             missing,
             merges,
+            shapes: Vec::new(),
         }
+    }
+
+    /// The policy with the object shapes a union merges values by.
+    pub fn with_shapes(mut self, shapes: Vec<ObjectShape>) -> Self {
+        self.shapes = shapes;
+        self
+    }
+}
+
+/// How a union combines one field's values held by several layers.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum MergeShape {
+    /// The highest layer's value replaces the rest.
+    #[default]
+    Replace,
+    /// A list declaring `merge=union`: higher layers append the items
+    /// no held item shares the declared shape of.
+    Append,
+    /// An object, merged field by field under the policy's shape at this
+    /// index.
+    Fields(usize),
+    /// A keyed collection, merged key by key, each value by the inner
+    /// shape.
+    Keys(Box<MergeShape>),
+}
+
+/// The fields of one object type and the shape each merges by; a field
+/// it does not name is replaced.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct ObjectShape {
+    pub fields: BTreeMap<String, MergeShape>,
+}
+
+impl ObjectShape {
+    pub fn new(fields: BTreeMap<String, MergeShape>) -> Self {
+        Self { fields }
     }
 }
 
@@ -94,9 +138,12 @@ pub const LAYERED: &str = "layered";
 /// or `allow` for referenced targets no record contributes. Records
 /// partition by target and application scope, and layer precedence
 /// applies within each partition, so a target contributed under two
-/// scopes resolves once per scope. Under `union`, a field whose policy
-/// is `merge=union` appends the higher layers' list items that are not
-/// shape-equal to one already held, instead of overwriting. Partitions
+/// scopes resolves once per scope. Under `union`, values merge deeply:
+/// an object merges field by field and a keyed collection key by key,
+/// so no lower layer's key is dropped, while a scalar, a list, or a
+/// union value is replaced by the highest layer holding it. A list
+/// declaring `merge=union` appends the higher layers' items that are
+/// not shape-equal to one already held, instead of overwriting. Partitions
 /// are resolved in sorted order and ties keep reading order, so equal
 /// inputs always give the same output.
 #[derive(Clone, Copy, Debug, Default)]
@@ -176,7 +223,7 @@ impl Layered {
 
     /// The resolved value of one target from its settled records,
     /// highest first. Lower layers are laid down first, so a merged
-    /// field holds the base's items before each refinement's.
+    /// field holds the base's items and keys before each refinement's.
     fn select(
         policy: &ContributionPolicy,
         settled: &[&ContributionRecord],
@@ -185,48 +232,39 @@ impl Layered {
         if policy.selection != ResolutionSelection::Union || !all_maps {
             return Ok(settled[0].value.clone());
         }
+        let root = Self::root(policy, settled[0])?;
         let mut merged: Vec<Entry> = Vec::new();
         for record in settled.iter().rev() {
             let Value::Map(entries) = &record.value else {
                 continue;
             };
-            for entry in entries {
-                let Some(held) = merged.iter_mut().find(|held| held.key == entry.key) else {
-                    merged.push(entry.clone());
-                    continue;
-                };
-                let Some(merge) = policy.merges.get(&entry.key) else {
-                    held.value = entry.value.clone();
-                    continue;
-                };
-                if *merge != FieldMerge::Union {
-                    return Err(format!(
-                        "field {} of a contribution to {} declares merge={}, which this resolver does not apply",
-                        entry.key,
-                        shown(&record.target),
-                        merge.name(),
-                    ));
-                }
-                // Compilation admits merge only on list-typed fields, so a
-                // schema-driven reading never lands in the refusal; a
-                // hand-built policy is refused rather than overwritten.
-                let (Value::List(items), Value::List(incoming)) = (&mut held.value, &entry.value)
-                else {
-                    return Err(format!(
-                        "field {} of a contribution to {} in {} merges by union but does not hold a list",
-                        entry.key,
-                        shown(&record.target),
-                        in_layer(record.layer.as_deref()),
-                    ));
-                };
-                for item in incoming {
-                    if !items.iter().any(|kept| same_shape(kept, item)) {
-                        items.push(item.clone());
-                    }
-                }
-            }
+            let merge = Merge { policy, record };
+            merge.entries(&mut merged, entries, |key| root.fields.get(key))?;
         }
         Ok(Value::Map(merged))
+    }
+
+    /// The shape of the contributed values' own fields: the policy's
+    /// first object shape, with each field-name merge policy applied.
+    fn root(
+        policy: &ContributionPolicy,
+        record: &ContributionRecord,
+    ) -> Result<ObjectShape, String> {
+        let mut root = policy.shapes.first().cloned().unwrap_or_default();
+        for (field, merge) in &policy.merges {
+            if *merge != FieldMerge::Union {
+                return Err(format!(
+                    "field {field} of a contribution to {} declares merge={}, which this resolver does not apply",
+                    shown(&record.target),
+                    merge.name(),
+                ));
+            }
+            let shape = root.fields.entry(field.clone()).or_default();
+            if *shape == MergeShape::Replace {
+                *shape = MergeShape::Append;
+            }
+        }
+        Ok(root)
     }
 
     /// The layers whose records reached a value, highest first: the
@@ -250,12 +288,91 @@ impl Layered {
     }
 }
 
+/// One record's union into the value merged so far.
+struct Merge<'p> {
+    policy: &'p ContributionPolicy,
+    record: &'p ContributionRecord,
+}
+
+impl Merge<'_> {
+    /// Merge `incoming` entries into `held`: a key `held` lacks is taken
+    /// as written, after the keys it holds; a key it holds merges by the
+    /// shape `shape_of` gives it, or is replaced.
+    fn entries<'s>(
+        &self,
+        held: &mut Vec<Entry>,
+        incoming: &[Entry],
+        shape_of: impl Fn(&str) -> Option<&'s MergeShape>,
+    ) -> Result<(), String> {
+        for entry in incoming {
+            let Some(kept) = held.iter_mut().find(|kept| same_key(kept, entry)) else {
+                held.push(entry.clone());
+                continue;
+            };
+            match shape_of(&entry.key) {
+                Some(shape) => self.value(shape, &entry.key, &mut kept.value, &entry.value)?,
+                None => kept.value = entry.value.clone(),
+            }
+        }
+        Ok(())
+    }
+
+    /// Merge one incoming value into the held one by its shape. A value
+    /// that does not hold the shape's map is replaced, so a higher layer
+    /// can still overwrite a structure with a null.
+    fn value(
+        &self,
+        shape: &MergeShape,
+        field: &str,
+        held: &mut Value,
+        incoming: &Value,
+    ) -> Result<(), String> {
+        match (shape, &mut *held, incoming) {
+            (MergeShape::Append, Value::List(items), Value::List(incoming)) => {
+                for item in incoming {
+                    if !items.iter().any(|kept| same_shape(kept, item)) {
+                        items.push(item.clone());
+                    }
+                }
+            }
+            // A schema-driven reading only appends to list-typed fields;
+            // a hand-built policy is refused rather than overwritten.
+            (MergeShape::Append, ..) => {
+                return Err(format!(
+                    "field {field} of a contribution to {} in {} merges by union but does not hold a list",
+                    shown(&self.record.target),
+                    in_layer(self.record.layer.as_deref()),
+                ));
+            }
+            (MergeShape::Fields(at), Value::Map(entries), Value::Map(incoming)) => {
+                let object = self.policy.shapes.get(*at);
+                self.entries(entries, incoming, |key| {
+                    object.and_then(|object| object.fields.get(key))
+                })?;
+            }
+            (MergeShape::Keys(inner), Value::Map(entries), Value::Map(incoming)) => {
+                let inner: &MergeShape = inner;
+                self.entries(entries, incoming, |_| Some(inner))?;
+            }
+            _ => *held = incoming.clone(),
+        }
+        Ok(())
+    }
+}
+
+/// Whether two map entries spell one key: references by target
+/// identity and context, plain keys by text.
+fn same_key(a: &Entry, b: &Entry) -> bool {
+    match (&a.reference, &b.reference) {
+        (None, None) => a.key == b.key,
+        (Some(a), Some(b)) => same_target(a, b),
+        _ => false,
+    }
+}
+
 /// Declared-shape equality, the identity merged list items dedup by.
-/// It errs toward keeping both items: numbers compare by spelling,
-/// references by target identity plus the context they bound under
-/// (never by spelling or site), lists in order, and maps by content
-/// regardless of entry order. A union value's variant is its single
-/// map key, so equal payloads of different variants stay distinct.
+/// It errs toward keeping both: numbers compare by spelling, references
+/// by [`same_target`], lists in order, maps by content in any order.
 fn same_shape(a: &Value, b: &Value) -> bool {
     match (a, b) {
         (Value::Null, Value::Null) => true,
@@ -269,12 +386,7 @@ fn same_shape(a: &Value, b: &Value) -> bool {
             let within = |from: &[Entry], into: &[Entry]| {
                 from.iter().all(|entry| {
                     into.iter().any(|other| {
-                        let same_key = match (&entry.reference, &other.reference) {
-                            (None, None) => other.key == entry.key,
-                            (Some(a), Some(b)) => same_target(a, b),
-                            _ => false,
-                        };
-                        same_key && same_shape(&entry.value, &other.value)
+                        same_key(entry, other) && same_shape(&entry.value, &other.value)
                     })
                 })
             };

@@ -1,0 +1,46 @@
+// A nested block's list field declaring merge=union: under
+// selection=union the merge takes effect at the field's own depth, so a
+// higher layer's refinement appends to the lower layer's nested list,
+// skipping items whose declared shape is already held, instead of
+// replacing it.
+schema config version="1" {
+    types {
+        object Project {
+            field name String
+        }
+        object Kind {
+            field name String
+            field title String
+        }
+        object Changelog {
+            field kinds "optional<list<Kind>>" merge=union
+        }
+        object Config {
+            field target "ref<Project>"
+            field layer "optional<String>"
+            field changelog "optional<Changelog>"
+        }
+    }
+    node project role=declaration type=Project {
+        field name arg=0
+    }
+    node config role=contribution type=Config {
+        field target arg=0
+        field layer property=layer
+        field changelog child=changelog
+    }
+    node changelog type=Changelog parent=config {
+        field kinds {
+            from {
+                children kind
+            }
+        }
+    }
+    node kind type=Kind parent=changelog {
+        field name arg=0
+        field title arg=1
+    }
+    resolution resolver=layered selection=union {
+        layers user base
+    }
+}

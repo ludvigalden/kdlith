@@ -95,7 +95,8 @@ dialect kdlith version="0" {
 
         // How layered contributions combine a field they share: `union`
         // appends a refinement's list items, skipping items equal by
-        // declared shape, instead of overwriting the lower layer's list.
+        // declared shape, instead of overwriting the lower layer's list;
+        // on a keyed collection or object it merges key by key.
         enum MergePolicy {
             member union
         }

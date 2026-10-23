@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "Nested per-field merge: a list declaring merge=union inside a contribution's nested block is honoured at its own depth, so the user layer's kinds append to the base layer's (base items first) and the fix kind both layers hold appears once by declared-shape dedup, instead of the nested list being replaced",
+  "args": [
+    "read",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/resolution/merge-union-nested.kdl",
+    "data.kdl",
+    "app"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}
