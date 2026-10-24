@@ -1,0 +1,13 @@
+{
+  "binary": "kdlith",
+  "description": "A schema definition's own $name/ import that leaves its source is KDLITH-LOC002, as a data import is, whether parts is a directory (--source parts=parts) or embedded, with byte-identical output",
+  "args": [
+    "vet",
+    "schema",
+    "schema.kdl"
+  ],
+  "source-embedded": ["parts=parts"],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

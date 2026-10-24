@@ -1,0 +1,17 @@
+// A record and a source-import node: the inner scenarios' shared shape.
+schema inner version="1" {
+    types {
+        object Part {
+            field id String
+        }
+    }
+    node part role=record type=Part {
+        field id arg=0
+    }
+    node use role=source-import {
+        field path String arg=0
+    }
+    document {
+        following part use
+    }
+}

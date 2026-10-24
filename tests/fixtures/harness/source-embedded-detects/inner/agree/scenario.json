@@ -1,0 +1,10 @@
+{
+  "binary": "kdlith",
+  "description": "inner scenario the enclosing negative control runs: lib holds only UTF-8 text, so the embedded run agrees with the --source run and the scenario passes",
+  "args": ["vet", "data", "--schema", "schema.kdl", "data.kdl"],
+  "source-embedded": ["lib=lib"],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": ["\"path\":\"$lib/part.kdl\""]
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "A $name/ location naming no document is KDLITH-LOC001 with the same reason whether the source is a directory (--source lib=lib) or embedded, byte for byte: $lib/absent.kdl names no file (the source holds no such file), and $lib/nested names a directory (not a file); the reading reports both and continues",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/locations/schema.kdl",
+    "data.kdl"
+  ],
+  "source-embedded": ["lib=lib"],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

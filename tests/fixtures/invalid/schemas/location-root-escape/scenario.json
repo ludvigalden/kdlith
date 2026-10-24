@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A schema definition's own unprefixed import is confined to the project root, as a data import is: under --root sub, sub/schema.kdl's ../part.kdl leaves the root and is KDLITH-LOC002 before part.kdl, which exists, is read",
+  "args": [
+    "vet",
+    "schema",
+    "--root",
+    "sub",
+    "sub/schema.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

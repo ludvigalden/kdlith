@@ -622,17 +622,18 @@ impl<'d> DataReader<'d> {
     ) -> Result<Outcome, ReadError> {
         let def = self.def;
         // Definition documents declare their own locations rule, so every
-        // entry is scanned before any import runs.
+        // entry is scanned before any import runs. A schema definition's
+        // entries are confined as data documents are; a dialect
+        // definition's are not.
+        let mut confined = vec![true; entries.len()];
         let declared = (def.kind == DefinitionKind::Dialect).then(|| {
             let mut declared = DeclaredLocations::default();
-            for entry in entries {
+            for (entry, confined) in entries.iter().zip(confined.iter_mut()) {
                 let text = match entry {
                     EntrySource::Path(path) => std::fs::read_to_string(path).ok(),
                     EntrySource::Memory { text, .. } => Some((*text).to_owned()),
                 };
-                if let Some(text) = text {
-                    declared.scan(&text);
-                }
+                *confined = text.is_some_and(|text| declared.scan(&text));
             }
             declared
         });
@@ -711,7 +712,7 @@ impl<'d> DataReader<'d> {
             follow,
         };
         let layout = self.def.plan.context.layout.clone();
-        for entry in entries {
+        for (entry, confined) in entries.iter().zip(confined) {
             // Selected once per entry document, before any of its nodes
             // binds, from the explicit name or set and the entry's
             // root-relative source path — never from its content. The
@@ -729,7 +730,7 @@ impl<'d> DataReader<'d> {
                 EntrySource::Path(path) => reading
                     .invocations
                     .enter_root(path, Context::new(layout.clone()))
-                    .inspect(|id| reading.place_entry(*id)),
+                    .inspect(|id| reading.place_entry(*id, confined)),
                 EntrySource::Memory { text, .. } => reading
                     .invocations
                     .enter_root_in_memory(&shown, Context::new(layout.clone()))
@@ -1269,12 +1270,11 @@ impl Reading<'_, '_> {
 
     /// Place an entry document read from disk in its source: the local
     /// source under the project root, else one rooted at its own
-    /// directory. Host-authored definition documents stay unconfined.
-    fn place_entry(&mut self, id: InvocationId) {
+    /// directory; a dialect definition document stays unconfined.
+    fn place_entry(&mut self, id: InvocationId, confined: bool) {
         let Some(invocation) = self.invocations.get(id) else {
             return;
         };
-        let confined = self.reader.def.kind != DefinitionKind::Dialect;
         let place = self
             .sources
             .entry_place(&invocation.path, &invocation.shown, confined);

@@ -1,0 +1,5 @@
+schema catalog version="1" {
+    node product role=record type=Product {
+        field name arg=0
+    }
+}

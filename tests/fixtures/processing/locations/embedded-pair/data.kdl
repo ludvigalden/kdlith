@@ -1,0 +1,3 @@
+use "$lib/nested/top.kdl"
+use "$lib/parts/*.kdl"
+part entry

@@ -1,9 +1,11 @@
 {
   "binary": "kdlith",
-  "description": "A policy without layers ranks every record equally, so two records for one target in different written layers are duplicates the reject default refuses as KDLITH-DLC010",
+  "description": "A policy without layers ranks every record equally, so two records for one target in different written layers are duplicates the reject default refuses as KDLITH-DLC010. The schema imports the shared settings schema across the suite, so the suite root is the project root its own locations stay inside",
   "args": [
     "read",
     "data",
+    "--root",
+    "{fx-suite}",
     "--schema",
     "{fx-suite}/invalid/data/resolution-no-layers-duplicate/schema.kdl",
     "data.kdl",

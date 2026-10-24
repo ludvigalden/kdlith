@@ -1,0 +1,6 @@
+// A schema-definition import is confined to its source as a data
+// import is: $parts/../outside.kdl leaves the parts source, though
+// outside.kdl exists beside it.
+schema demo version="1" {
+    import "$parts/../outside.kdl"
+}

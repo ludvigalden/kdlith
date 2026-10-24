@@ -1,0 +1,29 @@
+{
+  "binary": "kdlith",
+  "description": "The embedded-equivalence pair over a literal and a pattern location: run once with --source lib=lib and once with lib embedded, the reading must be byte-identical. The literal $lib/nested/top.kdl imports ../leaf.kdl relative to itself and /root.kdl from the source's root; the pattern $lib/parts/*.kdl lists the source (a directory walk, or the embedded keys) and matches parts/B.kdl before parts/a.kdl in portable-path-byte order, never parts/other.txt; every document is shown under $lib",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/locations/schema.kdl",
+    "data.kdl"
+  ],
+  "source-embedded": ["lib=lib"],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"expression\":\"$lib/nested/top.kdl\",\"targets\":[\"$lib/nested/top.kdl\"],",
+      "\"expression\":\"../leaf.kdl\",\"targets\":[\"$lib/leaf.kdl\"],",
+      "\"expression\":\"/root.kdl\",\"targets\":[\"$lib/root.kdl\"],",
+      "\"expression\":\"$lib/parts/*.kdl\",\"targets\":[\"$lib/parts/B.kdl\",\"$lib/parts/a.kdl\"],",
+      "{\"item\":\"document\",\"data\":{\"source\":2,\"path\":\"$lib/leaf.kdl\"}}\n",
+      "{\"item\":\"document\",\"data\":{\"source\":3,\"path\":\"$lib/root.kdl\"}}\n",
+      "{\"item\":\"document\",\"data\":{\"source\":4,\"path\":\"$lib/parts/B.kdl\"}}\n",
+      "{\"item\":\"document\",\"data\":{\"source\":5,\"path\":\"$lib/parts/a.kdl\"}}\n"
+    ],
+    "stdout-not-contains": [
+      "\"item\":\"diagnostic\"",
+      "other.txt"
+    ]
+  }
+}

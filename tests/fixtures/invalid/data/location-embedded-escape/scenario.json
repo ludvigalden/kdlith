@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "The negative embedded-equivalence pair: a location leaving the source is KDLITH-LOC002 whether the source is a directory (--source lib=lib) or embedded, with byte-identical output. Both ways out are refused though outside.kdl exists beside the source: $lib/../outside.kdl from the entry, and ../outside.kdl written inside $lib/inner.kdl",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/locations/schema.kdl",
+    "data.kdl"
+  ],
+  "source-embedded": ["lib=lib"],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

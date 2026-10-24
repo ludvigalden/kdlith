@@ -20,7 +20,7 @@ use std::process::ExitCode;
 /// helper name, otherwise run the harness CLI.
 pub fn main_entry(argv: Vec<OsString>) -> ExitCode {
     let argv0 = argv.first().cloned().unwrap_or_default();
-    if let Some(code) = fxbin::dispatch_helper(&argv0) {
+    if let Some(code) = fxbin::dispatch_helper(&argv0, &argv) {
         return code;
     }
     let argv: Vec<String> = match argv.into_iter().map(OsString::into_string).collect() {

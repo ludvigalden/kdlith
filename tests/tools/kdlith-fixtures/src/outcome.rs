@@ -10,7 +10,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use rustix::fd::OwnedFd;
 
-use crate::fxbin::{ENV_KDLITH, ENV_SCENARIO, ENV_SCRATCH, ENV_SUITE};
+use crate::fxbin::{EMBEDDED_HELPER, ENV_KDLITH, ENV_SCENARIO, ENV_SCRATCH, ENV_SUITE};
 use crate::scenario::{
     Expectation, GoldenFile, Goldens, Invocation, PlantKind, ScratchCheck, expand_args,
 };
@@ -40,23 +40,30 @@ pub(crate) fn execute(
     env: &RunEnv<'_>,
     source: &Path,
 ) -> Result<(), String> {
-    let mut path = OsString::from(env.bin_dir.as_os_str());
-    if let Some(inherited) = std::env::var_os("PATH") {
-        path.push(":");
-        path.push(inherited);
-    }
-    let output = Command::new(env.kdlith)
-        .args(expand_args(&invocation.args, env.suite))
-        .current_dir(cwd)
-        .env("PATH", path)
-        .env(ENV_SUITE, env.suite)
-        .env(ENV_KDLITH, env.kdlith)
-        .env(ENV_SCRATCH, env.scratch)
-        .env(ENV_SCENARIO, cwd)
-        .stdin(Stdio::null())
-        .output()
-        .map_err(|e| format!("cannot run {}: {e}", env.kdlith.display()))?;
-    let mut failures = judge(&invocation.expectation, &output);
+    let args = expand_args(&invocation.args, env.suite);
+    let mut failures = Vec::new();
+    let output = if invocation.embedded.is_empty() {
+        spawn(env.kdlith, &args, cwd, env)?
+    } else {
+        // The pair: the same command line, its sources registered as
+        // directories through the binary, then as embedded files through
+        // the helper. Any difference fails before the expectation is
+        // judged against the embedded run.
+        let mut sourced = args.clone();
+        let mut helper = Vec::with_capacity(args.len() + invocation.embedded.len() + 1);
+        for (name, dir) in &invocation.embedded {
+            sourced.push("--source".to_owned());
+            sourced.push(format!("{name}={dir}"));
+            helper.push(format!("{name}={dir}"));
+        }
+        helper.push("--".to_owned());
+        helper.extend(args);
+        let dir_run = spawn(env.kdlith, &sourced, cwd, env)?;
+        let embedded_run = spawn(&env.bin_dir.join(EMBEDDED_HELPER), &helper, cwd, env)?;
+        failures.extend(equivalence(&dir_run, &embedded_run));
+        embedded_run
+    };
+    failures.extend(judge(&invocation.expectation, &output));
     if let Expectation::Positive { goldens, .. } = &invocation.expectation {
         failures.extend(judge_goldens(goldens, &output, cwd));
     }
@@ -68,6 +75,59 @@ pub(crate) fn execute(
     } else {
         Err(report(&failures, &output))
     }
+}
+
+/// Run `program` over `args` in `cwd` under the run's environment.
+fn spawn(program: &Path, args: &[String], cwd: &Path, env: &RunEnv<'_>) -> Result<Output, String> {
+    let mut path = OsString::from(env.bin_dir.as_os_str());
+    if let Some(inherited) = std::env::var_os("PATH") {
+        path.push(":");
+        path.push(inherited);
+    }
+    Command::new(program)
+        .args(args)
+        .current_dir(cwd)
+        .env("PATH", path)
+        .env(ENV_SUITE, env.suite)
+        .env(ENV_KDLITH, env.kdlith)
+        .env(ENV_SCRATCH, env.scratch)
+        .env(ENV_SCENARIO, cwd)
+        .stdin(Stdio::null())
+        .output()
+        .map_err(|e| format!("cannot run {}: {e}", program.display()))
+}
+
+/// Where the embedded run departs from the `--source` run: its exit
+/// code, then each stream at its first differing byte.
+fn equivalence(dir_run: &Output, embedded_run: &Output) -> Vec<String> {
+    let mut failures = Vec::new();
+    let (sourced, embedded) = (dir_run.status.code(), embedded_run.status.code());
+    if sourced != embedded {
+        failures.push(format!(
+            "source-embedded: exit {} differs from the --source run's {}",
+            describe(embedded),
+            describe(sourced)
+        ));
+    }
+    for (stream, left, right) in [
+        ("stdout", &dir_run.stdout, &embedded_run.stdout),
+        ("stderr", &dir_run.stderr, &embedded_run.stderr),
+    ] {
+        if left != right {
+            let at = left
+                .iter()
+                .zip(right.iter())
+                .position(|(a, b)| a != b)
+                .unwrap_or_else(|| left.len().min(right.len()));
+            failures.push(format!(
+                "source-embedded: {stream} differs from the --source run's at byte {at} ({} vs {} bytes)\n--- --source {stream} ---\n{}",
+                right.len(),
+                left.len(),
+                String::from_utf8_lossy(left)
+            ));
+        }
+    }
+    failures
 }
 
 /// Every unmet assertion, in declaration order.

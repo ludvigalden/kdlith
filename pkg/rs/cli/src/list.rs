@@ -34,8 +34,9 @@ pub(crate) fn run(command: ListCommand) -> ExitStatus {
 /// The schema a declaration listing names, under the definition
 /// extensions, the governing dialect, and the root and sources it names.
 fn load_listed(args: &ListSchemaArgs) -> Result<Definition, ExitStatus> {
-    let options = DataOptions::new(None, Vec::new())
-        .with_locations(args.locations.root(), args.locations.sources.clone())
+    let options = args
+        .locations
+        .apply(DataOptions::new(None, Vec::new()))
         .with_dialect(args.dialect.clone());
     load(&args.schema, &options, &definition_extensions())
 }

@@ -81,12 +81,12 @@ file under `pkg/kdl/schemas/dialect/`. Each runs `kdlith read` on the
 committed file through `{fx-suite}` and must exit `0`. Adding a canonical
 dialect file means adding its scenario here.
 
-`dialect/entrypoint-read/` holds one scenario per dialect-generation fixture
-entrypoint under `contracts/super-schemas/`. An entrypoint selects the
-canonical dialect definition files through `import` nodes and declares
-nothing of its own. Each scenario runs `kdlith read` on the committed
-entrypoint through `{fx-suite}` and must exit `0`; it proves the entrypoint
-parses, not that its imports resolve.
+`dialect/entrypoint-read/` holds one scenario per dialect-generation
+entrypoint, the committed one being `pkg/kdl/dialect.kdl`. An entrypoint
+selects the canonical dialect definition files through `import` nodes and
+declares nothing of its own. Each scenario runs `kdlith read` on the
+committed entrypoint through `{fx-suite}` and must exit `0`; it proves the
+entrypoint parses, not that its imports resolve.
 
 `dialect/canonical-vet/` and `dialect/entrypoint-vet/` run `kdlith vet
 dialect` on the same committed files. Each canonical file must pass
@@ -383,6 +383,7 @@ is a load error, and a load error fails the scenario rather than skipping it.
 | `description`    | no       | string           | Free-form description                              |
 | `kind`           | no       | string           | `"codegen-oracle"` selects the multi-step kind below; absent means the single-invocation shape |
 | `args`           | yes*     | array of strings | The arguments passed to the binary (see below)     |
+| `source-embedded` | no      | array of strings | `NAME=DIR` pairs: run the scenario as an embedded-equivalence pair (below) |
 | `expect`         | one of*  | object           | Positive control                                   |
 | `expect-invalid` | one of*  | object           | Negative control                                   |
 
@@ -413,6 +414,21 @@ fails the scenario instead of reaching the binary as a literal path. The
 expansion is plain text substitution: the harness interprets nothing
 else in `args`.
 
+### Embedded-equivalence pair: `source-embedded`
+
+`"source-embedded": ["NAME=DIR", ...]` makes a single-invocation scenario a
+pair. Each NAME is a distinct kebab source name and each DIR a directory
+inside the scenario. The harness runs the binary with `args` followed by
+`--source NAME=DIR` for each pair, then runs the same `args` through the
+`fx-kdlith-embedded` helper, which serves the command line through the CLI
+library with each DIR's files registered as the embedded source NAME. The
+two runs must agree byte for byte on stdout and stderr and on the exit code;
+any difference fails the scenario, naming what differs. The expectation is
+then judged against the embedded run. The relation is the oracle: an
+embedded source must read exactly as a directory holding the same files.
+`harness/source-embedded-detects` proves the comparison fails where it
+should before any product scenario relies on it.
+
 ### Multi-step kind: `codegen-oracle`
 
 A `"kind": "codegen-oracle"` manifest declares an ordered multi-step run
@@ -425,12 +441,14 @@ exercises. The keys beyond `binary` and `description`:
 | `form`       | no       | string           | `"dialect"` (default) or `"schema"`: the `gen` form the generate step drives |
 | `entrypoint` | yes      | string           | The definition entrypoint; both placeholders allowed |
 | `crate`      | yes      | string           | The crate name generation publishes                |
+| `sources`    | no       | array of strings | `NAME=DIR` named sources every generate step passes as `--source`; schema form only, never empty |
 | `steps`      | yes      | array            | The ordered steps; never empty — a zero-step run is a load error |
 
 Each entry of `steps` is an object carrying exactly one step kind:
 
 - `{ "generate": "out" }` — run `kdlith gen <form> <entrypoint> --crate
-  <crate> --out <out>`; a nonzero exit fails the scenario.
+  <crate> --out <out>`, plus `--source NAME=DIR` for each `sources`
+  entry; a nonzero exit fails the scenario.
 - `{ "determinism": ["tree-a", "tree-b", ...] }` — require every named
   tree to hold exactly the same files with the same bytes; a difference
   names its path.
@@ -563,7 +581,10 @@ compile and exercise steps of two suite runs at once never build into
 one shared target directory. The directory is torn down with the run.
 
 The `fx-env` helper in `bin/` prints those resolved paths. It fails when run
-outside a harness run.
+outside a harness run. The `fx-kdlith-embedded` helper (`NAME=DIR... --
+ARGS...`) runs one kdlith command line with each DIR embedded as the source
+NAME; a tree it cannot load (a link, a special file, or text that is not
+UTF-8) exits 3, which no kdlith exit stratum uses.
 
 A failure report lists every unmet assertion, followed by the captured stdout
 and stderr. After the run, the harness removes the scratch directories

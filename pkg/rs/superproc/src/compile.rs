@@ -123,20 +123,28 @@ pub fn load_schema_with(
 
 /// Load a schema definition as [`load_schema`] does, over documents
 /// held in memory instead of read from disk. An in-memory document
-/// belongs to no source, so an import inside it fails closed
-/// (`KDLITH-LOC001`).
+/// belongs to no source, so an import inside it without a `$name/`
+/// prefix fails closed (`KDLITH-LOC001`).
 pub fn load_schema_sources(
     dialect: &Definition,
     sources: &[kdlith_engine::Source],
     extensions: &Extensions,
     scope: CheckScope,
 ) -> Result<Definition, Vec<DiagnosticRecord>> {
-    let input = gather(
-        dialect,
-        Entries::Sources(sources),
-        scope,
-        ReadOptions::new(),
-    )?;
+    load_schema_sources_with(dialect, sources, extensions, scope, ReadOptions::new())
+}
+
+/// Load a schema definition as [`load_schema_sources`] does, resolving
+/// the documents' `$name/` import locations in the named sources
+/// `options` registers, such as files a host embeds.
+pub fn load_schema_sources_with(
+    dialect: &Definition,
+    sources: &[kdlith_engine::Source],
+    extensions: &Extensions,
+    scope: CheckScope,
+    options: ReadOptions,
+) -> Result<Definition, Vec<DiagnosticRecord>> {
+    let input = gather(dialect, Entries::Sources(sources), scope, options)?;
     compile_schema_input(dialect, &input, extensions, scope)
 }
 

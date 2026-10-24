@@ -16,6 +16,10 @@ use crate::diag::{
 };
 use crate::syntax::{ParsedDocument, SyntaxNode};
 
+/// Why a location naming no file in its source does not resolve.
+const NO_SUCH_FILE: &str = "the source holds no such file";
+const NOT_A_FILE: &str = "not a file";
+
 /// The tree a named source holds: a directory on disk, or files held in
 /// memory keyed by their normalized path relative to the source's root
 /// (`profiles/core.kdl`), such as files embedded in a host binary.
@@ -71,9 +75,8 @@ pub(crate) struct LocalRoot {
 #[derive(Clone, Debug)]
 pub(crate) enum Home {
     Local(Rc<LocalRoot>),
-    /// A definition document read from the local source: its relative
-    /// locations follow its own directory unconfined, as the definition
-    /// verbs always have.
+    /// A dialect definition document read from the local source: its
+    /// relative locations follow its own directory unconfined.
     Unconfined,
     Named(String),
 }
@@ -160,7 +163,7 @@ impl Sources {
 
     /// The place of an entry document read from disk: under the project
     /// root, the local source; otherwise an ad hoc local source rooted
-    /// at its own directory. A definition reading's entries resolve
+    /// at its own directory. A dialect definition's entries resolve
     /// their relative locations unconfined.
     pub(crate) fn entry_place(&self, canonical: &Path, shown: &str, confined: bool) -> Place {
         let file = canonical.file_name().map_or_else(String::new, portable);
@@ -295,7 +298,12 @@ impl Sources {
                                 relative,
                             },
                         }),
-                        None => Err(unresolved(&shown, "the source holds no such file", origin)),
+                        None => {
+                            let prefix = format!("{relative}/");
+                            let dir = files.keys().any(|key| key.starts_with(&prefix));
+                            let reason = if dir { NOT_A_FILE } else { NO_SUCH_FILE };
+                            Err(unresolved(&shown, reason, origin))
+                        }
                     };
                 }
                 None => {
@@ -308,15 +316,21 @@ impl Sources {
             },
             Home::Unconfined => return Err(outside()),
         };
-        let resolved = std::fs::canonicalize(root.join(&relative))
-            .map_err(|error| unresolved(&shown, &error.to_string(), origin))?;
+        // A missing file reads alike whatever backs the source.
+        let resolved = std::fs::canonicalize(root.join(&relative)).map_err(|error| {
+            let reason = match error.kind() {
+                std::io::ErrorKind::NotFound => NO_SUCH_FILE.to_owned(),
+                _ => error.to_string(),
+            };
+            unresolved(&shown, &reason, origin)
+        })?;
         // A link inside the source whose target lies outside it leaves
         // the source as surely as a `..` does.
         if !resolved.starts_with(&root) {
             return Err(outside());
         }
         if !resolved.is_file() {
-            return Err(unresolved(&shown, "not a file", origin));
+            return Err(unresolved(&shown, NOT_A_FILE, origin));
         }
         Ok(Target {
             resolved,
@@ -818,20 +832,22 @@ pub(crate) struct DeclaredLocations {
 impl DeclaredLocations {
     /// Record the rule one document's schema root declares; the first
     /// declared is kept, as the compiler reports any repeat. Text that
-    /// does not parse declares nothing; binding reports it.
-    pub(crate) fn scan(&mut self, text: &str) {
-        if self.rule.is_some() {
-            return;
-        }
+    /// does not parse declares nothing; binding reports it. Whether the
+    /// document's root is a schema is returned: a schema definition's
+    /// own locations are confined, a dialect definition's are not.
+    pub(crate) fn scan(&mut self, text: &str) -> bool {
         let Ok(parsed) = ParsedDocument::parse("", text) else {
-            return;
+            return false;
         };
         let Some(root) = parsed.nodes().first().filter(|root| root.name == "schema") else {
-            return;
+            return false;
         };
-        if let Some(node) = root.children.iter().find(|c| c.name == "locations") {
+        if self.rule.is_none()
+            && let Some(node) = root.children.iter().find(|c| c.name == "locations")
+        {
             self.rule = Some(declared_rule(node));
         }
+        true
     }
 
     pub(crate) fn rule(&self) -> Option<&LocationsDecl> {

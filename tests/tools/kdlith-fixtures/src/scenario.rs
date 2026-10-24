@@ -36,6 +36,10 @@ pub(crate) enum Scenario {
 #[derive(Debug)]
 pub(crate) struct Invocation {
     pub(crate) args: Vec<String>,
+    /// The `source-embedded` pairs (name, scenario directory): the run is
+    /// made with each as a `--source` and as an embedded source, and the
+    /// two runs must agree byte for byte.
+    pub(crate) embedded: Vec<(String, String)>,
     pub(crate) expectation: Expectation,
     /// A declared scratch check: violations the harness itself must
     /// plant and then classify in the materialized copy.
@@ -52,6 +56,9 @@ pub(crate) struct CodegenOracle {
     pub(crate) entrypoint: String,
     /// The crate name generation publishes.
     pub(crate) crate_name: String,
+    /// The `NAME=DIR` named sources every generate step passes as
+    /// `--source`, placeholders allowed.
+    pub(crate) sources: Vec<String>,
     /// The ordered steps; never empty.
     pub(crate) steps: Vec<OracleStep>,
 }
@@ -236,7 +243,14 @@ pub(crate) fn load(dir: &Path) -> Result<Scenario, String> {
 fn invoke(dir: &Path, root: &Map<String, Value>) -> Result<Scenario, String> {
     check_keys(
         root,
-        &["binary", "description", "args", "expect", "expect-invalid"],
+        &[
+            "binary",
+            "description",
+            "args",
+            "source-embedded",
+            "expect",
+            "expect-invalid",
+        ],
         MANIFEST,
     )?;
     require_kdlith_binary(root)?;
@@ -246,6 +260,10 @@ fn invoke(dir: &Path, root: &Map<String, Value>) -> Result<Scenario, String> {
         Some(v) => string_array(v, "args")?,
     };
     check_placeholders(&args)?;
+    let embedded = match root.get("source-embedded") {
+        None => Vec::new(),
+        Some(v) => source_embedded(dir, v)?,
+    };
 
     let (expectation, scratch_check) = match (root.get("expect"), root.get("expect-invalid")) {
         (Some(_), Some(_)) => {
@@ -263,6 +281,7 @@ fn invoke(dir: &Path, root: &Map<String, Value>) -> Result<Scenario, String> {
     };
     Ok(Scenario::Invoke(Invocation {
         args,
+        embedded,
         expectation,
         scratch_check,
     }))
@@ -279,6 +298,7 @@ fn oracle(root: &Map<String, Value>) -> Result<Scenario, String> {
             "form",
             "entrypoint",
             "crate",
+            "sources",
             "steps",
         ],
         MANIFEST,
@@ -305,6 +325,26 @@ fn oracle(root: &Map<String, Value>) -> Result<Scenario, String> {
     if crate_name.is_empty() {
         return Err(format!("{MANIFEST}: \"crate\" must not be empty"));
     }
+    let sources = match root.get("sources") {
+        None => Vec::new(),
+        Some(v) => string_array(v, "sources")?,
+    };
+    if root.contains_key("sources") && (form != GenForm::Schema || sources.is_empty()) {
+        return Err(format!(
+            "{MANIFEST}: \"sources\" is a non-empty list, and only the schema form takes it"
+        ));
+    }
+    for source in &sources {
+        if !source
+            .split_once('=')
+            .is_some_and(|(n, d)| !n.is_empty() && !d.is_empty())
+        {
+            return Err(format!(
+                "{MANIFEST}: \"sources\" entries take NAME=DIR, not {source:?}"
+            ));
+        }
+        check_placeholder_string(source, "\"sources\" entry")?;
+    }
     let steps_value = match root.get("steps") {
         Some(v) => v
             .as_array()
@@ -325,6 +365,7 @@ fn oracle(root: &Map<String, Value>) -> Result<Scenario, String> {
         form,
         entrypoint,
         crate_name,
+        sources,
         steps,
     }))
 }
@@ -735,6 +776,41 @@ fn scratch_check(dir: &Path, value: &Value) -> Result<ScratchCheck, String> {
         plants.push(Plant { path, kind });
     }
     Ok(ScratchCheck { plants })
+}
+
+/// Parse `source-embedded`: a non-empty array of `NAME=DIR` strings,
+/// each NAME a distinct non-empty kebab name and each DIR a directory
+/// inside the scenario.
+fn source_embedded(dir: &Path, value: &Value) -> Result<Vec<(String, String)>, String> {
+    let list = string_array(value, "source-embedded")?;
+    if list.is_empty() {
+        return Err(format!("{MANIFEST}: \"source-embedded\" must not be empty"));
+    }
+    let mut pairs: Vec<(String, String)> = Vec::with_capacity(list.len());
+    for spec in list {
+        let Some((name, path)) = spec.split_once('=') else {
+            return Err(format!(
+                "{MANIFEST}: \"source-embedded\" entries take NAME=DIR, not {spec:?}"
+            ));
+        };
+        let kebab = !name.is_empty()
+            && name
+                .bytes()
+                .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-');
+        if !kebab || pairs.iter().any(|(seen, _)| seen == name) {
+            return Err(format!(
+                "{MANIFEST}: \"source-embedded\" name {name:?} must be a distinct kebab name"
+            ));
+        }
+        let path = contained(path, "\"source-embedded\" directory")?;
+        if !dir.join(&path).is_dir() {
+            return Err(format!(
+                "{MANIFEST}: \"source-embedded\" directory {path:?} is not a directory of the scenario"
+            ));
+        }
+        pairs.push((name.to_owned(), path));
+    }
+    Ok(pairs)
 }
 
 /// Parse the negative control `expect-invalid`: `input` names a

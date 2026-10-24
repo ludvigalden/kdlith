@@ -247,11 +247,12 @@ impl Emission<'_> {
             DefinitionKind::Dialect => {
                 out.line("pub use compile::{");
                 out.line(
-                    "    load_dialect, load_dialect_sources, load_schema, load_schema_sources, load_schema_with, seed,",
+                    "    load_dialect, load_dialect_sources, load_schema, load_schema_sources, load_schema_sources_with,",
                 );
+                out.line("    load_schema_with, seed,");
                 out.line("};");
             }
-            _ => out.line("pub use compile::{load, load_with};"),
+            _ => out.line("pub use compile::{load, load_sources, load_sources_with, load_with};"),
         }
         out.line("pub use kdlith_engine::{");
         out.line("    ContributionResolver, LAYERED, Layered, ResolutionCall, SharedContributionResolver,");
@@ -263,7 +264,7 @@ impl Emission<'_> {
         if self.kind == DefinitionKind::Schema {
             out.line("pub use kdlith_engine::{");
             out.line("    CheckScope, Extensions, ItemVariant, LinkOutcome, LinkReport, Origin,");
-            out.line("    ReadError, ReadOptions, Reading, Ref, ResolveError, TypedItem,");
+            out.line("    ReadError, ReadOptions, Reading, Ref, ResolveError, Source, SourceTree, TypedItem,");
             out.line("    TypedReader, UnmetQualifier, Value,");
             out.line("};");
             out.line("pub use kdlith_model::Location;");

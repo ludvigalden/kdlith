@@ -1,0 +1,2 @@
+use "$lib/inner.kdl"
+use "$lib/../outside.kdl"

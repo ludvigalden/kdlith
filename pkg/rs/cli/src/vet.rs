@@ -166,7 +166,7 @@ fn summary_line(definition: &Definition) -> String {
 pub struct DataOptions {
     dialect: Option<PathBuf>,
     root: Option<PathBuf>,
-    sources: Vec<(String, PathBuf)>,
+    sources: Vec<(String, SourceTree)>,
     profile: Option<String>,
     profiles: Vec<String>,
     handlers: Vec<String>,
@@ -200,7 +200,18 @@ impl DataOptions {
         sources: Vec<(String, PathBuf)>,
     ) -> Self {
         self.root = root;
-        self.sources = sources;
+        self.sources = sources
+            .into_iter()
+            .map(|(name, dir)| (name, SourceTree::dir(dir)))
+            .collect();
+        self
+    }
+
+    /// The same options registering one more named source, after those
+    /// registered before.
+    #[must_use]
+    pub fn with_source(mut self, name: impl Into<String>, tree: SourceTree) -> Self {
+        self.sources.push((name.into(), tree));
         self
     }
 
@@ -311,8 +322,8 @@ impl DataOptions {
         if let Some(root) = &self.root {
             options = options.with_root(root.clone());
         }
-        for (name, dir) in &self.sources {
-            options = options.with_source(name.clone(), SourceTree::dir(dir.clone()));
+        for (name, tree) in &self.sources {
+            options = options.with_source(name.clone(), tree.clone());
         }
         options
     }

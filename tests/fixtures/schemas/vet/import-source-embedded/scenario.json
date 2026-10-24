@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "The definition-level embedded-equivalence pair: a schema's own $parts/*.kdl import compiles alike from --source parts=parts and from parts embedded, byte for byte; the files are copies of schemas/vet/import-source-pattern, and the digest is the one schemas/vet/import-source-literal reports for the same documents imported by literal location",
+  "args": [
+    "vet",
+    "schema",
+    "schema.kdl"
+  ],
+  "source-embedded": ["parts=parts"],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "ok: schema demo version 1 scope=complete documents=3 types=2 nodes=2 slots=0 profiles=0 digest=027a92088fff1528"
+    ]
+  }
+}

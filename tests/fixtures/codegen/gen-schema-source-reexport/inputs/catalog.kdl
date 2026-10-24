@@ -1,0 +1,16 @@
+// A schema whose types and nodes live in a named source: its own
+// imports are $lib/ locations, a literal and a pattern under the root's
+// locations rule.
+schema catalog version="1" {
+    locations {
+        patterns star=#true
+    }
+    import "$lib/types/product.kdl"
+    import "$lib/nodes/*.kdl"
+    node use role=source-import {
+        field path String arg=0
+    }
+    document {
+        following product use
+    }
+}

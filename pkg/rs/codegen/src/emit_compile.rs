@@ -240,7 +240,7 @@ fn schema_compile_rs() -> String {
 use std::path::Path;
 
 use kdlith_diagnostic::DiagnosticRecord;
-use kdlith_engine::{CheckScope, Definition, Extensions, ReadOptions};
+use kdlith_engine::{CheckScope, Definition, Extensions, ReadOptions, Source};
 
 /// Load this schema's definition from its entry documents and compile it
 /// under the canonical dialect: the definition language every schema is
@@ -264,6 +264,31 @@ pub fn load_with(
 ) -> Result<Definition, Vec<DiagnosticRecord>> {
     let dialect = kdlith_superproc::seed(extensions)?;
     kdlith_superproc::load_schema_with(&dialect, entries, extensions, scope, options)
+}
+
+/// Load this schema's definition as [`load`] does, over documents held
+/// in memory instead of read from disk. An in-memory document belongs
+/// to no source, so an import inside it without a `$name/` prefix fails
+/// closed (`KDLITH-LOC001`).
+pub fn load_sources(
+    sources: &[Source],
+    extensions: &Extensions,
+    scope: CheckScope,
+) -> Result<Definition, Vec<DiagnosticRecord>> {
+    load_sources_with(sources, extensions, scope, ReadOptions::new())
+}
+
+/// Load this schema's definition as [`load_sources`] does, resolving the
+/// documents' `$name/` import locations in the named sources `options`
+/// registers, such as files the host embeds.
+pub fn load_sources_with(
+    sources: &[Source],
+    extensions: &Extensions,
+    scope: CheckScope,
+    options: ReadOptions,
+) -> Result<Definition, Vec<DiagnosticRecord>> {
+    let dialect = kdlith_superproc::seed(extensions)?;
+    kdlith_superproc::load_schema_sources_with(&dialect, sources, extensions, scope, options)
 }
 "##;
     format!("{}\n\n{}", crate::RUST_MARKER, body)
@@ -351,20 +376,28 @@ pub fn load_schema_with(
 
 /// Load a schema definition as [`load_schema`] does, over documents
 /// held in memory instead of read from disk. An in-memory document
-/// belongs to no source, so an import inside it fails closed
-/// (`KDLITH-LOC001`).
+/// belongs to no source, so an import inside it without a `$name/`
+/// prefix fails closed (`KDLITH-LOC001`).
 pub fn load_schema_sources(
     dialect: &Definition,
     sources: &[kdlith_engine::Source],
     extensions: &Extensions,
     scope: CheckScope,
 ) -> Result<Definition, Vec<DiagnosticRecord>> {
-    let input = gather(
-        dialect,
-        Entries::Sources(sources),
-        scope,
-        ReadOptions::new(),
-    )?;
+    load_schema_sources_with(dialect, sources, extensions, scope, ReadOptions::new())
+}
+
+/// Load a schema definition as [`load_schema_sources`] does, resolving
+/// the documents' `$name/` import locations in the named sources
+/// `options` registers, such as files a host embeds.
+pub fn load_schema_sources_with(
+    dialect: &Definition,
+    sources: &[kdlith_engine::Source],
+    extensions: &Extensions,
+    scope: CheckScope,
+    options: ReadOptions,
+) -> Result<Definition, Vec<DiagnosticRecord>> {
+    let input = gather(dialect, Entries::Sources(sources), scope, options)?;
     compile_schema_input(dialect, &input, extensions, scope)
 }
 "##;

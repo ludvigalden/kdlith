@@ -20,6 +20,7 @@ rust-version = "1.85"
 
 [workspace.dependencies]
 clap = { version = "=4.6.7", features = ["derive"] }
+kdlith-cli = { path = "pkg/rs/cli" }
 kdlith-codegen = { path = "pkg/rs/codegen" }
 libtest-mimic = "=0.8.2"
 regex = "=1.13.1"

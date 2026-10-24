@@ -14,6 +14,7 @@ mod resolve;
 mod usage;
 mod vet;
 
+use std::ffi::OsString;
 use std::path::PathBuf;
 
 use clap::{Args, CommandFactory, Parser, Subcommand, ValueEnum};
@@ -23,6 +24,7 @@ use kdlith_engine::ReadOptions;
 pub use export::export;
 pub use generate::{GenMode, GenTarget, generate};
 pub use inspect::inspect;
+pub use kdlith_engine::SourceTree;
 pub use read::read;
 pub use vet::{DataOptions, VetTarget, vet, vet_data};
 
@@ -239,6 +241,9 @@ struct LocationArgs {
     /// lives, and never leaves DIR
     #[arg(long = "source", value_name = "NAME=DIR", value_parser = handlers::parse_source)]
     sources: Vec<(String, PathBuf)>,
+    /// The sources the host binary registers, after the command line's.
+    #[arg(skip)]
+    hosted: Vec<(String, SourceTree)>,
 }
 
 impl LocationArgs {
@@ -247,11 +252,18 @@ impl LocationArgs {
         self.root.clone().or_else(|| self.match_root.clone())
     }
 
+    /// `options` rooted and sourced as these arguments and the host say.
+    fn apply(&self, options: DataOptions) -> DataOptions {
+        self.hosted.iter().fold(
+            options.with_locations(self.root(), self.sources.clone()),
+            |options, (name, tree)| options.with_source(name.clone(), tree.clone()),
+        )
+    }
+
     /// Reader options carrying the root and the named sources, for a
     /// verb that reads only a schema.
     fn read_options(&self) -> ReadOptions {
-        DataOptions::new(None, Vec::new())
-            .with_locations(self.root(), self.sources.clone())
+        self.apply(DataOptions::new(None, Vec::new()))
             .read_options()
     }
 }
@@ -304,8 +316,8 @@ impl ProfileArgs {
             Some(path) => Some(resolve::load(path)?),
             None => None,
         };
-        Ok(DataOptions::new(self.profile, handlers)
-            .with_locations(locations.root(), locations.sources)
+        Ok(locations
+            .apply(DataOptions::new(self.profile, handlers))
             .with_profiles(set)
             .with_resolver(resolver)
             .with_max_invocations(self.max_invocations))
@@ -693,10 +705,26 @@ struct ExportArgs {
 /// (`KDLITH-CLI001`-`004`) with clap's statement of the fault and exit
 /// 2; `--help` and `--version` print to stdout and exit 0.
 pub fn run() -> ExitStatus {
-    let cli = match Cli::try_parse() {
+    run_with_sources(std::env::args_os(), Vec::new())
+}
+
+/// Run the command line `args` (the program name first) as [`run`]
+/// does, with `sources` registered after the command line's own on
+/// every verb that reads a schema or data: a host binary serves the
+/// verbs over named sources it holds, such as files it embeds. A name
+/// registered twice is `KDLITH-LOC005`.
+pub fn run_with_sources<I, T>(args: I, sources: Vec<(String, SourceTree)>) -> ExitStatus
+where
+    I: IntoIterator<Item = T>,
+    T: Into<OsString> + Clone,
+{
+    let mut cli = match Cli::try_parse_from(args) {
         Ok(cli) => cli,
         Err(error) => return usage::report_parse_error(&error),
     };
+    if let Some(locations) = cli.command.locations() {
+        locations.hosted = sources;
+    }
     match cli.command {
         Command::Gen(args) => generate::run(args.command),
         Command::Vet(args) => vet::run(args.command),
@@ -707,6 +735,44 @@ pub fn run() -> ExitStatus {
         Command::Cache(args) => cache::run(args.command),
         Command::Changelog => changelog::run(),
         Command::Help(args) => help(&args.command),
+    }
+}
+
+impl Command {
+    /// The location arguments of a verb that reads a schema or data.
+    fn locations(&mut self) -> Option<&mut LocationArgs> {
+        Some(match self {
+            Command::Gen(args) => match &mut args.command {
+                GenCommand::Schema(args) => &mut args.locations,
+                GenCommand::Dialect(_) => return None,
+            },
+            Command::Vet(args) => match &mut args.command {
+                VetCommand::Schema(args) => &mut args.locations,
+                VetCommand::Data(args) => &mut args.locations,
+                VetCommand::Dialect(_) => return None,
+            },
+            Command::Export(args) => &mut args.locations,
+            Command::Inspect(args) => match &mut args.command {
+                InspectCommand::Schema(args) => &mut args.locations,
+                InspectCommand::Data(args) => &mut args.locations,
+                InspectCommand::Dialect(_) => return None,
+            },
+            Command::List(args) => match &mut args.command {
+                ListCommand::Types(args)
+                | ListCommand::Nodes(args)
+                | ListCommand::Profiles(args) => &mut args.locations,
+                ListCommand::Items(args) => &mut args.locations,
+            },
+            Command::Read(args) => match &mut args.command {
+                Some(ReadCommand::Data(args)) => &mut args.locations,
+                Some(ReadCommand::File(_)) | None => return None,
+            },
+            Command::Cache(args) => match &mut args.command {
+                CacheCommand::Refresh(args) => &mut args.locations,
+                CacheCommand::Inspect(_) | CacheCommand::Clean(_) => return None,
+            },
+            Command::Changelog | Command::Help(_) => return None,
+        })
     }
 }
 

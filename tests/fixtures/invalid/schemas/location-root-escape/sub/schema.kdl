@@ -1,0 +1,5 @@
+// A schema definition's own unprefixed import stays inside the project
+// root: under --root sub, ../part.kdl leaves it, though part.kdl exists.
+schema demo version="1" {
+    import "../part.kdl"
+}

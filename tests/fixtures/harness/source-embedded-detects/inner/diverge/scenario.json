@@ -1,0 +1,9 @@
+{
+  "binary": "kdlith",
+  "description": "inner scenario the enclosing negative control runs: lib also holds a file that is not UTF-8 and that no location names, so the --source run passes while the helper cannot embed the tree and exits 3; the pair disagrees and the harness must fail it on the pair alone",
+  "args": ["vet", "data", "--schema", "schema.kdl", "data.kdl"],
+  "source-embedded": ["lib=lib"],
+  "expect": {
+    "exit": 3
+  }
+}

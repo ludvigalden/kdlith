@@ -116,7 +116,7 @@ fn generate(
     env: &RunEnv<'_>,
     expansion: &Expansion<'_>,
 ) -> Result<(), String> {
-    let argv = [
+    let mut argv = vec![
         "gen".to_owned(),
         scenario.form.as_str().to_owned(),
         expansion.string(&scenario.entrypoint, env),
@@ -125,6 +125,10 @@ fn generate(
         "--out".to_owned(),
         out.to_owned(),
     ];
+    for source in &scenario.sources {
+        argv.push("--source".to_owned());
+        argv.push(expansion.string(source, env));
+    }
     let output = spawn(env.kdlith, &argv, cwd, env, expansion)
         .map_err(|e| format!("cannot run {}: {e}", env.kdlith.display()))?;
     require_exit(

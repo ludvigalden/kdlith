@@ -246,8 +246,28 @@ published yet.
   (`KDLITH-LOC002`), an unregistered `$name` (`KDLITH-LOC003`), syntax
   the governing rule does not admit (`KDLITH-LOC004`), and an invalid
   root or source (`KDLITH-LOC005`).
+- Sources on every definition path: `load_schema_sources_with` (and
+  `load_sources` and `load_sources_with` in generated schema crates)
+  loads a schema held in memory whose `$name/` imports resolve in the
+  sources its `ReadOptions` registers. Generated schema crates
+  re-export `Source` and `SourceTree`, so a host registers an embedded
+  library of schema documents without depending on the engine.
+  `kdlith_cli::run_with_sources` runs a command line with host-held
+  sources registered on every verb that reads a schema or data.
+- The fixture harness's `source-embedded: ["NAME=DIR"]` scenario key
+  runs a scenario twice, with DIR as a `--source` directory and as an
+  embedded source, and fails unless both runs agree byte for byte; a
+  codegen-oracle scenario's `sources` key passes `--source` to its
+  generate steps.
 
 ### Changed
+
+- Breaking: a schema definition's own imports are confined as a data
+  document's are: an unprefixed import stays under the project root and
+  a `$name/` import inside its source (`KDLITH-LOC002`). Dialect
+  definitions keep resolving from their own directory unconfined. A
+  location naming a missing file in a directory source now reads "the
+  source holds no such file", as it does in an embedded source.
 
 - Breaking: the locations model replaces discovery grammars, anchors,
   and host import aliases, with no compatibility path. Removed from the

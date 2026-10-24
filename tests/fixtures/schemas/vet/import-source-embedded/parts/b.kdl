@@ -1,0 +1,5 @@
+schema demo version="1" {
+    node extra role=record type=Extra {
+        field note arg=0
+    }
+}
