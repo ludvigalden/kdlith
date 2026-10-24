@@ -430,6 +430,7 @@ impl<'d> Emission<'d> {
         };
         emission.check_spellings()?;
         emission.check_map_keys(definition)?;
+        emission.check_recursion(definition)?;
         // Every type the crate declares is taken: a generic instance's
         // mangled name or an inline union's enum must not take a
         // declared, node-local, reference, or another instance's name.
@@ -515,6 +516,60 @@ impl<'d> Emission<'d> {
             }
         }
         Ok(())
+    }
+
+    /// Refuse a definition whose rendered types form a cycle with no
+    /// Rust indirection: the emitted crate cannot size such a type. A
+    /// reference type renders as a `Ref` newtype, never a by-value
+    /// payload, so it joins neither side of an edge.
+    fn check_recursion(&self, definition: &Definition) -> Result<(), Error> {
+        let names = self.names;
+        let mut nodes: Vec<String> = Vec::new();
+        let mut edges: BTreeMap<String, Vec<(String, String)>> = BTreeMap::new();
+        let mut admit = |owner: String, found: Vec<(String, String)>| {
+            nodes.push(owner.clone());
+            edges.insert(owner, found);
+        };
+        for doc in &self.documents {
+            for decl in &doc.types {
+                let owner = self.rust_name(decl.name);
+                let mut found = Vec::new();
+                for (key, ty) in declaration_sites(decl, names) {
+                    direct_edges(
+                        ty,
+                        &owner,
+                        &key,
+                        names,
+                        definition,
+                        &self.instances,
+                        &mut found,
+                    );
+                }
+                admit(owner, found);
+            }
+            for node in &doc.locals {
+                let owner = pascal(names.resolve(node.name));
+                let mut found = Vec::new();
+                for field in &node.fields {
+                    if let Some(ty) = &field.ty {
+                        direct_edges(
+                            ty,
+                            &owner,
+                            names.resolve(field.name),
+                            names,
+                            definition,
+                            &self.instances,
+                            &mut found,
+                        );
+                    }
+                }
+                admit(owner, found);
+            }
+        }
+        match find_cycle(&nodes, &edges) {
+            Some((types, edge)) => Err(Error::RecursiveType { types, edge }),
+            None => Ok(()),
+        }
     }
 
     /// Every name the crate spells as a Rust identifier must have one:
@@ -613,6 +668,140 @@ impl<'d> Emission<'d> {
             .iter()
             .map(|doc| Ok((doc.file_name.clone(), include_path(&doc.path)?)))
     }
+}
+
+/// The type expressions a declaration holds by value, each with the
+/// site it sits at: an object's fields, a union's variants, a map's key
+/// and value, a codec's output.
+fn declaration_sites<'a>(decl: &'a TypeDecl, names: &Names) -> Vec<(String, &'a TypeExpr)> {
+    match &decl.kind {
+        TypeKind::Object(object) => object
+            .fields
+            .iter()
+            .map(|field| (names.resolve(field.name).to_owned(), &field.ty))
+            .collect(),
+        TypeKind::Union(union) => union
+            .variants
+            .iter()
+            .map(|variant| (names.resolve(variant.discriminator).to_owned(), &variant.ty))
+            .collect(),
+        TypeKind::Map(map) => vec![
+            ("key".to_owned(), &map.key),
+            ("value".to_owned(), &map.value),
+        ],
+        TypeKind::Codec(codec) => vec![("output".to_owned(), &codec.output)],
+        _ => Vec::new(),
+    }
+}
+
+/// The by-value edges the expression at `owner`'s site `key` draws: a
+/// named declared type reached through no indirection. `Vec`, the
+/// maps, and `Ref` sever the chain below them; an inline union holds
+/// its members by value, so they draw the owner's edges.
+fn direct_edges(
+    expr: &TypeExpr,
+    owner: &str,
+    key: &str,
+    names: &Names,
+    definition: &Definition,
+    instances: &BTreeMap<String, String>,
+    edges: &mut Vec<(String, String)>,
+) {
+    match expr {
+        TypeExpr::Named(sym) => {
+            let declared = definition
+                .types
+                .lookup(*sym)
+                .and_then(|id| definition.types.get(id));
+            let carries_payload = |decl: &TypeDecl| {
+                decl.parameters.is_empty()
+                    && matches!(
+                        decl.kind,
+                        TypeKind::Object(_)
+                            | TypeKind::Union(_)
+                            | TypeKind::Map(_)
+                            | TypeKind::Codec(_)
+                    )
+            };
+            if declared.is_some_and(carries_payload) {
+                let name = names.resolve(*sym);
+                let rendered = instances
+                    .get(name)
+                    .cloned()
+                    .unwrap_or_else(|| name.to_owned());
+                edges.push((rendered, format!("{owner}.{key}")));
+            }
+        }
+        TypeExpr::Optional(inner) | TypeExpr::Nullable(inner) => {
+            direct_edges(inner, owner, key, names, definition, instances, edges);
+        }
+        TypeExpr::Union(members) => {
+            for member in members {
+                direct_edges(member, owner, key, names, definition, instances, edges);
+            }
+        }
+        _ => {}
+    }
+}
+
+const WHITE: u8 = 0;
+const GRAY: u8 = 1;
+const BLACK: u8 = 2;
+
+/// The first cycle a depth-first walk of `nodes` under `edges` finds,
+/// as the types it visits in order — closing back on its first — and
+/// the edge that closes it. Node and edge order is contribution order,
+/// so the refusal is byte-stable.
+fn find_cycle(
+    nodes: &[String],
+    edges: &BTreeMap<String, Vec<(String, String)>>,
+) -> Option<(Vec<String>, String)> {
+    let mut color = vec![WHITE; nodes.len()];
+    let mut path: Vec<usize> = Vec::new();
+    for start in 0..nodes.len() {
+        if color[start] == WHITE
+            && let Some(found) = visit(start, nodes, edges, &mut color, &mut path)
+        {
+            return Some(found);
+        }
+    }
+    None
+}
+
+fn visit(
+    at: usize,
+    nodes: &[String],
+    edges: &BTreeMap<String, Vec<(String, String)>>,
+    color: &mut [u8],
+    path: &mut Vec<usize>,
+) -> Option<(Vec<String>, String)> {
+    color[at] = GRAY;
+    path.push(at);
+    for (target, label) in edges.get(&nodes[at]).into_iter().flatten() {
+        let Some(to) = nodes.iter().position(|node| node == target) else {
+            continue;
+        };
+        if color[to] == GRAY {
+            let start = path
+                .iter()
+                .position(|node| *node == to)
+                .expect("a gray node is on the walk's stack");
+            let mut cycle: Vec<String> = path[start..]
+                .iter()
+                .map(|&node| nodes[node].clone())
+                .collect();
+            cycle.push(nodes[to].clone());
+            return Some((cycle, format!("{label} -> {}", nodes[to])));
+        }
+        if color[to] == WHITE
+            && let Some(found) = visit(to, nodes, edges, color, path)
+        {
+            return Some(found);
+        }
+    }
+    path.pop();
+    color[at] = BLACK;
+    None
 }
 
 /// Name each item's `Item` variant: after its type, unless differently

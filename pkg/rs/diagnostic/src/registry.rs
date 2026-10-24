@@ -956,6 +956,16 @@ pub const CODES: &[CodeDefinition] = &[
         correction: "Rename one of the nodes, or bind the nodes that share a type under names that spell distinct variants",
         retired: false,
     },
+    CodeDefinition {
+        code: "KDLITH-GEN005",
+        label: "recursive-declared-type",
+        severity: Severity::Error,
+        exit_class: 1,
+        trigger: "a definition's rendered types form a Rust type cycle with no indirection",
+        message_template: "the declared types <types> form a cycle with no Rust indirection: <edge> closes it",
+        correction: "Wrap the closing field or variant in a list, map, or ref; Rust needs indirection to size a recursive type",
+        retired: false,
+    },
     // EXP
     CodeDefinition {
         code: "KDLITH-EXP001",

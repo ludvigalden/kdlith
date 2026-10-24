@@ -89,6 +89,9 @@ pub enum Error {
         node: String,
         other: String,
     },
+    /// The rendered types form a cycle with no Rust indirection, so the
+    /// emitted crate cannot size them: `KDLITH-GEN005`.
+    RecursiveType { types: Vec<String>, edge: String },
     /// A seed document outside the repository's `pkg/` tree cannot be
     /// spelled as the pinned layout's relative include path.
     SeedOutsidePkg { path: String },
@@ -165,6 +168,9 @@ impl std::fmt::Display for Error {
                 node,
                 other,
             } => f.write_str(&variant_collision(variant, node, other)),
+            Self::RecursiveType { types, edge } => {
+                f.write_str(&recursive_type(&types.join(" -> "), edge))
+            }
             Self::SeedOutsidePkg { path } => write!(
                 f,
                 "the seed document `{path}` does not sit under the repository's \
@@ -188,6 +194,13 @@ const VARIANT_COLLISION: &str = "KDLITH-GEN004";
 fn variant_collision(variant: &str, node: &str, other: &str) -> String {
     let template = registry::lookup(VARIANT_COLLISION).map_or("", |code| code.message_template);
     registry::render(template, &[other, node, variant])
+}
+
+const RECURSIVE_TYPE: &str = "KDLITH-GEN005";
+
+fn recursive_type(types: &str, edge: &str) -> String {
+    let template = registry::lookup(RECURSIVE_TYPE).map_or("", |code| code.message_template);
+    registry::render(template, &[types, edge])
 }
 
 /// How the generated manifest names the kdlith crates it depends on.
