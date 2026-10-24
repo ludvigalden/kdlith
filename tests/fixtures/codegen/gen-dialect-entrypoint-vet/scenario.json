@@ -1,10 +1,10 @@
 {
   "binary": "kdlith",
-  "description": "The second precondition of dialect generation: the dialect-generation entrypoint contracts/super-schemas/dialect.kdl vets to the canonical digest. It duplicates dialect/entrypoint-vet from the codegen side so the codegen category is self-contained; the reference-generation oracle generates from this same entrypoint",
+  "description": "The second precondition of dialect generation: the dialect-generation entrypoint pkg/kdl/dialect.kdl vets to the canonical digest. It duplicates dialect/entrypoint-vet from the codegen side so the codegen category is self-contained; the reference-generation oracle generates from this same entrypoint",
   "args": [
     "vet",
     "dialect",
-    "{fx-suite}/../../contracts/super-schemas/dialect.kdl"
+    "{fx-suite}/../../pkg/kdl/dialect.kdl"
   ],
   "expect": {
     "exit": 0,

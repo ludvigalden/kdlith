@@ -1,7 +1,7 @@
 {
   "binary": "kdlith",
   "description": "a writing run into a destination holding an unowned file at a generator-owned path refuses the whole write with KDLITH-GEN001 and exits nonzero before anything is written: the scratch check classifies the materialized copy after the run and requires that nothing but the planted foreign file appears in it",
-  "args": ["gen", "dialect", "{fx-suite}/../../contracts/super-schemas/dialect.kdl", "--crate", "demo", "--out", "dest"],
+  "args": ["gen", "dialect", "{fx-suite}/../../pkg/kdl/dialect.kdl", "--crate", "demo", "--out", "dest"],
   "expect": {
     "exit": 1,
     "stderr-contains": ["error[KDLITH-GEN001]: refusing to overwrite unowned src/lib.rs"],

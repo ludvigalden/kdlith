@@ -1,7 +1,7 @@
 {
   "binary": "kdlith",
   "description": "gen dialect generates the super-schema entrypoint's processor crate end to end into a scratch output directory inside the materialized copy (never the reference crate) and exits 0 with the compact summary naming the form, the crate, the output root, and the owned-file count",
-  "args": ["gen", "dialect", "{fx-suite}/../../contracts/super-schemas/dialect.kdl", "--crate", "demo", "--out", "out"],
+  "args": ["gen", "dialect", "{fx-suite}/../../pkg/kdl/dialect.kdl", "--crate", "demo", "--out", "out"],
   "expect": {
     "exit": 0,
     "stdout-contains": ["ok: generated dialect crate demo at out"]

@@ -1,10 +1,10 @@
-// kdlith dialect-generation fixture entrypoint: the full dialect.
+// kdlith dialect-generation entrypoint: the full dialect.
 //
 // This document selects the canonical dialect definition documents under
 // pkg/kdl/schemas/dialect/ through source imports. It declares nothing of
 // its own: the canonical documents are the only authority for the dialect,
-// and this entrypoint is the input the dialect-generation fixture
-// processes, so generation always reads exactly what is committed there.
+// and this entrypoint is the input dialect generation reads, so generation
+// always reads exactly what is committed there.
 //
 // Import paths are literal and resolved relative to this document. Each
 // canonical document contributes to the same dialect root (same name and
@@ -12,8 +12,8 @@
 // projected: the dialect declares no context slots of its own.
 
 dialect kdlith version="0" {
-    import "../../pkg/kdl/schemas/dialect/types.kdl"
-    import "../../pkg/kdl/schemas/dialect/bindings.kdl"
-    import "../../pkg/kdl/schemas/dialect/context.kdl"
-    import "../../pkg/kdl/schemas/dialect/documents.kdl"
+    import "schemas/dialect/types.kdl"
+    import "schemas/dialect/bindings.kdl"
+    import "schemas/dialect/context.kdl"
+    import "schemas/dialect/documents.kdl"
 }

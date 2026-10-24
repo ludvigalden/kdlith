@@ -5,7 +5,7 @@
     "cache",
     "refresh",
     "--dialect",
-    "{fx-suite}/../../contracts/super-schemas/dialect.kdl",
+    "{fx-suite}/../../pkg/kdl/dialect.kdl",
     "--state",
     "state",
     "--schema",

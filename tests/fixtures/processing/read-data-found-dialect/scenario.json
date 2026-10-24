@@ -5,7 +5,7 @@
     "read",
     "data",
     "--dialect",
-    "{fx-suite}/../../contracts/super-schemas/dialect.kdl",
+    "{fx-suite}/../../pkg/kdl/dialect.kdl",
     "--schema",
     "{fx-suite}/processing/bind/schema.kdl",
     "{fx-suite}/processing/bind/stream/input.kdl",

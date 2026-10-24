@@ -5,7 +5,7 @@
     "inspect",
     "schema",
     "--dialect",
-    "{fx-suite}/../../contracts/super-schemas/dialect.kdl",
+    "{fx-suite}/../../pkg/kdl/dialect.kdl",
     "{fx-suite}/schemas/vet/catalog/schema.kdl"
   ],
   "expect": {

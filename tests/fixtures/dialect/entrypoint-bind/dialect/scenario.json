@@ -4,12 +4,12 @@
   "args": [
     "vet",
     "data",
-    "{fx-suite}/../../contracts/super-schemas/dialect.kdl"
+    "{fx-suite}/../../pkg/kdl/dialect.kdl"
   ],
   "expect": {
     "exit": 0,
     "stdout-contains": [
-      "{\"item\":\"import\",\"data\":{\"node\":{\"source\":0,\"index\":1},\"expression\":\"../../pkg/kdl/schemas/dialect/types.kdl\"",
+      "{\"item\":\"import\",\"data\":{\"node\":{\"source\":0,\"index\":1},\"expression\":\"schemas/dialect/types.kdl\"",
       "\"origin\":1}}\n{\"item\":\"document\",\"data\":{\"source\":1,\"path\":\"",
       "\"origin\":2}}\n{\"item\":\"document\",\"data\":{\"source\":2,\"path\":\"",
       "\"identity\":{\"domain\":\"EnumType\",\"name\":[\"Role\"]}",

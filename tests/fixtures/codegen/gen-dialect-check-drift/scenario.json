@@ -1,7 +1,7 @@
 {
   "binary": "kdlith",
   "description": "--check compares the generated tree against a destination without writing: a hand-written file standing at a generator-owned path is changed, an absent generated path is missing, and a manifest-owned path the run no longer generates is stale, each reported KDLITH-GEN002 with a nonzero exit. The destination's notes.md extension file is unowned and is never flagged",
-  "args": ["gen", "dialect", "{fx-suite}/../../contracts/super-schemas/dialect.kdl", "--crate", "demo", "--out", "dest", "--check"],
+  "args": ["gen", "dialect", "{fx-suite}/../../pkg/kdl/dialect.kdl", "--crate", "demo", "--out", "dest", "--check"],
   "expect": {
     "exit": 1,
     "stderr-contains": [

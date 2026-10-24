@@ -1,10 +1,10 @@
 {
   "binary": "kdlith",
-  "description": "Processing the dialect-generation entrypoint resolves its four imports relative to contracts/super-schemas/ in written order and yields the same dialect as reading the four canonical files directly: the digest equals dialect/canonical-vet/merged's",
+  "description": "Processing the dialect-generation entrypoint resolves its four imports in written order and yields the same dialect as reading the four canonical files directly: the digest equals dialect/canonical-vet/merged's",
   "args": [
     "vet",
     "dialect",
-    "{fx-suite}/../../contracts/super-schemas/dialect.kdl"
+    "{fx-suite}/../../pkg/kdl/dialect.kdl"
   ],
   "expect": {
     "exit": 0,

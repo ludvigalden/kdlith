@@ -4,7 +4,7 @@
   "args": [
     "export",
     "--dialect",
-    "{fx-suite}/../../contracts/super-schemas/dialect.kdl",
+    "{fx-suite}/../../pkg/kdl/dialect.kdl",
     "--schema",
     "{fx-suite}/processing/bind/schema.kdl",
     "entry.kdl",

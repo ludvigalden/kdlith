@@ -4,7 +4,7 @@
   "args": [
     "vet",
     "schema",
-    "{fx-suite}/../../contracts/super-schemas/dialect.kdl"
+    "{fx-suite}/../../pkg/kdl/dialect.kdl"
   ],
   "expect-invalid": {
     "input": "expect-invalid.txt"

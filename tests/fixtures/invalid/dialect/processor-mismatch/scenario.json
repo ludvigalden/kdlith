@@ -6,7 +6,7 @@
     "dialect",
     "--dialect",
     "{fx-suite}/invalid/dialect/processor-mismatch/extra.kdl",
-    "{fx-suite}/../../contracts/super-schemas/dialect.kdl"
+    "{fx-suite}/../../pkg/kdl/dialect.kdl"
   ],
   "expect-invalid": {
     "input": "expect-invalid.txt"

@@ -1,7 +1,7 @@
 {
   "binary": "kdlith",
-  "description": "The first precondition of dialect generation: the generation entrypoint contracts/super-schemas/dialect.kdl parses under kdlith read. The generation scenarios and the reference-generation oracle generate from this same entrypoint",
-  "args": ["read", "{fx-suite}/../../contracts/super-schemas/dialect.kdl"],
+  "description": "The first precondition of dialect generation: the generation entrypoint pkg/kdl/dialect.kdl parses under kdlith read. The generation scenarios and the reference-generation oracle generate from this same entrypoint",
+  "args": ["read", "{fx-suite}/../../pkg/kdl/dialect.kdl"],
   "expect": {
     "exit": 0
   }
