@@ -5,8 +5,8 @@ schema_version = 1
 # deny-by-default root. Committed classes: Rust source (library crates
 # under pkg/rs/, the CLI under tools/kdlith), the fixture harness and
 # its fixture suite (tests/), the canonical KDL dialect definitions and
-# authored schemas (pkg/kdl/), the dialect-generation fixture
-# entrypoints (contracts/), the design records (docs/), the Cargo
+# authored schemas and the dialect-generation entrypoint (pkg/kdl/), the design
+# records (docs/), the Cargo
 # manifests, the root TOML formatter config (taplo.toml), README.md,
 # and the LICENSE. The repository configuration
 # (.config/) is committed too: its TOML files are hand-authored inputs
@@ -32,7 +32,6 @@ patterns = [
   "pkg/rs/*/Cargo.toml",
   "pkg/rs/*/src/**",
   "pkg/kdl/**",
-  "contracts/**",
   "docs/**",
   "tools/*/Cargo.toml",
   "tools/*/src/**",
