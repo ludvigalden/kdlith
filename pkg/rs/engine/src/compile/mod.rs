@@ -1,6 +1,6 @@
-//! The schema compiler: a reader's input in, one merged definition with
-//! its catalogs out. The seed bootstrap (`compile_dialect`) reads syntax
-//! directly and compiles only the canonical dialect; see docs/dialect.md.
+//! The schema compiler: reader input in, one merged definition out.
+//! The seed bootstrap (`compile_dialect`) reads syntax directly and
+//! compiles only the canonical dialect; see context.internal/reference/40_engine_contract.md
 
 mod annotations;
 mod collect;

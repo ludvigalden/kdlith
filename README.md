@@ -36,7 +36,9 @@ Rust processor for them.
   by site, and attach each record's origin and captured context. The
   crate re-exports everything a tool needs, so a tool depends on it alone.
 
-The dialect design record is [`docs/dialect.md`](docs/dialect.md).
+Usage and feature documentation live in the committed context module
+under [`context/`](context); development-facing design notes live in
+`context.internal/`.
 
 ## Workspace layout
 

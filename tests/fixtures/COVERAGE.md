@@ -41,8 +41,9 @@ Suite state at the time of writing: 1101 scenarios — 243 `parse/kdl-spec`,
 
 ## Construct census
 
-One row per in-scope mechanism row of the design record
-(`docs/dialect.md`). "Defining file" is the canonical dialect document
+One row per in-scope mechanism row of the dialect record
+(`context.internal/reference/`, mechanism files). "Defining file" is
+the canonical dialect document
 that declares the mechanism.
 
 ### Logical types (`pkg/kdl/schemas/dialect/types.kdl`)

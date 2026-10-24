@@ -84,7 +84,8 @@ impl Emission<'_> {
         out.push_str(
             r##"//! The self-hosted compiler entry point: definition documents load
 //! through this processor's own typed reader, and the engine compiles
-//! what the reader hands it (see docs/dialect.md for the seed cycle).
+//! what the reader hands it (see
+//! context.internal/reference/40_engine_contract.md for the seed cycle).
 
 use std::path::Path;
 
