@@ -960,7 +960,7 @@ pub const CODES: &[CodeDefinition] = &[
         label: "pending-payload-type",
         severity: Severity::Error,
         exit_class: 1,
-        trigger: "a pending typed binding whose payload fails its resolved declaration's member type at complete scope",
+        trigger: "a pending typed binding whose payload fails its target declaration's member type at complete scope, resolved by linking or, with no reference type declared, by the identity index",
         message_template: "pending payload of <node> under codec <codec> does not match <expected>: found <found>",
         correction: "Write the payload as the referenced declaration's member type declares it: a list member takes zero or more values, any other member exactly one, and an optional member none or one",
         retired: false,

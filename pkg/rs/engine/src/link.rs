@@ -10,10 +10,11 @@ use kdlith_model::{
     Reference, SourceId, Value,
 };
 
-use crate::bindings::BindingCodec;
+use crate::bindings::{BindingCodec, NodeDecl};
 use crate::decode::{Decoder, found};
 use crate::definition::{Definition, Qualification, ReferenceDecl};
 use crate::diag::record;
+use crate::names::Sym;
 use crate::summary;
 use crate::types::{Builtin, TypeExpr, TypeKind};
 
@@ -159,8 +160,9 @@ impl IdentityIndex {
 }
 
 /// Stage one, identity construction: index the reading's declarations by
-/// their composed identities. Only domains an identity block or a
-/// declared reference type names are indexed. A declaration from a
+/// their composed identities. Only domains an identity block, a
+/// declared reference type, or a dependent binding's target names are
+/// indexed. A declaration from a
 /// document `namespaces` attributes to a namespace registers under
 /// that namespace, which gates every other document's view of it. Two
 /// declarations composing one identity in one
@@ -447,17 +449,21 @@ impl LinkReport {
     }
 
     /// Validate each pending typed binding among `items`, in stream
-    /// order, against the one declaration its reference resolved to —
-    /// its member type, or under `from-kind` the shape its member value
+    /// order, against the one declaration its reference names — its
+    /// member type, or under `from-kind` the shape its member value
     /// selects — appending a `KDLITH-REF005` for each payload that does
-    /// not fit. A pending binding whose reference did not resolve
-    /// already has its link's diagnostic and is not validated. Nothing
+    /// not fit. Linking resolves the reference first; a reference with
+    /// a link entry that did not resolve already has its link's
+    /// diagnostic and is not validated. Only a reference no declared
+    /// reference type covers falls back to the identity index, which
+    /// resolves it by name under the namespace carve-out. Nothing
     /// executes a payload.
     pub fn validate_pending(
         &mut self,
         definition: &Definition,
         items: &[Item],
         documents: &BTreeMap<SourceId, String>,
+        index: &IdentityIndex,
     ) {
         let decoder = Decoder::new(&definition.types).0.with_references(
             &definition.types,
@@ -468,7 +474,11 @@ impl LinkReport {
             let Item::PendingBinding(pending) = item else {
                 continue;
             };
-            let Some(target) = self.resolved_target(&pending.against) else {
+            let linked = self.links_for(&pending.against).next().is_some();
+            let Some(target) = self
+                .resolved_target(&pending.against)
+                .or_else(|| (!linked).then(|| index_target(index, pending)).flatten())
+            else {
                 continue;
             };
             let outcome = if pending.codec == BindingCodec::FromKind.name() {
@@ -497,18 +507,38 @@ impl LinkReport {
         }
     }
 
-    /// The one declaration a reference resolved to.
-    fn resolved_target(&self, reference: &Reference) -> Option<&IndexedDeclaration> {
-        let link = self
-            .types
+    /// The link entries the report holds for one reference.
+    fn links_for(&self, reference: &Reference) -> impl Iterator<Item = &Link> {
+        self.types
             .iter()
             .flat_map(|entry| &entry.links)
-            .find(|link| link.reference == *reference)?;
+            .filter(move |link| link.reference == *reference)
+    }
+
+    /// The one declaration a reference resolved to.
+    fn resolved_target(&self, reference: &Reference) -> Option<&IndexedDeclaration> {
+        let link = self.links_for(reference).next()?;
         match (&link.outcome, link.candidates.as_slice()) {
             (LinkOutcome::Resolved, [target]) => Some(target),
             _ => None,
         }
     }
+}
+
+/// The one indexed declaration an unlinked pending reference names,
+/// by exact name and under the index's namespace carve-out. A name
+/// unseen, or held by more than one declaration, resolves to nothing.
+fn index_target<'i>(
+    index: &'i IdentityIndex,
+    pending: &PendingBinding,
+) -> Option<&'i IndexedDeclaration> {
+    let reference = &pending.against;
+    let mut fits = index.domain(&reference.domain).iter().filter(|entry| {
+        entry.identity.name == reference.name
+            && (entry.namespace.is_none() || own_document(entry, reference))
+    });
+    let target = fits.next()?;
+    fits.next().is_none().then_some(target)
 }
 
 /// The type a resolved declaration's member is declared with: the field
@@ -723,12 +753,13 @@ pub fn link_reading(definition: &Definition, inputs: &LinkInputs) -> LinkReport 
     let bound = bind_references(definition, &inputs.items);
     let lookups = derive_candidates(&index, &bound);
     let mut report = link(definition, &index, lookups, &inputs.documents);
-    report.validate_pending(definition, &inputs.items, &inputs.documents);
+    report.validate_pending(definition, &inputs.items, &inputs.documents, &index);
     report
 }
 
-/// The domains linking covers: every identity block's, and every
-/// declared reference type's lookup domain.
+/// The domains linking covers: every identity block's, every declared
+/// reference type's lookup domain, and every dependent binding's
+/// `ref<T>` target domain.
 fn linked_domains(definition: &Definition) -> BTreeSet<&str> {
     let names = &definition.names;
     let blocks = definition
@@ -742,7 +773,42 @@ fn linked_domains(definition: &Definition) -> BTreeSet<&str> {
         .references()
         .iter()
         .map(|decl| domain_of(definition, decl));
-    blocks.chain(looked_up).collect()
+    let dependent = definition.bindings.iter().filter_map(|(_, node)| {
+        let dependent = node.value.as_ref()?;
+        dependent_domain(definition, node, dependent.target)
+    });
+    blocks.chain(looked_up).chain(dependent).collect()
+}
+
+/// The domain a dependent binding's target field names: the type
+/// argument of its `ref<T>`, from the node's inline field type or its
+/// object type's field of that name (`ref<T>` is forced at compile,
+/// `KDLITH-DLC005`).
+fn dependent_domain<'d>(
+    definition: &'d Definition,
+    node: &NodeDecl,
+    target: Sym,
+) -> Option<&'d str> {
+    let inline = || {
+        node.fields
+            .iter()
+            .find(|field| field.name == target)
+            .and_then(|field| field.ty.as_ref())
+    };
+    let from_type = || {
+        let ty = definition.types.lookup(node.ty?)?;
+        let TypeKind::Object(object) = &definition.types.get(ty)?.kind else {
+            return None;
+        };
+        Some(&object.fields.iter().find(|def| def.name == target)?.ty)
+    };
+    let TypeExpr::Ref(inner) = inline().or_else(from_type)? else {
+        return None;
+    };
+    match inner.as_ref() {
+        TypeExpr::Named(name) => Some(definition.names.resolve(*name)),
+        _ => None,
+    }
 }
 
 /// The domain a reference type looks up: its lookup domain, else its
