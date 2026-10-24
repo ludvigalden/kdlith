@@ -534,6 +534,8 @@ const TAKE_TAIL: &str = r##"            // A record of any other type is a reade
                 input.open.pop();
             }
         }
+        // The reading's sources are provenance, not definition input.
+        TypedItem::Sources(_) => {}
         // A definition vocabulary declares no contribution nodes; a
         // reader that yields one here has broken its contract.
         TypedItem::Contribution(_) => {

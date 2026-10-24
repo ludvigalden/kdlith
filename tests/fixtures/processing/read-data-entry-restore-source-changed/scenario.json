@@ -1,0 +1,30 @@
+{
+  "binary": "kdlith",
+  "description": "A snapshot taken over another tree of a source is a miss, never a stale restore: the state is the real refresh with lib/notes.txt holding notes; one byte of it has since changed (notez), so lib's identity differs from the one the snapshot records even though data.kdl, its revision, and the snapshot key are unchanged; its one record line was edited after the refresh to hold locale nb-no where the reading binds sv-se (the payload digest restamped), so a restore prints nb-no and a replay prints sv-se. The record prints sv-se: the read replayed. It is the same state as processing/read-data-entry-restore-source-hit's, which restores, so the changed byte alone decides the miss",
+  "args": [
+    "read",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "--source",
+    "lib=lib",
+    "data.kdl",
+    "one",
+    "--state",
+    "state"
+  ],
+  "expect": {
+    "exit": 0,
+    "files": {
+      "state/10230b0aad9b49f1.kdlith-cache": "state/10230b0aad9b49f1.kdlith-cache",
+      "state/6e3d2898990c85e2.kdlith-snapshot": "state/6e3d2898990c85e2.kdlith-snapshot"
+    },
+    "stdout-contains": [
+      "{\"name\":\"locale\",\"value\":{\"kind\":\"string\",\"value\":\"sv-se\"}"
+    ],
+    "stdout-not-contains": [
+      "\"value\":\"nb-no\""
+    ],
+    "stderr-golden": "stderr.golden"
+  }
+}

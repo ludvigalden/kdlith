@@ -1,0 +1,30 @@
+{
+  "binary": "kdlith",
+  "description": "A snapshot taken over the same trees restores: the state is the real refresh of data.kdl, which imports $lib/part.kdl, with lib read from the unchanged lib directory, and the snapshot records lib's identity; its one record line was edited after the refresh to hold locale nb-no where the reading binds sv-se (the payload digest restamped), so a restore prints nb-no and a replay prints sv-se. The record prints nb-no, proving the restore was taken (a hit), and the state is left byte-identical",
+  "args": [
+    "read",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "--source",
+    "lib=lib",
+    "data.kdl",
+    "one",
+    "--state",
+    "state"
+  ],
+  "expect": {
+    "exit": 0,
+    "files": {
+      "state/10230b0aad9b49f1.kdlith-cache": "state/10230b0aad9b49f1.kdlith-cache",
+      "state/6e3d2898990c85e2.kdlith-snapshot": "state/6e3d2898990c85e2.kdlith-snapshot"
+    },
+    "stdout-contains": [
+      "{\"name\":\"locale\",\"value\":{\"kind\":\"string\",\"value\":\"nb-no\"}"
+    ],
+    "stdout-not-contains": [
+      "\"value\":\"sv-se\""
+    ],
+    "stderr-golden": "stderr.golden"
+  }
+}

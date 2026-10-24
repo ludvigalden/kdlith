@@ -2,3 +2,4 @@
 {"item":"diagnostic","data":{"code":"KDLITH-BND011","severity":"error","source_path":"data.kdl","span":{"start":0,"end":6},"line":1,"col":1,"origin":"data-document","labels":[],"related":[],"correction":"Supply the absent field, or remove the field that requires it","message":"tagged violates requires tags note of Tagged: tags is supplied but note is absent"}}
 {"item":"record","data":{"node":{"source":0,"index":1},"type_name":"Tagged","fields":[{"name":"tags","value":{"kind":"list","value":[]},"origin":1},{"name":"note","value":{"kind":"string","value":"n"},"origin":1}],"origin":1,"validation":"valid"}}
 {"item":"scope-complete","data":{"source":0,"scope":null}}
+{"item":"sources","data":{"sources":[{"name":null,"kind":"local","identity":"sha256:db1e4b6be095d6e7f2bfbf568ea763f7ee3db4da91d6a239d5d445570957e1bc","overridden":false}]}}

@@ -7,3 +7,4 @@
 {"item":"declaration","data":{"node":{"source":0,"index":9},"identity":{"domain":"NodeDef","name":["extended"]},"type":"NodeDef","value":{"name":"extended","role":"record","type":"Extended","fields":{"extra":{"arg":0,"sources":[]}},"children":{},"children-groups":{},"effects":[],"groups":[],"descendants":[]}}}
 {"item":"scope-complete","data":{"source":0,"scope":{"source":0,"index":0}}}
 {"item":"scope-complete","data":{"source":0,"scope":null}}
+{"item":"sources","data":{"sources":[{"name":null,"kind":"local","identity":"sha256:784461438a5c9e5423f2cfe28eec1e969784bcdfcadb6c7255975e168c1c17b3","overridden":false}]}}

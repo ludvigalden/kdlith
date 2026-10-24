@@ -1,3 +1,4 @@
 {"item":"document","data":{"source":0,"path":"data.kdl"}}
 {"item":"diagnostic","data":{"code":"KDLITH-BND009","severity":"error","source_path":"data.kdl","span":{"start":0,"end":4},"line":1,"col":1,"origin":"data-document","labels":[],"related":[],"correction":"Supply the value through the registered resolver's source, or write it in the document","message":"zone.replicas of zone could not be resolved: values.kdl holds no value \"replicas\""}}
 {"item":"scope-complete","data":{"source":0,"scope":null}}
+{"item":"sources","data":{"sources":[{"name":null,"kind":"local","identity":"sha256:ded753cc7de1659ecbca75dd2253271adf8a8f0123f8e6e26432e23455975436","overridden":false}]}}

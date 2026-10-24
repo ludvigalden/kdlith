@@ -1,0 +1,23 @@
+{
+  "binary": "kdlith",
+  "description": "An embedded source through the pair helper: the helper's run lists acme as kind embedded, pinned true, its identity the build digest of its files, which equals the computed digest of the same files as a directory, so the fingerprint is the --source run's too; the harness requires the two runs byte-identical apart from the paired source's kind and pinned. Every digest in the pinned line is the documented sha256sum recipe's, computed without kdlith: a tree's identity is its canonical tree digest, the local source's the same canonical form over the documents the reading read from it (by shown path), and the fingerprint the sha256 of one `NAME IDENTITY` line per named source used, in name order",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/sources/schema.kdl",
+    "map/entry.kdl"
+  ],
+  "source-embedded": [
+    "acme=lib"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"sources\",\"data\":{\"fingerprint\":\"sha256:60fad0ec1e8f4aa2922f90569d81f9965f04848eadb79c061f4a4f6b8bf4184f\",\"sources\":[{\"name\":null,\"kind\":\"local\",\"identity\":\"sha256:c99c7a27c29fbf4ebe8a89fa379db75bd18ce1eda8a30e759feaa2b907e7603a\",\"overridden\":false},{\"name\":\"acme\",\"kind\":\"embedded\",\"identity\":\"sha256:cf02a29091f3cb7f69449b2bcfbae8682d6918666311a83adf304059558ce913\",\"pinned\":true,\"overridden\":false}]}}\n"
+    ],
+    "stdout-not-contains": [
+      "\"severity\":\"error\""
+    ]
+  }
+}

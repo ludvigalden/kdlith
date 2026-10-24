@@ -1,0 +1,21 @@
+{
+  "binary": "kdlith",
+  "description": "A reading that uses no named source emits one sources item listing only the local source, after every document: kind local, its identity the canonical digest of the two entry documents it read, never pinned, and no fingerprint (cache and snapshot keys are unchanged for such a reading). Every digest in the pinned line is the documented sha256sum recipe's, computed without kdlith: a tree's identity is its canonical tree digest, the local source's the same canonical form over the documents the reading read from it (by shown path), and the fingerprint the sha256 of one `NAME IDENTITY` line per named source used, in name order",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/sources/schema.kdl",
+    "map/entry.kdl",
+    "map/other.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"sources\",\"data\":{\"sources\":[{\"name\":null,\"kind\":\"local\",\"identity\":\"sha256:29697a1d1d221e90b9e841109ab822ef431937720a5d513ac6083ea2da9640fb\",\"overridden\":false}]}}\n"
+    ],
+    "stdout-not-contains": [
+      "\"severity\":\"error\""
+    ]
+  }
+}

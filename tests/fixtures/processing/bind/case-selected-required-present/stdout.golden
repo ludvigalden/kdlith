@@ -2,3 +2,4 @@
 {"item":"record","data":{"node":{"source":0,"index":0},"type_name":"Circle","fields":[{"name":"shape","value":{"kind":"string","value":"circle"},"origin":0},{"name":"radius","value":{"kind":"number","value":"3"},"origin":0}],"origin":0,"validation":"valid"}}
 {"item":"record","data":{"node":{"source":0,"index":1},"type_name":"Square","fields":[{"name":"shape","value":{"kind":"string","value":"square"},"origin":1},{"name":"side","value":{"kind":"number","value":"2"},"origin":1}],"origin":1,"validation":"valid"}}
 {"item":"scope-complete","data":{"source":0,"scope":null}}
+{"item":"sources","data":{"sources":[{"name":null,"kind":"local","identity":"sha256:e5a7d790ac83593168e6fc53b6c7e1a3cdcc4b986cc57bbeda06b8f612a928ad","overridden":false}]}}

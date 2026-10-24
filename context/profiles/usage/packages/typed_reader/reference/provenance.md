@@ -14,6 +14,18 @@ replayed from the cache carries its own path and sites. Each item
 also carries `node_name`, the declared node that bound it, since
 several nodes may bind one type.
 
+## The sources a reading used
+
+A typed reading ends with one `TypedItem::Sources(SourceSet)`, the
+engine's `sources` item: `fingerprint` (the source-set fingerprint,
+`None` when no named source was used) and `sources`, a `SourceUse`
+per source — `name` (`None` for the local source), `kind`
+(`SourceKind::{Local, Dir, Origin, Embedded}`), `identity`, `pinned`,
+`origin`, `overridden`, and `replacement` (serialized as `override`).
+An `Origin`'s path shown as `$name/...` joins to the entry named
+`name`. A match over `TypedItem` that does not handle the item should
+ignore it, as it ignores scope completions.
+
 ## Capturing context slots
 
 `.capturing(&[slot, ...])` is opt-in: each `TypedItem::Document`

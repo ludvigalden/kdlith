@@ -328,6 +328,8 @@ fn take(item: TypedItem<Item>, input: &mut Gathering, records: &mut Vec<Diagnost
                 input.open.pop();
             }
         }
+        // The reading's sources are provenance, not definition input.
+        TypedItem::Sources(_) => {}
         // A definition vocabulary declares no contribution nodes; a
         // reader that yields one here has broken its contract.
         TypedItem::Contribution(_) => {

@@ -2,3 +2,4 @@
 {"item":"declaration","data":{"node":{"source":0,"index":1},"identity":{"domain":"config-vars","name":["plan","currency"]},"type_name":"ConfigVarDef","fields":[{"name":"namespace","value":{"kind":"string","value":"plan"},"origin":1},{"name":"local-name","value":{"kind":"string","value":"currency"},"origin":1}],"origin":1,"validation":"valid"}}
 {"item":"record","data":{"node":{"source":0,"index":2},"type_name":"Pin","fields":[{"name":"target","value":{"kind":"reference","value":{"domain":"config-vars","name":["plan","currency"],"qualifiers":[],"written":"plan.currency","site":{"source":0,"span":{"start":{"offset":39,"line":3,"column":5},"end":{"offset":54,"line":3,"column":20}}}}},"origin":2}],"origin":2,"validation":"provisional"}}
 {"item":"scope-complete","data":{"source":0,"scope":null}}
+{"item":"sources","data":{"sources":[{"name":null,"kind":"local","identity":"sha256:49191993b1137b34b9ba2ea5ff53c5bb9b201c73e0ef67f60fa41a9d857b4784","overridden":false}]}}

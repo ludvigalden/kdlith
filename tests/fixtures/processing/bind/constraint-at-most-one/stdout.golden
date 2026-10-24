@@ -4,3 +4,4 @@
 {"item":"record","data":{"node":{"source":0,"index":2},"type_name":"Capture","fields":[{"name":"file","value":{"kind":"string","value":"shot.png"},"origin":2}],"origin":2,"validation":"valid"}}
 {"item":"record","data":{"node":{"source":0,"index":3},"type_name":"Capture","fields":[{"name":"selector","value":{"kind":"string","value":"#main"},"origin":3}],"origin":3,"validation":"valid"}}
 {"item":"scope-complete","data":{"source":0,"scope":null}}
+{"item":"sources","data":{"sources":[{"name":null,"kind":"local","identity":"sha256:fcb8d8eb5b1fbba9c28699f05459a485326cf53b8c5dd48cff1796c82b892550","overridden":false}]}}

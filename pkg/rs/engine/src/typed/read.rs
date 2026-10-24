@@ -10,7 +10,7 @@ use kdlith_diagnostic::registry::{lookup, render};
 use kdlith_diagnostic::{ByteSpan, DiagnosticRecord};
 use kdlith_model::{
     Asset, BoundContribution, ExpansionRequest, Field, Identity, ImportRequest, Item, Location,
-    NodeId, PendingBinding, ResolvedContribution, ScopeCompletion, SourceId,
+    NodeId, PendingBinding, ResolvedContribution, ScopeCompletion, SourceId, SourceSet,
 };
 use kdlith_runtime::{Handlers, SessionError, SlotValue};
 use serde::Serialize;
@@ -128,6 +128,8 @@ pub enum TypedItem<T> {
     /// A contribution target the registered contribution resolver
     /// settled, after the reading's documents.
     Resolution(ResolvedContribution),
+    /// The sources the reading used, once, after its documents.
+    Sources(SourceSet),
 }
 
 impl<T> TypedItem<T> {
@@ -804,6 +806,7 @@ impl<'d, T: 'static> TypedReader<'d, T> {
             Item::Diagnostic(record) => TypedItem::Diagnostic(record),
             Item::ScopeComplete(completion) => TypedItem::ScopeComplete(completion),
             Item::Resolution(resolved) => TypedItem::Resolution(resolved),
+            Item::Sources(set) => TypedItem::Sources(set),
             _ => return None,
         };
         Some(Ok(typed))

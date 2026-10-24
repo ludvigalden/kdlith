@@ -1,0 +1,32 @@
+{
+  "binary": "kdlith",
+  "description": "Adding an override after the snapshot is a miss: the state is the real refresh with lib read from the lib directory; the read now names a sources manifest declaring lib as that same directory and overriding it with lib-local, whose part.kdl is byte-identical but whose notes.txt differs, so the tree the reading reads has another identity; its one record line was edited after the refresh to hold locale nb-no where the reading binds sv-se (the payload digest restamped), so a restore prints nb-no and a replay prints sv-se. The record prints sv-se (replayed), and the override is warned (KDLITH-LOC009, layer manifest) as every override is",
+  "args": [
+    "read",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "--sources",
+    "sources.kdl",
+    "data.kdl",
+    "one",
+    "--state",
+    "state"
+  ],
+  "expect": {
+    "exit": 0,
+    "files": {
+      "state/10230b0aad9b49f1.kdlith-cache": "state/10230b0aad9b49f1.kdlith-cache",
+      "state/6e3d2898990c85e2.kdlith-snapshot": "state/6e3d2898990c85e2.kdlith-snapshot"
+    },
+    "stdout-contains": [
+      "{\"name\":\"locale\",\"value\":{\"kind\":\"string\",\"value\":\"sv-se\"}"
+    ],
+    "stdout-not-contains": [
+      "\"value\":\"nb-no\""
+    ],
+    "stderr-contains": [
+      "warning[KDLITH-LOC009]: source lib is overridden by lib-local (layer manifest; unpinned not used)\n  --> sources.kdl:3:5"
+    ]
+  }
+}

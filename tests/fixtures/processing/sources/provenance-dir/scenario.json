@@ -1,0 +1,22 @@
+{
+  "binary": "kdlith",
+  "description": "A manifest dir source the reading used is listed after the local source: kind dir, pinned false (Q4: unpinned), its identity the computed digest of vendor/acme, no origin, not overridden; the item carries the source-set fingerprint. Every digest in the pinned line is the documented sha256sum recipe's, computed without kdlith: a tree's identity is its canonical tree digest, the local source's the same canonical form over the documents the reading read from it (by shown path), and the fingerprint the sha256 of one `NAME IDENTITY` line per named source used, in name order",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/sources/schema.kdl",
+    "--sources",
+    "sources.kdl",
+    "map/entry.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"sources\",\"data\":{\"fingerprint\":\"sha256:3da4eef7c53853648a4ba2204d89feb9c67397d7fdeb969ac362cc2525f994a6\",\"sources\":[{\"name\":null,\"kind\":\"local\",\"identity\":\"sha256:c99c7a27c29fbf4ebe8a89fa379db75bd18ce1eda8a30e759feaa2b907e7603a\",\"overridden\":false},{\"name\":\"acme\",\"kind\":\"dir\",\"identity\":\"sha256:e1353cf8d6f52c03a330289b0880a4aca26bad8365939c8f13a7cfb1f07306c9\",\"pinned\":false,\"overridden\":false}]}}\n"
+    ],
+    "stdout-not-contains": [
+      "\"severity\":\"error\""
+    ]
+  }
+}

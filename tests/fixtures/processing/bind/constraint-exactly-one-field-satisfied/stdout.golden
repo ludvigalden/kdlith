@@ -1,3 +1,4 @@
 {"item":"document","data":{"source":0,"path":"data.kdl"}}
 {"item":"record","data":{"node":{"source":0,"index":0},"type_name":"Target","fields":[{"name":"text","value":{"kind":"string","value":"Sign in"},"origin":0}],"origin":0,"validation":"valid"}}
 {"item":"scope-complete","data":{"source":0,"scope":null}}
+{"item":"sources","data":{"sources":[{"name":null,"kind":"local","identity":"sha256:9ae5293ec279e19790d36173d717f1678d5d4a1b0acb65dfd525c46afe7003b5","overridden":false}]}}

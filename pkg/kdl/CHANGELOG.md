@@ -302,6 +302,19 @@ published yet.
   of the tree a reading reads, one JSON line per source.
 - Diagnostic records carry `facts`, named values a consumer reads
   without parsing the message, serialized only when present.
+- Every data reading ends with one `sources` item listing the sources
+  it used: the local source first, then each named source by name,
+  with its kind, the identity of the tree it read (a pin, an embedded
+  build digest, or a digest computed from its content), whether that
+  tree is pinned, its origin, and any override replacing it. The item
+  carries the source-set fingerprint, the SHA-256 over the named
+  sources used with their identities.
+- Cache entries and snapshots record the source-set fingerprint: a
+  bound result is keyed under it, and a snapshot restores only when
+  every named source it recorded still reads the same tree, so one
+  document read against two different trees of a source never shares
+  a cache entry or a restore; a changed source is a miss, never a
+  stale hit. A reading that uses no named source keys as before.
 
 ### Changed
 

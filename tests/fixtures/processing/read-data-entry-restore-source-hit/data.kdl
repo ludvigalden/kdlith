@@ -1,0 +1,7 @@
+locale sv-se
+region fi-fi
+use "$lib/part.kdl"
+section "Main" {
+    public
+    item one kind=book title="Dune"
+}

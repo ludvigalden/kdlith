@@ -1,3 +1,4 @@
 {"item":"document","data":{"source":0,"path":"data.kdl"}}
 {"item":"record","data":{"node":{"source":0,"index":0},"type_name":"Pause","fields":[{"name":"wait","value":{"kind":"number","value":"100"},"origin":0},{"name":"token","value":{"kind":"string","value":"t-1"},"origin":0}],"origin":0,"validation":"valid"}}
 {"item":"scope-complete","data":{"source":0,"scope":null}}
+{"item":"sources","data":{"sources":[{"name":null,"kind":"local","identity":"sha256:6efb7ed2d33c6b1690bc441e93e99f9b6a004a713110f4c520ac9b6cc9ac4b6f","overridden":false}]}}

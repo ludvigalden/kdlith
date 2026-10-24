@@ -2,7 +2,7 @@
 //! definition and executes their imports as invocations, under the
 //! identity and cache rules the runtime records.
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
@@ -17,9 +17,10 @@ use kdlith_runtime::{
 use crate::bind::{BindingSession, dispatch_scope};
 use crate::definition::{Definition, DefinitionKind, ProfileSelection};
 use crate::diag::{UNRESOLVED_DIALECT, UNRESOLVED_SCHEMA, record};
+use crate::digest::{bytes_hex, lines_digest};
 use crate::documents::{import_failure, read_text};
 use crate::list::record_identity;
-use crate::locations::{DeclaredLocations, Importer, Place, SourceTree, Sources, Target};
+use crate::locations::{DeclaredLocations, Home, Importer, Place, SourceTree, Sources, Target};
 use crate::names::Sym;
 use crate::resolution::{SharedContributionResolver, failure_record, resolve};
 use crate::snapshot_store::{SnapshotLoad, load_snapshot};
@@ -245,6 +246,10 @@ pub struct BoundResult {
     /// showed them, in reading order.
     pub derivations: Vec<Derivation>,
     pub items: Vec<Item>,
+    /// The source-set fingerprint of the reading that bound it: the
+    /// named sources the reading used, each with the identity of the
+    /// tree it read. `None` when it used none.
+    pub sources: Option<String>,
 }
 
 /// The context an entry document's root invocation left once its
@@ -271,6 +276,10 @@ pub struct EntryContext {
     /// Every record its reading bound or replayed, in stream order, each
     /// with the context it bound under.
     pub records: Vec<RecordContext>,
+    /// Each named source the reading had used by the time this entry's
+    /// root completed, with the identity of the tree it read: what a
+    /// restore of its records checks.
+    pub sources: BTreeMap<String, String>,
 }
 
 /// One record a reading bound, with the context it bound under: what a
@@ -558,7 +567,15 @@ impl<'d> DataReader<'d> {
         };
         let (record, snapshot) = match load_snapshot(state, &key, identity) {
             Ok(SnapshotLoad::Hit(hit)) => {
-                let (_, record, snapshot) = *hit;
+                let (entry, record, snapshot) = *hit;
+                // A snapshot taken over other trees of a source than this
+                // reading's is a miss, never a restore of stale context.
+                let same = entry.meta.sources.iter().all(|(name, held)| {
+                    sources.identity_of(name, ORIGIN).as_deref() == Some(held.as_str())
+                });
+                if !same {
+                    return Ok(Restored::Miss);
+                }
                 (record, snapshot)
             }
             Ok(SnapshotLoad::Unusable(record)) | Err(record) => {
@@ -726,12 +743,7 @@ impl<'d> DataReader<'d> {
                 for record in records {
                     sink(Item::Diagnostic(Box::new(record)));
                 }
-                return Ok(Outcome {
-                    failed: true,
-                    results: Vec::new(),
-                    contexts: Vec::new(),
-                    entered: 0,
-                });
+                return Ok(Outcome::failed_early());
             }
         };
         // A local reading leaves imports unfollowed, so its records are
@@ -769,6 +781,7 @@ impl<'d> DataReader<'d> {
             selection: ProfileSelection::Unprofiled,
             declared,
             sources,
+            local: BTreeMap::new(),
             places: HashMap::new(),
             texts: &mut give,
             entering: if armed { Some(&mut enter) } else { None },
@@ -833,7 +846,14 @@ impl<'d> DataReader<'d> {
             (reading.sink)(Item::Diagnostic(Box::new(note)));
         }
         let entered = reading.invocations.len();
-        let (mut failed, results, contexts) = (reading.failed, reading.results, reading.contexts);
+        let local = (!reading.local.is_empty())
+            .then(|| lines_digest(std::mem::take(&mut reading.local).into_iter().collect()));
+        let set = reading.sources.source_set(local);
+        let (mut failed, mut results, contexts) =
+            (reading.failed, reading.results, reading.contexts);
+        for result in &mut results {
+            result.sources.clone_from(&set.fingerprint);
+        }
         // A failed reading's records are incomplete; resolving them
         // would report on a partial picture.
         if let Some(resolver) = resolver.filter(|_| !failed && !records.is_empty()) {
@@ -847,6 +867,7 @@ impl<'d> DataReader<'d> {
                 }
             }
         }
+        sink(Item::Sources(set));
         Ok(Outcome {
             failed,
             results,
@@ -902,6 +923,17 @@ struct Outcome {
     entered: usize,
 }
 
+impl Outcome {
+    fn failed_early() -> Self {
+        Self {
+            failed: true,
+            results: Vec::new(),
+            contexts: Vec::new(),
+            entered: 0,
+        }
+    }
+}
+
 /// A cached result's key: its invocation identity and the active
 /// profiles it bound under.
 type ResultKey = (InvocationIdentity, Vec<Sym>);
@@ -931,6 +963,10 @@ struct Reading<'r, 'd> {
     declared: Option<DeclaredLocations>,
     /// The project root and the named sources the host registered.
     sources: Sources,
+    /// Each document the reading read from no named source, by its
+    /// shown path, with the hex digest of its text: what the local
+    /// source's identity is computed from.
+    local: BTreeMap<String, String>,
     /// Where each document read from a source sits: its imports resolve
     /// and are confined there. A document held in memory has none.
     places: HashMap<InvocationId, Place>,
@@ -1016,6 +1052,9 @@ impl Reading<'_, '_> {
                     // before it binds.
                     if let Some(declared) = &mut self.declared {
                         declared.scan(&text);
+                    }
+                    if !matches!(self.places.get(&id).map(|p| &p.home), Some(Home::Named(_))) {
+                        self.local.insert(shown.clone(), bytes_hex(text.as_bytes()));
                     }
                     let revision = stable_hash(text.as_bytes());
                     self.invocations.supply_revision(id, revision);
@@ -1260,6 +1299,7 @@ impl Reading<'_, '_> {
                     identity,
                     derivations: vec![derivation],
                     items: own.iter().map(|item| remap(item, SourceId(0))).collect(),
+                    sources: None,
                 });
                 self.bound.insert(key, Rc::new(own));
             }
@@ -1281,6 +1321,7 @@ impl Reading<'_, '_> {
                 profiles,
                 consulted_resolver: std::mem::take(&mut self.consulted),
                 records: std::mem::take(&mut self.records),
+                sources: self.sources.used_identities(),
             });
         }
     }

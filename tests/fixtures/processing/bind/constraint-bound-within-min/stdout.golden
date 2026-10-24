@@ -2,3 +2,4 @@
 {"item":"record","data":{"node":{"source":0,"index":0},"type_name":"Limited","fields":[{"name":"wait","value":{"kind":"number","value":"320"},"origin":0},{"name":"offset","value":{"kind":"number","value":"7"},"origin":0},{"name":"ratio","value":{"kind":"number","value":"0.25"},"origin":0},{"name":"steps","value":{"kind":"list","value":[{"kind":"number","value":"3"},{"kind":"number","value":"0x9"}]},"origin":0}],"origin":0,"validation":"valid"}}
 {"item":"record","data":{"node":{"source":0,"index":3},"type_name":"Limited","fields":[{"name":"steps","value":{"kind":"list","value":[]},"origin":3}],"origin":3,"validation":"valid"}}
 {"item":"scope-complete","data":{"source":0,"scope":null}}
+{"item":"sources","data":{"sources":[{"name":null,"kind":"local","identity":"sha256:bf750bc69f34d0e8bca01c92b675508e6844e3842f7df88cba2029ebdebf7a6f","overridden":false}]}}

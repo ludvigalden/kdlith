@@ -65,7 +65,8 @@ fn run(case: &str, reading: &kdlith_engine::TypedReader<'_, Item>, entry: &Path)
     }
 }
 
-/// One stream item as a line; scope completions are not printed.
+/// One stream item as a line; scope completions are not printed, and
+/// the sources item shows each source's name, kind, and pin state.
 fn describe(item: TypedItem<Item>) -> Option<String> {
     Some(match item {
         TypedItem::Document { path, .. } => format!("document {path}"),
@@ -84,6 +85,18 @@ fn describe(item: TypedItem<Item>) -> Option<String> {
             record.message.as_deref().unwrap_or("")
         ),
         TypedItem::ScopeComplete(_) => return None,
+        TypedItem::Sources(set) => {
+            let used: Vec<String> = set
+                .sources
+                .iter()
+                .map(|source| {
+                    let name = source.name.as_deref().unwrap_or("(local)");
+                    let pinned = source.pinned.map_or("-", |p| if p { "pinned" } else { "unpinned" });
+                    format!("{name}:{:?}:{pinned}", source.kind)
+                })
+                .collect();
+            format!("sources [{}]", used.join(","))
+        }
         _ => "other".to_owned(),
     })
 }

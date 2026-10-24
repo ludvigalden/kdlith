@@ -1,3 +1,4 @@
 {"item":"document","data":{"source":0,"path":"data.kdl"}}
 {"item":"record","data":{"node":{"source":0,"index":0},"type_name":"Target","fields":[{"name":"url","value":{"kind":"string","value":"https://example.com"},"origin":0}],"origin":0,"validation":"valid"}}
 {"item":"scope-complete","data":{"source":0,"scope":null}}
+{"item":"sources","data":{"sources":[{"name":null,"kind":"local","identity":"sha256:990cb024202fafb22fcfb2bc5c9d7a9a70dfffdd4ef6952a7f92a7a6d4501c03","overridden":false}]}}

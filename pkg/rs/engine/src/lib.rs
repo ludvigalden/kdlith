@@ -74,11 +74,11 @@ pub use extensions::{
 pub use kdlith_model::ResolvedContribution;
 /// Deliberate root surface: tools name `Value` through the engine and
 /// the generated crates that re-export it, never through `__private`.
-pub use kdlith_model::{Asset, Value};
+pub use kdlith_model::{Asset, SourceKind, SourceOverride, SourceSet, SourceUse, Value};
 pub use kdlith_runtime::{
     CacheEntry, CacheScan, CleanOutcome, Derivation, EncodedEntry, EntryClass, EntryFault,
-    OwnedEntry, SnapshotEntry, SnapshotMeta, SnapshotRecord, WriteOutcome, cache_key, clean_state,
-    scan_state, snapshot_key, write_state,
+    OwnedEntry, SnapshotEntry, SnapshotMeta, SnapshotRecord, WriteOutcome, cache_key,
+    cache_key_under, clean_state, scan_state, snapshot_key, write_state,
 };
 pub use kdlith_runtime::{
     ContributionPolicy, ContributionRecord, ContributionResolver, LAYERED, Layered,

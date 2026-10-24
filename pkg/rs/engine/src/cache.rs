@@ -6,7 +6,7 @@ use std::path::Path;
 
 use kdlith_diagnostic::DiagnosticRecord;
 use kdlith_model::Item;
-use kdlith_runtime::{EncodedEntry, encode_entry};
+use kdlith_runtime::{EncodedEntry, encode_entry_under};
 
 use crate::data::{DataReader, ReadOptions};
 use crate::snapshot_store::encode_snapshot_entry;
@@ -48,8 +48,13 @@ pub fn derive_state(
     // broken item contract, reported as such.
     let mut encoded = Vec::with_capacity(results.len());
     for result in results {
-        let entry = encode_entry(result.identity, result.derivations, &result.items)
-            .map_err(|_| ReadError::UnsupportedItem)?;
+        let entry = encode_entry_under(
+            result.identity,
+            result.sources,
+            result.derivations,
+            &result.items,
+        )
+        .map_err(|_| ReadError::UnsupportedItem)?;
         encoded.push(entry);
     }
     encoded.sort_by(|a, b| a.entry.key().cmp(b.entry.key()));

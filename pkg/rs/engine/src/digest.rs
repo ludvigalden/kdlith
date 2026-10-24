@@ -28,6 +28,12 @@ where
         }
         lines.push((path.to_owned(), hex(&Sha256::digest(bytes.as_ref()))));
     }
+    Ok(lines_digest(lines))
+}
+
+/// The canonical digest of files already hashed: each a portable path
+/// with the hex SHA-256 of its bytes, in any order.
+pub(crate) fn lines_digest(mut lines: Vec<(String, String)>) -> String {
     lines.sort_by(|a, b| a.0.as_bytes().cmp(b.0.as_bytes()));
     let mut hasher = Sha256::new();
     for (path, digest) in &lines {
@@ -36,7 +42,26 @@ where
         hasher.update(path.as_bytes());
         hasher.update(b"\n");
     }
-    Ok(format!("sha256:{}", hex(&hasher.finalize())))
+    format!("sha256:{}", hex(&hasher.finalize()))
+}
+
+/// The hex SHA-256 of `bytes`, as a canonical digest line spells it.
+pub(crate) fn bytes_hex(bytes: &[u8]) -> String {
+    hex(&Sha256::digest(bytes))
+}
+
+/// The source-set fingerprint: the SHA-256 of one `NAME IDENTITY` line
+/// per named source a reading used, in name order; an identity a tree
+/// cannot have is written `none`.
+pub(crate) fn set_fingerprint<'a>(pairs: impl IntoIterator<Item = (&'a str, &'a str)>) -> String {
+    let mut hasher = Sha256::new();
+    for (name, identity) in pairs {
+        hasher.update(name.as_bytes());
+        hasher.update(b" ");
+        hasher.update(identity.as_bytes());
+        hasher.update(b"\n");
+    }
+    format!("sha256:{}", hex(&hasher.finalize()))
 }
 
 /// The canonical digest of the directory tree at `root`.

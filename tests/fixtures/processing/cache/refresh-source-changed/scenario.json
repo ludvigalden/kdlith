@@ -1,0 +1,27 @@
+{
+  "binary": "kdlith",
+  "description": "Two different trees bound to one source name never share a cache entry: the state is the real refresh of data.kdl with $lib/part.kdl read from lib while lib/notes.txt held notes; one byte of that file has since changed (notez), so lib's computed identity changes even though no document the reading reads did. The refresh keys the import's bound result under the new source-set fingerprint (sha256 of the line `lib <identity>`), writes it as a new entry, and removes the entry keyed under the old fingerprint as stale; the snapshot keeps its key and records the new identity. Every digest is the documented sha256sum recipe's: lib before 74b8684a\u2026, after 1e7ae281\u2026, fingerprints f584fe2d\u2026 and 5939c9bb\u2026",
+  "args": [
+    "cache",
+    "refresh",
+    "--state",
+    "state",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "--source",
+    "lib=lib",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "files": {
+      "state/94fc98b80bdc5c20.kdlith-cache": "expected/94fc98b80bdc5c20.kdlith-cache",
+      "state/6e3d2898990c85e2.kdlith-snapshot": "expected/6e3d2898990c85e2.kdlith-snapshot"
+    },
+    "absent": [
+      "state/10230b0aad9b49f1.kdlith-cache"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

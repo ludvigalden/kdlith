@@ -3,3 +3,4 @@
 {"item":"record","data":{"node":{"source":0,"index":3},"type_name":"Stamp","fields":[],"origin":3,"validation":"valid"}}
 {"item":"record","data":{"node":{"source":0,"index":5},"type_name":"Stamp","fields":[{"name":"at","value":{"kind":"string","value":"en-gb"},"origin":5}],"origin":5,"validation":"valid"}}
 {"item":"scope-complete","data":{"source":0,"scope":null}}
+{"item":"sources","data":{"sources":[{"name":null,"kind":"local","identity":"sha256:2127a158210a0d90e2b2b50be911bd89a18dbb19bd9acfe512d02deef39ef3f6","overridden":false}]}}

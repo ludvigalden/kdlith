@@ -62,7 +62,7 @@
           "case held-embedded\n  digest=c487efc8c6dac4ec\n",
           "case unsourced\n  diagnostic KDLITH-LOC003 location $lib/types/product.kdl names unknown source lib: the reading has no named sources\n",
           "case held-unsourced\n  diagnostic KDLITH-LOC003 location $lib/types/product.kdl names unknown source lib: the reading has no named sources\n",
-          "case read\n  document inputs/entry.kdl\n  import $lib/shared.kdl targets=[$lib/shared.kdl]\n  document $lib/shared.kdl\n  record Product name=shared\n  record Product name=top\n  failed=false\n"
+          "case read\n  document inputs/entry.kdl\n  import $lib/shared.kdl targets=[$lib/shared.kdl]\n  document $lib/shared.kdl\n  record Product name=shared\n  record Product name=top\n  sources [(local):Local:-,lib:Embedded:pinned]\n  failed=false\n"
         ]
       }
     }

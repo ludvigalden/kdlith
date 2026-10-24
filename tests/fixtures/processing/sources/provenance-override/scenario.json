@@ -1,0 +1,24 @@
+{
+  "binary": "kdlith",
+  "description": "An origin overridden in the manifest layer is listed as declared (kind origin, its origin kept) but with the identity of the tree the reading read: the override directory's computed digest, pinned false because the pin is not what was read, overridden true and override {layer manifest, directory local/acme} (Q3); the override is still warned (KDLITH-LOC009). Every digest in the pinned line is the documented sha256sum recipe's, computed without kdlith: a tree's identity is its canonical tree digest, the local source's the same canonical form over the documents the reading read from it (by shown path), and the fingerprint the sha256 of one `NAME IDENTITY` line per named source used, in name order",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/sources/schema.kdl",
+    "--sources",
+    "sources.kdl",
+    "--store",
+    "store",
+    "map/entry.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"sources\",\"data\":{\"fingerprint\":\"sha256:033a3a90db016009faae5ff054ce7589b92e9ff6b7021a02fb363322b8afc39e\",\"sources\":[{\"name\":null,\"kind\":\"local\",\"identity\":\"sha256:c99c7a27c29fbf4ebe8a89fa379db75bd18ce1eda8a30e759feaa2b907e7603a\",\"overridden\":false},{\"name\":\"acme\",\"kind\":\"origin\",\"identity\":\"sha256:1ed78027a66ae8901f3831343d92da745b50f338631a528531e69f5d9b1f8c21\",\"pinned\":false,\"origin\":{\"git\":\"https://example.invalid/acme.git\",\"path\":\"map\",\"rev\":\"3f2c9a1\"},\"overridden\":true,\"override\":{\"layer\":\"manifest\",\"directory\":\"local/acme\"}}]}}\n"
+    ],
+    "stderr-contains": [
+      "warning[KDLITH-LOC009]: source acme is overridden by local/acme (layer manifest; pinned sha256:bc37a4caefbdb5bfb44a8eabeb450d6f85c8ea6350de715fa165f3cf7a35d5bc not used)"
+    ]
+  }
+}

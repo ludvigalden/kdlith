@@ -2,3 +2,4 @@
 {"item":"diagnostic","data":{"code":"KDLITH-BND011","severity":"error","source_path":"data.kdl","span":{"start":0,"end":4},"line":1,"col":1,"origin":"data-document","labels":[],"related":[],"correction":"Supply the absent field, or remove the field that requires it","message":"item violates requires a b of Item: a is supplied but b is absent"}}
 {"item":"diagnostic","data":{"code":"KDLITH-BND011","severity":"error","source_path":"data.kdl","span":{"start":0,"end":4},"line":1,"col":1,"origin":"data-document","labels":[],"related":[],"correction":"Supply the absent field, or remove the field that requires it","message":"item violates all-or-none a b of Item: a is supplied but b is absent"}}
 {"item":"scope-complete","data":{"source":0,"scope":null}}
+{"item":"sources","data":{"sources":[{"name":null,"kind":"local","identity":"sha256:ea81be94716cebf68dada31c9b688ce4a4601b8f239efe694209a38b2fcffbf1","overridden":false}]}}

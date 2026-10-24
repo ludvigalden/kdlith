@@ -47,7 +47,8 @@ pub fn encode_snapshot_entry(
         fingerprint,
         lineage,
         definition_layout_digest(def),
-    );
+    )
+    .with_sources(entry.sources.clone());
     let records: Vec<SnapshotRecord> = entry
         .records
         .iter()

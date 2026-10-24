@@ -58,13 +58,13 @@
         ],
         "stdout-contains": [
           "schema ok digest=ec56f59d57c69540\n",
-          "case sourced\n  document inputs/entry.kdl\n  import $parts/*.kdl targets=[$parts/a.kdl,$parts/b.kdl]\n  document $parts/a.kdl\n  record Thing name=alpha\n  document $parts/b.kdl\n  record Thing name=beta\n  record Thing name=top\n  failed=false\n",
-          "case sourced-options\n  document inputs/entry.kdl\n  import $parts/*.kdl targets=[$parts/a.kdl,$parts/b.kdl]\n  document $parts/a.kdl\n  record Thing name=alpha\n  document $parts/b.kdl\n  record Thing name=beta\n  record Thing name=top\n  failed=false\n",
-          "case unprofiled\n  document inputs/audit.kdl\n  diagnostic KDLITH-SCH011 invocation profile profile (none) is not one of the profiles schema survey declares\n  failed=true\n",
-          "case profiled\n  document inputs/audit.kdl\n  record Thing name=audited\n  failed=false\n",
-          "case profiled-options\n  document inputs/audit.kdl\n  record Thing name=audited\n  failed=false\n",
-          "case unsourced\n  document inputs/entry.kdl\n  import $parts/*.kdl targets=[]\n  diagnostic KDLITH-LOC003 location $parts/*.kdl names unknown source parts: the reading has no named sources\n  record Thing name=top\n  failed=true\n",
-          "case ruleless-profile\n  document inputs/entry.kdl\n  import $parts/*.kdl targets=[]\n  diagnostic KDLITH-LOC004 location $parts/*.kdl is not admitted: it uses star, which no rule here admits\n  record Thing name=top\n  failed=true\n",
+          "case sourced\n  document inputs/entry.kdl\n  import $parts/*.kdl targets=[$parts/a.kdl,$parts/b.kdl]\n  document $parts/a.kdl\n  record Thing name=alpha\n  document $parts/b.kdl\n  record Thing name=beta\n  record Thing name=top\n  sources [(local):Local:-,parts:Dir:unpinned]\n  failed=false\n",
+          "case sourced-options\n  document inputs/entry.kdl\n  import $parts/*.kdl targets=[$parts/a.kdl,$parts/b.kdl]\n  document $parts/a.kdl\n  record Thing name=alpha\n  document $parts/b.kdl\n  record Thing name=beta\n  record Thing name=top\n  sources [(local):Local:-,parts:Dir:unpinned]\n  failed=false\n",
+          "case unprofiled\n  document inputs/audit.kdl\n  diagnostic KDLITH-SCH011 invocation profile profile (none) is not one of the profiles schema survey declares\n  sources [(local):Local:-]\n  failed=true\n",
+          "case profiled\n  document inputs/audit.kdl\n  record Thing name=audited\n  sources [(local):Local:-]\n  failed=false\n",
+          "case profiled-options\n  document inputs/audit.kdl\n  record Thing name=audited\n  sources [(local):Local:-]\n  failed=false\n",
+          "case unsourced\n  document inputs/entry.kdl\n  import $parts/*.kdl targets=[]\n  diagnostic KDLITH-LOC003 location $parts/*.kdl names unknown source parts: the reading has no named sources\n  record Thing name=top\n  sources [(local):Local:-]\n  failed=true\n",
+          "case ruleless-profile\n  document inputs/entry.kdl\n  import $parts/*.kdl targets=[]\n  diagnostic KDLITH-LOC004 location $parts/*.kdl is not admitted: it uses star, which no rule here admits\n  record Thing name=top\n  sources [(local):Local:-]\n  failed=true\n",
           "case invalid-source\n  diagnostic KDLITH-LOC005 source Parts is invalid: the name is not a non-empty kebab name\n  failed=true\n"
         ]
       }

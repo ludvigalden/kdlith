@@ -1,0 +1,3 @@
+kdlith-snapshot format=2 canonicalization=2
+{"key":"6e3d2898990c85e2","entry":"data.kdl","revision":"fnv1a64:b0214af2c0b36682","schema":"fnv1a64:dc7d34668e3669fe","profiles":"fnv1a64:e1b51df36e161fca","lineage":["data.kdl"],"sources":{"lib":"sha256:74b8684a0b5bad942e5ffe33256a59170b93ad5627f3771953108ea979862798"},"records":1,"slots":2,"layout":"fnv1a64:d3616258da16a477","digest":"fnv1a64:dbe60baaaeec7f99"}
+{"identity":"one","type":"Item","digest":"fnv1a64:b0214af2c0b36682","source":0,"node":5,"span":{"start":78,"end":82},"snapshot":"6e3d2898990c85e2/0","validation":"pending","slots":[{"name":"locale","value":{"kind":"string","value":"nb-no"},"layer":"base"},{"name":"region","value":{"kind":"string","value":"fi-fi"},"layer":null}]}

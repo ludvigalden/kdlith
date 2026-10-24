@@ -1,0 +1,4 @@
+sources {
+    source lib dir="lib"
+    override lib dir="lib-local"
+}

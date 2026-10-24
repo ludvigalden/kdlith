@@ -2,3 +2,4 @@
 {"item":"record","data":{"node":{"source":0,"index":0},"type_name":"Target","fields":[{"name":"pick","value":{"kind":"number","value":"3"},"origin":0}],"origin":0,"validation":"valid"}}
 {"item":"record","data":{"node":{"source":0,"index":1},"type_name":"Target","fields":[{"name":"pick","value":{"kind":"string","value":"first"},"origin":1}],"origin":1,"validation":"valid"}}
 {"item":"scope-complete","data":{"source":0,"scope":null}}
+{"item":"sources","data":{"sources":[{"name":null,"kind":"local","identity":"sha256:4093b9b7895f17b34e71110ac7ac6d9f6331afbc4ad99a81a2eac60c92e65436","overridden":false}]}}

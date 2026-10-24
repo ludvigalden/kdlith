@@ -1,7 +1,7 @@
 {
   "binary": "kdlith",
   "kind": "codegen-oracle",
-  "description": "detection control for the source-embedded pair, run before any product scenario relies on it: no generate step runs (the entrypoint and crate keys the kind requires go unused); the one exercise step runs the harness itself, through its fx-env link under a harness name, over the materialized copy of this scenario's committed inner suite. Its agree scenario's pair matches and passes; its diverge scenario's embedded run exits 3 where the --source run exits 0, and declares exit 3 so that only the pair's comparison can fail it. The inner run must exit 1 with exactly that one failure, reporting the exit and both streams as differing from the --source run",
+  "description": "detection control for the source-embedded pair, run before any product scenario relies on it: no generate step runs (the entrypoint and crate keys the kind requires go unused); the one exercise step runs the harness itself, through its fx-env link under a harness name, over the materialized copy of this scenario's committed inner suite. Its agree scenario's pair matches and passes; its diverge scenario's embedded run exits 3 where the --source run exits 0, and declares exit 3 so that only the pair's comparison can fail it. The inner run must exit 1 with exactly that one failure, reporting the exit and both streams as differing from the --source run; the --source stdout it reports ends with the reading's sources item, whose paired source's kind and pinned fields the comparison blanks (1302 bytes)",
   "entrypoint": "unused.kdl",
   "crate": "unused",
   "steps": [
@@ -11,7 +11,7 @@
         "stdout-contains": [
           "test agree   ... ok\n",
           "---- diverge ----\n  - source-embedded: exit 3 differs from the --source run's 0\n",
-          "  - source-embedded: stdout differs from the --source run's at byte 0 (0 vs 896 bytes)\n",
+          "  - source-embedded: stdout differs from the --source run's at byte 0 (0 vs 1302 bytes)\n",
           "  - source-embedded: stderr differs from the --source run's at byte 0",
           "test result: FAILED. 1 passed; 1 failed",
           "inner exit=1\n"

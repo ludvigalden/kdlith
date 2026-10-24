@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
 use kdlith_diagnostic::DiagnosticRecord;
+use kdlith_model::{SourceKind, SourceSet, SourceUse};
 use kdlith_runtime::{stable_hash, stable_hash_step};
 use serde_json::{Value as Json, json};
 
@@ -15,12 +16,13 @@ use crate::diag::{
     SOURCE_INTEGRITY, SOURCE_INVALID, SOURCE_NOT_MATERIALISED, SOURCE_OVERRIDDEN, SOURCE_UNPINNED,
     record,
 };
-use crate::digest::{files_digest, tree_digest};
+use crate::digest::{files_digest, set_fingerprint, tree_digest};
 use crate::locations::{
     LocalRoot, SourceTree, Sources, admit_tree, canonical_dir, is_source_name, portable,
 };
 use crate::manifest::{
-    Declared, Layer, Override, SourceOrigin, Spot, read_manifest, read_overrides,
+    Declared, Layer, Override, SourceOrigin, Spot, describe_origin, origin_key, read_manifest,
+    read_overrides,
 };
 
 /// A named source as a reading resolves against it.
@@ -48,6 +50,11 @@ pub(crate) struct Entry {
     /// its tree.
     origin: Option<Rc<OriginTree>>,
     overridden: Option<(Layer, String)>,
+    /// The kind the source is declared as, kept when an override
+    /// replaces its tree.
+    declared: SourceKind,
+    /// The identity of the tree a reading reads, computed on first ask.
+    identity: OnceCell<Result<String, String>>,
 }
 
 /// An origin source's tree in the store.
@@ -65,7 +72,7 @@ impl OriginTree {
     fn new(origin: SourceOrigin, pinned: Option<String>, store: Option<&Path>) -> Self {
         let relative = match pinned.as_deref().and_then(|p| p.strip_prefix("sha256:")) {
             Some(hex) => format!("sha256/{hex}"),
-            None => format!("origin/{}", origin.key()),
+            None => format!("origin/{}", origin_key(&origin)),
         };
         Self {
             origin,
@@ -99,7 +106,7 @@ impl OriginTree {
         let absent = |reason: &str| {
             let fetch = format!(
                 "Fetch {} into {target}{}; kdlith sources plan lists every origin with its target",
-                self.origin.describe(),
+                describe_origin(&self.origin),
                 self.pinned
                     .as_deref()
                     .map(|pin| format!(" (its tree must digest to {pin})"))
@@ -338,14 +345,17 @@ impl Sources {
                 if entry.overridden.is_some() {
                     return None;
                 }
-                let (kind, dir) = match &entry.tree {
-                    Tree::Dir(dir) => ("dir", dir.as_path()),
+                let kind = match &entry.tree {
+                    Tree::Dir(_) => "dir",
                     Tree::Origin(tree) if tree.pinned.is_none() => {
-                        ("origin", tree.located.get()?.as_ref().ok()?.as_path())
+                        tree.located.get()?.as_ref().ok()?;
+                        "origin"
                     }
                     _ => return None,
                 };
-                let digest = tree_digest(dir).unwrap_or_else(|reason| format!("none ({reason})"));
+                let digest = entry
+                    .read_identity()
+                    .map_or_else(|reason| format!("none ({reason})"), str::to_owned);
                 let note = record(SOURCE_UNPINNED, &[name, kind, &digest], origin)
                     .with_fact("source", json!(name))
                     .with_fact("kind", json!(kind))
@@ -356,14 +366,118 @@ impl Sources {
     }
 }
 
+impl Sources {
+    /// Each named source the reading used, by name, with the identity of
+    /// the tree it read (`none` when the tree can have none).
+    pub(crate) fn used_identities(&self) -> BTreeMap<String, String> {
+        let used = self.used.borrow();
+        used.iter()
+            .filter_map(|name| {
+                let entry = self.named.get(name)?;
+                let identity = entry.read_identity().unwrap_or("none");
+                Some((name.clone(), identity.to_owned()))
+            })
+            .collect()
+    }
+
+    /// The source-set fingerprint of the named sources the reading used;
+    /// `None` when it used none.
+    pub(crate) fn used_fingerprint(&self) -> Option<String> {
+        let used = self.used_identities();
+        (!used.is_empty()).then(|| {
+            set_fingerprint(
+                used.iter()
+                    .map(|(name, identity)| (name.as_str(), identity.as_str())),
+            )
+        })
+    }
+
+    /// The identity source `name` reads now, entering it as a reading
+    /// would; `None` when the set holds no such source or it cannot be
+    /// entered.
+    pub(crate) fn identity_of(&self, name: &str, origin: &str) -> Option<String> {
+        let entry = self.named.get(name)?;
+        self.enter(name, origin).ok()?;
+        Some(entry.read_identity().unwrap_or("none").to_owned())
+    }
+
+    /// The reading's sources item: the local source first when the
+    /// reading read a document from it, with `local` the identity of the
+    /// documents it read, then every named source it used, by name.
+    pub(crate) fn source_set(&self, local: Option<String>) -> SourceSet {
+        let mut sources = Vec::new();
+        if let Some(identity) = local {
+            sources.push(SourceUse::new(None, SourceKind::Local, Some(identity)));
+        }
+        let used = self.used.borrow();
+        for name in used.iter() {
+            if let Some(entry) = self.named.get(name) {
+                sources.push(entry.usage(name));
+            }
+        }
+        drop(used);
+        SourceSet::new(sources, self.used_fingerprint())
+    }
+}
+
 impl Entry {
     fn new(tree: Tree, spot: Option<Spot>, origin: Option<Rc<OriginTree>>) -> Self {
+        let declared = match (&origin, &tree) {
+            (Some(_), _) => SourceKind::Origin,
+            (None, Tree::Embedded(_)) => SourceKind::Embedded,
+            _ => SourceKind::Dir,
+        };
         Self {
             tree,
             spot,
             origin,
             overridden: None,
+            declared,
+            identity: OnceCell::new(),
         }
+    }
+
+    /// The identity of the tree a reading reads: an origin's pin once
+    /// its tree is checked against it, else the tree's canonical digest
+    /// (an embedded source's is its build digest). An origin the store
+    /// does not hold has none.
+    fn read_identity(&self) -> Result<&str, &str> {
+        let identity = self.identity.get_or_init(|| match &self.tree {
+            Tree::Dir(dir) => tree_digest(dir),
+            Tree::Embedded(files) => files_digest(
+                files
+                    .iter()
+                    .map(|(key, text)| (key.as_str(), text.as_bytes())),
+            ),
+            Tree::Origin(tree) => match tree.located.get() {
+                Some(Ok(dir)) => match &tree.pinned {
+                    Some(pinned) => Ok(pinned.clone()),
+                    None => tree_digest(dir),
+                },
+                _ => Err("the store holds no checked tree".to_owned()),
+            },
+        });
+        identity.as_deref().map_err(String::as_str)
+    }
+
+    /// The entry as the reading's sources item reports it.
+    fn usage(&self, name: &str) -> SourceUse {
+        let pinned = self.overridden.is_none()
+            && match &self.tree {
+                Tree::Embedded(_) => true,
+                Tree::Origin(tree) => tree.pinned.is_some(),
+                Tree::Dir(_) => false,
+            };
+        let identity = self.read_identity().ok().map(str::to_owned);
+        let mut usage =
+            SourceUse::new(Some(name.to_owned()), self.declared, identity).pinned(pinned);
+        if let Some(origin) = &self.origin {
+            usage = usage.with_origin(origin.origin.clone());
+        }
+        if let Some((layer, directory)) = &self.overridden {
+            usage = usage.overridden_by(layer.name(), directory.clone());
+        }
+        usage
     }
 
     /// What an override displaces, as `KDLITH-LOC009` names it.

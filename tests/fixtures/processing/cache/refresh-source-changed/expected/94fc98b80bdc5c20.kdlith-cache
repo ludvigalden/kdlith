@@ -1,0 +1,3 @@
+kdlith-cache format=3 canonicalization=1
+{"key":"94fc98b80bdc5c20","identity":{"revision":"fnv1a64:b892e522ece3e9c2","schema":"fnv1a64:dc7d34668e3669fe","context":"fnv1a64:ccaeb7d93dac757a","profiles":"fnv1a64:e1b51df36e161fca","resolved":"fnv1a64:7c4cd565807bb610","policy":"reject"},"sources":"sha256:5939c9bb83850a156026fc86ffc6b364a96216ec998ef9bd3eeddbb44624b825","derivations":[{"entry":"data.kdl","source":"$lib/part.kdl","caller":"data.kdl"}],"items":1,"digest":"fnv1a64:1d2cdf2c03ba3280"}
+{"item":"scope-complete","data":{"source":0,"scope":null}}

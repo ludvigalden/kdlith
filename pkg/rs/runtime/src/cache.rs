@@ -3,7 +3,7 @@
 //! context snapshot, in a state directory every operation names
 //! explicitly.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::fs;
 use std::io::{self, Read as _, Write as _};
@@ -131,6 +131,9 @@ impl Derivation {
 pub struct CacheEntry {
     pub key: String,
     pub identity: InvocationIdentity,
+    /// The source-set fingerprint of the reading that derived the entry;
+    /// `None` when it used no named source.
+    pub sources: Option<String>,
     pub derivations: Vec<Derivation>,
     pub items: usize,
 }
@@ -151,6 +154,9 @@ impl fmt::Display for CacheEntry {
             policy_name(id.policy),
             self.items
         )?;
+        if let Some(sources) = &self.sources {
+            write!(f, " sources={sources}")?;
+        }
         for d in &self.derivations {
             write!(
                 f,
@@ -188,7 +194,16 @@ impl fmt::Display for SnapshotEntry {
             meta.records,
             meta.slots,
             meta.layout
-        )
+        )?;
+        if !meta.sources.is_empty() {
+            let pairs: Vec<String> = meta
+                .sources
+                .iter()
+                .map(|(name, identity)| format!("{name}={identity}"))
+                .collect();
+            write!(f, " sources=[{}]", pairs.join(","))?;
+        }
+        Ok(())
     }
 }
 
@@ -207,6 +222,11 @@ pub struct SnapshotMeta {
     pub schema: String,
     pub profiles: String,
     pub lineage: Vec<String>,
+    /// Each named source the snapshotted reading used, by name, with the
+    /// identity of the tree it read; a restore under any other identity
+    /// is a miss. Empty when it used none.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub sources: BTreeMap<String, String>,
     pub records: usize,
     pub slots: usize,
     pub layout: String,
@@ -233,11 +253,22 @@ impl SnapshotMeta {
             schema: schema.into(),
             profiles: digest(profiles),
             lineage,
+            sources: BTreeMap::new(),
             records: 0,
             slots: 0,
             layout: layout.into(),
             digest: String::new(),
         }
+    }
+}
+
+impl SnapshotMeta {
+    /// The metadata with the named sources the reading used and the
+    /// identity of each tree it read.
+    #[must_use]
+    pub fn with_sources(mut self, sources: BTreeMap<String, String>) -> Self {
+        self.sources = sources;
+        self
     }
 }
 
@@ -366,6 +397,15 @@ pub struct EncodedEntry {
 /// The key of an invocation identity: a stable FNV-1a hash of its six
 /// components, as 16 lowercase hex digits.
 pub fn cache_key(identity: &InvocationIdentity) -> String {
+    cache_key_under(identity, None)
+}
+
+/// The key of an invocation identity bound by a reading whose named
+/// sources fingerprint to `sources`: the identity's key with the
+/// fingerprint folded in, so one document read against two different
+/// trees of one source name never shares a key. `None` (no named source
+/// used) keys exactly as [`cache_key`].
+pub fn cache_key_under(identity: &InvocationIdentity, sources: Option<&str>) -> String {
     let mut hash = stable_hash(b"kdlith-cache-key");
     hash = stable_hash_step(hash, &identity.revision.to_le_bytes());
     hash = stable_hash_step(hash, &identity.schema.to_le_bytes());
@@ -373,6 +413,10 @@ pub fn cache_key(identity: &InvocationIdentity) -> String {
     hash = stable_hash_step(hash, &identity.profiles.to_le_bytes());
     hash = stable_hash_step(hash, &identity.resolved.to_le_bytes());
     hash = stable_hash_step(hash, policy_name(identity.policy).as_bytes());
+    if let Some(sources) = sources {
+        hash = stable_hash_step(hash, b"\0sources\0");
+        hash = stable_hash_step(hash, sources.as_bytes());
+    }
     format!("{hash:016x}")
 }
 
@@ -639,6 +683,17 @@ pub fn encode_entry<T: Serialize>(
     derivations: Vec<Derivation>,
     items: &[T],
 ) -> io::Result<EncodedEntry> {
+    encode_entry_under(identity, None, derivations, items)
+}
+
+/// [`encode_entry`] for a result bound by a reading whose named sources
+/// fingerprint to `sources`, keyed by [`cache_key_under`].
+pub fn encode_entry_under<T: Serialize>(
+    identity: InvocationIdentity,
+    sources: Option<String>,
+    derivations: Vec<Derivation>,
+    items: &[T],
+) -> io::Result<EncodedEntry> {
     let derivations: Vec<Derivation> = derivations
         .into_iter()
         .collect::<BTreeSet<_>>()
@@ -648,10 +703,11 @@ pub fn encode_entry<T: Serialize>(
     for item in items {
         write_ndjson(&mut body, item)?;
     }
-    let key = cache_key(&identity);
+    let key = cache_key_under(&identity, sources.as_deref());
     let meta = Meta {
         key: key.clone(),
         identity: IdentityRecord::from(identity),
+        sources: sources.clone(),
         derivations: derivations.clone(),
         items: items.len(),
         digest: items_digest(&body),
@@ -663,6 +719,7 @@ pub fn encode_entry<T: Serialize>(
         entry: OwnedEntry::Cache(CacheEntry {
             key,
             identity,
+            sources,
             derivations,
             items: items.len(),
         }),
@@ -696,7 +753,7 @@ pub fn scan_state(dir: &Path) -> Result<CacheScan, Box<DiagnosticRecord>> {
         let kind = fs::symlink_metadata(&path)
             .map_err(|e| inaccessible("read", &path.display().to_string(), &e.to_string()))?;
         match classify(&path, &name, kind.is_file())? {
-            Class::Entry(entry) => scan.entries.push(entry),
+            Class::Entry(entry) => scan.entries.push(*entry),
             Class::Corrupt(fault) => scan.corrupt.push((name, fault)),
             Class::Foreign => scan.foreign.push(name),
         }
@@ -811,7 +868,7 @@ pub fn write_state(
 
 /// The classification of one directory entry.
 enum Class {
-    Entry(OwnedEntry),
+    Entry(Box<OwnedEntry>),
     Corrupt(EntryFault),
     Foreign,
 }
@@ -847,7 +904,7 @@ fn classify(path: &Path, name: &str, regular: bool) -> Result<Class, Box<Diagnos
         }
     };
     Ok(match decoded {
-        Ok(entry) => Class::Entry(entry),
+        Ok(entry) => Class::Entry(Box::new(entry)),
         Err(fault) => Class::Corrupt(fault),
     })
 }
@@ -879,7 +936,7 @@ fn decode(key: &str, bytes: &[u8]) -> Result<CacheEntry, EntryFault> {
     let meta: Meta = serde_json::from_str(meta)
         .map_err(|error| damaged(format!("unreadable metadata: {error}")))?;
     let identity = meta.identity.parse().map_err(damaged)?;
-    if meta.key != key || cache_key(&identity) != key {
+    if meta.key != key || cache_key_under(&identity, meta.sources.as_deref()) != key {
         return Err(damaged(
             "its key does not match its file name and identity".to_owned(),
         ));
@@ -909,6 +966,7 @@ fn decode(key: &str, bytes: &[u8]) -> Result<CacheEntry, EntryFault> {
     Ok(CacheEntry {
         key: key.to_owned(),
         identity,
+        sources: meta.sources,
         derivations: meta.derivations,
         items,
     })
@@ -1008,6 +1066,8 @@ fn envelope(class: EntryClass, bytes: &[u8]) -> Result<(&str, &str), EntryFault>
 struct Meta {
     key: String,
     identity: IdentityRecord,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    sources: Option<String>,
     derivations: Vec<Derivation>,
     items: usize,
     digest: String,

@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use crate::identity::{Identity, NodeId, Reference};
 use crate::origin::OriginId;
 use crate::source::{Location, SourceId};
+use crate::sources::SourceSet;
 use crate::value::{Field, Value};
 
 /// How far an item has been checked. Provisional items passed local
@@ -480,6 +481,8 @@ pub enum Item {
     /// A contribution target the registered resolver settled, after the
     /// reading's documents.
     Resolution(ResolvedContribution),
+    /// The sources the reading used, once, after its documents.
+    Sources(SourceSet),
 }
 
 /// One item of a schema-bound session: the role vocabulary a binder

@@ -60,7 +60,12 @@ pub(crate) fn execute(
         helper.extend(args);
         let dir_run = spawn(env.kdlith, &sourced, cwd, env)?;
         let embedded_run = spawn(&env.bin_dir.join(EMBEDDED_HELPER), &helper, cwd, env)?;
-        failures.extend(equivalence(&dir_run, &embedded_run));
+        let names: Vec<&str> = invocation
+            .embedded
+            .iter()
+            .map(|(name, _)| name.as_str())
+            .collect();
+        failures.extend(equivalence(&dir_run, &embedded_run, &names));
         embedded_run
     };
     failures.extend(judge(&invocation.expectation, &output));
@@ -98,9 +103,17 @@ fn spawn(program: &Path, args: &[String], cwd: &Path, env: &RunEnv<'_>) -> Resul
 }
 
 /// Where the embedded run departs from the `--source` run: its exit
-/// code, then each stream at its first differing byte.
-fn equivalence(dir_run: &Output, embedded_run: &Output) -> Vec<String> {
+/// code, then each stream at its first differing byte. Only the paired
+/// sources' declared kind and pin may differ (see [`paired_sources`]).
+fn equivalence(dir_run: &Output, embedded_run: &Output, names: &[&str]) -> Vec<String> {
     let mut failures = Vec::new();
+    let dir_stdout = paired_sources(&dir_run.stdout, names, ("dir", false), &mut failures);
+    let embedded_stdout = paired_sources(
+        &embedded_run.stdout,
+        names,
+        ("embedded", true),
+        &mut failures,
+    );
     let (sourced, embedded) = (dir_run.status.code(), embedded_run.status.code());
     if sourced != embedded {
         failures.push(format!(
@@ -110,7 +123,7 @@ fn equivalence(dir_run: &Output, embedded_run: &Output) -> Vec<String> {
         ));
     }
     for (stream, left, right) in [
-        ("stdout", &dir_run.stdout, &embedded_run.stdout),
+        ("stdout", &dir_stdout, &embedded_stdout),
         ("stderr", &dir_run.stderr, &embedded_run.stderr),
     ] {
         if left != right {
@@ -128,6 +141,51 @@ fn equivalence(dir_run: &Output, embedded_run: &Output) -> Vec<String> {
         }
     }
     failures
+}
+
+/// `stdout` with each sources item's entries for the paired `names`
+/// checked to declare `kind` and `pinned` as `expected` (a directory is
+/// unpinned, an embedded tree pinned), then those two fields blanked.
+fn paired_sources(
+    stdout: &[u8],
+    names: &[&str],
+    expected: (&str, bool),
+    failures: &mut Vec<String>,
+) -> Vec<u8> {
+    let mut out = Vec::with_capacity(stdout.len());
+    for line in stdout.split_inclusive(|b| *b == b'\n') {
+        let parsed = serde_json::from_slice::<serde_json::Value>(line)
+            .ok()
+            .filter(|item| item.get("item").and_then(|i| i.as_str()) == Some("sources"));
+        let Some(mut item) = parsed else {
+            out.extend_from_slice(line);
+            continue;
+        };
+        let entries = item
+            .pointer_mut("/data/sources")
+            .and_then(|sources| sources.as_array_mut());
+        for entry in entries.into_iter().flatten() {
+            let name = entry.get("name").and_then(|n| n.as_str()).unwrap_or("");
+            if !names.contains(&name) {
+                continue;
+            }
+            let kind = entry.get("kind").and_then(|k| k.as_str());
+            let pinned = entry.get("pinned").and_then(serde_json::Value::as_bool);
+            if kind != Some(expected.0) || pinned != Some(expected.1) {
+                failures.push(format!(
+                    "source-embedded: the sources item declares {name} as kind {kind:?} pinned {pinned:?}, not {} pinned {}",
+                    expected.0, expected.1
+                ));
+            }
+            if let Some(entry) = entry.as_object_mut() {
+                entry.insert("kind".to_owned(), serde_json::Value::Null);
+                entry.insert("pinned".to_owned(), serde_json::Value::Null);
+            }
+        }
+        out.extend_from_slice(item.to_string().as_bytes());
+        out.push(b'\n');
+    }
+    out
 }
 
 /// Every unmet assertion, in declaration order.
@@ -261,12 +319,9 @@ fn report(failures: &[String], output: &Output) -> String {
     text
 }
 
-/// The declared scratch check: plant the declared violations inside
-/// the materialized copy, then classify the copy against the scenario
-/// source with the no-follow walk. Every planted entry must be
-/// reported as a foreign entry of its planted kind, nothing else may
-/// be reported, and the captured tree must hold each plant's target,
-/// content, size, and a fresh mtime.
+/// The declared scratch check: plant the declared violations in the
+/// materialized copy and classify it with the no-follow walk. Exactly
+/// the plants must be reported, each as a fresh foreign entry of its kind.
 fn scratch_check(check: &ScratchCheck, cwd: &Path, env: &RunEnv<'_>, source: &Path) -> Vec<String> {
     let mut failures = Vec::new();
     // One second of slack: inode timestamps come from the kernel's

@@ -7,7 +7,6 @@ use std::rc::Rc;
 
 use kdlith_diagnostic::{ByteSpan, DiagnosticRecord};
 use kdlith_model::Value;
-use serde::Serialize;
 use sha2::{Digest, Sha256};
 
 use crate::diag::{SOURCE_INVALID, located, record};
@@ -16,44 +15,30 @@ use crate::documents::read_text;
 use crate::locations::{is_source_name, normalize};
 use crate::syntax::{ParsedDocument, SyntaxNode};
 
-/// Where an origin source's tree comes from: a git repository, the
-/// revision, and the directory in it. kdlith never fetches; the origin
-/// says what to fetch into the store.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
-#[non_exhaustive]
-pub struct SourceOrigin {
-    pub git: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub path: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub rev: Option<String>,
+pub use kdlith_model::SourceOrigin;
+
+/// The store key of an origin when unpinned: the SHA-256 of its
+/// properties in name order, each written `NAME=VALUE` and a newline,
+/// the path normalized and omitted when it names the repository root.
+pub(crate) fn origin_key(origin: &SourceOrigin) -> String {
+    let mut text = format!("git={}\n", origin.git);
+    if let Some(path) = origin.path.as_deref().filter(|path| !path.is_empty()) {
+        text.push_str(&format!("path={path}\n"));
+    }
+    if let Some(rev) = &origin.rev {
+        text.push_str(&format!("rev={rev}\n"));
+    }
+    hex(&Sha256::digest(text.as_bytes()))
 }
 
-impl SourceOrigin {
-    /// The store key of the origin when unpinned: the SHA-256 of its
-    /// properties in name order, each written `NAME=VALUE` and a
-    /// newline, the path normalized and omitted when it names the
-    /// repository root.
-    pub(crate) fn key(&self) -> String {
-        let mut text = format!("git={}\n", self.git);
-        if let Some(path) = self.path.as_deref().filter(|path| !path.is_empty()) {
-            text.push_str(&format!("path={path}\n"));
-        }
-        if let Some(rev) = &self.rev {
-            text.push_str(&format!("rev={rev}\n"));
-        }
-        hex(&Sha256::digest(text.as_bytes()))
-    }
-
-    /// The origin as a fetch instruction spells it.
-    pub(crate) fn describe(&self) -> String {
-        format!(
-            "git {} at {}, directory {}",
-            self.git,
-            self.rev.as_deref().unwrap_or("any revision"),
-            self.path.as_deref().unwrap_or("the repository root"),
-        )
-    }
+/// The origin as a fetch instruction spells it.
+pub(crate) fn describe_origin(origin: &SourceOrigin) -> String {
+    format!(
+        "git {} at {}, directory {}",
+        origin.git,
+        origin.rev.as_deref().unwrap_or("any revision"),
+        origin.path.as_deref().unwrap_or("the repository root"),
+    )
 }
 
 /// What a sources manifest declares a source to be.
@@ -365,11 +350,7 @@ impl<'o> FileReader<'o> {
             },
             None => None,
         };
-        Some(SourceOrigin {
-            git,
-            path,
-            rev: get("rev"),
-        })
+        Some(SourceOrigin::new(git, path, get("rev")))
     }
 
     fn pinned(&mut self, node: &SyntaxNode, name: &str) -> Option<String> {

@@ -2,3 +2,4 @@
 {"item":"record","data":{"node":{"source":0,"index":0},"type_name":"Part","fields":[{"name":"id","value":{"kind":"string","value":"zero"},"origin":0}],"origin":0,"validation":"valid"}}
 {"item":"import","data":{"node":{"source":0,"index":1},"expression":"$parts/none-*.kdl","namespace":null,"project":[],"repeated":"reject","site":{"source":0,"span":{"start":{"offset":10,"line":2,"column":1},"end":{"offset":13,"line":2,"column":4}}},"origin":1}}
 {"item":"scope-complete","data":{"source":0,"scope":null}}
+{"item":"sources","data":{"fingerprint":"sha256:023b3a2a2bb1107187ed488d1f96f1654eddf52280a85930dc6109069e8894d6","sources":[{"name":null,"kind":"local","identity":"sha256:aefaf998283887ad6ce3776962ffe2380e024f0f8b061e294ea87345b34773ae","overridden":false},{"name":"parts","kind":"dir","identity":"sha256:b121185594de3a0eadcaa4189bb92dbe678869f2e1a00eb95404ee048d805492","pinned":false,"overridden":false}]}}
