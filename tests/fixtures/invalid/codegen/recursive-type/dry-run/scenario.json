@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "gen schema --dry-run refuses a recursive declared type exactly as a real run does: the cycle check runs before mode dispatch, so no plan line or owned-file path is printed, the one-line refusal names the cycle and its closing edge, and nothing is written",
+  "args": ["gen", "schema", "schema.kdl", "--crate", "terms-proc", "--out", "out", "--dry-run"],
+  "expect": {
+    "exit": 1,
+    "stdout-not-contains": ["plan:", "out"],
+    "stderr-contains": [
+      "kdlith: gen schema: the declared types NotTerm -> Term -> NotTerm form a cycle with no Rust indirection: Term.not -> NotTerm closes it\n"
+    ],
+    "scratch-check": {
+      "plant": [{ "path": "planted-foreign.txt", "kind": "file" }]
+    }
+  }
+}

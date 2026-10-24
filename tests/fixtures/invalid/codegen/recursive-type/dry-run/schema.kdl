@@ -1,0 +1,18 @@
+schema terms version="1" {
+    types {
+        object NotTerm {
+            field term "optional<Term>"
+        }
+        union Term {
+            variant not NotTerm
+        }
+    }
+    node not role=record type=NotTerm root=#true {
+        parents not
+        field term {
+            from {
+                children not
+            }
+        }
+    }
+}

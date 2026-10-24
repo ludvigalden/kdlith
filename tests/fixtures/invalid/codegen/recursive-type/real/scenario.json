@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "gen schema refuses a definition whose declared types render a Rust type cycle with no indirection — object NotTerm holding optional<Term> while union Term's variant holds NotTerm — naming the cycle and the edge that closes it. The refusal runs before mode dispatch, so the real write refuses identically to --dry-run and --check; the pinned expectation is the one-line refusal with exit 1, and the scratch check proves nothing was written into the output directory",
+  "args": ["gen", "schema", "schema.kdl", "--crate", "terms-proc", "--out", "out"],
+  "expect": {
+    "exit": 1,
+    "stdout-not-contains": ["out"],
+    "stderr-contains": [
+      "kdlith: gen schema: the declared types NotTerm -> Term -> NotTerm form a cycle with no Rust indirection: Term.not -> NotTerm closes it\n"
+    ],
+    "scratch-check": {
+      "plant": [{ "path": "planted-foreign.txt", "kind": "file" }]
+    }
+  }
+}
