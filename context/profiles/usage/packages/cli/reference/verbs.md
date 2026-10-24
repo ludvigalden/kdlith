@@ -1,0 +1,53 @@
+# Verbs and exit codes
+
+## Definition verbs
+
+`kdlith vet dialect FILES...` compiles dialect-definition documents.
+`kdlith vet schema --dialect D FILES...` (or `--schema` alone when the
+schema names its dialect) compiles schema documents. Compilation
+resolves imports, links every reference, and walks the documents
+through the dialect's own bindings; any error exits 1.
+
+`kdlith list types|nodes SCHEMA` prints a definition's types or node
+declarations. `kdlith list items` lists the items a data reading
+yields.
+
+## Data verbs
+
+Every data verb takes `--schema SCHEMA` and one or more entry
+documents:
+
+```sh
+kdlith vet data --schema shop.kdl orders.kdl
+kdlith inspect data --schema shop.kdl --view bound orders.kdl
+kdlith read data --schema shop.kdl --entry catalog.kdl orders.kdl
+kdlith cache refresh --state .kdlith --schema shop.kdl orders.kdl
+kdlith export --schema shop.kdl --emit roots --format ndjson orders.kdl
+```
+
+`read data` reads the last entry document and prints one record
+identified by `--record`; earlier entries bind so imports and
+numbering match. `--state DIR` restores the record from a snapshot
+`cache refresh` wrote instead of replaying.
+
+## gen
+
+`gen dialect` and `gen schema` both require `--crate NAME` and
+`--out DIR` before the definition documents. `--dry-run` prints the
+plan and writes nothing; `--check` compares the generated tree
+against `--out` and reports drift (`KDLITH-GEN002`) without writing;
+the two modes exclude each other. A write over a path the run's
+manifest does not own is refused (`KDLITH-GEN001`). `gen schema`
+additionally takes `--root`, `--source`, `--handler`, and the
+packaging flags `--kdlith-path` / `--kdlith-version`.
+
+## Exit strata
+
+- 0 — success, including warnings-only runs
+- 1 — a diagnostic or gate failure the run reports (binding, link,
+  export delivery, drift check, generation refusal, cache fault)
+- 2 — an argument fault (`KDLITH-CLI001` through `KDLITH-CLI004`),
+  reported before any document is read
+
+Inspect views keep the show-then-fail rule: every printable item or
+view line is written, then the exit follows the diagnostics.

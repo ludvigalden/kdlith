@@ -1,0 +1,29 @@
+schema shop version="1" {
+    types {
+        string Sku pattern="^[A-Z]{2}[0-9]{4}$"
+        enum Mode { variant light; variant dark }
+        object Card {
+            field title String
+            field mode "optional<Mode>"
+            field labels "map<String>"
+        }
+    }
+    node catalog role=container
+    node deck role=record type=Card {
+        parents catalog
+        field title arg=0
+        field mode property=mode
+        field labels { from { children label } }
+        children label min-occurs=0 max-occurs=2
+    }
+    node label type=String {
+        field text arg=0
+    }
+    context {
+        slot region String
+    }
+    node set-region role=context-control {
+        field region arg=0
+        effects target=following { set region field=region }
+    }
+}

@@ -1,0 +1,12 @@
+import "shop_extra.kdl"
+
+option font "serif"
+option mode "dark"
+
+scope dev
+
+setting mode "contrast" scope=dev layer=user
+
+catalog {
+    deck "Launch" mode=dark { label "core" }
+}

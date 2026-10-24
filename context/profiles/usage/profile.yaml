@@ -1,0 +1,13 @@
+title: kdlith - Usage
+description: >-
+  Using kdlith: the CLI verbs and their shared inputs, authoring
+  dialect and schema definitions, authoring and reading data
+  documents, driving a generated typed reader from Rust, and reading
+  the diagnostic surface. Every verb described here is implemented.
+packages:
+  defaults:
+    - cli
+    - authoring
+    - data
+    - typed_reader
+    - diagnostics

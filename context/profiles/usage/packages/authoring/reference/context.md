@@ -1,0 +1,63 @@
+# Context
+
+The engine manages context; a schema defines what context-producing
+nodes mean. Names like `package` or `defaults` gain meaning only
+through the schema.
+
+## Slots
+
+`context { slot NAME TYPE }` declares a typed slot, with an optional
+namespace and description. Values set into a slot are validated
+against its type. A slot declares how a second value reaching it is
+treated: `duplicates=reject` (the default, `KDLITH-CTX006`),
+`duplicates=last-wins`, or `duplicates=layered` with a declared layer
+order. An accumulating slot instead declares a combining operation:
+`accumulate append` for list-typed slots or `accumulate merge` for
+map-typed slots, with `merge duplicates=reject` (default) or
+`duplicates=last-wins` for a twice-contributed key.
+
+## Effects
+
+A node declaration carries effect groups:
+
+```kdl
+effects target=children { set region field=region }
+effects target=following { clear place }
+```
+
+`effects target=following` and `effects target=children` are the two
+targets; a node affecting both declares two groups. Effects are
+`set` (from a bound field or a literal value, exactly one), `remove`
+(the slot becomes unset), `clear` (every slot in a namespace), and
+`handler NAME` for domain computation the processor installs. An
+effect on an undeclared slot or namespace is rejected at its effect
+point (`KDLITH-CTX005`).
+
+## Execution timing
+
+A node is bound against its incoming context, then its effects are
+computed. Children effects apply on entering the children and must be
+computable from the node's header; following effects apply only after
+the node completes successfully. Leaving a boundary restores the
+caller's context; a late effect never changes nodes already bound.
+
+## Context-bound fields and layers
+
+A field may read a slot (`context=SLOT` or a `context` source) under
+policy `fallback` (supplies the field only when no explicit value is
+present) or `fixed` (an explicit value must agree).
+
+A layered slot lists its layers highest precedence first
+(`layers user base`); every `set` on it names one
+(`set NAME field=F layer=L`). A higher layer's value replaces a
+lower one's, and a second value in one layer is rejected, so the
+result never depends on effect order.
+
+## Source context
+
+A `source-context` block declares fields derived from source
+metadata — `source-context { field NAME TYPE { from { ... } } }` —
+with sources such as `path-stem` naming registered providers. The
+block declares its mode (`initial`, `fallback`, or `fixed`)
+explicitly. Values apply before the document's first semantic node,
+and every derived value records its origin in provenance.
