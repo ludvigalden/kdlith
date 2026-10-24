@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "No discovery grammar admits environment-variable interpolation: the expression's syntax is rejected at compile-time grammar validation before any expansion runs",
+  "description": "No locations rule admits environment-variable interpolation: the location's syntax is rejected at the compile-time location check (KDLITH-LOC004) before any expansion runs",
   "args": [
     "vet",
     "schema",

@@ -388,7 +388,7 @@ impl Invocations {
         self.admit(resolved, shown, repeated, context)
     }
 
-    /// Admit a target the caller already resolved, such as a discovery
+    /// Admit a target the caller already resolved, such as a pattern
     /// match: the same cycle, limit, and repeat checks a written request
     /// passes, against a path the caller expanded itself.
     pub fn invoke_resolved(

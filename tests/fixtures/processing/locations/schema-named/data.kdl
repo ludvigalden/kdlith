@@ -1,0 +1,4 @@
+// The root's first node, then the node a source-resolved schema
+// document declares.
+thing first
+extra second

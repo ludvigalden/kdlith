@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "export shares the data-options path, so a named source that does not resolve fails the export closed with KDLITH-LOC005 and nothing is exported; the document imports nothing",
+  "args": [
+    "export",
+    "--schema",
+    "{fx-suite}/processing/locations/schema.kdl",
+    "--source",
+    "parts=missing",
+    "input.kdl",
+    "--emit",
+    "Part",
+    "--format",
+    "ndjson"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

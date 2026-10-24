@@ -40,13 +40,13 @@ pub struct NodeEntry {
 }
 
 /// One declared profile: its name, the root types it admits (`None`
-/// admits every declared root), and the discovery grammar it binds.
+/// admits every declared root), and the locations rule it declares.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[non_exhaustive]
 pub struct ProfileEntry {
     pub name: String,
     pub roots: Option<Vec<String>>,
-    pub grammar: Option<String>,
+    pub locations: Option<String>,
 }
 
 /// The kind of item an index entry names.
@@ -171,7 +171,7 @@ pub fn list_profiles(def: &Definition) -> Vec<ProfileEntry> {
                 roots.sort();
                 roots
             }),
-            grammar: profile.grammar.map(|g| n.resolve(g).to_owned()),
+            locations: profile.locations.as_ref().map(crate::locations::describe),
         })
         .collect();
     entries.sort();
@@ -281,7 +281,7 @@ impl fmt::Display for NodeEntry {
     }
 }
 
-/// `NAME roots=T,...|- grammar=NAME|-`.
+/// `NAME roots=T,...|- locations=[PATTERN,...][ allow-empty]|-`.
 impl fmt::Display for ProfileEntry {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let roots = self
@@ -290,9 +290,9 @@ impl fmt::Display for ProfileEntry {
             .map_or_else(|| "-".to_owned(), |roots| roots.join(","));
         write!(
             f,
-            "{} roots={roots} grammar={}",
+            "{} roots={roots} locations={}",
             self.name,
-            self.grammar.as_deref().unwrap_or("-"),
+            self.locations.as_deref().unwrap_or("-"),
         )
     }
 }

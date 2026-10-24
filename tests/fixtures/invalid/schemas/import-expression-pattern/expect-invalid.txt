@@ -1,1 +1,1 @@
-# expect-invalid: KDLITH-IMP004
+# expect-invalid: KDLITH-LOC004

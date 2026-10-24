@@ -123,8 +123,8 @@ impl SymbolCatalog {
         self.declarations.iter().find(|d| d.node == node)
     }
 
-    /// The declarations an alias namespace gates: under an aliased
-    /// import, the imported declarations are reachable through the alias
+    /// The declarations a namespace gates: under a namespaced
+    /// import, the imported declarations are reachable through the namespace
     /// and not by their unqualified names.
     pub fn declarations_in(&self, domain: Sym) -> impl Iterator<Item = &DeclarationDescriptor> {
         self.declarations.iter().filter(move |d| d.domain == domain)

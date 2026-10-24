@@ -10,7 +10,7 @@
     "exit": 0,
     "stdout-contains": [
       "{\"item\":\"import\",\"data\":{\"node\":{\"source\":0,\"index\":1},\"expression\":\"parts.kdl\",\"targets\":[\"",
-      "tests/fixtures/schemas/vet/catalog/parts.kdl\"],\"alias\":null,\"project\":[],\"repeated\":\"reject\",\"site\":{\"source\":0,\"span\":{\"start\":{\"offset\":33,\"line\":2,\"column\":5},\"end\":{\"offset\":39,\"line\":2,\"column\":11}}},\"origin\":1}}\n",
+      "tests/fixtures/schemas/vet/catalog/parts.kdl\"],\"namespace\":null,\"project\":[],\"repeated\":\"reject\",\"site\":{\"source\":0,\"span\":{\"start\":{\"offset\":33,\"line\":2,\"column\":5},\"end\":{\"offset\":39,\"line\":2,\"column\":11}}},\"origin\":1}}\n",
       "schemas/vet/catalog/parts.kdl\"}}\n{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":1,\"index\":1},\"identity\":{\"domain\":\"NodeDef\",\"name\":[\"note\"]},\"type\":\"NodeDef\",\"value\":{\"name\":\"note\",\"role\":\"record\",\"fields\":{\"text\":{\"type\":\"String\",\"arg\":0,\"sources\":[]}},\"children\":{},\"children-groups\":{},\"effects\":[],\"groups\":[],\"descendants\":[]}}}\n{\"item\":\"scope-complete\",\"data\":{\"source\":1,\"scope\":{\"source\":1,\"index\":0}}}\n{\"item\":\"scope-complete\",\"data\":{\"source\":1,\"scope\":null}}\n",
       "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":3},\"identity\":{\"domain\":\"StringType\",\"name\":[\"Locale\"]},\"type\":\"StringType\",\"value\":{\"name\":\"Locale\",\"format\":\"kebab-case\"}}}\n",
       "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":15},\"identity\":{\"domain\":\"SlotDef\",\"name\":[\"locale\"]},\"type\":\"SlotDef\",\"value\":{\"name\":\"locale\",\"type\":\"Locale\",\"namespace\":\"defaults\",\"duplicates\":\"reject\"}}}\n",

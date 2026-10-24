@@ -1,0 +1,23 @@
+{
+  "binary": "kdlith",
+  "description": "--root names the project root in place of the current directory: tree/map/entry.kdl imports ../lib/part.kdl inside the root tree, and the target shows relative to that root",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/imports.kdl",
+    "--root",
+    "tree",
+    "tree/map/entry.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"expression\":\"../lib/part.kdl\",\"targets\":[\"lib/part.kdl\"],",
+      "{\"item\":\"document\",\"data\":{\"source\":1,\"path\":\"lib/part.kdl\"}}\n"
+    ],
+    "stdout-not-contains": [
+      "\"item\":\"diagnostic\""
+    ]
+  }
+}

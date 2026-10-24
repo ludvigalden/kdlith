@@ -1,13 +1,13 @@
 {
   "binary": "kdlith",
-  "description": "An admitted expression matching zero sources does not resolve (KDLITH-IMP001) when its grammar declares no empty-match allowance",
+  "description": "An admitted pattern matching zero documents does not resolve (KDLITH-LOC001) when its locations rule declares no empty-match allowance",
   "args": [
     "vet",
     "data",
     "--schema",
-    "{fx-suite}/processing/bind/import-anchor/schema.kdl",
-    "--anchor",
-    "root={fx-suite}/processing/bind/import-anchor/parts",
+    "{fx-suite}/processing/locations/schema.kdl",
+    "--source",
+    "parts={fx-suite}/processing/locations/pattern-local/parts",
     "data.kdl"
   ],
   "expect-invalid": {

@@ -1,0 +1,3 @@
+// The export run names the source through --source parts=parts.
+part zero
+use "$parts/part-*.kdl"

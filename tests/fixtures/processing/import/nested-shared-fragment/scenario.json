@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "Import confinement is anchored at the entry document's directory, not at each importer's: the entry imports sub/frag.kdl, which imports ../shared.kdl, a document outside the fragment's own directory but inside the entry's, so both imports are followed and shared.kdl streams as source 2",
+  "description": "A relative location resolves from the importing document's own directory, and only the project root confines it: the entry imports sub/frag.kdl, which imports ../shared.kdl, a document outside the fragment's directory but inside the root, so both imports are followed and shared.kdl streams as source 2, shown root-relative",
   "args": [
     "vet",
     "data",
@@ -13,10 +13,12 @@
     "stdout-contains": [
       "\"expression\":\"sub/frag.kdl\",\"targets\":[\"sub/frag.kdl\"],",
       "{\"item\":\"document\",\"data\":{\"source\":1,\"path\":\"sub/frag.kdl\"}}\n",
-      "\"expression\":\"../shared.kdl\",\"targets\":[\"sub/../shared.kdl\"],",
-      "{\"item\":\"document\",\"data\":{\"source\":2,\"path\":\"sub/../shared.kdl\"}}\n{\"item\":\"record\",\"data\":{\"node\":{\"source\":2,\"index\":0},\"type_name\":\"Part\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"shared\"},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n",
+      "\"expression\":\"../shared.kdl\",\"targets\":[\"shared.kdl\"],",
+      "{\"item\":\"document\",\"data\":{\"source\":2,\"path\":\"shared.kdl\"}}\n{\"item\":\"record\",\"data\":{\"node\":{\"source\":2,\"index\":0},\"type_name\":\"Part\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"shared\"},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n",
       "{\"item\":\"record\",\"data\":{\"node\":{\"source\":1,\"index\":1},\"type_name\":\"Part\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"fragment\"},\"origin\":1}],\"origin\":1,\"validation\":\"valid\"}}\n"
     ],
-    "stdout-not-contains": ["\"item\":\"diagnostic\""]
+    "stdout-not-contains": [
+      "\"item\":\"diagnostic\""
+    ]
   }
 }

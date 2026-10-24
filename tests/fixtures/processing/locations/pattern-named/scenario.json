@@ -1,0 +1,25 @@
+{
+  "binary": "kdlith",
+  "description": "A pattern expands inside a named source exactly as in the local one: $lib/part-*.kdl lists the source's tree and matches part-B.kdl before part-a.kdl (portable path bytes put B before a), each shown under $lib, and other.kdl is not matched",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/locations/schema.kdl",
+    "--source",
+    "lib=lib",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"expression\":\"$lib/part-*.kdl\",\"targets\":[\"$lib/part-B.kdl\",\"$lib/part-a.kdl\"],",
+      "{\"item\":\"document\",\"data\":{\"source\":1,\"path\":\"$lib/part-B.kdl\"}}\n",
+      "{\"item\":\"document\",\"data\":{\"source\":2,\"path\":\"$lib/part-a.kdl\"}}\n"
+    ],
+    "stdout-not-contains": [
+      "\"item\":\"diagnostic\"",
+      "other.kdl\"}}"
+    ]
+  }
+}

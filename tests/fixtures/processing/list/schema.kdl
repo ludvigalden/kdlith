@@ -2,7 +2,7 @@
 // of name order, so a sorted listing proves the order is chosen rather
 // than inherited from declaration order: types of several declaration
 // kinds, root nodes of four roles plus a record admitted under two
-// parents, and two profiles (one binding a discovery grammar and root
+// parents, and two profiles (one declaring a locations rule and root
 // types, one admitting every root and selected by default). It is also
 // the entrypoint codegen/gen-schema-node-keyed generates from: three
 // differently named nodes bind Widget, so each reads as its own item
@@ -23,10 +23,6 @@ schema shop version="1" {
         object Bin {
             field name String
         }
-    }
-    discovery found {
-        anchor root provider=path
-        patterns star=#true
     }
     node widget role=record type=Widget {
         field id arg=0
@@ -49,7 +45,10 @@ schema shop version="1" {
     node use role=source-import {
         field path String arg=0
     }
-    profile wholesale grammar=found {
+    profile wholesale {
+        locations {
+            patterns star=#true
+        }
         roots {
             allow Widget
             allow Bin

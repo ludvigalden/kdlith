@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "One name maps to exactly one tree in a reading: registering --source shared twice is KDLITH-LOC005 before any document is read, even when both name the same directory",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/locations/schema.kdl",
+    "--source",
+    "shared=lib",
+    "--source",
+    "shared=lib",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

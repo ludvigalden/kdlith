@@ -1,7 +1,7 @@
 // The import-mechanics schema the import scenarios share: a context
 // slot under a following-effect control, a record reading it, an
 // importable record, and a source-import node carrying every request
-// property — the repeated policy, the alias, and the projected slots.
+// property — the repeated policy, the namespace, and the projected slots.
 schema imports version="1" {
     types {
         string Locale {
@@ -32,7 +32,7 @@ schema imports version="1" {
     node use role=source-import {
         field path String arg=0
         field repeated "optional<String>" property=repeated
-        field alias "optional<String>" property=as
+        field namespace "optional<String>" property=as
         field project "optional<list<String>>" {
             from {
                 child project {

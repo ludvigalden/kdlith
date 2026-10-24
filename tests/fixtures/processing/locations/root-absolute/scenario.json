@@ -1,0 +1,21 @@
+{
+  "binary": "kdlith",
+  "description": "A location with a leading / resolves from its source's root: /lib/part.kdl written in map/entry.kdl names lib/part.kdl under the project root, never the host filesystem's root",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/imports.kdl",
+    "map/entry.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"expression\":\"/lib/part.kdl\",\"targets\":[\"lib/part.kdl\"],",
+      "{\"item\":\"document\",\"data\":{\"source\":1,\"path\":\"lib/part.kdl\"}}\n"
+    ],
+    "stdout-not-contains": [
+      "\"item\":\"diagnostic\""
+    ]
+  }
+}

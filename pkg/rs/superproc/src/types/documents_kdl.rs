@@ -1,13 +1,13 @@
 //! Logical types contributed by `documents.kdl`: definition roots,
 //! structural document rules, source imports, and the documents
-//! surface — profiles, sequences, discovery, the symbol catalog, and
+//! surface — profiles, sequences, locations, the symbol catalog, and
 //! the descriptor types.
 
 use kdlith_engine::{
-    OrderedMap, Shaped, TypeShape, ValueExpr, enum_type, object_type, string_type, union_type,
+    Shaped, TypeShape, ValueExpr, enum_type, object_type, string_type, union_type,
 };
 
-use super::{FieldName, NodeName, SlotName, TypeExpression, TypeName};
+use super::{FieldName, NamespaceName, NodeName, SlotName, TypeExpression, TypeName};
 
 string_type! {
     pub struct DialectName;
@@ -22,18 +22,6 @@ string_type! {
 }
 
 string_type! {
-    pub struct DiscoveryName;
-}
-
-string_type! {
-    pub struct AnchorName;
-}
-
-string_type! {
-    pub struct ProviderName;
-}
-
-string_type! {
     pub struct ScopeName;
 }
 
@@ -43,10 +31,6 @@ string_type! {
 
 string_type! {
     pub struct ResolverName;
-}
-
-string_type! {
-    pub struct AliasName;
 }
 
 string_type! {
@@ -64,7 +48,6 @@ object_type! {
     pub struct SchemaDef {
         "name" => name: SchemaName,
         "version" => version: Option<String>,
-        "grammar" => grammar: Option<DiscoveryName>,
     }
 }
 
@@ -100,9 +83,9 @@ object_type! {
         "path" => path: String,
         "project" => project: Option<Vec<SlotName>>,
         "repeated" => repeated: RepeatedImport,
-        // The imported declarations are reachable through the alias
-        // namespace and not by their unqualified names.
-        "alias" => alias: Option<AliasName>,
+        // The imported declarations are reachable through the namespace
+        // and not by their unqualified names.
+        "namespace" => namespace: Option<NamespaceName>,
     }
 }
 
@@ -113,13 +96,13 @@ object_type! {
     pub struct ProfileDef {
         "name" => name: ProfileName,
         // The profile this one extends: roots and match rules compose with
-        // the parent's, and an own grammar overrides the inherited one.
+        // the parent's, and an own locations rule overrides the inherited one.
         "extends" => extends: Option<ProfileName>,
         // Marks the schema's default profile; at most one profile is the
         // default.
         "default" => default: Option<bool>,
         "roots" => roots: Option<RootsRule>,
-        "grammar" => grammar: Option<DiscoveryName>,
+        "locations" => locations: Option<LocationsRule>,
         "match" => r#match: Option<ProfileMatch>,
     }
 }
@@ -213,44 +196,21 @@ object_type! {
 }
 
 object_type! {
-    /// The restricted path-expansion grammar import expressions are
-    /// evaluated under; anchors are host-supplied typed paths.
-    pub struct DiscoveryDef {
-        "name" => name: DiscoveryName,
-        "anchors" => anchors: OrderedMap<AnchorName, AnchorDef>,
+    /// The pattern syntax import locations may use; matches are ordered
+    /// by their portable path bytes.
+    pub struct LocationsRule {
         "patterns" => patterns: Option<PatternsRule>,
-        "order" => order: DiscoveryOrder,
         "allow-empty" => allow_empty: Option<bool>,
     }
 }
 
-impl DiscoveryDef {
-    /// The identity domain its declarations register in.
-    pub const DOMAIN: &str = "DiscoveryDef";
-}
-
 object_type! {
-    /// The anchor's name is the key of the enclosing ordered map.
-    pub struct AnchorDef {
-        "provider" => provider: ProviderName,
-    }
-}
-
-object_type! {
-    /// The pattern syntax a discovery grammar admits; absent means not
+    /// The pattern syntax a locations rule admits; absent means not
     /// admitted.
     pub struct PatternsRule {
         "star" => star: Option<bool>,
         "doublestar" => doublestar: Option<bool>,
         "braces" => braces: Option<bool>,
-    }
-}
-
-enum_type! {
-    /// The only defined ordering policy: matched sources are ordered by
-    /// their portable path bytes.
-    pub enum DiscoveryOrder {
-        "portable-path-bytes" => PortablePathBytes,
     }
 }
 
@@ -398,13 +358,9 @@ pub(crate) const TYPES: &[TypeShape] = &[
     DialectName::SHAPE,
     SchemaName::SHAPE,
     ProfileName::SHAPE,
-    DiscoveryName::SHAPE,
-    AnchorName::SHAPE,
-    ProviderName::SHAPE,
     ScopeName::SHAPE,
     DomainName::SHAPE,
     ResolverName::SHAPE,
-    AliasName::SHAPE,
     SecretId::SHAPE,
     DialectDef::SHAPE,
     SchemaDef::SHAPE,
@@ -425,10 +381,8 @@ pub(crate) const TYPES: &[TypeShape] = &[
     SequenceRule::SHAPE,
     SequenceStep::SHAPE,
     AlternativesRule::SHAPE,
-    DiscoveryDef::SHAPE,
-    AnchorDef::SHAPE,
+    LocationsRule::SHAPE,
     PatternsRule::SHAPE,
-    DiscoveryOrder::SHAPE,
     IdentityBlock::SHAPE,
     DomainDecl::SHAPE,
     ComposeRule::SHAPE,

@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "A schema locations rule admitting the star pattern lets the root's own imports use it: $parts/*.kdl passes the compile-time location check under local checking, which follows no imports, so no source is needed (complete checking resolves it against --source, pinned by schemas/vet/import-source-pattern)",
+  "args": [
+    "vet",
+    "schema",
+    "--scope",
+    "local",
+    "schema.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "ok: schema demo version 1 scope=local "
+    ]
+  }
+}

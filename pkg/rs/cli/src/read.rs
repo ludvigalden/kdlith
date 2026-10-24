@@ -1,7 +1,7 @@
-//! `kdlith read file <FILE>` (bare `kdlith read <FILE>` accepted as a
-//! compatibility alias) parses one document to its clean end; `read
-//! data` binds a data document through a schema and prints the one
-//! record whose identity was asked for.
+//! `kdlith read file <FILE>` (bare `kdlith read <FILE>` also accepted)
+//! parses one document to its clean end; `read data` binds a data
+//! document through a schema and prints the one record whose identity
+//! was asked for.
 
 use std::path::Path;
 
@@ -85,7 +85,7 @@ pub(crate) fn read_data(args: &crate::ReadDataArgs) -> ExitStatus {
     let options = match args
         .profiles
         .clone()
-        .data_options(args.anchors.clone(), args.handlers.clone())
+        .data_options(args.locations.clone(), args.handlers.clone())
     {
         Ok(options) => options.with_dialect(args.dialect.clone()),
         Err(status) => return status,

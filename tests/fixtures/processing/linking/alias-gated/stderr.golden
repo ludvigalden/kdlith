@@ -1,3 +1,0 @@
-error[KDLITH-REF001]: reference lookup in input-sets (declared only under the alias namespace common) does not resolve
-  --> data.kdl:2:7
-  help: Declare the target or import the document that declares it

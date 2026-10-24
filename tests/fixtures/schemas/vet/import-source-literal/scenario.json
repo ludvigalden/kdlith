@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "The literal-location oracle for schemas/vet/import-source-pattern: the same root declarations import the two contributing documents by literal location, in the order the pattern's portable-path-byte ordering yields, and compile to the same digest without any source",
+  "args": [
+    "vet",
+    "schema",
+    "schema.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "ok: schema demo version 1 scope=complete documents=3 types=2 nodes=2 slots=0 profiles=0 digest=027a92088fff1528"
+    ]
+  }
+}

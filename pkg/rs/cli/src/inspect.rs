@@ -8,11 +8,12 @@ use std::path::{Path, PathBuf};
 use kdlith_diagnostic::{DiagnosticRecord, ExitStatus, Severity};
 use kdlith_engine::{
     AccumulateOp, CheckScope, ContextPolicy, DeferredBinding, Definition, EffectStep, EntryContext,
-    Extensions, ImportDecl, LinkOutcome, Names, NodeDecl, Role, ScopeId, ScopeRules, SetFrom, Site,
-    SlotDecl, SourceRevisions, Sym, TypedItem, list_nodes, list_profiles, list_types,
+    Extensions, ImportDecl, LinkOutcome, Names, NodeDecl, ReadOptions, Role, ScopeId, ScopeRules,
+    SetFrom, Site, SlotDecl, SourceRevisions, Sym, TypedItem, list_nodes, list_profiles,
+    list_types,
 };
 use kdlith_model::Location;
-use kdlith_superproc::{Item, load_dialect, load_schema_anchored, reader};
+use kdlith_superproc::{Item, load_dialect, load_schema_with, reader};
 
 use crate::InspectCommand;
 use crate::ViewArg;
@@ -30,7 +31,7 @@ pub(crate) fn run(command: InspectCommand) -> ExitStatus {
                 rendering,
                 args.dialect.as_deref(),
                 &paths(&args.files),
-                &[],
+                ReadOptions::new(),
             ),
             Err(status) => status,
         },
@@ -41,7 +42,7 @@ pub(crate) fn run(command: InspectCommand) -> ExitStatus {
                 rendering,
                 args.dialect.as_deref(),
                 &paths(&args.files),
-                &args.anchors,
+                args.locations.read_options(),
             ),
             Err(status) => status,
         },
@@ -51,7 +52,7 @@ pub(crate) fn run(command: InspectCommand) -> ExitStatus {
                 Err(status) => return status,
             };
             let mut revisions = SourceRevisions::new();
-            match args.profiles.data_options(args.anchors, args.handlers) {
+            match args.profiles.data_options(args.locations, args.handlers) {
                 Ok(options) => crate::vet::stream_data_then(
                     args.schema.as_deref(),
                     &paths(&args.files),
@@ -193,8 +194,8 @@ fn target_name(target: VetTarget) -> &'static str {
 
 /// Read `entries` and their imports as definition documents written in
 /// the governing dialect — the bundled one, or the single document
-/// `dialect` names — expanding the documents' import expressions
-/// against `anchors`, then check them as the `target` definition with
+/// `dialect` names — resolving the documents' import locations under
+/// `options`, then check them as the `target` definition with
 /// the loader `vet` uses. Every item is shown before any compile fault
 /// is reported: reader diagnostics, then compile diagnostics, decide the
 /// exit together.
@@ -202,7 +203,7 @@ pub fn inspect(
     target: VetTarget,
     dialect: Option<&Path>,
     entries: &[&Path],
-    anchors: &[(String, PathBuf)],
+    options: ReadOptions,
 ) -> ExitStatus {
     inspect_view(
         target,
@@ -210,7 +211,7 @@ pub fn inspect(
         Rendering::Stream,
         dialect,
         entries,
-        anchors,
+        options,
     )
 }
 
@@ -223,7 +224,7 @@ fn inspect_view(
     rendering: Rendering,
     dialect: Option<&Path>,
     entries: &[&Path],
-    anchors: &[(String, PathBuf)],
+    options: ReadOptions,
 ) -> ExitStatus {
     if target == VetTarget::Data {
         eprintln!("kdlith: inspect data binds data documents through vet data");
@@ -235,7 +236,7 @@ fn inspect_view(
         Err(records) => return report_all(&records),
     };
     let reader = match reader(&compiled) {
-        Ok(reader) => reader.with_anchors(anchors),
+        Ok(reader) => reader.with_options(options.clone()),
         Err(records) => return report_all(&records),
     };
     let mut records: Vec<DiagnosticRecord> = Vec::new();
@@ -258,7 +259,7 @@ fn inspect_view(
             // repeat them.
             let mut definition = None;
             if !records.iter().any(|r| r.severity == Severity::Error) {
-                match check(target, &compiled, entries, &extensions, anchors) {
+                match check(target, &compiled, entries, &extensions, options) {
                     Ok(checked) => definition = Some(checked),
                     Err(compile) => records.extend(compile),
                 }
@@ -461,7 +462,7 @@ fn reference_lines(linked: &Linked<'_>) -> Vec<serde_json::Value> {
                                 "domain": candidate.identity.domain,
                                 "name": candidate.identity.name.0,
                             },
-                            "alias": candidate.alias,
+                            "namespace": candidate.namespace,
                             "labels": candidate.labels,
                             "site": candidate.site.as_ref().map(site),
                         })).collect::<Vec<_>>(),
@@ -692,13 +693,13 @@ fn effective_lines(def: &Definition) -> Vec<serde_json::Value> {
         lines.push(entry("slot", value));
     }
     let mut imports: Vec<&ImportDecl> = def.imports.iter().collect();
-    imports.sort_by_key(|import| (&import.path, import.alias.map(|a| n.resolve(a))));
+    imports.sort_by_key(|import| (&import.path, import.namespace.map(|a| n.resolve(a))));
     for import in imports {
         let value = json!({
             "path": import.path,
             "project": import.project.iter().map(|p| n.resolve(*p)).collect::<Vec<_>>(),
             "repeated": import.repeated,
-            "alias": import.alias.map(|a| n.resolve(a)),
+            "namespace": import.namespace.map(|a| n.resolve(a)),
         });
         lines.push(entry("import", value));
     }
@@ -706,7 +707,7 @@ fn effective_lines(def: &Definition) -> Vec<serde_json::Value> {
         let value = json!({
             "name": profile.name,
             "roots": profile.roots,
-            "grammar": profile.grammar,
+            "locations": profile.locations,
         });
         lines.push(entry("profile", value));
     }
@@ -764,15 +765,15 @@ fn check(
     governing: &Definition,
     entries: &[&Path],
     extensions: &Extensions,
-    anchors: &[(String, PathBuf)],
+    options: ReadOptions,
 ) -> Result<Definition, Vec<DiagnosticRecord>> {
     match target {
-        VetTarget::Schema => load_schema_anchored(
+        VetTarget::Schema => load_schema_with(
             governing,
             entries,
             extensions,
             CheckScope::Complete,
-            anchors,
+            options,
         ),
         _ => load_dialect(entries, extensions, CheckScope::Complete),
     }

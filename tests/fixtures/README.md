@@ -103,7 +103,7 @@ file as a data document of the dialect. `processing/bind/` holds small
 schemas and scenarios that bind data documents against them, each asserting
 the ordered JSON-line item stream on stdout; most scenarios share one
 `schema.kdl`, the import-mechanics scenarios share `imports.kdl` (whose
-`use` node carries the repeated policy, the alias, and the projected
+`use` node carries the repeated policy, the namespace, and the projected
 slots), the slot-duplicate-policy scenarios (`slot-*`, `merge-*`) share
 `policies.kdl` (one slot per policy arm, a layered slot with its declared
 layer order, and children scopes and a projecting import over it), the
@@ -118,7 +118,7 @@ type constructor and the `ValueExpr` scalar, and the focused directories
 `expansion/`, `dependent-binding/`, and `case-dispatch/` (the seven
 types/bindings mechanisms) plus `descendants/`, `sequence/`,
 `contributions/`, `computed-default/`, `source-context/`,
-`source-context-per-file/`, `accumulate/`, `import-alias/`, and
+`source-context-per-file/`, `accumulate/`, `import-namespace/`, and
 `identity-reference/` (the documents and context mechanisms) each carry a
 schema proving one mechanism end to end. `invalid/data/` holds data
 documents bound against the shared schema, each rejected with its declared
@@ -126,23 +126,36 @@ code; the mechanism-negative scenarios there carry the matching focused
 schema from their positive counterpart. The source-area scenarios there
 (`source-*`) instead name one document to `kdlith read file` and pin how
 reading it fails: past a limit, missing, a directory, or not UTF-8. The
-`anchor-undeclared*` scenarios (and `invalid/export/anchor-undeclared/`)
-pass an `--anchor` no discovery grammar of the schema declares, over a
-document that imports nothing, so the rejection comes from the anchor alone;
-one scenario per data verb pins the shared rejection.
+`location-source-invalid-*` scenarios (and
+`invalid/export/location-source-invalid/`) pass a `--source` whose
+directory does not resolve, over a document that imports nothing, so the
+rejection comes from the source alone; one scenario per data verb pins the
+shared rejection. The other `location-*` scenarios pin each refusal of the
+locations model: leaving a named source, an unknown or malformed `$name`,
+and a source name that is malformed or registered twice.
 
-`schemas/vet/import-anchor/` holds a schema whose own import is a
-grammar-admitted expression (`$root/*.kdl`) and the two documents it
-matches under `parts/`. The definition-path anchor scenarios load it with
-`--anchor root=...`: `vet schema` there, `list types`, `gen schema`, and
-`vet data` (`processing/bind/schema-import-anchor/`) name it through the
-suite placeholder, and `schemas/inspect/import-anchor/` carries its own
-copies so the shown paths stay relative. `schemas/vet/import-anchor-literal/`
-imports the same documents by literal path and reports the same digest,
-the oracle for the expansion. The negatives load it without the anchor
-(`invalid/schemas/*import-anchor-unsupplied/`), with an undeclared one
-(`invalid/schemas/anchor-undeclared/`), or declare profiles so no grammar
-is bound while loading (`invalid/schemas/import-anchor-profiled/`).
+`processing/locations/` holds the locations scenarios: an unprefixed
+location reaching anywhere under the project root (`root-reach`), a
+leading `/` from the source's root (`root-absolute`), `--root`
+(`root-flag`), `$name/` locations in a directory-backed source with chained
+relative and root locations inside it (`named-*`), and pattern expansion in
+the local source and in a named one (`pattern-*`). Most share
+`processing/locations/schema.kdl`, whose locations rule admits the star
+pattern.
+
+`schemas/vet/import-source-pattern/` holds a schema whose own import is a
+pattern in a named source (`$parts/*.kdl`) and the two documents it
+matches under `parts/`. The definition-path source scenarios load it with
+`--source parts=...`: `vet schema` there, `list types`, `gen schema`, and
+`vet data` (`processing/locations/schema-named/`) name it through the
+suite placeholder, and `schemas/inspect/import-source/` carries its own
+copies so the shown paths stay relative. `schemas/vet/import-source-literal/`
+imports the same documents by literal location and reports the same
+digest, the oracle for the expansion. The negatives load it without the
+source (`invalid/schemas/*location-source-unknown/`), with an invalid one
+(`invalid/schemas/location-source-invalid/`), or with the pattern admitted
+only on a profile, which never governs the schema's own imports
+(`invalid/schemas/location-pattern-profiled/`).
 
 `dialect/canonical-inspect/`, `dialect/entrypoint-inspect/`, and
 `schemas/inspect/` run `kdlith inspect`, which reads definitions through
@@ -230,8 +243,9 @@ identity. The `processing/read-data-entry-restore*` scenarios pin `read data
 restore positives match their `-replay` twins' stdout goldens byte for
 byte (`-revision-miss` matches the plain replay twin), and
 the `invalid/data/read-entry-snapshot-*` negatives pin `KDLITH-CTX004`. The data verbs take host inputs the fixtures exercise:
-`--anchor NAME=PATH` supplies a discovery anchor
-(`processing/bind/import-anchor`), `--handler NAME` installs a built-in
+`--source NAME=DIR` registers a named source
+(`processing/locations/named-dir`), `--root DIR` names the project root
+(`processing/locations/root-flag`), `--handler NAME` installs a built-in
 context handler (`processing/bind/handler-effect`), and `--profile NAME`
 names the invocation's profile (`processing/bind/profile-bind`).
 
@@ -266,15 +280,15 @@ naming a resolver no processor installs (`KDLITH-DLC006`).
 `processing/linking/` holds the reference-linking scenarios over the
 shared `schema.kdl`, which declares configuration variables composed
 from a namespace context and a local name, tools whose reference type
-requires a `contract` qualifier, and input sets an aliased import can
+requires a `contract` qualifier, and input sets a namespaced import can
 contribute, with an explicit, an explicit-or-context, and an
 imported-or-context reference type. Each qualification policy resolves
-under the default complete scope (exit 0); `alias-gated` pins the
-unresolved message naming the alias namespace; and the `scope-*` and
+under the default complete scope (exit 0); `namespace-gated` pins the
+unresolved message naming the namespace; and the `scope-*` and
 `inspect-scope-*` pairs run one failing input under both scopes, pinning
 that `--scope local` changes only the exit, never the output. The
 `references-*` scenarios pin the `references` view's link report: each
-outcome on its own, a gated alias namespace, a contribution's target, and
+outcome on its own, a gated namespace, a contribution's target, and
 a duplicate declaration, while `references-scope-local` shows the view
 linking under local scope too. The
 `invalid/data/reference-*` negatives pin `KDLITH-REF001` through
@@ -293,8 +307,8 @@ dialect path, where the conform walk now admits the `repeated=` property.
 `invalid/schemas/deferred-mechanism/` and
 `invalid/schemas/inspect-deferred-mechanism/` pin the retirement of the
 deferral marker: its spelling rejects as an unbound node on both reading
-paths. `schemas/vet/profile-declaration/`, `schemas/vet/discovery-local/`,
-`schemas/vet/import-alias/`, `schemas/vet/identity-reference/`, and
+paths. `schemas/vet/profile-declaration/`, `schemas/vet/locations-local/`,
+`schemas/vet/import-namespace/`, `schemas/vet/identity-reference/`, and
 `schemas/vet/secret-provider/` pin the declaration surface of the expanded
 documents mechanisms.
 

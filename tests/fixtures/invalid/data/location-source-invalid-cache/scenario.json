@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "A named source that does not resolve is rejected before reading on cache refresh, which shares the data-options path: --source parts=missing fails with KDLITH-LOC005 even though the document imports nothing",
+  "args": [
+    "cache",
+    "refresh",
+    "--state",
+    "state",
+    "--schema",
+    "{fx-suite}/processing/locations/schema.kdl",
+    "--source",
+    "parts=missing",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

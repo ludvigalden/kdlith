@@ -80,11 +80,9 @@ pub struct Definition {
     pub slots: Vec<SlotDecl>,
     pub imports: Vec<ImportDecl>,
     pub profiles: Vec<ProfileDecl>,
-    pub discoveries: Vec<DiscoveryDecl>,
-    /// The discovery grammar the definition's root binds by property,
-    /// interned; import expressions evaluate under it when no profiles
-    /// are declared.
-    pub root_grammar: Option<Sym>,
+    /// The locations rule the schema root declares: the patterns its
+    /// own imports, and the imports of data no profile governs, admit.
+    pub locations: Option<LocationsDecl>,
     pub references: Vec<ReferenceDecl>,
     /// The schema-level annotations the schema declares, in declaration
     /// order. Dialect definitions declare none: the declaration node's
@@ -109,18 +107,13 @@ pub struct Definition {
 }
 
 impl Definition {
-    /// The discovery grammar import expressions evaluate under for an
-    /// invocation naming `profile`: the profile's bound grammar, or the
-    /// root's when no profiles are declared. `None` evaluates literal
-    /// paths only; a profile-binding definition with no profile named
-    /// binds none, exactly as dispatch fails closed without one.
-    pub fn grammar_for(&self, profile: Option<Sym>) -> Option<&DiscoveryDecl> {
-        let bound = match profile {
-            Some(named) => self.effective_grammar(named)?,
-            None if self.profiles.is_empty() => self.root_grammar?,
-            None => return None,
-        };
-        self.discoveries.iter().find(|decl| decl.name == bound)
+    /// The locations rule imports evaluate under for an invocation
+    /// selecting `profile`: the nearest rule along the profile's chain,
+    /// else the schema root's. `None` admits literal locations only.
+    pub fn locations_for(&self, profile: Option<Sym>) -> Option<&LocationsDecl> {
+        profile
+            .and_then(|named| self.effective_locations(named))
+            .or(self.locations.as_ref())
     }
 
     /// Select the profiles one entry document binds under, in the one
@@ -139,8 +132,8 @@ impl Definition {
     /// (`KDLITH-SCH011`). A set resolving to one member selects it
     /// exactly as naming it would.
     ///
-    /// Match rules compare `path` as [`match_path`] anchors it at the
-    /// current directory; [`Definition::select_profile_at`] names the
+    /// Match rules compare `path` as [`match_path`] makes it relative to
+    /// the current directory; [`Definition::select_profile_at`] names the
     /// root. The path is the only input inference reads: document
     /// content is never consulted.
     pub fn select_profile(
@@ -294,12 +287,12 @@ impl Definition {
             .collect()
     }
 
-    /// The discovery grammar `name` binds: its own, else the nearest
+    /// The locations rule `name` declares: its own, else the nearest
     /// ancestor's.
-    pub fn effective_grammar(&self, name: Sym) -> Option<Sym> {
+    pub fn effective_locations(&self, name: Sym) -> Option<&LocationsDecl> {
         self.profile_chain(name)
             .into_iter()
-            .find_map(|profile| profile.grammar)
+            .find_map(|profile| profile.locations.as_ref())
     }
 }
 
@@ -426,10 +419,10 @@ pub struct ImportDecl {
     pub path: String,
     pub project: Vec<Sym>,
     pub repeated: Repeated,
-    /// The alias an `as=NAME` import carries, if any: the imported
-    /// declarations are reachable through the alias namespace and not by
-    /// their unqualified names.
-    pub alias: Option<Sym>,
+    /// The namespace an `as=NAME` import carries, if any: the imported
+    /// declarations are reachable through the namespace and not by their
+    /// unqualified names.
+    pub namespace: Option<Sym>,
     pub site: Site,
 }
 
@@ -441,15 +434,15 @@ pub struct ImportDecl {
 pub struct ProfileDecl {
     pub name: Sym,
     /// The profile this one extends, as declared; its effective roots,
-    /// match rules, and grammar compose along the chain.
+    /// match rules, and locations rule compose along the chain.
     pub extends: Option<Sym>,
     /// Whether the profile is the schema's default. Never inherited.
     pub default: bool,
     /// The root types the profile itself admits; `None` admits every
     /// declared root.
     pub roots: Option<Vec<Sym>>,
-    /// The discovery grammar the profile itself binds, by name.
-    pub grammar: Option<Sym>,
+    /// The locations rule the profile itself declares.
+    pub locations: Option<LocationsDecl>,
     /// The match rules the profile itself declares, in written order.
     pub rules: Vec<MatchRule>,
     pub site: Site,
@@ -503,7 +496,7 @@ impl MatchRule {
     }
 
     /// Whether the rule matches `path`, a source path as [`match_path`]
-    /// anchors it. Both sides split into components on `/` and `\`,
+    /// makes it root-relative. Both sides split into components on `/` and `\`,
     /// and comparison is exact.
     pub fn matches(&self, path: &str) -> bool {
         let path: Vec<&str> = components(path).collect();
@@ -539,13 +532,13 @@ pub fn match_path(shown: &str, root: Option<&Path>) -> String {
         _ => normalized(path),
     };
     let entry = absolute(Path::new(shown));
-    let anchor = match root {
+    let base = match root {
         Some(root) => Some(absolute(root)),
         None => cwd.as_deref().map(normalized),
     };
-    let relative = anchor
+    let relative = base
         .as_deref()
-        .and_then(|anchor| entry.strip_prefix(anchor).ok())
+        .and_then(|base| entry.strip_prefix(base).ok())
         .unwrap_or(&entry);
     let mut out = String::new();
     for component in relative.components() {
@@ -608,7 +601,7 @@ pub enum ProfileSelection {
 
 impl ProfileSelection {
     /// The selected profile, or the first member of a selected set:
-    /// the profile whose effective grammar governs import expressions.
+    /// the profile whose effective locations rule governs imports.
     pub fn profile(&self) -> Option<Sym> {
         self.members().first().copied()
     }
@@ -624,7 +617,7 @@ impl ProfileSelection {
     }
 }
 
-/// The pattern syntax a discovery grammar admits.
+/// The pattern syntax a locations rule admits.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct Patterns {
@@ -633,26 +626,15 @@ pub struct Patterns {
     pub braces: bool,
 }
 
-/// A discovery grammar: the restricted path-expansion grammar import
-/// expressions are evaluated under.
-#[derive(Clone, Debug, PartialEq, Eq)]
+/// A locations rule: the pattern syntax import locations may use.
+/// Matches are ordered by their portable path bytes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
-pub struct DiscoveryDecl {
-    pub name: Sym,
-    pub anchors: Vec<AnchorDecl>,
+pub struct LocationsDecl {
     pub patterns: Patterns,
-    /// `true` when an expression matching zero sources is allowed to
+    /// `true` when a pattern matching zero documents is allowed to
     /// resolve to nothing; otherwise it does not resolve.
     pub allow_empty: bool,
-    pub site: Site,
-}
-
-/// One host-supplied typed-path anchor a grammar names.
-#[derive(Clone, Debug, PartialEq, Eq)]
-#[non_exhaustive]
-pub struct AnchorDecl {
-    pub name: Sym,
-    pub provider: Sym,
     pub site: Site,
 }
 
@@ -702,7 +684,7 @@ pub enum Qualification {
     Explicit,
     /// The reference may take missing qualifiers from context.
     ExplicitOrContext,
-    /// The reference may resolve through an import alias or context.
+    /// The reference may resolve through an import namespace or context.
     ImportedOrContext,
 }
 

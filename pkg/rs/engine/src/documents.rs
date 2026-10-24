@@ -8,7 +8,7 @@ use kdlith_diagnostic::DiagnosticRecord;
 use kdlith_runtime::ImportFailure;
 
 use crate::diag::{
-    IMPORT_CYCLE, IMPORT_REPEATED, IMPORT_UNRESOLVED, SOURCE_LIMIT, SOURCE_NOT_UTF8,
+    IMPORT_CYCLE, IMPORT_REPEATED, LOCATION_UNRESOLVED, SOURCE_LIMIT, SOURCE_NOT_UTF8,
     SOURCE_UNREADABLE, record,
 };
 
@@ -44,7 +44,7 @@ pub(crate) fn read_text(
 pub(crate) fn import_failure(failure: ImportFailure, origin: &str) -> DiagnosticRecord {
     match failure {
         ImportFailure::Unresolved { target, reason } => {
-            record(IMPORT_UNRESOLVED, &[&target, &reason], origin)
+            record(LOCATION_UNRESOLVED, &[&target, &reason], origin)
         }
         ImportFailure::Cycle { chain } => record(IMPORT_CYCLE, &[&chain.join(" -> ")], origin),
         ImportFailure::Repeated { target, .. } => record(IMPORT_REPEATED, &[&target], origin),
@@ -52,12 +52,12 @@ pub(crate) fn import_failure(failure: ImportFailure, origin: &str) -> Diagnostic
             record(SOURCE_LIMIT, &[limit, &max.to_string()], origin)
         }
         ImportFailure::Projection(error) => record(
-            IMPORT_UNRESOLVED,
+            LOCATION_UNRESOLVED,
             &["(projected request)", &error.to_string()],
             origin,
         ),
         _ => record(
-            IMPORT_UNRESOLVED,
+            LOCATION_UNRESOLVED,
             &["(unknown request)", "the invocation stack refused it"],
             origin,
         ),

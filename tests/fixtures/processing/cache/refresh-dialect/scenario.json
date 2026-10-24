@@ -16,12 +16,12 @@
   "expect": {
     "exit": 0,
     "files": {
-      "state/6a04fc03b2b2d0f9.kdlith-cache": "expected/6a04fc03b2b2d0f9.kdlith-cache",
-      "state/7d32de8aad864ffd.kdlith-cache": "expected/7d32de8aad864ffd.kdlith-cache"
+      "state/ebd397e420a229dd.kdlith-cache": "expected/ebd397e420a229dd.kdlith-cache",
+      "state/96d0ff77b0269c79.kdlith-cache": "expected/96d0ff77b0269c79.kdlith-cache"
     },
     "absent": [
-      "state/.6a04fc03b2b2d0f9.kdlith-cache-part",
-      "state/.7d32de8aad864ffd.kdlith-cache-part"
+      "state/.ebd397e420a229dd.kdlith-cache-part",
+      "state/.96d0ff77b0269c79.kdlith-cache-part"
     ],
     "stdout-golden": "stdout.golden",
     "stderr-golden": "stderr.golden"

@@ -1,0 +1,23 @@
+// A schema whose own import is a pattern in a named source: the root's
+// locations rule admits the star pattern, and the definition verbs
+// resolve $parts/*.kdl against --source parts=DIR.
+schema demo version="1" {
+    types {
+        object Thing {
+            field name String
+        }
+    }
+    node thing role=record type=Thing {
+        field name arg=0
+    }
+    locations {
+        patterns star=#true
+    }
+    import "$parts/*.kdl"
+    document {
+        first {
+            exactly-one thing
+        }
+        following extra
+    }
+}

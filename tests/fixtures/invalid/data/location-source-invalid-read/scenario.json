@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "A named source that does not resolve is rejected before reading on read data, which shares the data-options path: --source parts=missing fails with KDLITH-LOC005 even though the document imports nothing",
+  "args": [
+    "read",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/locations/schema.kdl",
+    "--source",
+    "parts=missing",
+    "input.kdl",
+    "zero"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

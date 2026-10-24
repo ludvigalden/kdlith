@@ -1,4 +1,4 @@
 locale en-gb
 use "part.kdl" repeated=instantiate
-use "./part.kdl" repeated=instantiate
+use "copy.kdl" repeated=instantiate
 stamp

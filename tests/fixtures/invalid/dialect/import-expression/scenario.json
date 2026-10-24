@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "A dialect root binds no discovery grammar, so a dialect's imports are literal paths only: a pattern expression in one is a malformed construct (KDLITH-DLC005), never expanded",
+  "description": "A dialect's imports are literal locations only: a pattern expression in one is a malformed construct (KDLITH-DLC005), never expanded",
   "args": [
     "vet",
     "dialect",

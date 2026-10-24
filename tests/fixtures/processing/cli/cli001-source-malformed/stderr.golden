@@ -1,0 +1,3 @@
+error[KDLITH-CLI001]: invalid value 'bad' for '--source <NAME=DIR>': source takes NAME=DIR, not "bad"
+
+For more information, try '--help'.

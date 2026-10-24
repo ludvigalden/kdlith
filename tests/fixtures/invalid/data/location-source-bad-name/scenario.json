@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A source name is one lowercase kebab name, checked by the same rule locations use: --source Bad_Name=lib is KDLITH-LOC005 before any document is read",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/locations/schema.kdl",
+    "--source",
+    "Bad_Name=lib",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

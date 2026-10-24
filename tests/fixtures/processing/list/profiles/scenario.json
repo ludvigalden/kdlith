@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "list profiles prints each profile the schema declares as one line (name, sorted root types or - for every root, discovery grammar), sorted by name rather than in declaration order; stdout is pinned byte for byte and stderr is empty",
+  "description": "list profiles prints each profile the schema declares as one line (name, sorted root types or - for every root, locations rule), sorted by name rather than in declaration order; stdout is pinned byte for byte and stderr is empty",
   "args": [
     "list",
     "profiles",

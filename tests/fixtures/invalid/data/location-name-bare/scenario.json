@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A $name with no path names a source, not a document: $lib alone is KDLITH-LOC004 at its import site",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/imports.kdl",
+    "--source",
+    "lib=.",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

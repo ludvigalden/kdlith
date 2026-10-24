@@ -1,8 +1,6 @@
 //! The kdlith engine: loads and compiles definitions once into linked
 //! catalogs and a processing plan, binds documents through that plan,
 //! and reads them into a typed processor's own types.
-mod aliases;
-mod anchors;
 mod bind;
 mod bindings;
 mod cache;
@@ -11,12 +9,12 @@ mod data;
 mod decode;
 mod definition;
 mod diag;
-mod discovery;
 mod documents;
 mod export;
 mod extensions;
 mod link;
 mod list;
+mod locations;
 mod names;
 mod overlap;
 mod plan;
@@ -33,7 +31,6 @@ mod typed;
 mod types;
 mod value_resolver;
 
-pub use aliases::AliasRoot;
 pub use bind::{BindFrame, Binder, BindingSession, EntryValue, NodeStart, ParseEvents};
 pub use bindings::{
     Arity, BindingCatalog, BindingCodec, CaseRule, ChildPlan, ChildRule, Collision, Condition,
@@ -44,27 +41,26 @@ pub use bindings::{
 };
 pub use cache::{DerivedState, derive_state};
 pub use compile::input::{
-    AnchorInput, AnnotationInput, CaptureInput, CaseInput, ChildRuleInput, ConditionInput,
-    ConstraintInput, Construct, DefaultInput, DefinitionInput, DependentInput, DescendantRuleInput,
-    DiscoveryInput, DocumentInput, DocumentRuleInput, EffectGroupInput, EffectInput,
-    FieldBindingInput, FieldInput, FormatInput, GroupInput, IdentityInput, ImportInput, Located,
-    MatchRuleInput, MemberInput, NodeAnnotationInput, NodeInput, ProfileInput, ProviderInput,
-    QualifierInput, ReferenceInput, ResolutionInput, SequenceInput, SlotInput, SourceContextInput,
-    SourceFieldInput, SourceInput, StepInput, TypeInput, ValidatorInput, VariantInput,
+    AnnotationInput, CaptureInput, CaseInput, ChildRuleInput, ConditionInput, ConstraintInput,
+    Construct, DefaultInput, DefinitionInput, DependentInput, DescendantRuleInput, DocumentInput,
+    DocumentRuleInput, EffectGroupInput, EffectInput, FieldBindingInput, FieldInput, FormatInput,
+    GroupInput, IdentityInput, ImportInput, Located, LocationsInput, MatchRuleInput, MemberInput,
+    NodeAnnotationInput, NodeInput, ProfileInput, ProviderInput, QualifierInput, ReferenceInput,
+    ResolutionInput, SequenceInput, SlotInput, SourceContextInput, SourceFieldInput, SourceInput,
+    StepInput, TypeInput, ValidatorInput, VariantInput,
 };
 pub use compile::{DIALECT_VERSION, compile_dialect, compile_dialect_input, compile_schema_input};
 pub use data::{
     BoundResult, DataReader, EntryContext, ReadOptions, RecordContext, Restored, Source,
 };
 pub use definition::{
-    AccumulateOp, AnchorDecl, AnnotationDecl, CheckScope, Definition, DefinitionKind,
-    DiscoveryDecl, DocumentRule, DuplicateTreatment, ImportDecl, MatchKind, MatchRule,
-    MergeDuplicates, MissingRequirement, Patterns, ProfileDecl, ProfileSelection, ProviderDecl,
-    Qualification, QualifierDecl, ReferenceDecl, ResolutionPolicyDecl, ResolutionSelection,
-    SlotDecl, SlotDuplicates, SourceContextDecl, SourceContextMode, SourceFieldDecl, match_path,
+    AccumulateOp, AnnotationDecl, CheckScope, Definition, DefinitionKind, DocumentRule,
+    DuplicateTreatment, ImportDecl, LocationsDecl, MatchKind, MatchRule, MergeDuplicates,
+    MissingRequirement, Patterns, ProfileDecl, ProfileSelection, ProviderDecl, Qualification,
+    QualifierDecl, ReferenceDecl, ResolutionPolicyDecl, ResolutionSelection, SlotDecl,
+    SlotDuplicates, SourceContextDecl, SourceContextMode, SourceFieldDecl, match_path,
 };
 pub use diag::Site;
-pub use discovery::{Expansion, ExpansionError, Segment, expand, is_expression, parse};
 pub use documents::MAX_DOCUMENT_BYTES;
 pub use export::{Emit, ExportOutcome, export, export_read, export_under};
 pub use extensions::{
@@ -95,6 +91,7 @@ pub use list::{
     IndexEntry, IndexKind, ItemIndex, NodeEntry, ProfileEntry, TypeEntry, index_items, list_nodes,
     list_profiles, list_types, record_identity,
 };
+pub use locations::{SourceTree, is_literal, pattern_names};
 pub use names::{Names, Sym};
 pub use plan::{ContextPlan, ContextRead, DeferredBinding, EffectStep, NodePlan, ProcessingPlan};
 pub use resolution::{ResolutionError, SharedContributionResolver, resolve};

@@ -1,13 +1,13 @@
 {
   "binary": "kdlith",
-  "description": "A grammar declaring allow-empty=#true admits an expression matching zero sources: the import item streams with no targets key and no document follows, exit 0, where invalid/data/import-expression-no-match fails the same expression under a grammar without the allowance",
+  "description": "A locations rule declaring allow-empty=#true admits a pattern matching zero documents: the import item streams with no targets key and no document follows, exit 0, where invalid/data/import-expression-no-match fails the same pattern under a rule without the allowance",
   "args": [
     "vet",
     "data",
     "--schema",
     "schema.kdl",
-    "--anchor",
-    "root=parts",
+    "--source",
+    "parts=parts",
     "data.kdl"
   ],
   "expect": {

@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "list nodes takes --source: the schema's own $parts/*.kdl import resolves, so the listing includes the extra node parts/b.kdl contributes; stdout and stderr pinned byte for byte",
+  "args": [
+    "list",
+    "nodes",
+    "--schema",
+    "{fx-suite}/schemas/vet/import-source-pattern/schema.kdl",
+    "--source",
+    "parts={fx-suite}/schemas/vet/import-source-pattern/parts"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

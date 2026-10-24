@@ -195,11 +195,8 @@ impl<'d> Emission<'d> {
         for profile in &definition.profiles {
             mark(&mut contributing, profile.site);
         }
-        for discovery in &definition.discoveries {
-            mark(&mut contributing, discovery.site);
-            for anchor in &discovery.anchors {
-                mark(&mut contributing, anchor.site);
-            }
+        if let Some(locations) = &definition.locations {
+            mark(&mut contributing, locations.site);
         }
         for reference in &definition.references {
             mark(&mut contributing, reference.site);

@@ -1,3 +1,3 @@
-error[KDLITH-IMP006]: import ../secret.env (sub/../secret.env) resolves outside the directory of entry document sub/doc.kdl
+error[KDLITH-LOC002]: location ../secret.env resolves outside the project root
   --> sub/doc.kdl:1:1
-  help: Keep every document the data imports inside the entry document's directory
+  help: Keep every location inside its source; reach another tree through a named source ($name/PATH)

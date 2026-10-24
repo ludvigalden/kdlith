@@ -1,2 +1,2 @@
 part zero
-use "$root/none-*.kdl"
+use "$parts/none-*.kdl"

@@ -9,11 +9,11 @@ use kdlith_diagnostic::{DiagnosticRecord, ExitStatus};
 use std::sync::Arc;
 
 use kdlith_engine::{
-    AliasRoot, CheckScope, DataReader, Definition, EntryContext, Extensions, Handlers, LAYERED,
-    Layered, LinkInputs, LinkReport, ReadOptions, SharedResolver, link_reading,
+    CheckScope, DataReader, Definition, EntryContext, Extensions, Handlers, LAYERED, Layered,
+    LinkInputs, LinkReport, ReadOptions, SharedResolver, SourceTree, link_reading,
 };
 use kdlith_model::{Item, SourceId};
-use kdlith_superproc::{load_dialect, load_schema_anchored, seed};
+use kdlith_superproc::{load_dialect, load_schema_with, seed};
 
 use crate::handlers;
 use crate::report::{print_notes, report_all};
@@ -27,16 +27,16 @@ pub(crate) fn run(command: VetCommand) -> ExitStatus {
             None,
             &paths(&args.files),
             scope_of(args.scope),
-            &[],
+            ReadOptions::new(),
         ),
         VetCommand::Schema(args) => vet(
             VetTarget::Schema,
             args.dialect.as_deref(),
             &paths(&args.files),
             scope_of(args.scope),
-            &args.anchors,
+            args.locations.read_options(),
         ),
-        VetCommand::Data(args) => match args.profiles.data_options(args.anchors, args.handlers) {
+        VetCommand::Data(args) => match args.profiles.data_options(args.locations, args.handlers) {
             Ok(options) => {
                 let options = options
                     .with_dialect(args.dialect)
@@ -94,21 +94,20 @@ pub enum VetTarget {
 /// Vet the definition whose entry documents are `entries`. A schema is
 /// vetted under the bundled dialect, or the dialect loaded from the one
 /// document `dialect` names, which is itself vetted with complete
-/// checking first; its import expressions expand against `anchors`.
-/// A dialect root binds no discovery grammar, so its imports are
-/// literal and it takes no anchors.
+/// checking first; its import locations resolve under `options`. A
+/// dialect's imports are literal locations, so it takes none.
 pub fn vet(
     target: VetTarget,
     dialect: Option<&Path>,
     entries: &[&Path],
     scope: CheckScope,
-    anchors: &[(String, PathBuf)],
+    options: ReadOptions,
 ) -> ExitStatus {
     let extensions = definition_extensions();
     let loaded = match target {
         VetTarget::Dialect => load_dialect(entries, &extensions, scope),
         VetTarget::Schema => match governing_dialect(dialect, &extensions) {
-            Ok(governing) => load_schema_anchored(&governing, entries, &extensions, scope, anchors),
+            Ok(governing) => load_schema_with(&governing, entries, &extensions, scope, options),
             Err(records) => Err(records),
         },
         VetTarget::Data => {
@@ -155,8 +154,8 @@ fn summary_line(definition: &Definition) -> String {
 }
 
 /// What one data reading supplies beyond its documents: the dialect
-/// definition replacing the bundled one, the discovery anchors the host
-/// passes on the command line, the profile or profile set the
+/// definition replacing the bundled one, the project root and named
+/// sources the command line passes, the profile or profile set the
 /// invocation names, the built-in context handlers to install, the
 /// value resolver `--resolve-from` loaded, and the checking scope. The
 /// data verbs (`vet
@@ -166,50 +165,42 @@ fn summary_line(definition: &Definition) -> String {
 #[derive(Default)]
 pub struct DataOptions {
     dialect: Option<PathBuf>,
-    anchors: Vec<(String, PathBuf)>,
+    root: Option<PathBuf>,
+    sources: Vec<(String, PathBuf)>,
     profile: Option<String>,
     profiles: Vec<String>,
     handlers: Vec<String>,
     resolver: Option<SharedResolver>,
     scope: CheckScope,
     max_invocations: Option<u32>,
-    aliases: Vec<(String, PathBuf)>,
-    match_root: Option<PathBuf>,
 }
 
 impl DataOptions {
-    pub fn new(
-        anchors: Vec<(String, PathBuf)>,
-        profile: Option<String>,
-        handlers: Vec<String>,
-    ) -> Self {
+    pub fn new(profile: Option<String>, handlers: Vec<String>) -> Self {
         Self {
             dialect: None,
-            anchors,
+            root: None,
+            sources: Vec::new(),
             profile,
             profiles: Vec::new(),
             handlers,
             resolver: None,
             scope: CheckScope::Complete,
             max_invocations: None,
-            aliases: Vec::new(),
-            match_root: None,
         }
     }
 
-    /// The same options anchoring profile match rules at `root`, or at
-    /// the current directory when it is `None`.
+    /// The same options rooted at `root`, or at the current directory
+    /// when it is `None`, registering each `(name, directory)` as a named
+    /// source in place of any registered before.
     #[must_use]
-    pub fn with_match_root(mut self, root: Option<PathBuf>) -> Self {
-        self.match_root = root;
-        self
-    }
-
-    /// The same options registering each `(name, directory)` as an
-    /// import alias, in place of any registered before.
-    #[must_use]
-    pub fn with_aliases(mut self, aliases: Vec<(String, PathBuf)>) -> Self {
-        self.aliases = aliases;
+    pub fn with_locations(
+        mut self,
+        root: Option<PathBuf>,
+        sources: Vec<(String, PathBuf)>,
+    ) -> Self {
+        self.root = root;
+        self.sources = sources;
         self
     }
 
@@ -273,19 +264,19 @@ impl DataOptions {
 
     /// The schema `schema` names, loaded with complete checking under
     /// the governing dialect and these options' extensions, its import
-    /// expressions expanded against the supplied anchors.
+    /// locations resolved under the root and sources.
     pub(crate) fn load_schema(
         &self,
         schema: &Path,
         extensions: &Extensions,
     ) -> Result<Definition, Vec<DiagnosticRecord>> {
         let governing = self.governing(extensions)?;
-        load_schema_anchored(
+        load_schema_with(
             &governing,
             &[schema],
             extensions,
             CheckScope::Complete,
-            &self.anchors,
+            self.locations(ReadOptions::new()),
         )
     }
 
@@ -314,9 +305,20 @@ impl DataOptions {
         definition_extensions().with_installed_handlers(&self.registry())
     }
 
-    /// The reader options: the named profile or profile set, the
-    /// supplied anchors and import aliases, the match root, and the
-    /// invocation bound.
+    /// `options` rooted at the project root, with the named sources
+    /// registered.
+    fn locations(&self, mut options: ReadOptions) -> ReadOptions {
+        if let Some(root) = &self.root {
+            options = options.with_root(root.clone());
+        }
+        for (name, dir) in &self.sources {
+            options = options.with_source(name.clone(), SourceTree::dir(dir.clone()));
+        }
+        options
+    }
+
+    /// The reader options: the named profile or profile set, the root
+    /// and sources, and the invocation bound.
     pub(crate) fn read_options(&self) -> ReadOptions {
         let mut options = ReadOptions::new().with_profiles(self.profiles.iter().cloned());
         if let Some(profile) = &self.profile {
@@ -325,16 +327,7 @@ impl DataOptions {
         if let Some(max) = self.max_invocations {
             options = options.with_max_invocations(max as usize);
         }
-        for (name, path) in &self.anchors {
-            options = options.with_anchor(name.clone(), path.clone());
-        }
-        for (name, dir) in &self.aliases {
-            options = options.with_alias(name.clone(), AliasRoot::Fs(dir.clone()));
-        }
-        if let Some(root) = &self.match_root {
-            options = options.with_match_root(root.clone());
-        }
-        options
+        self.locations(options)
     }
 }
 

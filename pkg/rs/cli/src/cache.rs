@@ -58,7 +58,7 @@ fn refresh(args: CacheRefreshArgs) -> ExitStatus {
         );
         return combine(ExitStatus::Failure, status);
     }
-    let options = match args.profiles.data_options(args.anchors, args.handlers) {
+    let options = match args.profiles.data_options(args.locations, args.handlers) {
         Ok(options) => options.with_dialect(args.dialect),
         Err(status) => return status,
     };

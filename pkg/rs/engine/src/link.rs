@@ -26,7 +26,7 @@ const ORIGIN: &str = "data-document";
 
 /// The linkable surface of one reading, gathered from its item stream:
 /// the items that carry declarations or references, the path of every
-/// document, and the alias namespace each aliased-imported document
+/// document, and the namespace each namespaced-imported document
 /// belongs to.
 #[derive(Clone, Debug, Default)]
 #[non_exhaustive]
@@ -36,9 +36,9 @@ pub struct LinkInputs {
     pub items: Vec<Item>,
     /// Each document's path as the reading shows it.
     pub documents: BTreeMap<SourceId, String>,
-    /// The alias namespace of each document an aliased import loaded.
-    pub aliases: BTreeMap<SourceId, String>,
-    imports: ImportAliases,
+    /// The namespace of each document a namespaced import loaded.
+    pub namespaces: BTreeMap<SourceId, String>,
+    imports: ImportNamespaces,
 }
 
 impl LinkInputs {
@@ -48,11 +48,11 @@ impl LinkInputs {
 
     /// Take one item of the reading, in stream order.
     pub fn observe(&mut self, item: &Item) {
-        let alias = self.imports.observe(item);
+        let namespace = self.imports.observe(item);
         match item {
             Item::Document(document) => {
-                if let Some(alias) = alias {
-                    self.aliases.insert(document.source, alias);
+                if let Some(namespace) = namespace {
+                    self.namespaces.insert(document.source, namespace);
                 }
                 self.documents
                     .insert(document.source, document.path.clone());
@@ -75,29 +75,29 @@ impl LinkInputs {
 /// the most recent request, never a global path set, keeps the
 /// attribution exact for nested and repeated imports.
 #[derive(Clone, Debug, Default)]
-pub(crate) struct ImportAliases {
+pub(crate) struct ImportNamespaces {
     /// Import requests whose targets may still load, oldest first.
     pending: Vec<(Option<String>, Vec<String>)>,
 }
 
-impl ImportAliases {
+impl ImportNamespaces {
     /// Take one item of the reading, in stream order: for a document an
-    /// aliased import loaded, that import's alias.
+    /// namespaced import loaded, that import's namespace.
     pub(crate) fn observe(&mut self, item: &Item) -> Option<String> {
         match item {
             Item::Document(document) => self
                 .pending
                 .iter_mut()
                 .rev()
-                .find_map(|(alias, targets)| {
+                .find_map(|(namespace, targets)| {
                     let at = targets.iter().position(|t| *t == document.path)?;
                     targets.remove(at);
-                    Some(alias.clone())
+                    Some(namespace.clone())
                 })
                 .flatten(),
             Item::Import(request) if !request.targets.is_empty() => {
                 self.pending
-                    .push((request.alias.clone(), request.targets.clone()));
+                    .push((request.namespace.clone(), request.targets.clone()));
                 None
             }
             _ => None,
@@ -111,10 +111,10 @@ impl ImportAliases {
 pub struct IndexedDeclaration {
     pub node: NodeId,
     pub identity: Identity,
-    /// The alias namespace the declaration registers under, when an
-    /// aliased import loaded its document: other documents reach it
-    /// through the alias and not by its unqualified name.
-    pub alias: Option<String>,
+    /// The namespace the declaration registers under, when an
+    /// namespaced import loaded its document: other documents reach it
+    /// through the namespace and not by its unqualified name.
+    pub namespace: Option<String>,
     /// The identity field each name segment came from, outermost first;
     /// empty when the composition is not known.
     pub labels: Vec<String>,
@@ -161,14 +161,14 @@ impl IdentityIndex {
 /// Stage one, identity construction: index the reading's declarations by
 /// their composed identities. Only domains an identity block or a
 /// declared reference type names are indexed. A declaration from a
-/// document `aliases` attributes to an alias namespace registers under
+/// document `namespaces` attributes to a namespace registers under
 /// that namespace, which gates every other document's view of it. Two
 /// declarations composing one identity in one
 /// domain and namespace are a duplicate; the first stays indexed.
 pub fn index_identities(
     definition: &Definition,
     items: &[Item],
-    aliases: &BTreeMap<SourceId, String>,
+    namespaces: &BTreeMap<SourceId, String>,
 ) -> IdentityIndex {
     let linked = linked_domains(definition);
     let mut index = IdentityIndex::default();
@@ -183,7 +183,7 @@ pub fn index_identities(
         let entry = IndexedDeclaration {
             node: declaration.node,
             identity: identity.clone(),
-            alias: aliases.get(&declaration.node.source).cloned(),
+            namespace: namespaces.get(&declaration.node.source).cloned(),
             labels: labels(definition, declaration),
             fields: declaration.fields.clone(),
             site: declaration.site,
@@ -191,7 +191,7 @@ pub fn index_identities(
         let domain = index.domains.entry(identity.domain.clone()).or_default();
         match domain
             .iter()
-            .find(|held| held.alias == entry.alias && held.identity.name == identity.name)
+            .find(|held| held.namespace == entry.namespace && held.identity.name == identity.name)
         {
             Some(first) => index.duplicates.push(DuplicateDeclaration {
                 first: first.clone(),
@@ -312,8 +312,8 @@ fn domain_reference_type<'d>(
 pub struct Lookup {
     pub bound: BoundReference,
     pub candidates: Vec<IndexedDeclaration>,
-    /// The alias namespaces holding a declaration the reference would
-    /// match if aliased visibility did not gate it, in name order.
+    /// The namespaces holding a declaration the reference would
+    /// match if namespaced visibility did not gate it, in name order.
     pub gated: Vec<String>,
 }
 
@@ -326,10 +326,10 @@ pub struct Lookup {
 /// policies fill the innermost still-missing segment from the namespace
 /// context captured where the reference bound, and leave any further
 /// missing segment open, so a partial name may match several
-/// declarations. `imported-or-context` also admits an alias namespace as
-/// the name's first segment. A declaration under an alias is reachable
+/// declarations. `imported-or-context` also admits a namespace as
+/// the name's first segment. A declaration under a namespace is reachable
 /// by its unqualified name from its own document only; every other
-/// document reaches it through the alias namespace or not at all.
+/// document reaches it through the namespace or not at all.
 pub fn derive_candidates(index: &IdentityIndex, bound: &[BoundReference]) -> Vec<Lookup> {
     bound
         .iter()
@@ -341,18 +341,18 @@ pub fn derive_candidates(index: &IdentityIndex, bound: &[BoundReference]) -> Vec
             let mut gated = BTreeSet::new();
             for entry in index.domain(&reference.domain) {
                 let plain = matches(entry, segments, reference, policy);
-                match &entry.alias {
+                match &entry.namespace {
                     None if plain => candidates.push(entry.clone()),
                     None => {}
                     Some(_) if plain && own_document(entry, reference) => {
                         candidates.push(entry.clone());
                     }
-                    Some(alias) => {
-                        let prefixed = through_alias(entry, reference, policy).is_some();
+                    Some(namespace) => {
+                        let prefixed = through_namespace(entry, reference, policy).is_some();
                         if prefixed && policy == Qualification::ImportedOrContext {
                             candidates.push(entry.clone());
                         } else if prefixed || plain {
-                            gated.insert(alias.clone());
+                            gated.insert(namespace.clone());
                         }
                     }
                 }
@@ -719,7 +719,7 @@ pub fn link(
 /// consumer that links a reading runs this one composition, so the
 /// command line and a typed reading decide each outcome alike.
 pub fn link_reading(definition: &Definition, inputs: &LinkInputs) -> LinkReport {
-    let index = index_identities(definition, &inputs.items, &inputs.aliases);
+    let index = index_identities(definition, &inputs.items, &inputs.namespaces);
     let bound = bind_references(definition, &inputs.items);
     let lookups = derive_candidates(&index, &bound);
     let mut report = link(definition, &index, lookups, &inputs.documents);
@@ -789,21 +789,21 @@ fn matches(
 }
 
 /// Whether a reference is written in the document that holds a
-/// declaration: an aliased import namespaces other documents' view of
+/// declaration: a namespaced import namespaces other documents' view of
 /// its declarations, never their own.
 fn own_document(entry: &IndexedDeclaration, reference: &Reference) -> bool {
     entry.node.source == reference.site.source
 }
 
 /// The name segments after a reference's first, when that first segment
-/// is the declaration's alias namespace and the rest match it.
-fn through_alias<'r>(
+/// is the declaration's namespace and the rest match it.
+fn through_namespace<'r>(
     entry: &IndexedDeclaration,
     reference: &'r Reference,
     policy: Qualification,
 ) -> Option<&'r [String]> {
     let (first, rest) = reference.name.0.split_first()?;
-    (entry.alias.as_ref() == Some(first)
+    (entry.namespace.as_ref() == Some(first)
         && !rest.is_empty()
         && matches(entry, rest, reference, policy))
     .then_some(rest)
@@ -860,8 +860,8 @@ fn unmet_qualifiers(
     let policy = bound.declared.qualification;
     let plain = reference.name.0.as_slice();
     let unqualified = own_document(target, reference) && matches(target, plain, reference, policy);
-    let segments = match &target.alias {
-        Some(_) if !unqualified => through_alias(target, reference, policy).unwrap_or_default(),
+    let segments = match &target.namespace {
+        Some(_) if !unqualified => through_namespace(target, reference, policy).unwrap_or_default(),
         _ => plain,
     };
     let derived = derive(target, segments, reference, policy).unwrap_or_default();
@@ -961,10 +961,10 @@ fn collect<'v>(field: Option<&'v str>, value: &'v Value, key: bool, held: &mut V
     }
 }
 
-/// A name as its segments read, outermost first, under an alias
+/// A name as its segments read, outermost first, under a namespace
 /// namespace when it has one.
-fn spelled(alias: Option<&str>, name: &QualifiedName) -> String {
-    alias
+fn spelled(namespace: Option<&str>, name: &QualifiedName) -> String {
+    namespace
         .into_iter()
         .chain(name.0.iter().map(String::as_str))
         .collect::<Vec<_>>()
@@ -979,7 +979,7 @@ fn duplicate_record(
     let name = format!(
         "{} {}",
         declaration.identity.domain,
-        spelled(declaration.alias.as_deref(), &declaration.identity.name)
+        spelled(declaration.namespace.as_deref(), &declaration.identity.name)
     );
     let record = located(
         record(DUPLICATE, &[&name], ORIGIN),
@@ -1015,7 +1015,7 @@ fn link_records(link: &Link, documents: &BTreeMap<SourceId, String>) -> Vec<Diag
             let name = match link.gated.as_slice() {
                 [] => name,
                 gated => format!(
-                    "{name} (declared only under the alias namespace {})",
+                    "{name} (declared only under the namespace {})",
                     gated.join(", ")
                 ),
             };
@@ -1025,7 +1025,7 @@ fn link_records(link: &Link, documents: &BTreeMap<SourceId, String>) -> Vec<Diag
             let candidates = link
                 .candidates
                 .iter()
-                .map(|candidate| spelled(candidate.alias.as_deref(), &candidate.identity.name))
+                .map(|candidate| spelled(candidate.namespace.as_deref(), &candidate.identity.name))
                 .collect::<Vec<_>>()
                 .join(", ");
             let values = [name.as_str(), candidates.as_str()];

@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A profile's locations rule governs the data that profile reads, never the schema's own imports: with the star pattern admitted only on profile only and none on the root, the schema's own $parts/*.kdl import is KDLITH-LOC004 at its site even with --source parts=PATH registered, never evaluated under a guessed rule",
+  "args": [
+    "vet",
+    "schema",
+    "--source",
+    "parts={fx-suite}/schemas/vet/import-source-pattern/parts",
+    "schema.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

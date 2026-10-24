@@ -110,7 +110,7 @@ pub fn export_under(
 /// Run one export as [`export_under`] does, through a configured
 /// reader and its reading options: the reader carries the context
 /// handlers the processor installed, and `options` the profile, the
-/// discovery anchors, and the explicit output policy. The type
+/// root and sources, and the explicit output policy. The type
 /// selection is checked against the reader's definition before any
 /// document is read. After the stream the reading is linked under
 /// `scope`'s complete arm — the same one link composition `vet data`

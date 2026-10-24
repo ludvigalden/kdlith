@@ -48,7 +48,8 @@ pub enum Construct {
         at: usize,
     },
     Profile(ProfileInput),
-    Discovery(DiscoveryInput),
+    /// The schema root's locations rule.
+    Locations(LocationsInput),
     Reference(ReferenceInput),
     /// A schema-level annotation declaration.
     Annotation(AnnotationInput),
@@ -399,8 +400,8 @@ pub struct ImportInput {
     pub path: String,
     pub project: Vec<String>,
     pub repeated: String,
-    /// The alias an `as=NAME` import carries.
-    pub alias: Option<String>,
+    /// The namespace an `as=NAME` import carries.
+    pub namespace: Option<String>,
 }
 
 /// A document profile, as declared.
@@ -414,7 +415,8 @@ pub struct ProfileInput {
     pub default: Option<bool>,
     /// The root types the profile admits, when it declares roots.
     pub roots: Option<Vec<String>>,
-    pub grammar: Option<String>,
+    /// The profile's own locations rule, when it declares one.
+    pub locations: Option<LocationsInput>,
     /// The match rules of the profile's `match` block, in written order:
     /// each rule's node name (`path-suffix`, `path-prefix`, or
     /// `file-name`) and its text. `None` when it declares no block.
@@ -428,22 +430,13 @@ pub struct MatchRuleInput {
     pub text: String,
 }
 
-/// A discovery grammar, as declared.
-#[derive(Clone, Debug)]
-pub struct DiscoveryInput {
-    pub name: String,
-    pub anchors: Vec<AnchorInput>,
+/// A locations rule, as declared.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct LocationsInput {
     pub star: bool,
     pub doublestar: bool,
     pub braces: bool,
     pub allow_empty: bool,
-}
-
-/// One anchor a discovery grammar declares.
-#[derive(Clone, Debug)]
-pub struct AnchorInput {
-    pub name: String,
-    pub provider: String,
 }
 
 /// A named reference type, as declared.

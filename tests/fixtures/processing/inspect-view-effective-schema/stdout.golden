@@ -7,6 +7,6 @@
 {"item":"effective","data":{"section":"slot","entry":{"name":"labels","type":"list<String>","namespace":null,"accumulate":"append","duplicates":"reject","layers":[]}}}
 {"item":"effective","data":{"section":"slot","entry":{"name":"locale","type":"String","namespace":null,"accumulate":null,"duplicates":"layered","layers":["user","base"]}}}
 {"item":"effective","data":{"section":"slot","entry":{"name":"tone","type":"Tone","namespace":"look","accumulate":null,"duplicates":"reject","layers":[]}}}
-{"item":"effective","data":{"section":"import","entry":{"path":"part.kdl","project":[],"repeated":"reject","alias":null}}}
-{"item":"effective","data":{"section":"profile","entry":{"name":"bulk","roots":["Widget"],"grammar":null}}}
-{"item":"effective","data":{"section":"profile","entry":{"name":"retail","roots":null,"grammar":null}}}
+{"item":"effective","data":{"section":"import","entry":{"path":"part.kdl","project":[],"repeated":"reject","namespace":null}}}
+{"item":"effective","data":{"section":"profile","entry":{"name":"bulk","roots":["Widget"],"locations":null}}}
+{"item":"effective","data":{"section":"profile","entry":{"name":"retail","roots":null,"locations":null}}}

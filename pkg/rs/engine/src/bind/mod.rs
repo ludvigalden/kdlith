@@ -195,10 +195,10 @@ pub struct Binder<'d, 's> {
     root_name: Option<String>,
     /// The root node bound last, while no later root node has opened.
     root_last: Option<Sibling>,
-    /// The `as=` aliases this document's imports bound, with the span of
-    /// the first import that bound each; an alias is unique in its
+    /// The `as=` namespaces this document's imports bound, with the span
+    /// of the first import that bound each; a namespace is unique in its
     /// document.
-    aliases: Vec<(String, ByteSpan)>,
+    namespaces: Vec<(String, ByteSpan)>,
     /// The context handlers the reading processor installed: a handler
     /// effect executes through this registry at its declared timing,
     /// and one it lacks fails at its site.
@@ -323,7 +323,7 @@ impl<'d, 's> Binder<'d, 's> {
             order_broken: false,
             root_name: None,
             root_last: None,
-            aliases: Vec::new(),
+            namespaces: Vec::new(),
             handlers: Handlers::new(),
             resolver: None,
             consulted: false,
@@ -2077,7 +2077,7 @@ impl<'d, 's> Binder<'d, 's> {
         let info = &self.tables.decls[owner.index()];
         let path = text_of(info.path);
         let repeated = text_of(info.repeated);
-        let alias = text_of(info.alias);
+        let namespace = text_of(info.namespace);
         let layer = text_of(info.layer);
         // A scope field typed as a declared reference hoists its written
         // spelling, matching the untyped string form.
@@ -2186,20 +2186,20 @@ impl<'d, 's> Binder<'d, 's> {
                         return;
                     }
                 };
-                if let Some(alias) = &alias
-                    && self.aliases.iter().any(|(held, _)| held == alias)
+                if let Some(namespace) = &namespace
+                    && self.namespaces.iter().any(|(held, _)| held == namespace)
                 {
-                    // The request preserves `as=`; an alias is unique in
-                    // its document, on every reading path.
-                    let values = [alias.as_str(), "the alias of import"];
+                    // The request preserves `as=`; a namespace is unique
+                    // in its document, on every reading path.
+                    let values = [namespace.as_str(), "the namespace of import"];
                     self.diagnose(cx, DUPLICATE_KEY, frame.span, &values);
                     return;
                 }
-                if let Some(alias) = &alias {
-                    self.aliases.push((alias.clone(), frame.span));
+                if let Some(namespace) = &namespace {
+                    self.namespaces.push((namespace.clone(), frame.span));
                 }
                 let mut request = ImportRequest::new(node, expression, site, origin);
-                request.alias = alias;
+                request.namespace = namespace;
                 BoundItem::Import(request.with_policy(project, policy))
             }
             Role::Container => {
@@ -2272,7 +2272,7 @@ impl<'d, 's> Binder<'d, 's> {
     }
 
     /// Whether a dialect document's import path is literal, reported
-    /// as the compiler reports it when empty or in discovery syntax.
+    /// as the compiler reports it when empty or not a literal location.
     /// A schema document's paths are left to its own compile.
     fn literal_import(&mut self, cx: &mut Cx<'_>, span: ByteSpan, path: &str) -> bool {
         if self.root_name.as_deref() != Some("dialect") {
@@ -2282,7 +2282,7 @@ impl<'d, 's> Binder<'d, 's> {
             self.diagnose(cx, MALFORMED, span, &["import", "empty path"]);
             return false;
         }
-        if !crate::discovery::is_expression(path) {
+        if crate::locations::is_literal(path) {
             return true;
         }
         let construct = format!("import {path:?}");

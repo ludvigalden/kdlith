@@ -32,16 +32,17 @@ pub(crate) fn run(command: ListCommand) -> ExitStatus {
 }
 
 /// The schema a declaration listing names, under the definition
-/// extensions, the governing dialect, and the anchors it supplies.
+/// extensions, the governing dialect, and the root and sources it names.
 fn load_listed(args: &ListSchemaArgs) -> Result<Definition, ExitStatus> {
-    let options =
-        DataOptions::new(args.anchors.clone(), None, Vec::new()).with_dialect(args.dialect.clone());
+    let options = DataOptions::new(None, Vec::new())
+        .with_locations(args.locations.root(), args.locations.sources.clone())
+        .with_dialect(args.dialect.clone());
     load(&args.schema, &options, &definition_extensions())
 }
 
 /// The schema loaded under the options' governing dialect with complete
-/// checking, its import expressions expanded against the options'
-/// anchors; a failed load is reported and decides the exit.
+/// checking, its import locations resolved under the options' root and
+/// sources; a failed load is reported and decides the exit.
 fn load(
     schema: &Path,
     options: &DataOptions,
@@ -56,7 +57,7 @@ fn load(
 /// indexed item. The reading runs to its end, so a diagnostic anywhere
 /// in the documents fails the listing after the index is printed.
 fn items(args: ListItemsArgs) -> ExitStatus {
-    let options = match args.profiles.data_options(args.anchors, args.handlers) {
+    let options = match args.profiles.data_options(args.locations, args.handlers) {
         Ok(options) => options.with_dialect(args.dialect),
         Err(status) => return status,
     };

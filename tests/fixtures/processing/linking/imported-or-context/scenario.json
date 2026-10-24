@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "An imported-or-context reference resolves through an import alias: the aliased document's declaration registers under the alias namespace, and the reference naming that namespace as its first segment links to it under the default complete scope",
+  "description": "An imported-or-context reference resolves through an import namespace: the namespaced document's declaration registers under the namespace, and the reference naming that namespace as its first segment links to it under the default complete scope",
   "args": [
     "vet",
     "data",

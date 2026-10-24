@@ -23,7 +23,7 @@
       "exercise": {
         "command": ["cargo", "run", "--offline", "--quiet", "--manifest-path", "ws/rs/exercise/Cargo.toml", "--", "processing/bind/import-projection/schema.kdl", "processing/bind/import-projection/data.kdl"],
         "stdout-contains": [
-          "schema ok digest=2e971c3cbf612165\n",
+          "schema ok digest=8060192fdc1693d2\n",
           "read plain failed=false\ndocument processing/bind/import-projection/data.kdl context=[]\ndocument processing/bind/import-projection/part.kdl context=[]\nstamp at=en-gb site=processing/bind/import-projection/part.kdl:1\nstamp at=en-gb site=processing/bind/import-projection/data.kdl:5\n",
           "read capturing failed=false\ndocument processing/bind/import-projection/data.kdl context=[locale=unset]\ndocument processing/bind/import-projection/part.kdl context=[locale=en-gb]\nstamp at=en-gb site=processing/bind/import-projection/part.kdl:1\nstamp at=en-gb site=processing/bind/import-projection/data.kdl:5\n",
           "unknown-slot error=the definition declares no context slot profile items=0\n"

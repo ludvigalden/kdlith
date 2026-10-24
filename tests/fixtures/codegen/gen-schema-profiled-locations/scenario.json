@@ -1,0 +1,73 @@
+{
+  "binary": "kdlith",
+  "kind": "codegen-oracle",
+  "description": "The profiled-locations generation fixture: gen schema generates a committed schema whose profiles declare its locations rule (the profile only, selected by the entry file name entry.kdl, admits the star pattern; the profile audit declares no rule, and no default exists) twice into two scratch trees the harness requires byte-identical, and the generated crate compiles inside a scratch workspace materialized from this scenario's committed template. The compiled processor loads the schema with the digest the reference CLI reports and reads committed data documents through its own typed reader, printing every item streamed and the reading's outcome, each exactly as vet data reports on the same inputs: with the source registered through with_source, or through with_options carrying it, the entry document's $parts/*.kdl import resolves under the inferred profile's rule to both matched documents in portable-path-byte order, each shown under $parts and read with its record before the entry's own, and the reading does not fail; a document no rule or default selects a profile for fails with KDLITH-SCH011 until with_profile, or with_options naming the profile, admits it; the import fails at its site with KDLITH-LOC003 when no source is registered and with KDLITH-LOC004 when the named profile admits no pattern; and a source registered under a malformed name fails with KDLITH-LOC005 before any document streams",
+  "form": "schema",
+  "entrypoint": "inputs/survey.kdl",
+  "crate": "survey-proc",
+  "steps": [
+    {
+      "generate": "ws/rs/survey-proc"
+    },
+    {
+      "generate": "gen-again"
+    },
+    {
+      "determinism": [
+        "ws/rs/survey-proc",
+        "gen-again"
+      ]
+    },
+    {
+      "compile": {
+        "workspace": "ws",
+        "copy": {
+          "crates": [
+            "diagnostic",
+            "engine",
+            "model",
+            "parse",
+            "runtime",
+            "superproc"
+          ],
+          "kdl": true
+        },
+        "command": [
+          "cargo",
+          "build",
+          "--offline",
+          "--manifest-path",
+          "ws/rs/survey-proc/Cargo.toml"
+        ]
+      }
+    },
+    {
+      "exercise": {
+        "command": [
+          "cargo",
+          "run",
+          "--offline",
+          "--quiet",
+          "--manifest-path",
+          "ws/rs/exercise/Cargo.toml",
+          "--",
+          "inputs/survey.kdl",
+          "inputs/entry.kdl",
+          "inputs/audit.kdl",
+          "inputs/parts"
+        ],
+        "stdout-contains": [
+          "schema ok digest=ec56f59d57c69540\n",
+          "case sourced\n  document inputs/entry.kdl\n  import $parts/*.kdl targets=[$parts/a.kdl,$parts/b.kdl]\n  document $parts/a.kdl\n  record Thing name=alpha\n  document $parts/b.kdl\n  record Thing name=beta\n  record Thing name=top\n  failed=false\n",
+          "case sourced-options\n  document inputs/entry.kdl\n  import $parts/*.kdl targets=[$parts/a.kdl,$parts/b.kdl]\n  document $parts/a.kdl\n  record Thing name=alpha\n  document $parts/b.kdl\n  record Thing name=beta\n  record Thing name=top\n  failed=false\n",
+          "case unprofiled\n  document inputs/audit.kdl\n  diagnostic KDLITH-SCH011 invocation profile profile (none) is not one of the profiles schema survey declares\n  failed=true\n",
+          "case profiled\n  document inputs/audit.kdl\n  record Thing name=audited\n  failed=false\n",
+          "case profiled-options\n  document inputs/audit.kdl\n  record Thing name=audited\n  failed=false\n",
+          "case unsourced\n  document inputs/entry.kdl\n  import $parts/*.kdl targets=[]\n  diagnostic KDLITH-LOC003 location $parts/*.kdl names unknown source parts: the reading has no named sources\n  record Thing name=top\n  failed=true\n",
+          "case ruleless-profile\n  document inputs/entry.kdl\n  import $parts/*.kdl targets=[]\n  diagnostic KDLITH-LOC004 location $parts/*.kdl is not admitted: it uses star, which no rule here admits\n  record Thing name=top\n  failed=true\n",
+          "case invalid-source\n  diagnostic KDLITH-LOC005 source Parts is invalid: the name is not a non-empty kebab name\n  failed=true\n"
+        ]
+      }
+    }
+  ]
+}

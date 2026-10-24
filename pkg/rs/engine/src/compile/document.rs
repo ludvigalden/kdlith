@@ -2,7 +2,7 @@
 
 use crate::compile::Cx;
 use crate::compile::reader::Construct;
-use crate::discovery::is_expression;
+use crate::locations::is_literal;
 use kdlith_runtime::Repeated;
 
 use crate::definition::{DocumentRule, ImportDecl, MergeDuplicates, SlotDecl, SlotDuplicates};
@@ -145,7 +145,7 @@ pub(crate) fn import(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) {
     let mut part = Construct::new(cx, doc, node);
     let path = part.string_arg(cx, 0, "path");
     let repeated = part.string_prop(cx, "repeated");
-    let alias = part.string_prop(cx, "as");
+    let namespace = part.string_prop(cx, "as");
     part.finish(cx);
     let mut project = Vec::new();
     let mut seen = None;
@@ -170,8 +170,10 @@ pub(crate) fn import(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) {
             return;
         }
     };
-    let alias = match alias {
-        Some(alias) if cx.kebab(site, "import", &alias, "alias") => Some(cx.names.intern(&alias)),
+    let namespace = match namespace {
+        Some(namespace) if cx.kebab(site, "import", &namespace, "namespace") => {
+            Some(cx.names.intern(&namespace))
+        }
         Some(_) => return,
         None => None,
     };
@@ -180,28 +182,30 @@ pub(crate) fn import(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) {
         cx.malformed(site, "import", "empty path");
         return;
     }
-    if is_expression(&path) {
-        // The seed bootstrap compiles only the canonical dialect, which
-        // binds no discovery grammar; a schema's grammar-admitted
-        // expressions arrive through the reader path, which validates
-        // them against the compiled grammar.
+    if !is_literal(&path) {
+        // The seed bootstrap compiles only the canonical dialect, whose
+        // imports are literal locations; a schema's own locations arrive
+        // through the reader path, which checks them against its rule.
         let construct = format!("import {path:?}");
         cx.malformed(site, &construct, "import paths are literal");
         return;
     }
-    if let Some(alias) = alias
-        && cx.imports.iter().any(|import| import.alias == Some(alias))
+    if let Some(namespace) = namespace
+        && cx
+            .imports
+            .iter()
+            .any(|import| import.namespace == Some(namespace))
     {
         let first = cx
             .imports
             .iter()
-            .find(|import| import.alias == Some(alias))
+            .find(|import| import.namespace == Some(namespace))
             .map(|import| import.site);
         if let Some(first) = first {
             crate::diag::duplicate_key(
                 &mut cx.diags,
                 (site, first),
-                "the alias of import",
+                "the namespace of import",
                 "document.imports",
             );
         }
@@ -211,7 +215,7 @@ pub(crate) fn import(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) {
         path,
         project,
         repeated,
-        alias,
+        namespace,
         site,
     });
 }

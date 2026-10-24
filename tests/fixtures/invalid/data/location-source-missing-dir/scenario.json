@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A named source whose directory does not resolve fails the reading with KDLITH-LOC005 before any document is read, even though the entry document imports nothing",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/imports.kdl",
+    "--source",
+    "shared=missing",
+    "map/entry.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

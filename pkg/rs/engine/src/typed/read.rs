@@ -4,7 +4,7 @@
 
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, HashMap};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use kdlith_diagnostic::registry::{lookup, render};
 use kdlith_diagnostic::{ByteSpan, DiagnosticRecord};
@@ -15,13 +15,13 @@ use kdlith_model::{
 use kdlith_runtime::{Handlers, SessionError, SlotValue};
 use serde::Serialize;
 
-use crate::aliases::AliasRoot;
 use crate::bindings::Role;
 use crate::data::{DataReader, Entering, EntrySource, ReadOptions, Source};
 use crate::definition::{CheckScope, Definition};
 use crate::link::{
-    DuplicateDeclaration, ImportAliases, Link, LinkInputs, LinkOutcome, LinkReport, link_reading,
+    DuplicateDeclaration, ImportNamespaces, Link, LinkInputs, LinkOutcome, LinkReport, link_reading,
 };
+use crate::locations::SourceTree;
 use crate::resolution::SharedContributionResolver;
 use crate::typed::conform;
 use crate::typed::links::{ItemVariant, Ref};
@@ -187,7 +187,7 @@ pub enum ResolveError {
     NotLinkedHere,
     /// The reference did not resolve: unresolved (`KDLITH-REF001`),
     /// ambiguous (`KDLITH-REF003`), or failing a required qualifier
-    /// (`KDLITH-REF004`), with the alias namespaces that hid a match.
+    /// (`KDLITH-REF004`), with the namespaces that hid a match.
     Link {
         outcome: LinkOutcome,
         gated: Vec<String>,
@@ -323,7 +323,7 @@ impl<T> Reading<T> {
     }
 
     /// The link the reading's link stage made for `reference`, found by
-    /// the site it was written at. Its `gated` lists the alias
+    /// the site it was written at. Its `gated` lists the namespace
     /// namespaces that hid a match; `resolve` reports them only on
     /// failure, so a resolved reference's gate list is read here.
     pub fn link_of<V>(&self, reference: &Ref<V>) -> Option<&Link> {
@@ -408,26 +408,16 @@ impl<'d, T: 'static> TypedReader<'d, T> {
             .collect())
     }
 
-    /// Supply the discovery anchors the documents' import expressions
-    /// expand against, under the grammar the documents themselves
-    /// declare, in place of any supplied before. A declared anchor left
-    /// unsupplied, or a supplied one no grammar declares, fails closed
-    /// (`KDLITH-IMP005`).
+    /// Register one named source, as [`ReadOptions::with_source`] does.
     #[must_use]
-    pub fn with_anchors(mut self, anchors: &[(String, PathBuf)]) -> Self {
-        self.options.set_anchors(anchors);
-        self
-    }
-
-    /// Register one import alias, as [`ReadOptions::with_alias`] does.
-    #[must_use]
-    pub fn with_alias(mut self, name: impl Into<String>, root: AliasRoot) -> Self {
-        self.options = self.options.with_alias(name, root);
+    pub fn with_source(mut self, name: impl Into<String>, tree: SourceTree) -> Self {
+        self.options = self.options.with_source(name, tree);
         self
     }
 
     /// Read under `options`, in place of every option set before: the
-    /// profile or profile set, the anchors, and the output policy, as
+    /// profile or profile set, the root and sources, and the output
+    /// policy, as
     /// [`DataReader::read`] applies them.
     #[must_use]
     pub fn with_options(mut self, options: ReadOptions) -> Self {
@@ -535,8 +525,8 @@ impl<'d, T: 'static> TypedReader<'d, T> {
     /// Read as [`TypedReader::read`] does, over documents held in
     /// memory instead of read from disk (see [`Source`]): the engine
     /// reading decides everything, this reader only types its items.
-    /// An import inside an in-memory document fails closed
-    /// (`KDLITH-IMP001`).
+    /// An in-memory document belongs to no source: only its `$name/`
+    /// locations resolve, any other fails closed (`KDLITH-LOC001`).
     pub fn read_sources(
         &self,
         sources: &[Source],
@@ -623,7 +613,7 @@ impl<'d, T: 'static> TypedReader<'d, T> {
         };
         let entering: Option<Entering<'_>> = (!captured.is_empty()).then_some(&mut entered);
         let mut origins: HashMap<SourceId, Origin> = HashMap::new();
-        let mut imports = ImportAliases::default();
+        let mut imports = ImportNamespaces::default();
         let mut mismatched = false;
         let mut unsupported = false;
         let mut inputs = self.linking.map(|_| LinkInputs::new());
@@ -639,11 +629,11 @@ impl<'d, T: 'static> TypedReader<'d, T> {
             // An item's origin is its document's, found by the source its
             // node is in: an importer's items after a nested import's
             // document stay the importer's.
-            let alias = imports.observe(&item);
+            let namespace = imports.observe(&item);
             if let Item::Document(document) = &item {
                 let origin = Origin {
                     path: document.path.clone(),
-                    alias,
+                    namespace,
                 };
                 origins.insert(document.source, origin);
             }

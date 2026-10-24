@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "An absolute data import is held to the same confinement: /etc/hosts resolves outside the entry document's directory and is refused with KDLITH-IMP006 before it is read, by the containment test itself rather than by any binding of the path",
+  "description": "A location never names the host filesystem's root: /etc/hosts resolves from the project root, where nothing of that name exists, so it is KDLITH-LOC001 and the host file is never read",
   "args": [
     "vet",
     "data",

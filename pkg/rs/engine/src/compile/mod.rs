@@ -131,7 +131,8 @@ pub(crate) struct Cx<'d> {
     pub(crate) slots: Vec<SlotDecl>,
     pub(crate) imports: Vec<ImportDecl>,
     pub(crate) profiles: Vec<crate::definition::ProfileDecl>,
-    pub(crate) discoveries: Vec<crate::definition::DiscoveryDecl>,
+    /// The schema root's locations rule, when it declares one.
+    pub(crate) locations: Option<crate::definition::LocationsDecl>,
     pub(crate) references: Vec<crate::definition::ReferenceDecl>,
     pub(crate) annotations: Vec<crate::definition::AnnotationDecl>,
     /// The node groups the schema declares, expanded into children
@@ -141,10 +142,6 @@ pub(crate) struct Cx<'d> {
     pub(crate) providers: Vec<crate::definition::ProviderDecl>,
     pub(crate) source_context: Option<crate::definition::SourceContextDecl>,
     pub(crate) document_rule: Option<DocumentRule>,
-    /// The discovery grammar the definition's root binds by property,
-    /// read by `roots`; invocation-bound when the definition declares
-    /// profiles.
-    pub(crate) root_grammar: Option<String>,
     /// The `include` markers read in type declarations, spliced by the
     /// complete-checking expansion pass.
     pub(crate) expansions: Vec<expansions::Pending>,
@@ -180,7 +177,7 @@ fn start<'d>(
         slots: Vec::new(),
         imports: Vec::new(),
         profiles: Vec::new(),
-        discoveries: Vec::new(),
+        locations: None,
         references: Vec::new(),
         annotations: Vec::new(),
         groups: Vec::new(),
@@ -188,7 +185,6 @@ fn start<'d>(
         providers: Vec::new(),
         source_context: None,
         document_rule: None,
-        root_grammar: None,
         expansions: Vec::new(),
         name: None,
         version: None,
@@ -244,10 +240,6 @@ fn finish<'d>(
         return Err(cx.diags.into_records());
     }
     let plan = plan::build(&cx.slots, &cx.types, &bindings, &symbols);
-    let root_grammar = cx
-        .root_grammar
-        .as_deref()
-        .and_then(|name| cx.names.get(name));
     let definition = Definition {
         kind: cx.kind,
         name: cx.name.clone().unwrap_or_default(),
@@ -261,8 +253,7 @@ fn finish<'d>(
         slots: cx.slots,
         imports: cx.imports,
         profiles: cx.profiles,
-        discoveries: cx.discoveries,
-        root_grammar,
+        locations: cx.locations,
         references: cx.references,
         annotations: cx.annotations,
         resolution: cx.resolution,
@@ -339,11 +330,6 @@ fn roots<'d>(cx: &mut Cx<'d>, documents: &'d [ParsedDocument]) -> Option<Root<'d
         let mut construct = Construct::new(cx, doc, node);
         let name = construct.string_arg(cx, 0, "name");
         let version = construct.string_prop(cx, "version");
-        // A schema root may bind its discovery grammar by property; a
-        // dialect root stays literal-only, so the property stays unbound.
-        let grammar = (node.name == "schema")
-            .then(|| construct.string_prop(cx, "grammar"))
-            .flatten();
         construct.finish(cx);
         let Some(name) = name else {
             ok = false;
@@ -363,7 +349,6 @@ fn roots<'d>(cx: &mut Cx<'d>, documents: &'d [ParsedDocument]) -> Option<Root<'d
             None => {
                 cx.name = Some(name.clone());
                 cx.version = version.clone();
-                cx.root_grammar = grammar;
                 root = Some(Root {
                     name,
                     version,
@@ -384,17 +369,6 @@ fn roots<'d>(cx: &mut Cx<'d>, documents: &'d [ParsedDocument]) -> Option<Root<'d
                         &[document.path(), &reason],
                     );
                     ok = false;
-                }
-                if grammar.is_some() && cx.root_grammar.is_some() && grammar != cx.root_grammar {
-                    let reason = "contributing schema roots bind different discovery grammars";
-                    cx.diags.error(
-                        ROOT_MISMATCH,
-                        Site::new(doc, node.span),
-                        &[document.path(), reason],
-                    );
-                    ok = false;
-                } else if grammar.is_some() {
-                    cx.root_grammar = grammar;
                 }
                 first.nodes.push((doc, node));
             }

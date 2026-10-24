@@ -2,19 +2,24 @@
   "binary": "kdlith",
   "description": "a profile switch misses the cache: a state holding the entry derived under --profile base is refreshed under --profile retail; the document's revision, the schema, and the context are unchanged, but the profiles fingerprint differs, so the retail reading gets its own key and re-binds under retail (whose chain extends base, admitting part and the base-only widget), its entry is written byte for byte, and the base entry is removed as stale rather than replayed",
   "args": [
-    "cache", "refresh", "--state", "state",
-    "--schema", "{fx-suite}/processing/bind/profiles.kdl",
-    "--profile", "retail",
+    "cache",
+    "refresh",
+    "--state",
+    "state",
+    "--schema",
+    "{fx-suite}/processing/bind/profiles.kdl",
+    "--profile",
+    "retail",
     "data.kdl"
   ],
   "expect": {
     "exit": 0,
     "files": {
-      "state/625c0289740193a1.kdlith-cache": "expected/625c0289740193a1.kdlith-cache"
+      "state/69cb126459af41b6.kdlith-cache": "expected/69cb126459af41b6.kdlith-cache"
     },
     "absent": [
       "state/15e2e788571ecd8e.kdlith-cache",
-      "state/.625c0289740193a1.kdlith-cache-part"
+      "state/.69cb126459af41b6.kdlith-cache-part"
     ],
     "stdout-golden": "stdout.golden",
     "stderr-golden": "stderr.golden"

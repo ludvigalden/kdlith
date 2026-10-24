@@ -9,7 +9,7 @@
   "expect": {
     "exit": 0,
     "stdout-contains": [
-      "ok: schema profiles version 1 scope=complete documents=1 types=4 nodes=4 slots=0 profiles=4 digest=0112c7326dc3f6ba"
+      "ok: schema profiles version 1 scope=complete documents=1 types=4 nodes=4 slots=0 profiles=4 digest=a71f6079cddbe526"
     ]
   }
 }

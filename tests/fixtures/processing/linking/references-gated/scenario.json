@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "The references view lists the alias namespaces that hid a candidate even when the link resolves: an unqualified name resolves to the unaliased declaration while the aliased import's same-named declaration is gated under its namespace",
+  "description": "The references view lists the namespaces that hid a candidate even when the link resolves: an unqualified name resolves to the unnamespaced declaration while the namespaced import's same-named declaration is gated under its namespace",
   "args": [
     "inspect",
     "data",

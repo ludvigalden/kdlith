@@ -10,7 +10,7 @@ use crate::model::Emission;
 
 /// Engine names the compile skeleton uses regardless of which items the
 /// definition declares.
-const SKELETON_INPUTS: [&str; 13] = [
+const SKELETON_INPUTS: [&str; 14] = [
     "CheckScope",
     "Construct",
     "Definition",
@@ -20,6 +20,7 @@ const SKELETON_INPUTS: [&str; 13] = [
     "ImportInput",
     "Located",
     "ParsedDocument",
+    "ReadOptions",
     "TypedItem",
     "compile_dialect",
     "compile_dialect_input",
@@ -85,7 +86,7 @@ impl Emission<'_> {
 //! through this processor's own typed reader, and the engine compiles
 //! what the reader hands it (see docs/dialect.md for the seed cycle).
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use kdlith_diagnostic::{ByteSpan, DiagnosticRecord, Severity};
 "##,
@@ -135,6 +136,12 @@ const CANONICAL: [(&str, &str); {}] = [",
             out.push_str(SOURCE);
             out.push_str(EFFECT);
             out.push_str(CHILD_RULE);
+        }
+        if glues
+            .iter()
+            .any(|(ty, _)| ty == "ProfileDef" || ty == "LocationsRule")
+        {
+            out.push_str(catalog::LOCATIONS_INPUT);
         }
         out.push_str(REPEATED_NAME);
 
@@ -197,7 +204,8 @@ fn use_statement(path: &str, names: &[String]) -> String {
         return format!("use {path}::{only};\n");
     }
     let single = format!("use {}::{{{}}};", path, names.join(", "));
-    if single.len() <= 100 {
+    // rustfmt keeps a one-line `use` list only up to 98 columns.
+    if single.len() <= 98 {
         return format!("{single}\n");
     }
     let mut text = format!("use {path}::{{\n");
@@ -229,10 +237,10 @@ fn schema_compile_rs() -> String {
 //! reference processor against the canonical dialect, and the engine
 //! compiles what the reader hands it.
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use kdlith_diagnostic::DiagnosticRecord;
-use kdlith_engine::{CheckScope, Definition, Extensions};
+use kdlith_engine::{CheckScope, Definition, Extensions, ReadOptions};
 
 /// Load this schema's definition from its entry documents and compile it
 /// under the canonical dialect: the definition language every schema is
@@ -242,20 +250,20 @@ pub fn load(
     extensions: &Extensions,
     scope: CheckScope,
 ) -> Result<Definition, Vec<DiagnosticRecord>> {
-    load_anchored(entries, extensions, scope, &[])
+    load_with(entries, extensions, scope, ReadOptions::new())
 }
 
-/// Load this schema's definition as [`load`] does, expanding the
-/// documents' grammar-admitted import expressions against the
-/// host-supplied `anchors`.
-pub fn load_anchored(
+/// Load this schema's definition as [`load`] does, resolving the
+/// documents' own import locations under `options`: its project root
+/// and the named sources `$name/` locations address.
+pub fn load_with(
     entries: &[&Path],
     extensions: &Extensions,
     scope: CheckScope,
-    anchors: &[(String, PathBuf)],
+    options: ReadOptions,
 ) -> Result<Definition, Vec<DiagnosticRecord>> {
     let dialect = kdlith_superproc::seed(extensions)?;
-    kdlith_superproc::load_schema_anchored(&dialect, entries, extensions, scope, anchors)
+    kdlith_superproc::load_schema_with(&dialect, entries, extensions, scope, options)
 }
 "##;
     format!("{}\n\n{}", crate::RUST_MARKER, body)
@@ -288,21 +296,26 @@ pub fn load_dialect(
     scope: CheckScope,
 ) -> Result<Definition, Vec<DiagnosticRecord>> {
     let dialect = seed(extensions)?;
-    let input = gather(&dialect, Entries::Paths(entries), scope, &[])?;
+    let input = gather(&dialect, Entries::Paths(entries), scope, ReadOptions::new())?;
     compile_dialect_input(&input, extensions, scope)
 }
 
 /// Load a dialect definition as [`load_dialect`] does, over documents
-/// held in memory instead of read from disk. An import inside an
-/// in-memory document has no directory to resolve against and fails
-/// closed (`KDLITH-IMP001`).
+/// held in memory instead of read from disk. An in-memory document
+/// belongs to no source, so an import inside it fails closed
+/// (`KDLITH-LOC001`).
 pub fn load_dialect_sources(
     sources: &[kdlith_engine::Source],
     extensions: &Extensions,
     scope: CheckScope,
 ) -> Result<Definition, Vec<DiagnosticRecord>> {
     let dialect = seed(extensions)?;
-    let input = gather(&dialect, Entries::Sources(sources), scope, &[])?;
+    let input = gather(
+        &dialect,
+        Entries::Sources(sources),
+        scope,
+        ReadOptions::new(),
+    )?;
     compile_dialect_input(&input, extensions, scope)
 }
 "##;
@@ -319,34 +332,39 @@ pub fn load_schema(
     extensions: &Extensions,
     scope: CheckScope,
 ) -> Result<Definition, Vec<DiagnosticRecord>> {
-    load_schema_anchored(dialect, entries, extensions, scope, &[])
+    load_schema_with(dialect, entries, extensions, scope, ReadOptions::new())
 }
 
-/// Load a schema definition as [`load_schema`] does, expanding the
-/// documents' grammar-admitted import expressions against the
-/// host-supplied `anchors`, under the grammar the schema root binds.
-pub fn load_schema_anchored(
+/// Load a schema definition as [`load_schema`] does, resolving the
+/// documents' own import locations under `options`: its project root
+/// and the named sources `$name/` locations address.
+pub fn load_schema_with(
     dialect: &Definition,
     entries: &[&Path],
     extensions: &Extensions,
     scope: CheckScope,
-    anchors: &[(String, PathBuf)],
+    options: ReadOptions,
 ) -> Result<Definition, Vec<DiagnosticRecord>> {
-    let input = gather(dialect, Entries::Paths(entries), scope, anchors)?;
+    let input = gather(dialect, Entries::Paths(entries), scope, options)?;
     compile_schema_input(dialect, &input, extensions, scope)
 }
 
 /// Load a schema definition as [`load_schema`] does, over documents
-/// held in memory instead of read from disk. An import inside an
-/// in-memory document has no directory to resolve against and fails
-/// closed (`KDLITH-IMP001`).
+/// held in memory instead of read from disk. An in-memory document
+/// belongs to no source, so an import inside it fails closed
+/// (`KDLITH-LOC001`).
 pub fn load_schema_sources(
     dialect: &Definition,
     sources: &[kdlith_engine::Source],
     extensions: &Extensions,
     scope: CheckScope,
 ) -> Result<Definition, Vec<DiagnosticRecord>> {
-    let input = gather(dialect, Entries::Sources(sources), scope, &[])?;
+    let input = gather(
+        dialect,
+        Entries::Sources(sources),
+        scope,
+        ReadOptions::new(),
+    )?;
     compile_schema_input(dialect, &input, extensions, scope)
 }
 "##;
@@ -366,9 +384,9 @@ fn gather(
     dialect: &Definition,
     entries: Entries<'_>,
     scope: CheckScope,
-    anchors: &[(String, PathBuf)],
+    options: ReadOptions,
 ) -> Result<DefinitionInput, Vec<DiagnosticRecord>> {
-    let typed = reader(dialect)?.with_anchors(anchors);
+    let typed = reader(dialect)?.with_options(options);
     let mut input = Gathering::default();
     let mut records: Vec<DiagnosticRecord> = Vec::new();
     let mut sink = |item: TypedItem<Item>| take(item, &mut input, &mut records);
@@ -444,7 +462,7 @@ const TAKE_TAIL: &str = r##"            // A record of any other type is a reade
                     path: request.expression,
                     project: request.project,
                     repeated: repeated_name(request.repeated).to_owned(),
-                    alias: request.alias,
+                    namespace: request.namespace,
                 })),
                 span,
             );

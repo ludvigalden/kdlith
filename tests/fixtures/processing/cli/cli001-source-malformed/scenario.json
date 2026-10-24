@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "a --source value not of the NAME=DIR form fails its declared form: exit 2 under KDLITH-CLI001, before any document is read",
+  "args": [
+    "vet",
+    "data",
+    "--source",
+    "bad",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 2,
+    "stderr-contains": [
+      "error[KDLITH-CLI001]"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

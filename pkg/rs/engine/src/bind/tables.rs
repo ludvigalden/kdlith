@@ -81,11 +81,12 @@ pub(crate) struct DeclInfo {
     /// How a declaration's item composes its identity.
     pub(crate) identity: IdentityBind,
     /// The fields of an import's path (argument 0), its projected slots
-    /// (`project`), its repeat policy (`repeated`), and its `as=` alias.
+    /// (`project`), its repeat policy (`repeated`), and its `as=`
+    /// namespace (`namespace`).
     pub(crate) path: Option<usize>,
     pub(crate) project: Option<usize>,
     pub(crate) repeated: Option<usize>,
-    pub(crate) alias: Option<usize>,
+    pub(crate) namespace: Option<usize>,
     /// The fields of a contribution's layer and application scope, which
     /// the preserved record carries as its metadata.
     pub(crate) layer: Option<usize>,
@@ -454,7 +455,7 @@ fn decl_info(def: &Definition, id: NodeDeclId, decl: &NodeDecl) -> DeclInfo {
         path: path.filter(|_| import),
         project: import_field("project"),
         repeated: import_field("repeated"),
-        alias: import_field("alias"),
+        namespace: import_field("namespace"),
         layer: contribution_field("layer"),
         scope: contribution_field("scope"),
         provisional: !deferred.is_empty() || !references.is_empty(),

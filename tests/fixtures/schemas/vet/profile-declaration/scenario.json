@@ -9,7 +9,7 @@
   "expect": {
     "exit": 0,
     "stdout-contains": [
-      "ok: schema demo version 1 scope=complete documents=1 types=1 nodes=1 slots=0 profiles=1 digest=fdcaf25c60da6448"
+      "ok: schema demo version 1 scope=complete documents=1 types=1 nodes=1 slots=0 profiles=1 digest=9ef4417b0063c12d"
     ]
   }
 }

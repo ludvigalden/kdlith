@@ -28,10 +28,10 @@ pub const COMMENT_MARKER: &str = concat!(
     "; do not edit."
 );
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use kdlith_diagnostic::{DiagnosticRecord, registry};
-use kdlith_engine::{CheckScope, Definition, Extensions};
+use kdlith_engine::{CheckScope, Definition, Extensions, ReadOptions};
 
 /// Why a definition cannot generate a crate.
 ///
@@ -236,19 +236,19 @@ pub fn generate_dialect(
 
 /// Compile the schema named by `entries`, under the canonical dialect,
 /// and generate its data-document processor crate. The documents' own
-/// import expressions expand against the host-supplied `anchors`.
+/// import locations resolve under `options`.
 pub fn generate_schema(
     entries: &[&Path],
     extensions: &Extensions,
     crate_name: &str,
-    anchors: &[(String, PathBuf)],
+    options: ReadOptions,
     packaging: Packaging,
 ) -> Result<GeneratedTree, Error> {
     let dialect = kdlith_superproc::seed(extensions)
         .map_err(|records| Error::DefinitionRejected { records })?;
     let scope = CheckScope::Complete;
     let definition =
-        kdlith_superproc::load_schema_anchored(&dialect, entries, extensions, scope, anchors)
+        kdlith_superproc::load_schema_with(&dialect, entries, extensions, scope, options)
             .map_err(|records| Error::DefinitionRejected { records })?;
     generate(&definition, crate_name, packaging)
 }

@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "Pattern syntax no grammar defines (a ? wildcard; only star, doublestar, and braces exist) is KDLITH-IMP004 at compile-time grammar validation, the pattern arm beside the environment-interpolation arm",
+  "description": "Pattern syntax no locations rule defines (a ? wildcard; only star, doublestar, and braces exist) is KDLITH-LOC004 at the compile-time location check, the pattern arm beside the environment-interpolation arm",
   "args": [
     "vet",
     "schema",

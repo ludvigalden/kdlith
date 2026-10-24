@@ -1,31 +1,63 @@
 {
   "binary": "kdlith",
   "kind": "codegen-oracle",
-  "description": "Record-level context capture through a generated crate: gen schema generates a committed self-contained schema whose root region control sets its slot for its children only, twice into scratch trees the harness requires byte-identical; the generated crate compiles inside a scratch workspace materialized from this scenario's committed template beside a consumer depending on the generated crate alone. The compiled processor reads a committed data document that imports one part twice under repeated=instantiate through its typed reader twice: unarmed, every document, record, and declaration carries no captured slot; asked to capture region, each record and declaration carries the slot as that item binds under it, beside the declaring node's name \u2014 the bin declaration and the pick record inside the region block carry its value, matching the value the pick's context-sourced field bound, while the fruit records around the block carry it unset, as each document item does at its first node. The second import of the part replays the first's bound result, and its records carry the same captured values as the bound ones",
+  "description": "Record-level context capture through a generated crate: gen schema generates a committed self-contained schema whose root region control sets its slot for its children only, twice into scratch trees the harness requires byte-identical; the generated crate compiles inside a scratch workspace materialized from this scenario's committed template beside a consumer depending on the generated crate alone. The compiled processor reads a committed data document that imports one part and its byte-identical copy under repeated=instantiate through its typed reader twice: unarmed, every document, record, and declaration carries no captured slot; asked to capture region, each record and declaration carries the slot as that item binds under it, beside the declaring node's name — the bin declaration and the pick record inside the region block carry its value, matching the value the pick's context-sourced field bound, while the fruit records around the block carry it unset, as each document item does at its first node. The import of the copy shares the part's invocation identity, so it replays the first's bound result, and its records carry the same captured values as the bound ones",
   "form": "schema",
   "entrypoint": "inputs/shelf.kdl",
   "crate": "shelf-proc",
   "steps": [
-    { "generate": "ws/rs/shelf-proc" },
-    { "generate": "gen-again" },
-    { "determinism": ["ws/rs/shelf-proc", "gen-again"] },
+    {
+      "generate": "ws/rs/shelf-proc"
+    },
+    {
+      "generate": "gen-again"
+    },
+    {
+      "determinism": [
+        "ws/rs/shelf-proc",
+        "gen-again"
+      ]
+    },
     {
       "compile": {
         "workspace": "ws",
         "copy": {
-          "crates": ["diagnostic", "engine", "model", "parse", "runtime", "superproc"],
+          "crates": [
+            "diagnostic",
+            "engine",
+            "model",
+            "parse",
+            "runtime",
+            "superproc"
+          ],
           "kdl": true
         },
-        "command": ["cargo", "build", "--offline", "--manifest-path", "ws/rs/shelf-proc/Cargo.toml"]
+        "command": [
+          "cargo",
+          "build",
+          "--offline",
+          "--manifest-path",
+          "ws/rs/shelf-proc/Cargo.toml"
+        ]
       }
     },
     {
       "exercise": {
-        "command": ["cargo", "run", "--offline", "--quiet", "--manifest-path", "ws/rs/exercise/Cargo.toml", "--", "inputs/shelf.kdl", "inputs/data.kdl"],
+        "command": [
+          "cargo",
+          "run",
+          "--offline",
+          "--quiet",
+          "--manifest-path",
+          "ws/rs/exercise/Cargo.toml",
+          "--",
+          "inputs/shelf.kdl",
+          "inputs/data.kdl"
+        ],
         "stdout-contains": [
           "schema ok digest=20ba9c07ef086d1c\n",
-          "read plain failed=false\ndocument inputs/data.kdl context=[]\nrecord fruit id=before field=unset context=[]\ndeclaration bin name=crates context=[]\nrecord pick id=apple field=north context=[]\nrecord fruit id=after field=unset context=[]\ndocument inputs/part.kdl context=[]\nrecord pick id=pear field=south context=[]\nrecord fruit id=loose field=unset context=[]\ndocument inputs/./part.kdl context=[]\nrecord pick id=pear field=south context=[]\nrecord fruit id=loose field=unset context=[]\n",
-          "read capturing failed=false\ndocument inputs/data.kdl context=[region=unset]\nrecord fruit id=before field=unset context=[region=unset]\ndeclaration bin name=crates context=[region=north]\nrecord pick id=apple field=north context=[region=north]\nrecord fruit id=after field=unset context=[region=unset]\ndocument inputs/part.kdl context=[region=unset]\nrecord pick id=pear field=south context=[region=south]\nrecord fruit id=loose field=unset context=[region=unset]\ndocument inputs/./part.kdl context=[region=unset]\nrecord pick id=pear field=south context=[region=south]\nrecord fruit id=loose field=unset context=[region=unset]\n"
+          "read plain failed=false\ndocument inputs/data.kdl context=[]\nrecord fruit id=before field=unset context=[]\ndeclaration bin name=crates context=[]\nrecord pick id=apple field=north context=[]\nrecord fruit id=after field=unset context=[]\ndocument inputs/part.kdl context=[]\nrecord pick id=pear field=south context=[]\nrecord fruit id=loose field=unset context=[]\ndocument inputs/copy.kdl context=[]\nrecord pick id=pear field=south context=[]\nrecord fruit id=loose field=unset context=[]\n",
+          "read capturing failed=false\ndocument inputs/data.kdl context=[region=unset]\nrecord fruit id=before field=unset context=[region=unset]\ndeclaration bin name=crates context=[region=north]\nrecord pick id=apple field=north context=[region=north]\nrecord fruit id=after field=unset context=[region=unset]\ndocument inputs/part.kdl context=[region=unset]\nrecord pick id=pear field=south context=[region=south]\nrecord fruit id=loose field=unset context=[region=unset]\ndocument inputs/copy.kdl context=[region=unset]\nrecord pick id=pear field=south context=[region=south]\nrecord fruit id=loose field=unset context=[region=unset]\n"
         ]
       }
     }

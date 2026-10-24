@@ -59,7 +59,6 @@ impl Definition {
                 .roots
                 .as_ref()
                 .map_or_else(|| "-".to_owned(), |roots| list(n, roots));
-            let grammar = profile.grammar.map_or("-", |g| n.resolve(g));
             // The extended surface is written only when declared, so a
             // profile without it keeps its summary line and digest.
             let mut extended = String::new();
@@ -68,6 +67,13 @@ impl Definition {
             }
             if profile.default {
                 extended.push_str(" default");
+            }
+            if let Some(locations) = &profile.locations {
+                let _ = write!(
+                    extended,
+                    " locations={}",
+                    crate::locations::describe(locations)
+                );
             }
             if !profile.rules.is_empty() {
                 let rules: Vec<String> = profile
@@ -79,25 +85,12 @@ impl Definition {
             }
             let _ = writeln!(
                 out,
-                "profile {} roots={roots} grammar={grammar}{extended}",
+                "profile {} roots={roots}{extended}",
                 n.resolve(profile.name)
             );
         }
-        for grammar in &self.discoveries {
-            let anchors: Vec<String> = grammar
-                .anchors
-                .iter()
-                .map(|anchor| format!("{}={}", n.resolve(anchor.name), n.resolve(anchor.provider)))
-                .collect();
-            let patterns = crate::discovery::pattern_names(&grammar.patterns).join(",");
-            let _ = writeln!(
-                out,
-                "discovery {} anchors [{}] patterns [{}] allow-empty={}",
-                n.resolve(grammar.name),
-                anchors.join(","),
-                patterns,
-                grammar.allow_empty
-            );
+        if let Some(locations) = &self.locations {
+            let _ = writeln!(out, "locations {}", crate::locations::describe(locations));
         }
         for reference in &self.references {
             let codec = reference.codec.map_or("-", |c| n.resolve(c));

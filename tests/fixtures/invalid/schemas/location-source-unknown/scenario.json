@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A schema's own $name/ location fails closed on the definition path when the source is not registered: without --source, vet schema rejects the $parts/*.kdl import at its site with KDLITH-LOC003, never degrading to a search (the sourced twin is schemas/vet/import-source-pattern)",
+  "args": [
+    "vet",
+    "schema",
+    "schema.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

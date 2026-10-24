@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A $name/ prefix that is not a kebab name is not admitted: $Lib/part.kdl is KDLITH-LOC004 at its import site, before any source is consulted",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/imports.kdl",
+    "--source",
+    "lib=.",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

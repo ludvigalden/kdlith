@@ -18,6 +18,7 @@ use std::path::PathBuf;
 
 use clap::{Args, CommandFactory, Parser, Subcommand, ValueEnum};
 use kdlith_diagnostic::ExitStatus;
+use kdlith_engine::ReadOptions;
 
 pub use export::export;
 pub use generate::{GenMode, GenTarget, generate};
@@ -116,14 +117,8 @@ struct GenFormArgs {
 struct GenSchemaArgs {
     #[command(flatten)]
     form: GenFormArgs,
-    /// A discovery anchor the schema documents' own import expressions
-    /// expand against, as NAME=PATH (repeatable)
-    #[arg(
-        long = "anchor",
-        value_name = "NAME=PATH",
-        value_parser = handlers::parse_anchor
-    )]
-    anchors: Vec<(String, PathBuf)>,
+    #[command(flatten)]
+    locations: LocationArgs,
     /// A built-in context handler the schema may name, by name
     /// (repeatable); generation admits the name and never runs it
     #[arg(long = "handler", value_name = "NAME", value_parser = handlers::parse_handler)]
@@ -189,14 +184,8 @@ struct VetSchemaArgs {
     /// link references, and check self-description (complete)
     #[arg(long, value_enum, default_value_t = ScopeArg::Complete)]
     scope: ScopeArg,
-    /// A discovery anchor the schema documents' own import expressions
-    /// expand against, as NAME=PATH (repeatable)
-    #[arg(
-        long = "anchor",
-        value_name = "NAME=PATH",
-        value_parser = handlers::parse_anchor
-    )]
-    anchors: Vec<(String, PathBuf)>,
+    #[command(flatten)]
+    locations: LocationArgs,
     /// Schema definition documents
     #[arg(required = true)]
     files: Vec<PathBuf>,
@@ -211,14 +200,8 @@ struct VetDataArgs {
     /// the dialect itself
     #[arg(long = "schema", value_name = "FILE")]
     schema: Option<PathBuf>,
-    /// A discovery anchor the schema's and the data documents' import
-    /// expressions expand against, as NAME=PATH (repeatable)
-    #[arg(
-        long = "anchor",
-        value_name = "NAME=PATH",
-        value_parser = handlers::parse_anchor
-    )]
-    anchors: Vec<(String, PathBuf)>,
+    #[command(flatten)]
+    locations: LocationArgs,
     #[command(flatten)]
     profiles: ProfileArgs,
     /// A built-in context handler to install, by name (repeatable)
@@ -236,6 +219,41 @@ struct VetDataArgs {
     /// Data documents
     #[arg(required = true)]
     files: Vec<PathBuf>,
+}
+
+/// Where import locations resolve, on every verb that reads a schema or
+/// data: the project root and the named sources.
+#[derive(Args, Clone, Default)]
+struct LocationArgs {
+    /// The project root (default: the current directory): every location
+    /// without a $name/ prefix stays inside it, and profile match rules
+    /// read entry paths relative to it
+    #[arg(long, value_name = "DIR")]
+    root: Option<PathBuf>,
+    /// The earlier spelling of --root, kept so existing invocations read
+    /// the same root
+    #[arg(long, value_name = "DIR", hide = true, conflicts_with = "root")]
+    match_root: Option<PathBuf>,
+    /// A named source, as NAME=DIR (repeatable): a location written
+    /// $NAME/PATH resolves PATH from DIR, wherever the importing document
+    /// lives, and never leaves DIR
+    #[arg(long = "source", value_name = "NAME=DIR", value_parser = handlers::parse_source)]
+    sources: Vec<(String, PathBuf)>,
+}
+
+impl LocationArgs {
+    /// The project root, however it was spelled.
+    fn root(&self) -> Option<PathBuf> {
+        self.root.clone().or_else(|| self.match_root.clone())
+    }
+
+    /// Reader options carrying the root and the named sources, for a
+    /// verb that reads only a schema.
+    fn read_options(&self) -> ReadOptions {
+        DataOptions::new(None, Vec::new())
+            .with_locations(self.root(), self.sources.clone())
+            .read_options()
+    }
 }
 
 /// The profile selection and value resolution every data verb shares:
@@ -261,25 +279,16 @@ struct ProfileArgs {
     /// imports together (default 1024)
     #[arg(long, value_name = "N", value_parser = clap::value_parser!(u32).range(1..))]
     max_invocations: Option<u32>,
-    /// An import alias, as NAME=DIR (repeatable): an import written
-    /// $NAME/PATH resolves PATH inside DIR wherever the importing
-    /// document lives, confined to DIR instead of the entry's directory
-    #[arg(long = "alias", value_name = "NAME=DIR", value_parser = handlers::parse_alias)]
-    aliases: Vec<(String, PathBuf)>,
-    /// The directory profile match rules read entry paths relative to
-    /// (default: the current directory), so an entry selects the same
-    /// profile however its path is spelled
-    #[arg(long, value_name = "DIR")]
-    match_root: Option<PathBuf>,
 }
 
 impl ProfileArgs {
-    /// The data options these flags and the verb's anchors and handlers
-    /// make. `--profile` with `--profiles` is `KDLITH-CLI001` (exit 2),
-    /// and a `--resolve-from` file loads here, before any definition.
+    /// The data options these flags and the verb's locations and
+    /// handlers make. `--profile` with `--profiles` is `KDLITH-CLI001`
+    /// (exit 2), and a `--resolve-from` file loads here, before any
+    /// definition.
     fn data_options(
         self,
-        anchors: Vec<(String, PathBuf)>,
+        locations: LocationArgs,
         handlers: Vec<String>,
     ) -> Result<DataOptions, ExitStatus> {
         let set = match (self.profile.as_deref(), self.profiles) {
@@ -295,12 +304,11 @@ impl ProfileArgs {
             Some(path) => Some(resolve::load(path)?),
             None => None,
         };
-        Ok(DataOptions::new(anchors, self.profile, handlers)
+        Ok(DataOptions::new(self.profile, handlers)
+            .with_locations(locations.root(), locations.sources)
             .with_profiles(set)
             .with_resolver(resolver)
-            .with_max_invocations(self.max_invocations)
-            .with_aliases(self.aliases)
-            .with_match_root(self.match_root))
+            .with_max_invocations(self.max_invocations))
     }
 }
 
@@ -369,14 +377,8 @@ struct InspectSchemaArgs {
     /// data (KDLITH-CLI004, exit 2)
     #[arg(long, value_enum, default_value_t = ViewArg::Source)]
     view: ViewArg,
-    /// A discovery anchor the schema documents' own import expressions
-    /// expand against, as NAME=PATH (repeatable)
-    #[arg(
-        long = "anchor",
-        value_name = "NAME=PATH",
-        value_parser = handlers::parse_anchor
-    )]
-    anchors: Vec<(String, PathBuf)>,
+    #[command(flatten)]
+    locations: LocationArgs,
     /// Schema definition documents
     #[arg(required = true)]
     files: Vec<PathBuf>,
@@ -391,14 +393,8 @@ struct InspectDataArgs {
     /// the dialect itself
     #[arg(long = "schema", value_name = "FILE")]
     schema: Option<PathBuf>,
-    /// A discovery anchor the schema's and the data documents' import
-    /// expressions expand against, as NAME=PATH (repeatable)
-    #[arg(
-        long = "anchor",
-        value_name = "NAME=PATH",
-        value_parser = handlers::parse_anchor
-    )]
-    anchors: Vec<(String, PathBuf)>,
+    #[command(flatten)]
+    locations: LocationArgs,
     #[command(flatten)]
     profiles: ProfileArgs,
     /// A built-in context handler to install, by name (repeatable)
@@ -479,14 +475,8 @@ struct ListSchemaArgs {
     /// the one `--dialect` names
     #[arg(long, value_name = "FILE", required = true)]
     schema: PathBuf,
-    /// A discovery anchor the schema documents' own import expressions
-    /// expand against, as NAME=PATH (repeatable)
-    #[arg(
-        long = "anchor",
-        value_name = "NAME=PATH",
-        value_parser = handlers::parse_anchor
-    )]
-    anchors: Vec<(String, PathBuf)>,
+    #[command(flatten)]
+    locations: LocationArgs,
 }
 
 #[derive(Args)]
@@ -499,14 +489,8 @@ struct ListItemsArgs {
     /// the one `--dialect` names
     #[arg(long, value_name = "FILE", required = true)]
     schema: PathBuf,
-    /// A discovery anchor the schema's and the data documents' import
-    /// expressions expand against, as NAME=PATH (repeatable)
-    #[arg(
-        long = "anchor",
-        value_name = "NAME=PATH",
-        value_parser = handlers::parse_anchor
-    )]
-    anchors: Vec<(String, PathBuf)>,
+    #[command(flatten)]
+    locations: LocationArgs,
     #[command(flatten)]
     profiles: ProfileArgs,
     /// A built-in context handler to install, by name (repeatable)
@@ -561,14 +545,8 @@ struct CacheRefreshArgs {
     /// the one `--dialect` names
     #[arg(long, value_name = "FILE", required = true)]
     schema: PathBuf,
-    /// A discovery anchor the schema's and the data documents' import
-    /// expressions expand against, as NAME=PATH (repeatable)
-    #[arg(
-        long = "anchor",
-        value_name = "NAME=PATH",
-        value_parser = handlers::parse_anchor
-    )]
-    anchors: Vec<(String, PathBuf)>,
+    #[command(flatten)]
+    locations: LocationArgs,
     #[command(flatten)]
     profiles: ProfileArgs,
     /// A built-in context handler to install, by name (repeatable)
@@ -580,7 +558,7 @@ struct CacheRefreshArgs {
 }
 
 /// `kdlith read [file <FILE>|data ...]`, with the bare one-argument
-/// form `kdlith read <FILE>` accepted as a compatibility alias of
+/// form `kdlith read <FILE>` accepted as a compatibility spelling of
 /// `read file`.
 #[derive(Args)]
 struct ReadArgs {
@@ -626,14 +604,8 @@ struct ReadDataArgs {
     /// binds. A miss replays; another schema or entry chain is CTX004
     #[arg(long, value_name = "DIR")]
     state: Option<PathBuf>,
-    /// A discovery anchor the schema's and the data documents' import
-    /// expressions expand against, as NAME=PATH (repeatable)
-    #[arg(
-        long = "anchor",
-        value_name = "NAME=PATH",
-        value_parser = handlers::parse_anchor
-    )]
-    anchors: Vec<(String, PathBuf)>,
+    #[command(flatten)]
+    locations: LocationArgs,
     #[command(flatten)]
     profiles: ProfileArgs,
     /// A built-in context handler to install, by name (repeatable)
@@ -704,14 +676,8 @@ struct ExportArgs {
     /// not resolve to exactly one declaration (complete)
     #[arg(long, value_enum, default_value_t = ScopeArg::Complete)]
     scope: ScopeArg,
-    /// A discovery anchor the schema's and the data documents' import
-    /// expressions expand against, as NAME=PATH (repeatable)
-    #[arg(
-        long = "anchor",
-        value_name = "NAME=PATH",
-        value_parser = handlers::parse_anchor
-    )]
-    anchors: Vec<(String, PathBuf)>,
+    #[command(flatten)]
+    locations: LocationArgs,
     #[command(flatten)]
     profiles: ProfileArgs,
     /// A built-in context handler to install, by name (repeatable)

@@ -1,0 +1,27 @@
+// A schema declaring profiles takes each entry document's locations rule
+// from its selected profile: an entry document named entry.kdl selects
+// the only profile, whose rule admits the $parts/*.kdl pattern its
+// documents write, and any other entry document selects no profile
+// unless the invocation names one.
+schema survey version="1" {
+    types {
+        object Thing {
+            field name String
+        }
+    }
+    node thing role=record type=Thing {
+        field name arg=0
+    }
+    node use role=source-import {
+        field path String arg=0
+    }
+    profile only {
+        locations {
+            patterns star=#true
+        }
+        match {
+            file-name "entry.kdl"
+        }
+    }
+    profile audit
+}

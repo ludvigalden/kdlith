@@ -2,28 +2,27 @@
 //! through this processor's own typed reader, and the engine compiles
 //! what the reader hands it (see docs/dialect.md for the seed cycle).
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use kdlith_diagnostic::{ByteSpan, DiagnosticRecord, Severity};
 use kdlith_engine::{
-    AnchorInput, AnnotationInput, CaptureInput, CaseInput, CheckScope, ChildRuleInput,
-    ConditionInput, ConstraintInput, Construct, DefaultInput, Definition, DefinitionInput,
-    DependentInput, DescendantRuleInput, DiscoveryInput, DocumentInput, DocumentRuleInput,
-    EffectGroupInput, EffectInput, Extensions, FieldBindingInput, FieldInput, FormatInput,
-    GroupInput, IdentityInput, ImportInput, Located, MatchRuleInput, MemberInput,
-    NodeAnnotationInput, NodeInput, ParsedDocument, ProfileInput, ProviderInput, QualifierInput,
-    ReferenceInput, ResolutionInput, SequenceInput, SlotInput, SourceContextInput,
-    SourceFieldInput, SourceInput, StepInput, TypeInput, TypedItem, ValidatorInput, VariantInput,
-    compile_dialect, compile_dialect_input, compile_schema_input,
+    AnnotationInput, CaptureInput, CaseInput, CheckScope, ChildRuleInput, ConditionInput,
+    ConstraintInput, Construct, DefaultInput, Definition, DefinitionInput, DependentInput,
+    DescendantRuleInput, DocumentInput, DocumentRuleInput, EffectGroupInput, EffectInput,
+    Extensions, FieldBindingInput, FieldInput, FormatInput, GroupInput, IdentityInput, ImportInput,
+    Located, LocationsInput, MatchRuleInput, MemberInput, NodeAnnotationInput, NodeInput,
+    ParsedDocument, ProfileInput, ProviderInput, QualifierInput, ReadOptions, ReferenceInput,
+    ResolutionInput, SequenceInput, SlotInput, SourceContextInput, SourceFieldInput, SourceInput,
+    StepInput, TypeInput, TypedItem, ValidatorInput, VariantInput, compile_dialect,
+    compile_dialect_input, compile_schema_input,
 };
 use kdlith_runtime::Repeated;
 
 use crate::processors::{Item, reader};
 use crate::types::{
-    AnnotationDef, ChildRule, CodecType, Condition, Constraint, DefaultSpec, DiscoveryDef,
-    DocumentRule, Effect, EnumType, FieldBinding, MapType, MatchRule, NodeDef, NodeGroupDef,
-    ObjectType, ProfileDef, ReferenceDef, ResolutionPolicyDef, SecretProvider, Source, StringType,
-    UnionType,
+    AnnotationDef, ChildRule, CodecType, Condition, Constraint, DefaultSpec, DocumentRule, Effect,
+    EnumType, FieldBinding, LocationsRule, MapType, MatchRule, NodeDef, NodeGroupDef, ObjectType,
+    ProfileDef, ReferenceDef, ResolutionPolicyDef, SecretProvider, Source, StringType, UnionType,
 };
 
 /// The canonical dialect's contributing documents, embedded so the
@@ -71,21 +70,26 @@ pub fn load_dialect(
     scope: CheckScope,
 ) -> Result<Definition, Vec<DiagnosticRecord>> {
     let dialect = seed(extensions)?;
-    let input = gather(&dialect, Entries::Paths(entries), scope, &[])?;
+    let input = gather(&dialect, Entries::Paths(entries), scope, ReadOptions::new())?;
     compile_dialect_input(&input, extensions, scope)
 }
 
 /// Load a dialect definition as [`load_dialect`] does, over documents
-/// held in memory instead of read from disk. An import inside an
-/// in-memory document has no directory to resolve against and fails
-/// closed (`KDLITH-IMP001`).
+/// held in memory instead of read from disk. An in-memory document
+/// belongs to no source, so an import inside it fails closed
+/// (`KDLITH-LOC001`).
 pub fn load_dialect_sources(
     sources: &[kdlith_engine::Source],
     extensions: &Extensions,
     scope: CheckScope,
 ) -> Result<Definition, Vec<DiagnosticRecord>> {
     let dialect = seed(extensions)?;
-    let input = gather(&dialect, Entries::Sources(sources), scope, &[])?;
+    let input = gather(
+        &dialect,
+        Entries::Sources(sources),
+        scope,
+        ReadOptions::new(),
+    )?;
     compile_dialect_input(&input, extensions, scope)
 }
 
@@ -100,34 +104,39 @@ pub fn load_schema(
     extensions: &Extensions,
     scope: CheckScope,
 ) -> Result<Definition, Vec<DiagnosticRecord>> {
-    load_schema_anchored(dialect, entries, extensions, scope, &[])
+    load_schema_with(dialect, entries, extensions, scope, ReadOptions::new())
 }
 
-/// Load a schema definition as [`load_schema`] does, expanding the
-/// documents' grammar-admitted import expressions against the
-/// host-supplied `anchors`, under the grammar the schema root binds.
-pub fn load_schema_anchored(
+/// Load a schema definition as [`load_schema`] does, resolving the
+/// documents' own import locations under `options`: its project root
+/// and the named sources `$name/` locations address.
+pub fn load_schema_with(
     dialect: &Definition,
     entries: &[&Path],
     extensions: &Extensions,
     scope: CheckScope,
-    anchors: &[(String, PathBuf)],
+    options: ReadOptions,
 ) -> Result<Definition, Vec<DiagnosticRecord>> {
-    let input = gather(dialect, Entries::Paths(entries), scope, anchors)?;
+    let input = gather(dialect, Entries::Paths(entries), scope, options)?;
     compile_schema_input(dialect, &input, extensions, scope)
 }
 
 /// Load a schema definition as [`load_schema`] does, over documents
-/// held in memory instead of read from disk. An import inside an
-/// in-memory document has no directory to resolve against and fails
-/// closed (`KDLITH-IMP001`).
+/// held in memory instead of read from disk. An in-memory document
+/// belongs to no source, so an import inside it fails closed
+/// (`KDLITH-LOC001`).
 pub fn load_schema_sources(
     dialect: &Definition,
     sources: &[kdlith_engine::Source],
     extensions: &Extensions,
     scope: CheckScope,
 ) -> Result<Definition, Vec<DiagnosticRecord>> {
-    let input = gather(dialect, Entries::Sources(sources), scope, &[])?;
+    let input = gather(
+        dialect,
+        Entries::Sources(sources),
+        scope,
+        ReadOptions::new(),
+    )?;
     compile_schema_input(dialect, &input, extensions, scope)
 }
 
@@ -145,9 +154,9 @@ fn gather(
     dialect: &Definition,
     entries: Entries<'_>,
     scope: CheckScope,
-    anchors: &[(String, PathBuf)],
+    options: ReadOptions,
 ) -> Result<DefinitionInput, Vec<DiagnosticRecord>> {
-    let typed = reader(dialect)?.with_anchors(anchors);
+    let typed = reader(dialect)?.with_options(options);
     let mut input = Gathering::default();
     let mut records: Vec<DiagnosticRecord> = Vec::new();
     let mut sink = |item: TypedItem<Item>| take(item, &mut input, &mut records);
@@ -248,6 +257,14 @@ fn take(item: TypedItem<Item>, input: &mut Gathering, records: &mut Vec<Diagnost
                 })),
                 span,
             ),
+            // A schema root's locations rule is a record: the patterns its
+            // imports admit, never referenced by name.
+            Item::LocationsRule(rule) => push(
+                input,
+                records,
+                Some(Construct::Locations(locations_input(&rule))),
+                span,
+            ),
             // A record of any other type is a reader contract this loader
             // cannot proceed past: the dialect declares no such record.
             _ => records.push(broken_contract(
@@ -263,7 +280,7 @@ fn take(item: TypedItem<Item>, input: &mut Gathering, records: &mut Vec<Diagnost
                     path: request.expression,
                     project: request.project,
                     repeated: repeated_name(request.repeated).to_owned(),
-                    alias: request.alias,
+                    namespace: request.namespace,
                 })),
                 span,
             );
@@ -520,7 +537,7 @@ fn declaration(value: Item) -> Option<Construct> {
             extends,
             default,
             roots,
-            grammar,
+            locations,
             r#match,
         }) => Construct::Profile(ProfileInput {
             name: name.as_str().to_owned(),
@@ -533,7 +550,7 @@ fn declaration(value: Item) -> Option<Construct> {
                     .map(|ty| ty.as_str().to_owned())
                     .collect()
             }),
-            grammar: grammar.map(|grammar| grammar.as_str().to_owned()),
+            locations: locations.as_ref().map(locations_input),
             rules: r#match.map(|block| {
                 block
                     .rules
@@ -551,32 +568,6 @@ fn declaration(value: Item) -> Option<Construct> {
                     })
                     .collect()
             }),
-        }),
-        Item::DiscoveryDef(DiscoveryDef {
-            name,
-            anchors,
-            patterns,
-            order: _,
-            allow_empty,
-        }) => Construct::Discovery(DiscoveryInput {
-            name: name.as_str().to_owned(),
-            anchors: anchors
-                .iter()
-                .map(|(name, anchor)| AnchorInput {
-                    name: name.as_str().to_owned(),
-                    provider: anchor.provider.as_str().to_owned(),
-                })
-                .collect(),
-            star: patterns
-                .as_ref()
-                .is_some_and(|rules| rules.star.unwrap_or(false)),
-            doublestar: patterns
-                .as_ref()
-                .is_some_and(|rules| rules.doublestar.unwrap_or(false)),
-            braces: patterns
-                .as_ref()
-                .is_some_and(|rules| rules.braces.unwrap_or(false)),
-            allow_empty: allow_empty.unwrap_or(false),
         }),
         Item::ReferenceDef(ReferenceDef {
             name,
@@ -623,7 +614,7 @@ fn declaration(value: Item) -> Option<Construct> {
             })
         }
         // Records reach `take` as `TypedItem::Record`.
-        Item::DocumentRule(_) | Item::SourceContextDef(_) => return None,
+        Item::DocumentRule(_) | Item::SourceContextDef(_) | Item::LocationsRule(_) => return None,
     };
     Some(construct)
 }
@@ -926,6 +917,18 @@ fn condition(input: &Condition) -> ConditionInput {
             min: group.min_occurs,
             max: group.max_occurs,
         },
+    }
+}
+
+/// A locations rule as compiler input: each pattern kind admitted only
+/// when declared, an empty match allowed only when declared.
+fn locations_input(rule: &LocationsRule) -> LocationsInput {
+    let patterns = rule.patterns.as_ref();
+    LocationsInput {
+        star: patterns.is_some_and(|rules| rules.star.unwrap_or(false)),
+        doublestar: patterns.is_some_and(|rules| rules.doublestar.unwrap_or(false)),
+        braces: patterns.is_some_and(|rules| rules.braces.unwrap_or(false)),
+        allow_empty: rule.allow_empty.unwrap_or(false),
     }
 }
 

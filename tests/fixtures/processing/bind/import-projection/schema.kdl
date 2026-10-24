@@ -31,7 +31,7 @@ schema imports version="1" {
     node use role=source-import {
         field path String arg=0
         field repeated "optional<String>" property=repeated
-        field alias "optional<String>" property=as
+        field namespace "optional<String>" property=as
         field project "optional<list<String>>" {
             from {
                 child project {

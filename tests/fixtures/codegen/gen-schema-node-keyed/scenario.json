@@ -23,7 +23,7 @@
       "exercise": {
         "command": ["cargo", "run", "--offline", "--quiet", "--manifest-path", "ws/rs/exercise/Cargo.toml", "--", "processing/list/schema.kdl", "inputs/data.kdl"],
         "stdout-contains": [
-          "schema ok digest=41ce19db1b7acc53\n",
+          "schema ok digest=65cd87cf6b8e1a37\n",
           "read ok items=5\npart id=p1 tone=cool widget=p1 node=part\nwidget id=w1 tone=warm widget=w1 node=widget\ngadget id=g1 tone=cool widget=g1 node=gadget\npart id=p2 tone=warm widget=p2 node=part\nbin name=b1 widget=- node=bin\n"
         ]
       }

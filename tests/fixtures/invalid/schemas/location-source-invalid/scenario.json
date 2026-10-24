@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "The definition path validates its sources as the data path does: --source parts=PATH names the schema's source and its import resolves, but --source other=missing does not resolve, so vet schema fails with KDLITH-LOC005 before any document is read rather than ignoring it",
+  "args": [
+    "vet",
+    "schema",
+    "--source",
+    "parts={fx-suite}/schemas/vet/import-source-pattern/parts",
+    "--source",
+    "other=missing",
+    "{fx-suite}/schemas/vet/import-source-pattern/schema.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

@@ -80,36 +80,15 @@ pub(crate) fn registry(names: &[String]) -> Handlers {
     handlers
 }
 
-/// Validate one `--anchor` value: `NAME=PATH` with a non-empty kebab
-/// name and a non-empty path.
-pub(crate) fn parse_anchor(value: &str) -> Result<(String, PathBuf), String> {
-    let (name, path) = value
-        .split_once('=')
-        .ok_or_else(|| format!("anchor takes NAME=PATH, not {value:?}"))?;
-    if name.is_empty()
-        || !name
-            .bytes()
-            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
-    {
-        return Err(format!(
-            "anchor name {name:?} is not a non-empty kebab name"
-        ));
-    }
-    if path.is_empty() {
-        return Err(format!("anchor {name:?} takes a non-empty path"));
-    }
-    Ok((name.to_owned(), PathBuf::from(path)))
-}
-
-/// Split one `--alias` value at its first `=` into a name and a
+/// Split one `--source` value at its first `=` into a name and a
 /// directory, both non-empty; whether the name and directory are
-/// admissible is the reading's decision (`KDLITH-IMP008`).
-pub(crate) fn parse_alias(value: &str) -> Result<(String, PathBuf), String> {
+/// admissible is the reading's one decision (`KDLITH-LOC005`).
+pub(crate) fn parse_source(value: &str) -> Result<(String, PathBuf), String> {
     match value.split_once('=') {
         Some((name, dir)) if !name.is_empty() && !dir.is_empty() => {
             Ok((name.to_owned(), PathBuf::from(dir)))
         }
-        _ => Err(format!("alias takes NAME=DIR, not {value:?}")),
+        _ => Err(format!("source takes NAME=DIR, not {value:?}")),
     }
 }
 

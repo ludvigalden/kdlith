@@ -1,5 +1,0 @@
-kdlith-cache format=3 canonicalization=1
-{"key":"15e2e788571ecd8e","identity":{"revision":"fnv1a64:bd8c818b5fc2410b","schema":"fnv1a64:c3e4b32ef08677af","context":"fnv1a64:9997e70adc235eeb","profiles":"fnv1a64:97db19401cd620ea","resolved":"fnv1a64:7c4cd565807bb610","policy":"reject"},"derivations":[{"entry":"data.kdl","source":"data.kdl","caller":null}],"items":3,"digest":"fnv1a64:67bcfd8ec15d6bf7"}
-{"item":"record","data":{"node":{"source":0,"index":0},"type_name":"Part","fields":[{"name":"id","value":{"kind":"string","value":"p1"},"origin":0}],"origin":0,"validation":"valid"}}
-{"item":"record","data":{"node":{"source":0,"index":1},"type_name":"Widget","fields":[{"name":"id","value":{"kind":"string","value":"w1"},"origin":1}],"origin":1,"validation":"valid"}}
-{"item":"scope-complete","data":{"source":0,"scope":null}}

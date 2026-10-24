@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "gen schema loads its schema through the same definition reader: without --source the schema's own $parts/*.kdl import names an unknown source, so the load fails closed with the import-site diagnostic before anything is generated",
+  "args": [
+    "gen",
+    "schema",
+    "{fx-suite}/schemas/vet/import-source-pattern/schema.kdl",
+    "--crate",
+    "demo-proc",
+    "--out",
+    "out"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

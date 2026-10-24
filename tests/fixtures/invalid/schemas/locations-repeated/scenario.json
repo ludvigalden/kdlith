@@ -1,0 +1,13 @@
+{
+  "binary": "kdlith",
+  "description": "A schema has one locations rule across its contributing documents: a second rule in another contributing document is a repeated declaration (KDLITH-SCH004), labelled with the first",
+  "args": [
+    "vet",
+    "schema",
+    "a.kdl",
+    "b.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

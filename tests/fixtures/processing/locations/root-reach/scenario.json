@@ -1,0 +1,21 @@
+{
+  "binary": "kdlith",
+  "description": "An unprefixed location may reach anything under the project root, which defaults to the current directory: map/entry.kdl imports ../lib/part.kdl, outside its own directory but inside the root, and the target shows root-relative as lib/part.kdl",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/imports.kdl",
+    "map/entry.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"import\",\"data\":{\"node\":{\"source\":0,\"index\":0},\"expression\":\"../lib/part.kdl\",\"targets\":[\"lib/part.kdl\"],",
+      "{\"item\":\"document\",\"data\":{\"source\":1,\"path\":\"lib/part.kdl\"}}\n{\"item\":\"record\",\"data\":{\"node\":{\"source\":1,\"index\":0},\"type_name\":\"Part\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"shared\"},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n"
+    ],
+    "stdout-not-contains": [
+      "\"item\":\"diagnostic\""
+    ]
+  }
+}

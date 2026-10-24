@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A $name/ location fails closed when the reading registers no source at all: without --source, $parts/part-*.kdl names an unknown source (KDLITH-LOC003), never degrading to a search of the local source",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/locations/schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

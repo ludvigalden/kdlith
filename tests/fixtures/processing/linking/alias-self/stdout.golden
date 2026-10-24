@@ -1,7 +1,0 @@
-{"item":"document","data":{"source":0,"path":"data.kdl"}}
-{"item":"import","data":{"node":{"source":0,"index":0},"expression":"pack.kdl","targets":["pack.kdl"],"alias":"go","project":[],"repeated":"reject","site":{"source":0,"span":{"start":{"offset":0,"line":1,"column":1},"end":{"offset":6,"line":1,"column":7}}},"origin":0}}
-{"item":"document","data":{"source":1,"path":"pack.kdl"}}
-{"item":"declaration","data":{"node":{"source":1,"index":0},"identity":{"domain":"input-sets","name":["go-code"]},"type_name":"InputSetDef","fields":[{"name":"name","value":{"kind":"string","value":"go-code"},"origin":0}],"origin":0,"validation":"valid"}}
-{"item":"record","data":{"node":{"source":1,"index":1},"type_name":"Takes","fields":[{"name":"target","value":{"kind":"reference","value":{"domain":"input-sets","name":["go-code"],"qualifiers":[],"written":"go-code","site":{"source":1,"span":{"start":{"offset":24,"line":2,"column":7},"end":{"offset":33,"line":2,"column":16}}}}},"origin":1}],"origin":1,"validation":"provisional"}}
-{"item":"scope-complete","data":{"source":1,"scope":null}}
-{"item":"scope-complete","data":{"source":0,"scope":null}}

@@ -1,10 +1,7 @@
 {"item":"effective","data":{"section":"type","entry":{"name":"AccumulateOp","parameters":[],"kind":"enum"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"AccumulationPolicy","parameters":[],"kind":"object"}}}
-{"item":"effective","data":{"section":"type","entry":{"name":"AliasName","parameters":[],"kind":"string"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"AllOrNone","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"AlternativesRule","parameters":[],"kind":"object"}}}
-{"item":"effective","data":{"section":"type","entry":{"name":"AnchorDef","parameters":[],"kind":"object"}}}
-{"item":"effective","data":{"section":"type","entry":{"name":"AnchorName","parameters":[],"kind":"string"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"AnnotationDef","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"AnnotationName","parameters":[],"kind":"string"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"AnnotationRequirement","parameters":[],"kind":"enum"}}}
@@ -37,9 +34,6 @@
 {"item":"effective","data":{"section":"type","entry":{"name":"DescendantRule","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"DialectDef","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"DialectName","parameters":[],"kind":"string"}}}
-{"item":"effective","data":{"section":"type","entry":{"name":"DiscoveryDef","parameters":[],"kind":"object"}}}
-{"item":"effective","data":{"section":"type","entry":{"name":"DiscoveryName","parameters":[],"kind":"string"}}}
-{"item":"effective","data":{"section":"type","entry":{"name":"DiscoveryOrder","parameters":[],"kind":"enum"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"DocumentRule","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"DomainDecl","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"DomainName","parameters":[],"kind":"string"}}}
@@ -66,6 +60,7 @@
 {"item":"effective","data":{"section":"type","entry":{"name":"IncludeRef","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"LayerName","parameters":[],"kind":"string"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"LiteralDefault","parameters":[],"kind":"object"}}}
+{"item":"effective","data":{"section":"type","entry":{"name":"LocationsRule","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"MapType","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"MatchRule","parameters":[],"kind":"union"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"MatchText","parameters":[],"kind":"string"}}}
@@ -90,7 +85,6 @@
 {"item":"effective","data":{"section":"type","entry":{"name":"ProfileName","parameters":[],"kind":"string"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"PropertyCondition","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"PropertySource","parameters":[],"kind":"object"}}}
-{"item":"effective","data":{"section":"type","entry":{"name":"ProviderName","parameters":[],"kind":"string"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"Qualification","parameters":[],"kind":"enum"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"QualifierRule","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"ReferenceDef","parameters":[],"kind":"object"}}}
@@ -133,7 +127,6 @@
 {"item":"effective","data":{"section":"node","entry":{"name":"against","parents":["value"],"role":null,"type":"DependentTarget","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"all-or-none","parents":["constraints"],"role":null,"type":"AllOrNone","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"alternatives","parents":["step"],"role":null,"type":"AlternativesRule","profile":null}}}
-{"item":"effective","data":{"section":"node","entry":{"name":"anchor","parents":["discovery"],"role":null,"type":"AnchorDef","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"annotation","parents":["node"],"role":null,"type":"NodeAnnotation","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"annotation","parents":["schema"],"role":"declaration","type":"AnnotationDef","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"args","parents":["child","children","from"],"role":null,"type":"ArgsSource","profile":null}}}
@@ -155,7 +148,6 @@
 {"item":"effective","data":{"section":"node","entry":{"name":"context","parents":["from"],"role":null,"type":"ContextSource","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"descendants","parents":["node"],"role":null,"type":"DescendantRule","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"dialect","parents":[],"role":"container","type":"DialectDef","profile":null}}}
-{"item":"effective","data":{"section":"node","entry":{"name":"discovery","parents":["schema"],"role":"declaration","type":"DiscoveryDef","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"document","parents":["dialect","schema"],"role":"record","type":"DocumentRule","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"domain","parents":["identity"],"role":null,"type":"DomainDecl","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"effects","parents":["node"],"role":null,"type":"EffectGroup","profile":null}}}
@@ -175,6 +167,8 @@
 {"item":"effective","data":{"section":"node","entry":{"name":"identity","parents":["node"],"role":null,"type":"IdentityBlock","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"import","parents":["dialect","schema"],"role":"source-import","type":"ImportRequest","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"include","parents":["codec","enum","object","union"],"role":null,"type":"IncludeRef","profile":null}}}
+{"item":"effective","data":{"section":"node","entry":{"name":"locations","parents":["profile"],"role":null,"type":"LocationsRule","profile":null}}}
+{"item":"effective","data":{"section":"node","entry":{"name":"locations","parents":["schema"],"role":"record","type":"LocationsRule","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"map","parents":["types"],"role":"declaration","type":"MapType","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"match","parents":["profile"],"role":null,"type":"ProfileMatch","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"member","parents":["enum"],"role":null,"type":"EnumMember","profile":null}}}
@@ -184,7 +178,7 @@
 {"item":"effective","data":{"section":"node","entry":{"name":"path-prefix","parents":["match"],"role":null,"type":"PathPrefixMatch","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"path-stem","parents":["from"],"role":null,"type":"PathStemSource","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"path-suffix","parents":["match"],"role":null,"type":"PathSuffixMatch","profile":null}}}
-{"item":"effective","data":{"section":"node","entry":{"name":"patterns","parents":["discovery"],"role":null,"type":"PatternsRule","profile":null}}}
+{"item":"effective","data":{"section":"node","entry":{"name":"patterns","parents":["locations"],"role":null,"type":"PatternsRule","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"profile","parents":["schema"],"role":"declaration","type":"ProfileDef","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"property","parents":["child","children","from"],"role":null,"type":"PropertySource","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"provider","parents":["schema"],"role":"declaration","type":"SecretProvider","profile":null}}}

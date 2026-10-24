@@ -2,17 +2,24 @@
   "binary": "kdlith",
   "description": "the resolved profile selection is part of the invocation identity, so the same selection hits its own entry: a state holding the entry derived under --profile base is refreshed under --profile base again; the key and every identity component (the profiles fingerprint of the base selection among them) are unchanged, the entry is rewritten byte-identical, nothing is removed as stale, and stdout and stderr are pinned byte for byte",
   "args": [
-    "cache", "refresh", "--state", "state",
-    "--schema", "{fx-suite}/processing/bind/profiles.kdl",
-    "--profile", "base",
+    "cache",
+    "refresh",
+    "--state",
+    "state",
+    "--schema",
+    "{fx-suite}/processing/bind/profiles.kdl",
+    "--profile",
+    "base",
     "data.kdl"
   ],
   "expect": {
     "exit": 0,
     "files": {
-      "state/15e2e788571ecd8e.kdlith-cache": "state/15e2e788571ecd8e.kdlith-cache"
+      "state/70af753b0c2ca6b9.kdlith-cache": "state/70af753b0c2ca6b9.kdlith-cache"
     },
-    "absent": ["state/.15e2e788571ecd8e.kdlith-cache-part"],
+    "absent": [
+      "state/.70af753b0c2ca6b9.kdlith-cache-part"
+    ],
     "stdout-golden": "stdout.golden",
     "stderr-golden": "stderr.golden"
   }

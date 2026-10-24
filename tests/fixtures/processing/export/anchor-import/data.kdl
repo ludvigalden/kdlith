@@ -1,3 +1,0 @@
-// The export run supplies the anchor value through --anchor root=parts.
-part zero
-use "$root/part-*.kdl"

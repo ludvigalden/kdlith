@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "--match-root anchors match rules: tree/outlet/stock.kdl read relative to the root tree is outlet/stock.kdl, so outlet's path-prefix rule selects outlet with no flag and its Gadget root binds, as from a run inside tree",
+  "description": "--match-root, the earlier spelling of --root, roots match rules: tree/outlet/stock.kdl read relative to the root tree is outlet/stock.kdl, so outlet's path-prefix rule selects outlet with no flag and its Gadget root binds, as from a run inside tree",
   "args": [
     "vet",
     "data",

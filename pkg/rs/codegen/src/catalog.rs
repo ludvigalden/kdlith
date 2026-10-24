@@ -97,18 +97,13 @@ pub(crate) fn type_doc(name: &str) -> Option<&'static [&'static str]> {
             "An ordered sequence the declaring node's immediate children must",
             "match; repetition stays with the step's occurrence bounds.",
         ],
-        "DiscoveryDef" => &[
-            "The restricted path-expansion grammar import expressions are",
-            "evaluated under; anchors are host-supplied typed paths.",
+        "LocationsRule" => &[
+            "The pattern syntax import locations may use; matches are ordered",
+            "by their portable path bytes.",
         ],
-        "AnchorDef" => &["The anchor's name is the key of the enclosing ordered map."],
         "PatternsRule" => &[
-            "The pattern syntax a discovery grammar admits; absent means not",
+            "The pattern syntax a locations rule admits; absent means not",
             "admitted.",
-        ],
-        "DiscoveryOrder" => &[
-            "The only defined ordering policy: matched sources are ordered by",
-            "their portable path bytes.",
         ],
         "IdentityBlock" => &[
             "The identity block of a declaration: the domain its qualified",
@@ -155,15 +150,15 @@ pub(crate) fn field_comment(ty: &str, field: &str) -> Option<&'static [&'static 
         ("SetEffect", "layer") => &["The layer a set on a layered slot names."],
         ("ProfileDef", "extends") => &[
             "The profile this one extends: roots and match rules compose with",
-            "the parent's, and an own grammar overrides the inherited one.",
+            "the parent's, and an own locations rule overrides the inherited one.",
         ],
         ("ProfileDef", "default") => &[
             "Marks the schema's default profile; at most one profile is the",
             "default.",
         ],
-        ("ImportRequest", "alias") => &[
-            "The imported declarations are reachable through the alias",
-            "namespace and not by their unqualified names.",
+        ("ImportRequest", "namespace") => &[
+            "The imported declarations are reachable through the namespace",
+            "and not by their unqualified names.",
         ],
         ("QualifierRule", "required") => {
             &["A declared qualifier is required unless it says otherwise."]
@@ -193,7 +188,7 @@ pub(crate) fn types_header(file_name: &str) -> Option<&'static [&'static str]> {
         "documents.kdl" => &[
             "Logical types contributed by `documents.kdl`: definition roots,",
             "structural document rules, source imports, and the documents",
-            "surface — profiles, sequences, discovery, the symbol catalog, and",
+            "surface — profiles, sequences, locations, the symbol catalog, and",
             "the descriptor types.",
         ],
         _ => return None,
@@ -251,7 +246,7 @@ pub(crate) struct Glue {
 }
 
 /// The record items in the order `take` spells them.
-pub(crate) const RECORD_ORDER: [&str; 2] = ["DocumentRule", "SourceContextDef"];
+pub(crate) const RECORD_ORDER: [&str; 3] = ["DocumentRule", "SourceContextDef", "LocationsRule"];
 
 pub(crate) fn glue(name: &str) -> Option<Glue> {
     let glue = match name {
@@ -340,14 +335,14 @@ pub(crate) fn glue(name: &str) -> Option<Glue> {
         "ProfileDef" => Glue {
             arm: PROFILE_DEF_ARM,
             record_arm: None,
-            engine_inputs: &["ProfileInput", "MatchRuleInput"],
-            types: &["ProfileDef", "MatchRule"],
+            engine_inputs: &["ProfileInput", "MatchRuleInput", "LocationsInput"],
+            types: &["ProfileDef", "MatchRule", "LocationsRule"],
         },
-        "DiscoveryDef" => Glue {
-            arm: DISCOVERY_DEF_ARM,
-            record_arm: None,
-            engine_inputs: &["DiscoveryInput", "AnchorInput"],
-            types: &["DiscoveryDef"],
+        "LocationsRule" => Glue {
+            arm: "",
+            record_arm: Some(LOCATIONS_RULE_TAKE_ARM),
+            engine_inputs: &["LocationsInput"],
+            types: &["LocationsRule"],
         },
         "ReferenceDef" => Glue {
             arm: REFERENCE_DEF_ARM,
@@ -577,7 +572,7 @@ const PROFILE_DEF_ARM: &str = r##"        Item::ProfileDef(ProfileDef {
             extends,
             default,
             roots,
-            grammar,
+            locations,
             r#match,
         }) => Construct::Profile(ProfileInput {
             name: name.as_str().to_owned(),
@@ -590,7 +585,7 @@ const PROFILE_DEF_ARM: &str = r##"        Item::ProfileDef(ProfileDef {
                     .map(|ty| ty.as_str().to_owned())
                     .collect()
             }),
-            grammar: grammar.map(|grammar| grammar.as_str().to_owned()),
+            locations: locations.as_ref().map(locations_input),
             rules: r#match.map(|block| {
                 block
                     .rules
@@ -608,34 +603,6 @@ const PROFILE_DEF_ARM: &str = r##"        Item::ProfileDef(ProfileDef {
                     })
                     .collect()
             }),
-        }),
-"##;
-
-const DISCOVERY_DEF_ARM: &str = r##"        Item::DiscoveryDef(DiscoveryDef {
-            name,
-            anchors,
-            patterns,
-            order: _,
-            allow_empty,
-        }) => Construct::Discovery(DiscoveryInput {
-            name: name.as_str().to_owned(),
-            anchors: anchors
-                .iter()
-                .map(|(name, anchor)| AnchorInput {
-                    name: name.as_str().to_owned(),
-                    provider: anchor.provider.as_str().to_owned(),
-                })
-                .collect(),
-            star: patterns
-                .as_ref()
-                .is_some_and(|rules| rules.star.unwrap_or(false)),
-            doublestar: patterns
-                .as_ref()
-                .is_some_and(|rules| rules.doublestar.unwrap_or(false)),
-            braces: patterns
-                .as_ref()
-                .is_some_and(|rules| rules.braces.unwrap_or(false)),
-            allow_empty: allow_empty.unwrap_or(false),
         }),
 "##;
 
@@ -710,6 +677,32 @@ const DOCUMENT_RULE_TAKE_ARM: &str = r##"            Item::DocumentRule(rule) =>
                     span,
                 );
             }
+"##;
+
+const LOCATIONS_RULE_TAKE_ARM: &str = r##"            // A schema root's locations rule is a record: the patterns its
+            // imports admit, never referenced by name.
+            Item::LocationsRule(rule) => push(
+                input,
+                records,
+                Some(Construct::Locations(locations_input(&rule))),
+                span,
+            ),
+"##;
+
+/// The compiler-input mapping of a locations rule, shared by the
+/// profile arm and the record arm.
+pub(crate) const LOCATIONS_INPUT: &str = r##"
+/// A locations rule as compiler input: each pattern kind admitted only
+/// when declared, an empty match allowed only when declared.
+fn locations_input(rule: &LocationsRule) -> LocationsInput {
+    let patterns = rule.patterns.as_ref();
+    LocationsInput {
+        star: patterns.is_some_and(|rules| rules.star.unwrap_or(false)),
+        doublestar: patterns.is_some_and(|rules| rules.doublestar.unwrap_or(false)),
+        braces: patterns.is_some_and(|rules| rules.braces.unwrap_or(false)),
+        allow_empty: rule.allow_empty.unwrap_or(false),
+    }
+}
 "##;
 
 const SOURCE_CONTEXT_DEF_TAKE_ARM: &str = r##"            // A source-context block is a record: a statement about the

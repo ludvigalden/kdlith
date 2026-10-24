@@ -10,7 +10,7 @@
 //! newtypes pass to `resolve` and call the carrier's methods through
 //! `Deref`, with no `.0`; finally read each
 //! document again and print every declaration's provenance: its shown
-//! path and line, and the alias of the import that loaded it. Every name
+//! path and line, and the namespace of the import that loaded it. Every name
 //! the exercise spells comes from the generated crate alone.
 
 use std::path::{Path, PathBuf};
@@ -100,7 +100,7 @@ fn main() {
     }
 
     // Each declaration's provenance: the document it was read from as the
-    // reading shows it, the line it was written at, and the alias of the
+    // reading shows it, the line it was written at, and the namespace of the
     // import that loaded its document. Read by suite-relative path from
     // the suite root, so the shown path is the one `vet data` reports
     // there.
@@ -133,13 +133,13 @@ fn main() {
 }
 
 /// One declaration's provenance line: `path:line` of where it was
-/// written, and the import alias of its document (`-` for none).
+/// written, and the import namespace of its document (`-` for none).
 fn provenance(type_name: &str, name: &str, site: Option<Location>, origin: &Origin) -> String {
     let line = site.map_or("?".to_owned(), |site| site.span.start.line.to_string());
     format!(
-        "declaration {type_name} {name} at={}:{line} alias={}",
+        "declaration {type_name} {name} at={}:{line} namespace={}",
         origin.path,
-        origin.alias.as_deref().unwrap_or("-"),
+        origin.namespace.as_deref().unwrap_or("-"),
     )
 }
 
@@ -209,12 +209,12 @@ fn print_linked(document: &Path, reading: &Reading<Item>) {
                 .candidates
                 .iter()
                 .map(|candidate| {
-                    let alias = candidate
-                        .alias
+                    let namespace = candidate
+                        .namespace
                         .as_ref()
-                        .map_or(String::new(), |alias| format!("(alias={alias})"));
+                        .map_or(String::new(), |namespace| format!("(namespace={namespace})"));
                     format!(
-                        "{}{alias}@{}",
+                        "{}{namespace}@{}",
                         candidate.identity.name.0.join("."),
                         candidate.site.map_or("?".to_owned(), |site| at(reading, site)),
                     )

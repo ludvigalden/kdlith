@@ -1,2 +1,2 @@
 part zero
-use "$root/**/part-*.kdl"
+use "$parts/**/part-*.kdl"

@@ -1,0 +1,19 @@
+// A schema whose locations rule sits on a profile governs only the data
+// that profile reads: the schema's own imports take the root's rule, and
+// this root declares none, so its own pattern import is not admitted.
+schema demo version="1" {
+    types {
+        object Thing {
+            field name String
+        }
+    }
+    node thing role=record type=Thing {
+        field name arg=0
+    }
+    profile only {
+        locations {
+            patterns star=#true
+        }
+    }
+    import "$parts/*.kdl"
+}

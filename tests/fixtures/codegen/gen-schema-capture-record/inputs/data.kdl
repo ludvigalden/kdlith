@@ -5,4 +5,4 @@ region north {
 }
 fruit after
 use "part.kdl" repeated=instantiate
-use "./part.kdl" repeated=instantiate
+use "copy.kdl" repeated=instantiate

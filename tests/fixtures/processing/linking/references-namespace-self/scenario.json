@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "The references view separates a document's own view of its declarations from its siblings': the document imported as=go takes go-code unqualified and resolves with no gated namespace, a sibling document's unqualified go-code finds no candidate and lists go as gated, failing KDLITH-REF001 naming that namespace, and the entry's go.go-code resolves through the namespace",
+  "args": [
+    "inspect",
+    "data",
+    "--view",
+    "references",
+    "--schema",
+    "{fx-suite}/processing/linking/schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

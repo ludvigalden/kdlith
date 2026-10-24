@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A relative location written in a document a named source holds may not leave that source: $shared/part.kdl imports ../outside.kdl, which exists, and is refused with KDLITH-LOC002 at its import site",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/imports.kdl",
+    "--source",
+    "shared=lib",
+    "map/entry.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

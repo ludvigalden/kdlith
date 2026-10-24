@@ -30,7 +30,7 @@ pub(crate) fn run(args: ExportArgs) -> ExitStatus {
     });
     let options = match args
         .profiles
-        .data_options(args.anchors, args.handlers)
+        .data_options(args.locations, args.handlers)
         .map(|options| {
             options
                 .with_scope(scope_of(args.scope))
@@ -56,7 +56,7 @@ fn paths(files: &[PathBuf]) -> Vec<&Path> {
 /// Export the data documents under the schema: load the governing
 /// dialect (the bundled one, or the one the data options name) and the
 /// schema with complete checking under the data options' extensions, run the engine's export through a reader carrying the
-/// options' handlers, under the options' anchors and profile, the
+/// options' handlers, under the options' root, sources, and profile, the
 /// delivery, and the explicit output policy (`None` keeps the
 /// fail-closed sensitivity defaults), and report. The reading is linked
 /// under the options' scope: under complete scope (the default) a link

@@ -1,0 +1,27 @@
+{
+  "binary": "kdlith",
+  "description": "A document a named source holds resolves its own locations inside that source: $shared/top.kdl imports nested/mid.kdl relative to itself, which imports ../leaf.kdl back up and /root.kdl from the source's root, each shown under $shared and each record streaming under its own source",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/imports.kdl",
+    "--source",
+    "shared=lib",
+    "map/entry.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"import\",\"data\":{\"node\":{\"source\":1,\"index\":0},\"expression\":\"nested/mid.kdl\",\"targets\":[\"$shared/nested/mid.kdl\"],\"namespace\":null,\"project\":[],\"repeated\":\"reject\"",
+      "{\"item\":\"import\",\"data\":{\"node\":{\"source\":2,\"index\":0},\"expression\":\"../leaf.kdl\",\"targets\":[\"$shared/leaf.kdl\"],\"namespace\":null,\"project\":[],\"repeated\":\"reject\"",
+      "{\"item\":\"import\",\"data\":{\"node\":{\"source\":2,\"index\":1},\"expression\":\"/root.kdl\",\"targets\":[\"$shared/root.kdl\"],\"namespace\":null,\"project\":[],\"repeated\":\"reject\"",
+      "{\"item\":\"document\",\"data\":{\"source\":3,\"path\":\"$shared/leaf.kdl\"}}\n{\"item\":\"record\",\"data\":{\"node\":{\"source\":3,\"index\":0},\"type_name\":\"Part\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"leaf\"},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n",
+      "{\"item\":\"document\",\"data\":{\"source\":4,\"path\":\"$shared/root.kdl\"}}\n",
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":1,\"index\":1},\"type_name\":\"Part\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"top\"},\"origin\":1}],\"origin\":1,\"validation\":\"valid\"}}\n"
+    ],
+    "stdout-not-contains": [
+      "\"item\":\"diagnostic\""
+    ]
+  }
+}

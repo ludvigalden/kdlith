@@ -231,8 +231,44 @@ published yet.
   `KDLITH-DLC005` at schema compile. A property no compact admission
   names stays `KDLITH-BND005`, and a value its child's field rejects is
   `KDLITH-BND003`.
+- Locations and sources: every import path is a location in a source.
+  `rel/path` resolves from the importing document's directory and
+  `/path` from its source's root, both inside the importer's source;
+  `$name/path` resolves from the root of the named source wherever the
+  importer lives. The local source is rooted at the project root, the
+  current directory or `--root DIR` (`ReadOptions::with_root`); a host
+  adds named sources backed by a directory (`--source NAME=DIR`,
+  `ReadOptions::with_source` with `SourceTree::dir`) or by embedded
+  files (`SourceTree::embedded`). A `locations` rule on the schema root
+  or a profile admits `*`, `**`, and `{a,b}` patterns, expanded in
+  named sources too. The new `LOC` diagnostic area reports a location
+  naming no document (`KDLITH-LOC001`), leaving its source
+  (`KDLITH-LOC002`), an unregistered `$name` (`KDLITH-LOC003`), syntax
+  the governing rule does not admit (`KDLITH-LOC004`), and an invalid
+  root or source (`KDLITH-LOC005`).
 
 ### Changed
+
+- Breaking: the locations model replaces discovery grammars, anchors,
+  and host import aliases, with no compatibility path. Removed from the
+  dialect: `discovery`, `anchor`, `provider`, and the `grammar=`
+  property on `schema` and `profile`. Removed from the command line:
+  `--anchor` and `--alias`. Removed from the library:
+  `ReadOptions::with_anchor`, `ReadOptions::with_alias`, `AliasRoot`,
+  the typed reader's `with_anchors` and `with_alias`, and
+  `load_schema_anchored`, replaced by `load_schema_with` (and by
+  `load_with` in generated schema crates) taking `ReadOptions`.
+  Unprefixed data imports may now reach anything under the project
+  root instead of only the entry document's directory, and resolved
+  locations are shown normalised. `KDLITH-IMP001` and
+  `KDLITH-IMP004` through `KDLITH-IMP008` are retired in favour of the
+  `LOC` codes. The canonical dialect digest changes.
+- `as=NAME` on an import is now called a namespace: the import item's
+  and the typed origin's `alias` field is `namespace`, the dialect type
+  `AliasName` is folded into `NamespaceName`, and diagnostics name the
+  namespace. Its behaviour is unchanged.
+- `--match-root` is now spelled `--root`, which also roots import
+  locations; `--match-root` still names the same root.
 
 - Profile match rules compare an entry's path normalized and relative
   to the match root instead of as the invocation spells it, so an

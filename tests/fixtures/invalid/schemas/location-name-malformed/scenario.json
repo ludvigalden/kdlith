@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A schema's own location with a $name prefix that is not a kebab name is rejected at the compile-time location check, whether or not a host would register a source: $Parts/*.kdl is KDLITH-LOC004 under local checking",
+  "args": [
+    "vet",
+    "schema",
+    "--scope",
+    "local",
+    "schema.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

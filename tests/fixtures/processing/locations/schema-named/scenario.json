@@ -1,0 +1,20 @@
+{
+  "binary": "kdlith",
+  "description": "One --source serves the schema and its data on vet data: the schema's own $parts/*.kdl import resolves against --source parts=PATH, so the data document binds the extra node the matched parts/b.kdl contributes (type Extra from parts/a.kdl) after the root's thing",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/schemas/vet/import-source-pattern/schema.kdl",
+    "--source",
+    "parts={fx-suite}/schemas/vet/import-source-pattern/parts",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":0},\"type_name\":\"Thing\",\"fields\":[{\"name\":\"name\",\"value\":{\"kind\":\"string\",\"value\":\"first\"}",
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":1},\"type_name\":\"Extra\",\"fields\":[{\"name\":\"note\",\"value\":{\"kind\":\"string\",\"value\":\"second\"}"
+    ]
+  }
+}

@@ -5,7 +5,7 @@
 // them. This document contributes the root nodes of the first two levels
 // (dialect and schema), the containers that hold their declarations, the
 // structural rules a schema definition states about the documents it
-// reads, source imports with their discovery grammars and aliases,
+// reads, source imports with their locations rules and namespaces,
 // document profiles, descendant rules, ordered sequences, the symbol
 // catalog's identity and reference declarations, and the contribution,
 // computed-default, and secret-provider descriptors.
@@ -28,18 +28,6 @@ dialect kdlith version="0" {
             format kebab-case
         }
 
-        string DiscoveryName {
-            format kebab-case
-        }
-
-        string AnchorName {
-            format kebab-case
-        }
-
-        string ProviderName {
-            format kebab-case
-        }
-
         string ScopeName {
             format kebab-case
         }
@@ -49,10 +37,6 @@ dialect kdlith version="0" {
         }
 
         string ResolverName {
-            format kebab-case
-        }
-
-        string AliasName {
             format kebab-case
         }
 
@@ -70,12 +54,9 @@ dialect kdlith version="0" {
 
         // The root of a schema definition: the domain types, node
         // bindings, context slots, and structural rules it contributes.
-        // The discovery grammar the schema root binds, when no profiles
-        // are declared, names one of the schema's discovery declarations.
         object SchemaDef {
             field name SchemaName
             field version "optional<String>"
-            field grammar "optional<DiscoveryName>"
         }
 
         // Rules over the root nodes of the documents a schema definition
@@ -107,9 +88,10 @@ dialect kdlith version="0" {
         }
 
         // A source import: schedules another source invocation. The path
-        // is a literal or a grammar-admitted expression under the bound
-        // discovery grammar, resolved relative to the importing document
-        // and never computed beyond that restricted expansion. The
+        // is a location: relative to the importing document, from its
+        // source's root (a leading /), or from a named source's root
+        // ($name/), never leaving that source and never computed beyond
+        // the patterns the governing locations rule admits. The
         // imported document receives only the listed projection of the
         // caller's context, and its context mutations never return to the
         // caller. Cycles are diagnosed from the active invocation stack,
@@ -120,10 +102,10 @@ dialect kdlith version="0" {
             field repeated RepeatedImport {
                 fallback reject
             }
-            // An import alias: the imported declarations are reachable
-            // through the alias namespace and not by their unqualified
-            // names; visibility is exclusive, not additive.
-            field alias "optional<AliasName>"
+            // A namespace: the imported declarations are reachable
+            // through the namespace and not by their unqualified names;
+            // visibility is exclusive, not additive.
+            field namespace "optional<NamespaceName>"
         }
 
         // A document profile: a named selection of root types. A node
@@ -136,7 +118,7 @@ dialect kdlith version="0" {
         object ProfileDef {
             field name ProfileName
             // The profile this one extends: its effective roots and match
-            // rules compose with the parent's, and its own grammar
+            // rules compose with the parent's, and its own locations rule
             // overrides the inherited one.
             field extends "optional<ProfileName>"
             // Marks the schema's default profile, selected when no name
@@ -144,7 +126,7 @@ dialect kdlith version="0" {
             // a schema is the default.
             field default "optional<Bool>"
             field roots "optional<RootsRule>"
-            field grammar "optional<DiscoveryName>"
+            field locations "optional<LocationsRule>"
             field match "optional<ProfileMatch>"
         }
 
@@ -225,41 +207,23 @@ dialect kdlith version="0" {
             field nodes "list<NodeName>"
         }
 
-        // A discovery grammar: the restricted path-expansion grammar
-        // import expressions are evaluated under. Anchors are
-        // host-supplied typed paths named by the grammar; no grammar
-        // admits environment-variable interpolation.
-        object DiscoveryDef {
-            field name DiscoveryName
-            field anchors "ordered-map<AnchorName, AnchorDef>"
+        // A locations rule: the pattern syntax import locations may
+        // use, for a schema's own imports and the data its profiles
+        // read. Matches are ordered by their portable path bytes; no
+        // rule admits environment-variable interpolation.
+        object LocationsRule {
             field patterns "optional<PatternsRule>"
-            field order DiscoveryOrder {
-                fallback portable-path-bytes
-            }
-            // An explicit allowance for an expression that matches zero
-            // sources; without it an empty match does not resolve.
+            // An explicit allowance for a pattern that matches zero
+            // documents; without it an empty match does not resolve.
             field allow-empty "optional<Bool>"
         }
 
-        // One host-supplied typed-path anchor a grammar names. The
-        // anchor's name is the key of the enclosing ordered map.
-        object AnchorDef {
-            field provider ProviderName
-        }
-
-        // The pattern syntax a discovery grammar admits. Absent means
-        // not admitted; a schema binding no grammar evaluates literal
-        // paths only.
+        // The pattern syntax a locations rule admits. Absent means not
+        // admitted; without a rule only literal locations import.
         object PatternsRule {
             field star "optional<Bool>"
             field doublestar "optional<Bool>"
             field braces "optional<Bool>"
-        }
-
-        // The only defined ordering policy: matched sources are ordered
-        // by their portable path bytes.
-        enum DiscoveryOrder {
-            member portable-path-bytes description="Order matched sources by their portable path bytes"
         }
 
         // The identity block of a declaration: the domain its qualified
@@ -305,7 +269,7 @@ dialect kdlith version="0" {
         enum Qualification {
             member explicit description="The reference spells its qualification completely"
             member explicit-or-context description="The reference may take missing qualifiers from context"
-            member imported-or-context description="The reference may resolve through an import alias or context"
+            member imported-or-context description="The reference may resolve through an import namespace or context"
         }
 
         // One required qualifier of a reference: its name, its type, and
@@ -398,14 +362,13 @@ dialect kdlith version="0" {
     node schema role=container type=SchemaDef {
         field name arg=0
         field version property=version
-        field grammar property=grammar
         children types
         children node
         children context max-occurs=1
         children document max-occurs=1
         children import
         children profile
-        children discovery
+        children locations max-occurs=1
         children reference
         children resolution max-occurs=1
         children provider
@@ -473,7 +436,7 @@ dialect kdlith version="0" {
             }
         }
         field repeated property=repeated
-        field alias property=as
+        field namespace property=as
         children project max-occurs=1
     }
 
@@ -485,9 +448,10 @@ dialect kdlith version="0" {
         field name arg=0
         field extends property=extends
         field default property=default
-        field grammar property=grammar
+        field locations child=locations
         field roots child=roots
         field match child=match
+        children locations max-occurs=1
         children roots max-occurs=1
         children match max-occurs=1
     }
@@ -557,28 +521,23 @@ dialect kdlith version="0" {
         }
     }
 
-    // Discovery grammars.
+    // Locations rules: one on a schema governs its own imports and the
+    // data it reads; one on a profile governs the data that profile
+    // reads.
 
-    node discovery role=declaration type=DiscoveryDef parent=schema {
-        field name arg=0
-        field anchors {
-            from {
-                entries anchor key="arg(0)" value=AnchorDef
-            }
-            duplicate-keys reject
-        }
+    node locations role=record type=LocationsRule parent=schema {
         field patterns child=patterns
-        field order property=order
         field allow-empty property=allow-empty
-        children anchor
         children patterns max-occurs=1
     }
 
-    node anchor type=AnchorDef parent=discovery {
-        field provider property=provider
+    node locations type=LocationsRule parent=profile {
+        field patterns child=patterns
+        field allow-empty property=allow-empty
+        children patterns max-occurs=1
     }
 
-    node patterns type=PatternsRule parent=discovery {
+    node patterns type=PatternsRule parent=locations {
         field star property=star
         field doublestar property=doublestar
         field braces property=braces

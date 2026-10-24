@@ -1,2 +1,2 @@
-retail roots=- grammar=-
-wholesale roots=Bin,Widget grammar=found
+retail roots=- locations=-
+wholesale roots=Bin,Widget locations=[star]

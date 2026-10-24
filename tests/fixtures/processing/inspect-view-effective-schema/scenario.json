@@ -11,7 +11,7 @@
   "expect": {
     "exit": 0,
     "stdout-contains": [
-      "{\"item\":\"effective\",\"data\":{\"section\":\"import\",\"entry\":{\"path\":\"part.kdl\",\"project\":[],\"repeated\":\"reject\",\"alias\":null}}}\n"
+      "{\"item\":\"effective\",\"data\":{\"section\":\"import\",\"entry\":{\"path\":\"part.kdl\",\"project\":[],\"repeated\":\"reject\",\"namespace\":null}}}\n"
     ],
     "stdout-golden": "stdout.golden",
     "stderr-golden": "stderr.golden"

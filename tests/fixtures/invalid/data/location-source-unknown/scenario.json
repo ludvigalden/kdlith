@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A $name/ location naming a source the reading did not register fails closed with KDLITH-LOC003, naming the registered sources, rather than resolving against anything: $other/part.kdl with only --source shared=lib",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/imports.kdl",
+    "--source",
+    "shared=lib",
+    "map/entry.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

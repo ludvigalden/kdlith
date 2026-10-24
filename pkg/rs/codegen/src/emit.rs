@@ -19,6 +19,11 @@ use crate::{Error, Packaging};
 
 /// Width a `use` list or other greedy-wrapped list fills to.
 const LIST_WIDTH: usize = 100;
+/// The widest one-line `use` list rustfmt keeps on one line, and the
+/// widest wrapped line it keeps inside one: both stop short of
+/// `LIST_WIDTH`.
+const USE_SINGLE_WIDTH: usize = 98;
+const USE_WRAPPED_WIDTH: usize = 99;
 /// Width a builder chain still takes on one line.
 const CHAIN_WIDTH: usize = 65;
 
@@ -98,7 +103,7 @@ impl Out {
             return;
         }
         let single = format!("use {}::{{{}}};", path, names.join(", "));
-        if single.len() <= LIST_WIDTH {
+        if single.len() <= USE_SINGLE_WIDTH {
             self.line(&single);
             return;
         }
@@ -107,7 +112,7 @@ impl Out {
         for name in names {
             // The line is the four-space indent plus the buffer; adding
             // a name costs its own width plus ", ".
-            if !buffer.is_empty() && 4 + buffer.len() + 2 + name.len() + 1 > LIST_WIDTH {
+            if !buffer.is_empty() && 4 + buffer.len() + 2 + name.len() + 1 > USE_WRAPPED_WIDTH {
                 self.line(&format!("    {buffer},"));
                 buffer.clear();
             }
@@ -242,12 +247,11 @@ impl Emission<'_> {
             DefinitionKind::Dialect => {
                 out.line("pub use compile::{");
                 out.line(
-                    "    load_dialect, load_dialect_sources, load_schema, load_schema_anchored, load_schema_sources,",
+                    "    load_dialect, load_dialect_sources, load_schema, load_schema_sources, load_schema_with, seed,",
                 );
-                out.line("    seed,");
                 out.line("};");
             }
-            _ => out.line("pub use compile::{load, load_anchored};"),
+            _ => out.line("pub use compile::{load, load_with};"),
         }
         out.line("pub use kdlith_engine::{");
         out.line("    ContributionResolver, LAYERED, Layered, ResolutionCall, SharedContributionResolver,");

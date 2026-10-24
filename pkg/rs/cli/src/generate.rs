@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use kdlith_codegen as codegen;
 use kdlith_codegen::{Packaging, WriteError};
 use kdlith_diagnostic::ExitStatus;
-use kdlith_engine::Extensions;
+use kdlith_engine::{Extensions, ReadOptions};
 
 use crate::GenCommand;
 use crate::handlers::registry;
@@ -23,7 +23,7 @@ pub(crate) fn run(command: GenCommand) -> ExitStatus {
             &paths(&args.files),
             (&args.crate_name, &args.out),
             mode_of(args.dry_run, args.check),
-            &[],
+            ReadOptions::new(),
             &definition_extensions(),
             Packaging::Sibling,
         ),
@@ -34,7 +34,7 @@ pub(crate) fn run(command: GenCommand) -> ExitStatus {
             &paths(&args.form.files),
             (&args.form.crate_name, &args.form.out),
             mode_of(args.form.dry_run, args.form.check),
-            &args.anchors,
+            args.locations.read_options(),
             &definition_extensions().with_installed_handlers(&registry(&args.handlers)),
             packaging_of(args.kdlith_path, args.kdlith_version),
         ),
@@ -98,16 +98,16 @@ pub enum GenMode {
 /// prints as one `kdlith: gen <form>:` line; a write into an unowned
 /// path refuses with `KDLITH-GEN001`, and check drift reports
 /// `KDLITH-GEN002`, both through the standard diagnostic surface. A
-/// schema's own import expressions expand against `anchors`; a dialect
-/// root binds no discovery grammar, so a dialect's imports are literal
-/// and take none. The definition loads under `extensions`, and the
-/// manifest names the kdlith crates by `packaging`.
+/// schema's own import locations resolve under `options`; a dialect's
+/// imports are literal locations, so it takes none. The definition
+/// loads under `extensions`, and the manifest names the kdlith crates by
+/// `packaging`.
 pub fn generate(
     target: GenTarget,
     entries: &[&Path],
     (crate_name, out): (&str, &Path),
     mode: GenMode,
-    anchors: &[(String, PathBuf)],
+    options: ReadOptions,
     extensions: &Extensions,
     packaging: Packaging,
 ) -> ExitStatus {
@@ -118,7 +118,7 @@ pub fn generate(
     let tree = match target {
         GenTarget::Dialect => codegen::generate_dialect(entries, extensions, crate_name, packaging),
         GenTarget::Schema => {
-            codegen::generate_schema(entries, extensions, crate_name, anchors, packaging)
+            codegen::generate_schema(entries, extensions, crate_name, options, packaging)
         }
     };
     let tree = match tree {

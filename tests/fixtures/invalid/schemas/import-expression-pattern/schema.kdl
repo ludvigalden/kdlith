@@ -1,4 +1,4 @@
-schema demo version="1" grammar=main {
+schema demo version="1" {
     types {
         object Thing {
             field name String
@@ -7,11 +7,10 @@ schema demo version="1" grammar=main {
     node thing role=record type=Thing {
         field name arg=0
     }
-    discovery main {
-        anchor root provider=path
+    locations {
         patterns star=#true
     }
-    import "$root/a?.kdl"
+    import "$parts/a?.kdl"
     document {
         first {
             exactly-one thing

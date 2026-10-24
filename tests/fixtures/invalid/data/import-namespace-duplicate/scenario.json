@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "Two imports binding the same namespace in one data document are a duplicate key: a namespace is unique in its document, on every reading path",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/imports.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

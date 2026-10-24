@@ -16,25 +16,23 @@ use crate::compile::conditions;
 use crate::compile::expansions::Pending;
 use crate::compile::input::{
     AnnotationInput, ChildRuleInput, ConditionInput, ConstraintInput, Construct, DefaultInput,
-    DefinitionInput, DependentInput, DiscoveryInput, DocumentRuleInput, EffectGroupInput,
-    EffectInput, FieldBindingInput, FieldInput, ImportInput, Located, MatchRuleInput, MemberInput,
-    NodeInput, ProfileInput, ProviderInput, ReferenceInput, ResolutionInput, SequenceInput,
-    SlotInput, SourceContextInput, SourceInput, TypeInput,
+    DefinitionInput, DependentInput, DocumentRuleInput, EffectGroupInput, EffectInput,
+    FieldBindingInput, FieldInput, ImportInput, Located, LocationsInput, MatchRuleInput,
+    MemberInput, NodeInput, ProfileInput, ProviderInput, ReferenceInput, ResolutionInput,
+    SequenceInput, SlotInput, SourceContextInput, SourceInput, TypeInput,
 };
 use crate::compile::types::{declare, field_name, format_rule, validator_use};
 use crate::decode::found;
 use crate::definition::{
-    AccumulateOp, AnchorDecl, AnnotationDecl, DiscoveryDecl, DocumentRule, DuplicateTreatment,
-    ImportDecl, MatchKind, MatchRule, MergeDuplicates, MissingRequirement, Patterns, ProfileDecl,
-    ProviderDecl, Qualification, QualifierDecl, ReferenceDecl, ResolutionPolicyDecl,
-    ResolutionSelection, SlotDecl, SlotDuplicates, SourceContextDecl, SourceContextMode,
-    SourceFieldDecl,
+    AccumulateOp, AnnotationDecl, DocumentRule, DuplicateTreatment, ImportDecl, LocationsDecl,
+    MatchKind, MatchRule, MergeDuplicates, MissingRequirement, Patterns, ProfileDecl, ProviderDecl,
+    Qualification, QualifierDecl, ReferenceDecl, ResolutionPolicyDecl, ResolutionSelection,
+    SlotDecl, SlotDuplicates, SourceContextDecl, SourceContextMode, SourceFieldDecl,
 };
 use crate::diag::{
-    EMPTY_WHEN_COMPOSITION, FALLBACK_LESS_WHEN_RULE, INVALID_BINDING, NOT_INSTALLED,
-    OVERLAPPING_WHEN_BRANCHES, SECOND_DEFAULT, Site, duplicate, duplicate_key,
+    EMPTY_WHEN_COMPOSITION, FALLBACK_LESS_WHEN_RULE, INVALID_BINDING, LOCATION_NOT_ADMITTED,
+    NOT_INSTALLED, OVERLAPPING_WHEN_BRANCHES, SECOND_DEFAULT, Site, duplicate, duplicate_key,
 };
-use crate::discovery::{self, ExpansionError};
 use crate::names::Sym;
 use crate::syntax::parse_u64;
 use crate::types::{
@@ -42,10 +40,10 @@ use crate::types::{
     ObjectType, Sensitivity, StringType, TypeExpr, TypeKind, UnionType, Variant,
 };
 
-/// Read every construct of every document: the grammar-affecting
-/// declarations first (profiles, discovery grammars, reference policies),
-/// so import expressions validate against the full grammar set, then
-/// everything else in stream order. Each construct is sited in the
+/// Read every construct of every document: the declarations imports and
+/// references depend on first (profiles, the locations rule, reference
+/// policies), so import locations validate against the declared rule,
+/// then everything else in stream order. Each construct is sited in the
 /// document that holds it.
 pub(crate) fn all(cx: &mut Cx<'_>, input: &DefinitionInput) {
     let stream = stream(input);
@@ -53,7 +51,7 @@ pub(crate) fn all(cx: &mut Cx<'_>, input: &DefinitionInput) {
         let site = *site;
         match &located.item {
             Construct::Profile(input) => profile(cx, site, input),
-            Construct::Discovery(input) => discovery_decl(cx, site, input),
+            Construct::Locations(input) => locations_decl(cx, site, input),
             Construct::Reference(input) => reference(cx, site, input),
             _ => continue,
         }
@@ -74,8 +72,8 @@ pub(crate) fn all(cx: &mut Cx<'_>, input: &DefinitionInput) {
             }
             Construct::Provider(input) => provider(cx, site, input),
             Construct::SourceContext(input) => source_context(cx, site, input),
-            // Collected by the grammar-affecting first pass above.
-            Construct::Profile(_) | Construct::Discovery(_) | Construct::Reference(_) => {}
+            // Collected by the first pass above.
+            Construct::Profile(_) | Construct::Locations(_) | Construct::Reference(_) => {}
         }
     }
 }
@@ -1360,70 +1358,42 @@ fn import(cx: &mut Cx<'_>, site: Site, input: &ImportInput) {
         cx.not_member(site, "import.repeated", "RepeatedImport", &input.repeated);
         return;
     };
-    let alias = match &input.alias {
-        Some(alias) if cx.kebab(site, "import", alias, "alias") => Some(cx.names.intern(alias)),
+    let namespace = match &input.namespace {
+        Some(namespace) if cx.kebab(site, "import", namespace, "namespace") => {
+            Some(cx.names.intern(namespace))
+        }
         Some(_) => return,
         None => None,
     };
-    if let Some(alias) = alias
+    if let Some(namespace) = namespace
         && let Some(first) = cx
             .imports
             .iter()
-            .find(|import| import.alias == Some(alias))
+            .find(|import| import.namespace == Some(namespace))
             .map(|import| import.site)
     {
         duplicate_key(
             &mut cx.diags,
             (site, first),
-            "the alias of import",
+            "the namespace of import",
             "document.imports",
         );
         return;
     }
-    if discovery::is_expression(&input.path) {
-        // An expression is evaluated under the grammar the active
-        // profile binds, or the schema root when no profiles are
-        // declared. Compile-time validation covers the root-bound case;
-        // a profile-bound grammar validates at invocation.
-        let grammar = if cx.profiles.is_empty() {
-            cx.root_grammar.as_deref().and_then(|name| {
-                cx.discoveries
-                    .iter()
-                    .find(|d| cx.names.resolve(d.name) == name)
-            })
-        } else {
-            None
-        };
-        match grammar {
-            Some(grammar) => {
-                if let Err(error) = discovery::parse(&input.path, Some(grammar), &cx.names) {
-                    report_expansion(cx, site, &error);
-                    return;
-                }
-            }
-            None => {
-                if cx.profiles.is_empty() {
-                    let construct = format!("import {:?}", input.path);
-                    cx.malformed(site, &construct, "import paths are literal");
-                    return;
-                }
-                // A profile-bound grammar validates the expression when
-                // the invocation names its profile.
-            }
-        }
+    // A schema's own import locations are checked against the root's
+    // locations rule here; resolution happens as the schema is read.
+    if let Err(error) = crate::locations::check(&input.path, cx.locations.as_ref()) {
+        cx.diags
+            .error(LOCATION_NOT_ADMITTED, site, &error.values(&input.path));
+        return;
     }
     cx.imports.push(ImportDecl {
         path: input.path.clone(),
         project: input.project.iter().map(|n| cx.names.intern(n)).collect(),
         repeated,
-        alias,
+        namespace,
         site,
     });
-}
-
-/// Report an import-expression failure under its registered code.
-fn report_expansion(cx: &mut Cx<'_>, site: Site, error: &ExpansionError) {
-    cx.diags.error(error.code(), site, &error.values());
 }
 
 /// A document profile: a named selection of root types.
@@ -1467,10 +1437,7 @@ fn profile(cx: &mut Cx<'_>, site: Site, input: &ProfileInput) {
         cx.malformed(site, &label, "roots allows no root");
         return;
     }
-    let grammar = input.grammar.as_deref().and_then(|grammar| {
-        cx.kebab(site, &label, grammar, "grammar name")
-            .then(|| cx.names.intern(grammar))
-    });
+    let locations = input.locations.map(|rule| locations_rule(site, rule));
     let extends = input.extends.as_deref().and_then(|parent| {
         cx.kebab(site, &label, parent, "extended profile name")
             .then(|| cx.names.intern(parent))
@@ -1506,7 +1473,7 @@ fn profile(cx: &mut Cx<'_>, site: Site, input: &ProfileInput) {
         extends,
         default,
         roots,
-        grammar,
+        locations,
         rules,
         site,
     });
@@ -1543,53 +1510,18 @@ fn profile_rules(
     Some(out)
 }
 
-/// A discovery grammar declaration.
-fn discovery_decl(cx: &mut Cx<'_>, site: Site, input: &DiscoveryInput) {
-    if !cx.kebab(site, "discovery", &input.name, "grammar name") {
+/// The schema root's locations rule: one per schema, across every
+/// contributing document, as the document rule is.
+fn locations_decl(cx: &mut Cx<'_>, site: Site, input: &LocationsInput) {
+    if let Some(earlier) = cx.locations.as_ref().map(|rule| rule.site) {
+        duplicate(&mut cx.diags, cx.kind, (site, earlier), "locations", "rule");
         return;
     }
-    let name = cx.names.intern(&input.name);
-    if let Some(first) = cx
-        .discoveries
-        .iter()
-        .find(|grammar| grammar.name == name)
-        .map(|grammar| grammar.site)
-    {
-        duplicate(
-            &mut cx.diags,
-            cx.kind,
-            (site, first),
-            "discovery",
-            &input.name,
-        );
-        return;
-    }
-    let mut anchors = Vec::new();
-    for anchor in &input.anchors {
-        let label = format!("anchor {}", anchor.name);
-        if !cx.kebab(site, &label, &anchor.name, "anchor name") {
-            continue;
-        }
-        if !cx.kebab(site, &label, &anchor.provider, "provider name") {
-            continue;
-        }
-        let name = cx.names.intern(&anchor.name);
-        if anchors
-            .iter()
-            .any(|declared: &AnchorDecl| declared.name == name)
-        {
-            cx.malformed(site, &label, "declares the anchor twice");
-            continue;
-        }
-        anchors.push(AnchorDecl {
-            name,
-            provider: cx.names.intern(&anchor.provider),
-            site,
-        });
-    }
-    cx.discoveries.push(DiscoveryDecl {
-        name,
-        anchors,
+    cx.locations = Some(locations_rule(site, *input));
+}
+
+fn locations_rule(site: Site, input: LocationsInput) -> LocationsDecl {
+    LocationsDecl {
         patterns: Patterns {
             star: input.star,
             doublestar: input.doublestar,
@@ -1597,7 +1529,7 @@ fn discovery_decl(cx: &mut Cx<'_>, site: Site, input: &DiscoveryInput) {
         },
         allow_empty: input.allow_empty,
         site,
-    });
+    }
 }
 
 /// A named reference type.

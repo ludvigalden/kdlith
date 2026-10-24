@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "The inspect-path twin of invalid/schemas/location-source-unknown: without --source, inspect schema rejects the schema's own $parts/*.kdl import, whose source the reading does not register, at its site",
+  "args": [
+    "inspect",
+    "schema",
+    "{fx-suite}/schemas/vet/import-source-pattern/schema.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

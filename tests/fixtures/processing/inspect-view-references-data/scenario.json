@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "The references view of inspect data renders the reading's link report after every item has bound: one line per declared reference type in declaration order, each link in stream order with its holding field (null for a contribution's target), site, candidates, gated alias namespaces and outcome; every outcome appears, and the failed links fail the run with their diagnostics on stderr under the default complete scope",
+  "description": "The references view of inspect data renders the reading's link report after every item has bound: one line per declared reference type in declaration order, each link in stream order with its holding field (null for a contribution's target), site, candidates, gated namespaces and outcome; every outcome appears, and the failed links fail the run with their diagnostics on stderr under the default complete scope",
   "args": [
     "inspect",
     "data",

@@ -1,0 +1,21 @@
+{
+  "binary": "kdlith",
+  "description": "export takes --source like the other data verbs: --source parts=parts resolves the $parts/part-*.kdl pattern import, so --emit Part selects the entry's record (source 0) and each matched document's record (sources 1 and 2, in portable-path-byte order) with their provenance; stdout is pinned byte for byte",
+  "args": [
+    "export",
+    "--schema",
+    "{fx-suite}/processing/locations/schema.kdl",
+    "--source",
+    "parts=parts",
+    "data.kdl",
+    "--emit",
+    "Part",
+    "--format",
+    "ndjson"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

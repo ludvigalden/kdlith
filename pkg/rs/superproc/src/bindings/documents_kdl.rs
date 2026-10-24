@@ -50,15 +50,15 @@ pub(crate) const NODES: &[NodeShape] = &[
     NodeShape::new("alternatives")
         .under(&["step"])
         .ty("AlternativesRule"),
-    NodeShape::new("discovery")
+    NodeShape::new("locations")
         .under(&["schema"])
-        .declaration()
-        .ty("DiscoveryDef"),
-    NodeShape::new("anchor")
-        .under(&["discovery"])
-        .ty("AnchorDef"),
+        .record()
+        .ty("LocationsRule"),
+    NodeShape::new("locations")
+        .under(&["profile"])
+        .ty("LocationsRule"),
     NodeShape::new("patterns")
-        .under(&["discovery"])
+        .under(&["locations"])
         .ty("PatternsRule"),
     NodeShape::new("identity")
         .under(&["node"])

@@ -1,7 +1,7 @@
 // The linking schema the linking scenarios share: configuration
 // variables declared under a namespace context and looked up by an
 // explicit and a context-qualified reference type, tools carrying a
-// contract their reference requires, input sets an aliased import
+// contract their reference requires, input sets a namespaced import
 // can contribute, and overlays contributed onto an input set.
 schema linking version="1" {
     types {
@@ -96,7 +96,7 @@ schema linking version="1" {
     }
     node import role=source-import {
         field path String arg=0
-        field alias "optional<String>" property=as
+        field namespace "optional<String>" property=as
     }
     reference ConfigVarRef target=ConfigVarDef codec=DottedName lookup=config-vars qualification=explicit-or-context {
         qualifier namespace String required=#false

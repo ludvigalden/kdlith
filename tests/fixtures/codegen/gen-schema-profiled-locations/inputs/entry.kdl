@@ -1,0 +1,2 @@
+use "$parts/*.kdl"
+thing top

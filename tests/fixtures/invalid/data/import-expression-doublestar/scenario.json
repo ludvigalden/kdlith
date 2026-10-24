@@ -1,13 +1,13 @@
 {
   "binary": "kdlith",
-  "description": "On the data path an import expression using a pattern its grammar does not admit (doublestar, where the grammar admits only star) is KDLITH-IMP004 at the import, with the anchor supplied, so the grammar alone refuses it",
+  "description": "On the data path a location using a pattern its locations rule does not admit (doublestar, where the rule admits only star) is KDLITH-LOC004 at the import, with the source registered, so the rule alone refuses it",
   "args": [
     "vet",
     "data",
     "--schema",
-    "{fx-suite}/processing/bind/import-anchor/schema.kdl",
-    "--anchor",
-    "root={fx-suite}/processing/bind/import-anchor/parts",
+    "{fx-suite}/processing/locations/schema.kdl",
+    "--source",
+    "parts={fx-suite}/processing/locations/pattern-local/parts",
     "data.kdl"
   ],
   "expect-invalid": {

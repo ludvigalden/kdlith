@@ -131,7 +131,7 @@ impl ResolvedContribution {
 }
 
 /// A request to invoke another source: the original expression, any
-/// alias it binds, the caller's slots it projects, its repeat policy, and
+/// namespace it binds, the caller's slots it projects, its repeat policy, and
 /// the import site. Scheduling is not done here.
 #[derive(Clone, Debug, Serialize)]
 #[non_exhaustive]
@@ -142,7 +142,7 @@ pub struct ImportRequest {
     /// in resolution order; empty when it did not resolve.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub targets: Vec<String>,
-    pub alias: Option<String>,
+    pub namespace: Option<String>,
     /// The caller's context slots the imported source receives, by name.
     pub project: Vec<String>,
     pub repeated: Repeated,
@@ -370,7 +370,7 @@ impl BoundContribution {
 }
 
 impl ImportRequest {
-    /// A request without an alias or projection that rejects repeats.
+    /// A request without a namespace or projection that rejects repeats.
     pub fn new(
         node: NodeId,
         expression: impl Into<String>,
@@ -381,7 +381,7 @@ impl ImportRequest {
             node,
             expression: expression.into(),
             targets: Vec::new(),
-            alias: None,
+            namespace: None,
             project: Vec::new(),
             repeated: Repeated::default(),
             site,

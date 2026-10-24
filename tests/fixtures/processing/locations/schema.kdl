@@ -1,0 +1,25 @@
+// The schema the locations scenarios share: a record, and a
+// source-import node carrying its location, repeat policy, and
+// namespace. Its locations rule admits the star pattern, so data it
+// reads may import by pattern; doublestar and braces stay refused.
+schema found version="1" {
+    types {
+        object Part {
+            field id String
+        }
+    }
+    locations {
+        patterns star=#true
+    }
+    node part role=record type=Part {
+        field id arg=0
+    }
+    node use role=source-import {
+        field path String arg=0
+        field repeated "optional<String>" property=repeated
+        field namespace "optional<String>" property=as
+    }
+    document {
+        following part use
+    }
+}

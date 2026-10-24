@@ -1,0 +1,5 @@
+schema shop version="1" {
+    locations {
+        patterns braces=#true
+    }
+}
