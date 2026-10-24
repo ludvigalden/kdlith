@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "An asset whose name ends in none of its type's extensions is KDLITH-LOC008: api.json ends in .json where Spec admits .yaml or .yml, and a file named yaml has no stem before the extension; both are reported",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/assets/schema.kdl",
+    "data.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

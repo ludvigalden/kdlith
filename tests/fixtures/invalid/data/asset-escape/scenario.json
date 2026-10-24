@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "An asset location leaving its source is KDLITH-LOC002 before anything is read: under --root root, root/data.kdl writes ../outside.yaml, which resolves outside the project root even though the file exists",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/assets/schema.kdl",
+    "--root",
+    "root",
+    "root/data.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

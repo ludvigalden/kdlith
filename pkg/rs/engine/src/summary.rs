@@ -289,6 +289,14 @@ fn kind(n: &Names, kind: &TypeKind) -> String {
                 codec.namespace.map(|ns| n.resolve(ns))
             )
         }
+        TypeKind::Asset(asset) => format!(
+            "asset kind={} extensions=[{}] base={} patterns={} digest={}",
+            asset.kind.name(),
+            asset.extensions.join(","),
+            asset.base.name(),
+            asset.patterns,
+            asset.digest
+        ),
     }
 }
 

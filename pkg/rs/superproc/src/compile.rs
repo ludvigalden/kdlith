@@ -21,9 +21,10 @@ use kdlith_runtime::Repeated;
 
 use crate::processors::{Item, reader};
 use crate::types::{
-    AnnotationDef, ChildRule, CodecType, Condition, Constraint, DefaultSpec, DocumentRule, Effect,
-    EnumType, FieldBinding, LocationsRule, MapType, MatchRule, NodeDef, NodeGroupDef, ObjectType,
-    ProfileDef, ReferenceDef, ResolutionPolicyDef, SecretProvider, Source, StringType, UnionType,
+    AnnotationDef, AssetType, ChildRule, CodecType, Condition, Constraint, DefaultSpec,
+    DocumentRule, Effect, EnumType, FieldBinding, LocationsRule, MapType, MatchRule, NodeDef,
+    NodeGroupDef, ObjectType, ProfileDef, ReferenceDef, ResolutionPolicyDef, SecretProvider,
+    Source, StringType, UnionType,
 };
 
 /// The canonical dialect's contributing documents, embedded so the
@@ -507,6 +508,21 @@ fn declaration(value: Item) -> Option<Construct> {
                 })
                 .collect(),
             namespace: namespace.map(|namespace| namespace.as_str().to_owned()),
+        }),
+        Item::AssetType(AssetType {
+            name,
+            kind,
+            extensions,
+            base,
+            patterns,
+            digest,
+        }) => Construct::Type(TypeInput::Asset {
+            name: name.as_str().to_owned(),
+            kind: kind.map(|kind| kind.member().to_owned()),
+            extensions: extensions.unwrap_or_default(),
+            base: base.map(|base| base.member().to_owned()),
+            patterns: patterns.unwrap_or(false),
+            digest: digest.unwrap_or(false),
         }),
         Item::NodeDef(node) => Construct::Node(Box::new(node_input(node))),
         Item::AnnotationDef(AnnotationDef { name, ty, required }) => {

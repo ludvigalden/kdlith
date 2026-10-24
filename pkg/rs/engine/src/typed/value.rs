@@ -5,7 +5,7 @@
 use std::collections::BTreeMap;
 use std::fmt;
 
-use kdlith_model::{Entry, Field, Value};
+use kdlith_model::{Asset, Entry, Field, Value};
 
 use crate::decode::{Class, class, found};
 use crate::syntax::{parse_i64, parse_u64};
@@ -340,6 +340,17 @@ impl<T: serde::Serialize> serde::Serialize for Nullable<T> {
         match self {
             Self::Null => serializer.serialize_none(),
             Self::Value(value) => serializer.serialize_some(value),
+        }
+    }
+}
+
+/// An asset the reading resolved. One it could not resolve kept its
+/// spelling and failed the reading, so it never reads as an asset.
+impl FromValue for Asset {
+    fn from_value(value: &Value) -> Result<Self, Mismatch> {
+        match value {
+            Value::Asset(asset) if asset.spelling().is_none() => Ok(asset.clone()),
+            other => Err(Mismatch::expected("a resolved asset", other)),
         }
     }
 }

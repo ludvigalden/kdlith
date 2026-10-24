@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::identity::Reference;
 use crate::origin::{OriginId, Trace};
+use crate::source::Location;
 
 /// A bound value. Numbers keep their exact source spelling, never a
 /// binary float; maps keep declaration order.
@@ -16,6 +17,96 @@ pub enum Value {
     List(Vec<Value>),
     Map(Vec<Entry>),
     Reference(Reference),
+    Asset(Asset),
+}
+
+/// A location naming a file or directory that is not a KDL document,
+/// shown as its source shows it: `$name/<path>` in a named source,
+/// project-root relative in the local one, never the directory backing
+/// a named source. Binding records the spelling; the reading resolves
+/// it in the source of the document that wrote it.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct Asset {
+    pub location: String,
+    /// The source's name; empty for the local source.
+    pub source: String,
+    /// The content digest, when the asset type records one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub digest: Option<String>,
+    #[serde(skip)]
+    state: AssetState,
+}
+
+/// How far an asset value got.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+enum AssetState {
+    /// Read back from a serialized form: no reading vouches for it.
+    #[default]
+    Detached,
+    Written(Box<AssetSpelling>),
+    /// Resolved by a reading over the source set this fingerprints.
+    Resolved(u64),
+}
+
+/// An asset value as written, before the reading resolves it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct AssetSpelling {
+    /// The declared asset type that governs its resolution.
+    pub ty: String,
+    pub text: String,
+    pub site: Location,
+}
+
+impl Asset {
+    /// An asset as written at `site`, typed by the asset type `ty`.
+    pub fn written(ty: impl Into<String>, text: impl Into<String>, site: Location) -> Self {
+        let text = text.into();
+        Self {
+            location: text.clone(),
+            source: String::new(),
+            digest: None,
+            state: AssetState::Written(Box::new(AssetSpelling {
+                ty: ty.into(),
+                text,
+                site,
+            })),
+        }
+    }
+
+    /// An asset resolved to `location` in `source` by a reading over the
+    /// source set `set` fingerprints.
+    pub fn resolved(
+        location: impl Into<String>,
+        source: impl Into<String>,
+        digest: Option<String>,
+        set: u64,
+    ) -> Self {
+        Self {
+            location: location.into(),
+            source: source.into(),
+            digest,
+            state: AssetState::Resolved(set),
+        }
+    }
+
+    /// The spelling awaiting resolution; `None` once resolved.
+    pub fn spelling(&self) -> Option<&AssetSpelling> {
+        match &self.state {
+            AssetState::Written(spelling) => Some(spelling),
+            _ => None,
+        }
+    }
+
+    /// The fingerprint of the source set that resolved the asset; `None`
+    /// for an asset no reading resolved.
+    pub fn source_set(&self) -> Option<u64> {
+        match self.state {
+            AssetState::Resolved(set) => Some(set),
+            _ => None,
+        }
+    }
 }
 
 /// One keyed member of an ordered map.

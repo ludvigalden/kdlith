@@ -1056,7 +1056,8 @@ const NULL: u8 = 1 << 3;
 const REFERENCE: u8 = 1 << 4;
 const LIST: u8 = 1 << 5;
 const MAP: u8 = 1 << 6;
-const ANY: u8 = STRING | BOOL | NUMBER | NULL | REFERENCE | LIST | MAP;
+const ASSET: u8 = 1 << 7;
+const ANY: u8 = STRING | BOOL | NUMBER | NULL | REFERENCE | LIST | MAP | ASSET;
 
 /// The bound value shapes a type's reading accepts: binding has already
 /// decoded a reference type's or `ref<T>`'s spelling into a reference,
@@ -1079,6 +1080,7 @@ fn shapes(definition: &Definition, ty: &TypeExpr) -> u8 {
                     Some(TypeKind::Object(_) | TypeKind::Map(_)) => MAP,
                     Some(TypeKind::Union(_)) => STRING | MAP,
                     Some(TypeKind::Codec(codec)) => shapes(definition, &codec.output),
+                    Some(TypeKind::Asset(_)) => ASSET,
                     _ => ANY,
                 }
             }
@@ -1105,6 +1107,7 @@ pub(crate) fn kind_name(kind: &TypeKind) -> &'static str {
         TypeKind::Union(_) => "union",
         TypeKind::Map(_) => "map",
         TypeKind::Codec(_) => "codec",
+        TypeKind::Asset(_) => "asset",
         _ => "declared",
     }
 }

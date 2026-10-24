@@ -1,6 +1,7 @@
 //! The kdlith engine: loads and compiles definitions once into linked
 //! catalogs and a processing plan, binds documents through that plan,
 //! and reads them into a typed processor's own types.
+mod assets;
 mod bind;
 mod bindings;
 mod cache;
@@ -69,7 +70,7 @@ pub use extensions::{
 pub use kdlith_model::ResolvedContribution;
 /// Deliberate root surface: tools name `Value` through the engine and
 /// the generated crates that re-export it, never through `__private`.
-pub use kdlith_model::Value;
+pub use kdlith_model::{Asset, Value};
 pub use kdlith_runtime::{
     CacheEntry, CacheScan, CleanOutcome, Derivation, EncodedEntry, EntryClass, EntryFault,
     OwnedEntry, SnapshotEntry, SnapshotMeta, SnapshotRecord, WriteOutcome, cache_key, clean_state,
@@ -106,15 +107,16 @@ pub use symbols::{ContributionDescriptor, DeclarationDescriptor, ReferencePolicy
 pub use syntax::ParsedDocument;
 pub use typed::{
     Decimal, Declarations, Expression, FieldShape, Fields, FromFields, FromValue, Handler,
-    ItemVariant, LogicalType, Mismatch, NodeShape, Nullable, OrderedMap, Origin, ReadError, ReadFn,
-    Reading, Ref, ResolveError, Shaped, SlotShape, TypeShape, TypedItem, TypedReader, ValueExpr,
-    VariantShape, member_value, object_value, read_fields, reference_value, text_value,
-    variant_value,
+    ItemVariant, LogicalType, Mismatch, NodeShape, Nullable, OpenError, OrderedMap, Origin,
+    ReadError, ReadFn, Reading, Ref, ResolveError, Shaped, SlotShape, TypeShape, TypedItem,
+    TypedReader, ValueExpr, VariantShape, member_value, object_value, read_fields, reference_value,
+    text_value, variant_value,
 };
 pub use types::{
-    Builtin, CaptureDef, CodecDecl, Constraint, DefaultSpec, EnumMember, EnumType, ExpandedGroup,
-    FieldDef, FormatRule, MapType, ObjectType, OutputPolicy, Sensitivity, StringFormat, StringType,
-    TypeCatalog, TypeDecl, TypeExpr, TypeId, TypeKind, UnionType, ValidatorUse, Variant,
+    AssetBase, AssetDecl, AssetKind, Builtin, CaptureDef, CodecDecl, Constraint, DefaultSpec,
+    EnumMember, EnumType, ExpandedGroup, FieldDef, FormatRule, MapType, ObjectType, OutputPolicy,
+    Sensitivity, StringFormat, StringType, TypeCatalog, TypeDecl, TypeExpr, TypeId, TypeKind,
+    UnionType, ValidatorUse, Variant,
 };
 
 pub use value_resolver::{ResolutionCall, SharedResolver, Unresolvable, ValueResolver};

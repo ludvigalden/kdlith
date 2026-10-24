@@ -128,6 +128,14 @@ impl ReadOptions {
         self
     }
 
+    /// The source set these options name, as a reading admits it; `None`
+    /// when it does not admit, which the reading itself reports.
+    pub(crate) fn asset_set(&self) -> Option<crate::locations::AssetSet> {
+        Sources::admit(self.root.as_deref(), &self.sources, ORIGIN)
+            .ok()
+            .map(|sources| crate::locations::AssetSet(Rc::new(sources)))
+    }
+
     /// Select `def`'s profiles for the entry the reading shows as
     /// `shown`, under these options.
     fn selection(&self, def: &Definition, shown: &str) -> ProfileSelection {
@@ -488,9 +496,9 @@ impl<'d> DataReader<'d> {
             return Ok(Restored::Miss);
         };
         // A reading that rejects its sources reports it; so does replay.
-        if Sources::admit(options.root.as_deref(), &options.sources, ORIGIN).is_err() {
+        let Ok(sources) = Sources::admit(options.root.as_deref(), &options.sources, ORIGIN) else {
             return Ok(Restored::Miss);
-        }
+        };
         let chain: Vec<String> = entries.iter().map(|e| e.display().to_string()).collect();
         let shown = document.display().to_string();
         let Some((text, key, selection)) = self.scanned(document, &shown, options) else {
@@ -550,12 +558,27 @@ impl<'d> DataReader<'d> {
         .under_policy(options.output_policy)
         .with_resolver(self.resolver.clone());
         let mut failed = before.failed;
+        // The restored record's assets resolve in its document's source,
+        // as a replay of the whole document would resolve them.
+        let place = std::fs::canonicalize(document)
+            .ok()
+            .map(|canonical| sources.entry_place(&canonical, &shown, true));
         loop {
             match session.next_item() {
                 Ok(Some(item)) => {
-                    let item = Item::from(item);
-                    failed |= matches!(item, Item::Diagnostic(_));
+                    let mut item = Item::from(item);
+                    let failures = crate::assets::resolve_item(
+                        def,
+                        &sources,
+                        place.as_ref(),
+                        &shown,
+                        &mut item,
+                    );
+                    failed |= matches!(item, Item::Diagnostic(_)) || !failures.is_empty();
                     sink(item);
+                    for failure in failures {
+                        sink(Item::Diagnostic(Box::new(failure)));
+                    }
                 }
                 Ok(None) => break,
                 Err(error) => return Err(ReadError::Session(error)),
@@ -1003,8 +1026,26 @@ impl Reading<'_, '_> {
             {
                 entering(values);
             }
-            (self.sink)(remap(item, source));
+            let mut item = remap(item, source);
+            let failures = self.assets(id, shown, &mut item);
+            (self.sink)(item);
+            for failure in failures {
+                self.diagnose(failure);
+            }
         }
+    }
+
+    /// Resolve the assets `item` holds in the source of the document
+    /// `id` invoked, reporting each failure after the item.
+    fn assets(&mut self, id: InvocationId, shown: &str, item: &mut Item) -> Vec<DiagnosticRecord> {
+        if !matches!(
+            item,
+            Item::Record(_) | Item::Declaration(_) | Item::Contribution(_)
+        ) {
+            return Vec::new();
+        }
+        let place = self.places.get(&id);
+        crate::assets::resolve_item(self.reader.def, &self.sources, place, shown, item)
     }
 
     /// Give a document's item, its text first to whoever asked for it.
@@ -1072,7 +1113,11 @@ impl Reading<'_, '_> {
                             continue;
                         }
                     }
-                    let item = Item::from(item);
+                    let mut item = Item::from(item);
+                    // The bound result keeps assets as written: a replay
+                    // resolves them in its own document's source.
+                    let written = cacheable.then(|| item.clone());
+                    let failures = self.assets(id, shown, &mut item);
                     if let Item::Record(record) = &item {
                         // Records carry no context effects and their
                         // children scope has closed, so the live context is
@@ -1090,8 +1135,8 @@ impl Reading<'_, '_> {
                         self.records.push(indexed.clone());
                         records.push(indexed);
                     }
-                    if cacheable {
-                        own.push(item.clone());
+                    if let Some(written) = written {
+                        own.push(written);
                     }
                     if let Some(entering) = &mut self.entering
                         && matches!(item, Item::Record(_) | Item::Declaration(_))
@@ -1104,6 +1149,9 @@ impl Reading<'_, '_> {
                         bound.push(values);
                     }
                     self.emit(item);
+                    for failure in failures {
+                        self.diagnose(failure);
+                    }
                 }
                 Ok(None) => break,
                 Err(error) => self.broken = Some(ReadError::Session(error)),

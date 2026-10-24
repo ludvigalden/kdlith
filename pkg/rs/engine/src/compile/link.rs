@@ -445,6 +445,7 @@ fn admits_only_strings(cx: &Cx<'_>, symbols: &SymbolCatalog, ty: &TypeExpr, dept
             match &decl.kind {
                 TypeKind::Builtin(builtin) => *builtin == Builtin::String,
                 TypeKind::String(_) | TypeKind::Enum(_) => true,
+                TypeKind::Asset(_) => false,
                 TypeKind::Codec(codec) => admits_only_strings(cx, symbols, &codec.output, next),
                 TypeKind::Union(union) => union
                     .variants

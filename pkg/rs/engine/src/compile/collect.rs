@@ -36,8 +36,9 @@ use crate::diag::{
 use crate::names::Sym;
 use crate::syntax::parse_u64;
 use crate::types::{
-    CaptureDef, CodecDecl, Constraint, DefaultSpec, EnumMember, EnumType, FieldDef, MapType,
-    ObjectType, Sensitivity, StringType, TypeExpr, TypeKind, UnionType, Variant,
+    AssetBase, AssetDecl, AssetKind, CaptureDef, CodecDecl, Constraint, DefaultSpec, EnumMember,
+    EnumType, FieldDef, MapType, ObjectType, Sensitivity, StringType, TypeExpr, TypeKind,
+    UnionType, Variant,
 };
 
 /// Read every construct of every document: the declarations imports and
@@ -301,8 +302,79 @@ fn type_decl(cx: &mut Cx<'_>, site: Site, ty: &TypeInput) {
                 }),
             )
         }
+        TypeInput::Asset {
+            name,
+            kind,
+            extensions,
+            base,
+            patterns,
+            digest,
+        } => {
+            let label = format!("asset {name}");
+            let Some(decl) = asset_decl(
+                cx,
+                site,
+                &label,
+                (kind.as_deref(), base.as_deref()),
+                extensions,
+                (*patterns, *digest),
+            ) else {
+                return;
+            };
+            (name.clone(), Vec::new(), TypeKind::Asset(decl))
+        }
     };
     declare(cx, site, name, parameters, kind);
+}
+
+/// An asset type from its declared settings: `kind` defaults to `file`
+/// and `base` to `document`; an extension is written without its dot.
+pub(crate) fn asset_decl(
+    cx: &mut Cx<'_>,
+    site: Site,
+    label: &str,
+    (kind, base): (Option<&str>, Option<&str>),
+    extensions: &[String],
+    (patterns, digest): (bool, bool),
+) -> Option<AssetDecl> {
+    let kind = match kind {
+        None => AssetKind::File,
+        Some(name) => match AssetKind::from_name(name) {
+            Some(kind) => kind,
+            None => {
+                cx.not_member(site, &format!("kind of {label}"), "AssetKind", name);
+                return None;
+            }
+        },
+    };
+    let base = match base {
+        None => AssetBase::Document,
+        Some(name) => match AssetBase::from_name(name) {
+            Some(base) => base,
+            None => {
+                cx.not_member(site, &format!("base of {label}"), "AssetBase", name);
+                return None;
+            }
+        },
+    };
+    for extension in extensions {
+        if extension.is_empty() || extension.contains(['.', '/', '\\']) {
+            let reason = format!("extension {extension:?} is not a bare extension without its dot");
+            cx.malformed(site, label, &reason);
+            return None;
+        }
+    }
+    if kind == AssetKind::Dir && !extensions.is_empty() {
+        cx.malformed(site, label, "a dir asset admits no extensions");
+        return None;
+    }
+    Some(AssetDecl {
+        kind,
+        extensions: extensions.to_vec(),
+        base,
+        patterns,
+        digest,
+    })
 }
 
 /// The parameter names a declaration carries, in order.

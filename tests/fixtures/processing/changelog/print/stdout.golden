@@ -259,6 +259,22 @@ published yet.
   embedded source, and fails unless both runs agree byte for byte; a
   codegen-oracle scenario's `sources` key passes `--source` to its
   generate steps.
+- The `asset` type kind: `asset NAME { kind file|dir; extensions …;
+  base document|source; patterns #true; digest #true }` declares a
+  field whose value is a location naming a file or directory that is
+  not a KDL document. The reading resolves it as it resolves an import
+  location (relative, `/root`, or `$name/`, from the referring
+  document's directory or, under `base source`, its source's root),
+  confines it to its source (`KDLITH-LOC002`), and checks that it
+  exists (`KDLITH-LOC001`) and matches its kind and extensions
+  (`KDLITH-LOC008`); it never reads the content beyond an optional
+  digest. A pattern is admitted only where the type enables patterns
+  and only as one item of a list (`KDLITH-LOC004`). Bound values carry
+  the new `asset` value kind, `{"location","source","digest"?}`, in
+  every output. Generated readers declare each asset type as a newtype
+  over the re-exported `Asset`, and `Reading::open` reads a file
+  asset's bytes through the reading's own sources; an asset another
+  reading resolved is refused (`OpenError`).
 
 ### Changed
 

@@ -14,6 +14,13 @@ value-resolution hook), and each field's index into that table. The
 `origins` view writes the same envelope for every record,
 declaration, and contribution.
 
+## Asset values
+
+An asset field exports as the `asset` value kind,
+`{"kind":"asset","value":{"location":…,"source":…}}`, with a
+`digest` where its type records one; its origin is the literal
+spelling's site.
+
 ## Sensitivity
 
 An explicit output policy decides how sensitive fields are emitted —

@@ -1,0 +1,20 @@
+{
+  "binary": "kdlith",
+  "description": "A dir asset names a directory relative to the document: specs resolves to the directory, and its digest folds each file under it (a.yaml and nested/b.yaml) in portable-path-byte order with its path and length, the value an independent FNV-1a implementation computes",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/assets/schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":0},\"type_name\":\"Tree\",\"fields\":[{\"name\":\"folder\",\"value\":{\"kind\":\"asset\",\"value\":{\"location\":\"specs\",\"source\":\"\",\"digest\":\"fnv1a64:634eab9176543662\"}},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n"
+    ],
+    "stdout-not-contains": [
+      "\"item\":\"diagnostic\""
+    ]
+  }
+}

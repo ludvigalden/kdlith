@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "export records an asset value as its own value kind, {\"kind\":\"asset\",\"value\":{\"location\":\u2026,\"source\":\u2026}}: the location as the reading shows it (project-root relative in the local source, $name/<path> in a named one), the source's name (empty for the local source), and a digest only where the asset type records one; the field's origin stays the literal spelling's site. stdout is pinned byte for byte",
+  "args": [
+    "export",
+    "--schema",
+    "{fx-suite}/processing/assets/schema.kdl",
+    "data.kdl",
+    "--emit",
+    "Doc",
+    "--format",
+    "ndjson"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

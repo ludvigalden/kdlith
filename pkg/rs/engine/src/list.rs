@@ -123,6 +123,7 @@ fn kind_name(kind: &TypeKind) -> &'static str {
         TypeKind::Union(_) => "union",
         TypeKind::Map(_) => "map",
         TypeKind::Codec(_) => "codec",
+        TypeKind::Asset(_) => "asset",
     }
 }
 

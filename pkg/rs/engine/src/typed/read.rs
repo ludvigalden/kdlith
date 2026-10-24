@@ -9,8 +9,8 @@ use std::path::Path;
 use kdlith_diagnostic::registry::{lookup, render};
 use kdlith_diagnostic::{ByteSpan, DiagnosticRecord};
 use kdlith_model::{
-    BoundContribution, ExpansionRequest, Field, Identity, ImportRequest, Item, Location, NodeId,
-    PendingBinding, ResolvedContribution, ScopeCompletion, SourceId,
+    Asset, BoundContribution, ExpansionRequest, Field, Identity, ImportRequest, Item, Location,
+    NodeId, PendingBinding, ResolvedContribution, ScopeCompletion, SourceId,
 };
 use kdlith_runtime::{Handlers, SessionError, SlotValue};
 use serde::Serialize;
@@ -21,7 +21,7 @@ use crate::definition::{CheckScope, Definition};
 use crate::link::{
     DuplicateDeclaration, ImportNamespaces, Link, LinkInputs, LinkOutcome, LinkReport, link_reading,
 };
-use crate::locations::SourceTree;
+use crate::locations::{AssetSet, SourceTree};
 use crate::resolution::SharedContributionResolver;
 use crate::typed::conform;
 use crate::typed::links::{ItemVariant, Ref};
@@ -217,6 +217,26 @@ impl std::fmt::Display for ResolveError {
 
 impl std::error::Error for ResolveError {}
 
+/// Why [`Reading::open`] refused an asset.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct OpenError {
+    pub location: String,
+    pub reason: String,
+}
+
+impl std::fmt::Display for OpenError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "asset {} cannot be opened: {}",
+            self.location, self.reason
+        )
+    }
+}
+
+impl std::error::Error for OpenError {}
+
 /// A typed reading collected whole: its items in stream order, linked
 /// when the reader asked for linking, so each reference its values hold
 /// resolves through the link stage's outcome for that reference.
@@ -232,6 +252,8 @@ pub struct Reading<T> {
     sites: HashMap<Location, (usize, usize)>,
     /// Each typed declaration's item, by node.
     declarations: HashMap<NodeId, usize>,
+    /// The source set the reading resolved its assets against.
+    assets: Option<AssetSet>,
 }
 
 impl<T> Reading<T> {
@@ -239,7 +261,7 @@ impl<T> Reading<T> {
         items: Vec<TypedItem<T>>,
         report: Option<LinkReport>,
         scope: Option<CheckScope>,
-        failed: bool,
+        (failed, assets): (bool, Option<AssetSet>),
     ) -> Self {
         let mut documents = BTreeMap::new();
         let mut diagnostics = Vec::new();
@@ -275,7 +297,34 @@ impl<T> Reading<T> {
             failed: failed || gated,
             sites,
             declarations,
+            assets,
         }
+    }
+
+    /// The bytes of the file `asset` names, read through this reading's
+    /// sources, so an embedded source and a directory serve it alike and
+    /// it stays inside its source. An asset another reading, or no
+    /// reading, resolved fails closed; so does a directory asset.
+    pub fn open(&self, asset: &Asset) -> Result<Vec<u8>, OpenError> {
+        let refused = |reason: String| OpenError {
+            location: asset.location.clone(),
+            reason,
+        };
+        let Some(AssetSet(sources)) = &self.assets else {
+            return Err(refused("the reading resolved no sources".to_owned()));
+        };
+        match asset.source_set() {
+            Some(set) if set == sources.fingerprint() => {}
+            Some(_) => {
+                return Err(refused(
+                    "the asset was resolved by another reading".to_owned(),
+                ));
+            }
+            None => return Err(refused("no reading resolved the asset".to_owned())),
+        }
+        sources
+            .open_asset(&asset.source, &asset.location)
+            .map_err(refused)
     }
 
     /// Every item of the reading, in stream order, pending typed
@@ -519,7 +568,8 @@ impl<'d, T: 'static> TypedReader<'d, T> {
     pub fn collect(&self, entries: &[&Path]) -> Result<Reading<T>, ReadError> {
         let mut items = Vec::new();
         let (failed, report) = self.read_scoped(entries, &mut |item| items.push(item), true)?;
-        Ok(Reading::new(items, report, self.linking, failed))
+        let assets = self.options.asset_set();
+        Ok(Reading::new(items, report, self.linking, (failed, assets)))
     }
 
     /// Read as [`TypedReader::read`] does, over documents held in
@@ -553,7 +603,8 @@ impl<'d, T: 'static> TypedReader<'d, T> {
     pub fn collect_sources(&self, sources: &[Source]) -> Result<Reading<T>, ReadError> {
         let mut items = Vec::new();
         let (failed, report) = self.sources_scoped(sources, &mut |item| items.push(item), true)?;
-        Ok(Reading::new(items, report, self.linking, failed))
+        let assets = self.options.asset_set();
+        Ok(Reading::new(items, report, self.linking, (failed, assets)))
     }
 
     /// Whether a reading's link report fails it: under complete scope

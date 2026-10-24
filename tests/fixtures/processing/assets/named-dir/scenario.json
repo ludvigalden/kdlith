@@ -1,0 +1,24 @@
+{
+  "binary": "kdlith",
+  "description": "A $name/ asset resolves from the named source's root wherever the writing document lives: with --source lib=lib, $lib/specs/api.yaml is shown $lib/specs/api.yaml with source lib, never the directory backing it, and the pattern $lib/specs/*.yaml expands inside the source",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/assets/schema.kdl",
+    "--source",
+    "lib=lib",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":0},\"type_name\":\"Doc\",\"fields\":[{\"name\":\"spec\",\"value\":{\"kind\":\"asset\",\"value\":{\"location\":\"$lib/specs/api.yaml\",\"source\":\"lib\"}},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n",
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":1},\"type_name\":\"Set\",\"fields\":[{\"name\":\"specs\",\"value\":{\"kind\":\"list\",\"value\":[{\"kind\":\"asset\",\"value\":{\"location\":\"$lib/specs/api.yaml\",\"source\":\"lib\"}}]},\"origin\":1}],\"origin\":1,\"validation\":\"valid\"}}\n"
+    ],
+    "stdout-not-contains": [
+      "\"item\":\"diagnostic\"",
+      "named-dir/lib"
+    ]
+  }
+}

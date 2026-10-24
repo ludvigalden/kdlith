@@ -1,0 +1,68 @@
+// The schema the asset scenarios share. Each node binds one asset type
+// from argument 0, or a list of them from its arguments: a file
+// relative to the document, a file relative to the source's root with
+// a digest, a directory, and a pattern-admitting specification file
+// type, bound both as a list and as a single value.
+schema shelf version="1" {
+    types {
+        asset Spec {
+            kind file
+            extensions yaml yml
+        }
+        asset RootFile {
+            kind file
+            base source
+            digest #true
+        }
+        asset Folder {
+            kind dir
+            digest #true
+        }
+        asset SpecGlob {
+            kind file
+            extensions yaml
+            base source
+            patterns #true
+        }
+        object Doc {
+            field spec Spec
+        }
+        object Root {
+            field file RootFile
+        }
+        object Tree {
+            field folder Folder
+        }
+        object Set {
+            field specs "list<SpecGlob>"
+        }
+        object Pick {
+            field spec SpecGlob
+        }
+    }
+    locations {
+        patterns star=#true
+    }
+    node doc role=record type=Doc {
+        field spec arg=0
+    }
+    node root role=record type=Root {
+        field file arg=0
+    }
+    node tree role=record type=Tree {
+        field folder arg=0
+    }
+    node set role=record type=Set {
+        field specs {
+            from {
+                args
+            }
+        }
+    }
+    node pick role=record type=Pick {
+        field spec arg=0
+    }
+    node use role=source-import {
+        field path String arg=0
+    }
+}

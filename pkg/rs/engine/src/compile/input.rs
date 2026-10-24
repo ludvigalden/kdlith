@@ -61,7 +61,7 @@ pub enum Construct {
 }
 
 /// A logical type declaration: what `string`, `enum`, `object`,
-/// `union`, `map`, and `codec` declare.
+/// `union`, `map`, `codec`, and `asset` declare.
 #[derive(Clone, Debug)]
 pub enum TypeInput {
     String {
@@ -101,6 +101,14 @@ pub enum TypeInput {
         pattern: String,
         captures: Vec<CaptureInput>,
         namespace: Option<String>,
+    },
+    Asset {
+        name: String,
+        kind: Option<String>,
+        extensions: Vec<String>,
+        base: Option<String>,
+        patterns: bool,
+        digest: bool,
     },
 }
 

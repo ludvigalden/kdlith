@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "An asset of the wrong kind is KDLITH-LOC008: specs.yaml is a directory where Spec admits a file, and notes/a.txt is a file where Folder admits a directory; both are reported",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/assets/schema.kdl",
+    "data.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "binary": "kdlith",
+  "description": "The embedded-equivalence pair over assets: run once with --source lib=lib and once with lib embedded, the reading must be byte-identical. $lib/docs/inputs.kdl, a document of the source, writes ../specs/api.yaml relative to itself and specs/more/x.yaml from the source's root under base source; the entry writes the dir asset $lib/specs, whose digest folds the embedded keys exactly as the directory's files; every asset is shown under $lib with source lib",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/assets/schema.kdl",
+    "data.kdl"
+  ],
+  "source-embedded": [
+    "lib=lib"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":1,\"index\":0},\"type_name\":\"Doc\",\"fields\":[{\"name\":\"spec\",\"value\":{\"kind\":\"asset\",\"value\":{\"location\":\"$lib/specs/api.yaml\",\"source\":\"lib\"}},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n",
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":1,\"index\":1},\"type_name\":\"Root\",\"fields\":[{\"name\":\"file\",\"value\":{\"kind\":\"asset\",\"value\":{\"location\":\"$lib/specs/more/x.yaml\",\"source\":\"lib\",\"digest\":\"fnv1a64:08f0de07b58d2b17\"}},\"origin\":1}],\"origin\":1,\"validation\":\"valid\"}}\n",
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":1},\"type_name\":\"Tree\",\"fields\":[{\"name\":\"folder\",\"value\":{\"kind\":\"asset\",\"value\":{\"location\":\"$lib/specs\",\"source\":\"lib\",\"digest\":\"fnv1a64:2074c1d6d74dd30b\"}},\"origin\":1}],\"origin\":1,\"validation\":\"valid\"}}\n"
+    ],
+    "stdout-not-contains": [
+      "\"item\":\"diagnostic\""
+    ]
+  }
+}

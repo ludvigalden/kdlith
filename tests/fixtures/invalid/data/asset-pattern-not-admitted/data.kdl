@@ -1,0 +1,3 @@
+doc "specs/*.yaml"
+set "specs/*.yaml"
+pick "specs/*.yaml"

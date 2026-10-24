@@ -379,6 +379,7 @@ fn same_shape(a: &Value, b: &Value) -> bool {
         (Value::Bool(a), Value::Bool(b)) => a == b,
         (Value::Number(a), Value::Number(b)) | (Value::String(a), Value::String(b)) => a == b,
         (Value::Reference(a), Value::Reference(b)) => same_target(a, b),
+        (Value::Asset(a), Value::Asset(b)) => a.source == b.source && a.location == b.location,
         (Value::List(a), Value::List(b)) => {
             a.len() == b.len() && a.iter().zip(b).all(|(a, b)| same_shape(a, b))
         }

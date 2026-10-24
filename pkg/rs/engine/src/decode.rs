@@ -4,7 +4,7 @@
 
 use std::collections::BTreeMap;
 
-use kdlith_model::{Entry, Location, QualifiedName, Reference, Value};
+use kdlith_model::{Asset, Entry, Location, QualifiedName, Reference, Value};
 use regex::Regex;
 
 use crate::definition::{Qualification, ReferenceDecl};
@@ -242,6 +242,14 @@ impl Decoder {
             (TypeKind::Codec(codec), Value::String(text)) => {
                 self.codec(types, names, id, codec, text, site)
             }
+            // An asset's spelling binds as written; the reading resolves
+            // it in the source of the document that wrote it.
+            (TypeKind::Asset(_), Value::String(text)) => Some(Value::Asset(Asset::written(
+                names.resolve(decl.name),
+                text.clone(),
+                site,
+            ))),
+            (TypeKind::Asset(_), Value::Asset(_)) => Some(value.clone()),
             // Object, union, and map values are bound from node structure,
             // which the binding already checked field by field.
             (TypeKind::Object(_) | TypeKind::Union(_) | TypeKind::Map(_), Value::Map(_)) => {
@@ -486,6 +494,7 @@ pub(crate) fn found(value: &Value) -> String {
         Value::List(_) => "a list".to_owned(),
         Value::Map(_) => "a node with fields".to_owned(),
         Value::Reference(reference) => format!("reference {:?}", reference.written),
+        Value::Asset(asset) => format!("asset {:?}", asset.location),
         _ => "an unsupported value".to_owned(),
     }
 }

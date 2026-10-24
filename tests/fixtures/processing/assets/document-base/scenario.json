@@ -1,0 +1,20 @@
+{
+  "binary": "kdlith",
+  "description": "A file asset under the default base document resolves relative to the document that wrote it: map/inputs.kdl writes contracts/api.yaml, which names map/contracts/api.yaml, shown project-root relative in the local source with an empty source name and no digest (the type records none); the asset exists, is a file, and ends in .yaml, so the record is valid",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/assets/schema.kdl",
+    "map/inputs.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":0},\"type_name\":\"Doc\",\"fields\":[{\"name\":\"spec\",\"value\":{\"kind\":\"asset\",\"value\":{\"location\":\"map/contracts/api.yaml\",\"source\":\"\"}},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n"
+    ],
+    "stdout-not-contains": [
+      "\"item\":\"diagnostic\""
+    ]
+  }
+}

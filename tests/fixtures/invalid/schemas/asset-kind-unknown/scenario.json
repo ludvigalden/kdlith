@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "An asset kind outside the dialect's AssetKind enum (file, dir) is KDLITH-BND008 at the value, as binding reports any enum value it does not know",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

@@ -687,6 +687,56 @@ macro_rules! codec_type {
     };
 }
 
+/// An asset type: a newtype over the resolved [`Asset`](kdlith_model::Asset)
+/// carrier, spelled as the declaration names it; a host opens it
+/// through the reading that resolved it.
+#[macro_export]
+macro_rules! asset_type {
+    ($(#[$meta:meta])* $vis:vis struct $name:ident;) => {
+        $crate::asset_type! { as stringify!($name); $(#[$meta])* $vis struct $name; }
+    };
+    (as $spelled:expr; $(#[$meta:meta])* $vis:vis struct $name:ident;) => {
+        $(#[$meta])*
+        #[derive(Clone, Debug, PartialEq, Eq)]
+        $vis struct $name(pub $crate::Asset);
+
+        impl ::core::ops::Deref for $name {
+            type Target = $crate::Asset;
+
+            fn deref(&self) -> &Self::Target {
+                &self.0
+            }
+        }
+
+        impl $crate::FromValue for $name {
+            fn from_value(
+                value: &$crate::__private::Value,
+            ) -> ::core::result::Result<Self, $crate::Mismatch> {
+                <$crate::Asset as $crate::FromValue>::from_value(value).map(Self)
+            }
+        }
+
+        impl $crate::LogicalType for $name {
+            fn expression() -> ::std::string::String {
+                ::std::string::String::from($spelled)
+            }
+        }
+
+        impl $crate::Shaped for $name {
+            const SHAPE: $crate::TypeShape = $crate::TypeShape::asset($spelled);
+        }
+
+        impl $crate::__private::serde::Serialize for $name {
+            fn serialize<S: $crate::__private::serde::Serializer>(
+                &self,
+                serializer: S,
+            ) -> ::core::result::Result<S::Ok, S::Error> {
+                $crate::__private::serde::Serialize::serialize(&self.0, serializer)
+            }
+        }
+    };
+}
+
 /// A declared map type: a newtype over the `map<Key, Value>` carrier,
 /// spelled as the declaration names it.
 #[macro_export]

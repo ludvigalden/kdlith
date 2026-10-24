@@ -68,7 +68,7 @@ pub(crate) fn run(cx: &mut Cx<'_>) {
 /// Rewrite every type expression one declared kind holds.
 fn walk_kind(cx: &mut Cx<'_>, pass: &mut Pass, site: Site, kind: &mut TypeKind) {
     match kind {
-        TypeKind::Builtin(_) | TypeKind::String(_) | TypeKind::Enum(_) => {}
+        TypeKind::Builtin(_) | TypeKind::String(_) | TypeKind::Enum(_) | TypeKind::Asset(_) => {}
         TypeKind::Object(object) => {
             for field in &mut object.fields {
                 pass.expr(cx, site, &mut field.ty);
@@ -225,7 +225,7 @@ impl Pass {
 fn substitute_kind(kind: &TypeKind, params: &[Sym], args: &[TypeExpr]) -> TypeKind {
     let mut cloned = kind.clone();
     match &mut cloned {
-        TypeKind::Builtin(_) | TypeKind::String(_) | TypeKind::Enum(_) => {}
+        TypeKind::Builtin(_) | TypeKind::String(_) | TypeKind::Enum(_) | TypeKind::Asset(_) => {}
         TypeKind::Object(object) => {
             for field in &mut object.fields {
                 substitute_expr(&mut field.ty, params, args);

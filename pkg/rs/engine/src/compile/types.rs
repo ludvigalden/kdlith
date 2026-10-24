@@ -25,6 +25,7 @@ pub(crate) fn container(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) {
             "union" => union(cx, doc, child),
             "map" => map(cx, doc, child),
             "codec" => codec(cx, doc, child),
+            "asset" => asset(cx, doc, child),
             _ => {
                 cx.unknown(doc, child, "types");
                 continue;
@@ -800,6 +801,69 @@ fn codec(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) -> Option<(String, Vec<
             namespace,
         }),
     ))
+}
+
+/// An `asset NAME` declaration: one child per setting, each carrying
+/// its value as argument 0; `extensions` lists its values.
+fn asset(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) -> Option<(String, Vec<Sym>, TypeKind)> {
+    let site = Site::new(doc, node.span);
+    let (construct, name) = header(cx, doc, node);
+    construct.finish(cx);
+    let name = name?;
+    let label = format!("asset {name}");
+    let mut seen = [None; 5];
+    let (mut kind, mut base) = (None, None);
+    let (mut patterns, mut digest) = (false, false);
+    let mut extensions = Vec::new();
+    for child in &node.children {
+        let child_site = Site::new(doc, child.span);
+        let slot = match child.name.as_str() {
+            "kind" => 0,
+            "extensions" => 1,
+            "base" => 2,
+            "patterns" => 3,
+            "digest" => 4,
+            _ => {
+                cx.unknown(doc, child, "asset");
+                continue;
+            }
+        };
+        if !cx.only_once(&mut seen[slot], child_site, &label, &child.name) {
+            continue;
+        }
+        let mut part = Construct::new(cx, doc, child);
+        match slot {
+            0 => kind = part.string_arg(cx, 0, "kind"),
+            1 => extensions = part.rest_strings(cx, 0, "extension"),
+            2 => base = part.string_arg(cx, 0, "base"),
+            _ => {
+                let flag = match part.value_arg(cx, 0, &child.name) {
+                    Some(Value::Bool(flag)) => flag,
+                    Some(other) => {
+                        let what = format!("argument 0 of {}", child.name);
+                        cx.mistyped(child_site, &what, "Bool", &found(&other));
+                        false
+                    }
+                    None => false,
+                };
+                if slot == 3 {
+                    patterns = flag;
+                } else {
+                    digest = flag;
+                }
+            }
+        }
+        part.finish_leaf(cx);
+    }
+    let decl = crate::compile::collect::asset_decl(
+        cx,
+        site,
+        &label,
+        (kind.as_deref(), base.as_deref()),
+        &extensions,
+        (patterns, digest),
+    )?;
+    Some((name, Vec::new(), TypeKind::Asset(decl)))
 }
 
 /// Check every declared object's constraints against its fields. Called

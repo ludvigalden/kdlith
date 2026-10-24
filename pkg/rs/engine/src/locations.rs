@@ -6,15 +6,17 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
-use kdlith_diagnostic::DiagnosticRecord;
+use kdlith_diagnostic::{ByteSpan, DiagnosticRecord};
 use kdlith_model::Value;
+use kdlith_runtime::{stable_hash, stable_hash_step};
 
 use crate::definition::{LocationsDecl, Patterns};
 use crate::diag::{
-    LOCATION_NOT_ADMITTED, LOCATION_OUTSIDE_SOURCE, LOCATION_UNRESOLVED, SOURCE_INVALID,
-    SOURCE_UNKNOWN, SOURCE_UNREADABLE, Site, record,
+    ASSET_MISMATCH, LOCATION_NOT_ADMITTED, LOCATION_OUTSIDE_SOURCE, LOCATION_UNRESOLVED,
+    SOURCE_INVALID, SOURCE_UNKNOWN, SOURCE_UNREADABLE, Site, record,
 };
 use crate::syntax::{ParsedDocument, SyntaxNode};
+use crate::types::{AssetBase, AssetDecl, AssetKind};
 
 /// Why a location naming no file in its source does not resolve.
 const NO_SUCH_FILE: &str = "the source holds no such file";
@@ -101,12 +103,172 @@ pub(crate) struct Target {
     pub(crate) place: Place,
 }
 
+/// The source set a reading resolved its assets against, kept so a host
+/// opens each asset through the same trees and confinement.
+#[derive(Clone)]
+pub(crate) struct AssetSet(pub(crate) Rc<Sources>);
+
+impl std::fmt::Debug for AssetSet {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "AssetSet({:016x})", self.0.fingerprint)
+    }
+}
+
+/// One asset a location resolved to, shown as its source shows it.
+pub(crate) struct AssetTarget {
+    pub(crate) shown: String,
+    /// The source's name; empty for the local source.
+    pub(crate) source: String,
+    pub(crate) digest: Option<String>,
+}
+
+/// Why an asset location names nothing usable.
+enum Missing {
+    NoSuchFile,
+    Outside,
+    Unreadable(String),
+}
+
+/// What an asset location names; its bytes are read only when a digest
+/// or a host's open asks for them.
+enum AssetContent {
+    File(FileContent),
+    Dir(DirContent),
+}
+
+enum FileContent {
+    /// The file's canonical path.
+    Disk(PathBuf),
+    Held(Rc<str>),
+}
+
+enum DirContent {
+    /// The directory's canonical path.
+    Disk(PathBuf),
+    /// The embedded files under it, keyed relative to it.
+    Held(Vec<(String, Rc<str>)>),
+}
+
+impl FileContent {
+    fn bytes(&self) -> Result<Vec<u8>, String> {
+        match self {
+            FileContent::Disk(path) => std::fs::read(path).map_err(|error| error.to_string()),
+            FileContent::Held(text) => Ok(text.as_bytes().to_vec()),
+        }
+    }
+}
+
+impl AssetContent {
+    /// The content digest: a file's bytes, or a directory's files in
+    /// portable-path-byte order, each path with its length and bytes.
+    fn digest(&self) -> Result<String, String> {
+        let hash = match self {
+            AssetContent::File(file) => stable_hash(&file.bytes()?),
+            AssetContent::Dir(dir) => {
+                let files = match dir {
+                    DirContent::Held(files) => files
+                        .iter()
+                        .map(|(key, text)| (key.clone(), text.as_bytes().to_vec()))
+                        .collect(),
+                    DirContent::Disk(root) => dir_files(root)?,
+                };
+                files
+                    .iter()
+                    .fold(stable_hash(b"dir"), |hash, (key, bytes)| {
+                        let hash = stable_hash_step(hash, key.as_bytes());
+                        let length = u64::try_from(bytes.len()).unwrap_or(u64::MAX);
+                        let hash = stable_hash_step(hash, &length.to_le_bytes());
+                        stable_hash_step(hash, bytes)
+                    })
+            }
+        };
+        Ok(format!("fnv1a64:{hash:016x}"))
+    }
+}
+
+/// An embedded source's file, or the directory its keys imply.
+fn embedded_asset(
+    files: &BTreeMap<String, Rc<str>>,
+    relative: &str,
+) -> Result<AssetContent, Missing> {
+    if let Some(text) = files.get(relative) {
+        return Ok(AssetContent::File(FileContent::Held(text.clone())));
+    }
+    let prefix = format!("{relative}/");
+    let under: Vec<(String, Rc<str>)> = files
+        .iter()
+        .filter_map(|(key, text)| Some((key.strip_prefix(&prefix)?.to_owned(), text.clone())))
+        .collect();
+    if under.is_empty() {
+        return Err(Missing::NoSuchFile);
+    }
+    Ok(AssetContent::Dir(DirContent::Held(under)))
+}
+
+/// A file or directory under the canonical root of a directory-backed
+/// source; a link whose target leaves the root leaves the source.
+fn disk_asset(root: &Path, relative: &str) -> Result<AssetContent, Missing> {
+    let resolved =
+        std::fs::canonicalize(root.join(relative)).map_err(|error| match error.kind() {
+            std::io::ErrorKind::NotFound => Missing::NoSuchFile,
+            _ => Missing::Unreadable(error.to_string()),
+        })?;
+    if !resolved.starts_with(root) {
+        return Err(Missing::Outside);
+    }
+    if resolved.is_dir() {
+        Ok(AssetContent::Dir(DirContent::Disk(resolved)))
+    } else if resolved.is_file() {
+        Ok(AssetContent::File(FileContent::Disk(resolved)))
+    } else {
+        Err(Missing::Unreadable(
+            "neither a file nor a directory".to_owned(),
+        ))
+    }
+}
+
+/// Every regular file under `root`, keyed by its portable path relative
+/// to it, in portable-path-byte order; links are skipped.
+fn dir_files(root: &Path) -> Result<Vec<(String, Vec<u8>)>, String> {
+    let mut found = Vec::new();
+    let mut pending = vec![root.to_path_buf()];
+    while let Some(dir) = pending.pop() {
+        let read = std::fs::read_dir(&dir).map_err(|error| error.to_string())?;
+        for entry in read {
+            let entry = entry.map_err(|error| error.to_string())?;
+            let kind = entry.file_type().map_err(|error| error.to_string())?;
+            let path = entry.path();
+            if kind.is_dir() {
+                pending.push(path);
+            } else if kind.is_file() {
+                let key = path
+                    .strip_prefix(root)
+                    .map_or_else(|_| String::new(), |p| portable(p.as_os_str()));
+                let bytes = std::fs::read(&path).map_err(|error| error.to_string())?;
+                found.push((key, bytes));
+            }
+        }
+    }
+    found.sort_by(|a, b| a.0.as_bytes().cmp(b.0.as_bytes()));
+    Ok(found)
+}
+
+/// Whether a file name ends in `.EXTENSION` after a non-empty stem.
+fn has_extension(name: &str, extension: &str) -> bool {
+    name.strip_suffix(extension)
+        .and_then(|stem| stem.strip_suffix('.'))
+        .is_some_and(|stem| !stem.is_empty())
+}
+
 /// The sources one reading resolves locations against, each validated
 /// before any document is read.
 pub(crate) struct Sources {
     /// The project root, canonical: the local source's root.
     root: Rc<LocalRoot>,
     named: BTreeMap<String, Tree>,
+    /// Identifies the trees: the root's and each directory's canonical
+    /// path, each embedded file's key and text.
+    fingerprint: u64,
 }
 
 impl Sources {
@@ -151,6 +313,7 @@ impl Sources {
         }
         match canonical {
             Some(canonical) if failures.is_empty() => Ok(Self {
+                fingerprint: fingerprint(&canonical, &named),
                 root: Rc::new(LocalRoot {
                     canonical,
                     shown: PathBuf::new(),
@@ -159,6 +322,11 @@ impl Sources {
             }),
             _ => Err(failures),
         }
+    }
+
+    /// The fingerprint of the trees this source set resolves against.
+    pub(crate) fn fingerprint(&self) -> u64 {
+        self.fingerprint
     }
 
     /// The place of an entry document read from disk: under the project
@@ -205,26 +373,11 @@ impl Sources {
     ) -> Result<Vec<Target>, Box<DiagnosticRecord>> {
         let parsed = parse(expression, rule).map_err(|error| error.record(expression, origin))?;
         let (home, start, rest) = match &parsed.base {
-            Base::Named(name) => {
-                if !self.named.contains_key(name) {
-                    let known: Vec<&str> = self.named.keys().map(String::as_str).collect();
-                    let reason = if known.is_empty() {
-                        "the reading has no named sources".to_owned()
-                    } else {
-                        format!("the reading's sources are {}", known.join(", "))
-                    };
-                    return Err(Box::new(record(
-                        SOURCE_UNKNOWN,
-                        &[expression, name, &reason],
-                        origin,
-                    )));
-                }
-                (
-                    Home::Named(name.clone()),
-                    String::new(),
-                    parsed.path.as_str(),
-                )
-            }
+            Base::Named(name) => (
+                self.named_home(expression, name, origin)?,
+                String::new(),
+                parsed.path.as_str(),
+            ),
             Base::Root | Base::Relative => {
                 let Some(importer) = importer else {
                     return Err(unresolved(
@@ -265,6 +418,29 @@ impl Sources {
         }
         self.locate(expression, &home, relative, origin)
             .map(|target| vec![target])
+    }
+
+    /// The home of `$name/`: an unregistered name is `KDLITH-LOC003`.
+    fn named_home(
+        &self,
+        expression: &str,
+        name: &str,
+        origin: &str,
+    ) -> Result<Home, Box<DiagnosticRecord>> {
+        if self.named.contains_key(name) {
+            return Ok(Home::Named(name.to_owned()));
+        }
+        let known: Vec<&str> = self.named.keys().map(String::as_str).collect();
+        let reason = if known.is_empty() {
+            "the reading has no named sources".to_owned()
+        } else {
+            format!("the reading's sources are {}", known.join(", "))
+        };
+        Err(Box::new(record(
+            SOURCE_UNKNOWN,
+            &[expression, name, &reason],
+            origin,
+        )))
     }
 
     /// The one document `relative` names under `home`'s root.
@@ -355,19 +531,7 @@ impl Sources {
         rule: Option<&LocationsDecl>,
         origin: &str,
     ) -> Result<Vec<Target>, Box<DiagnosticRecord>> {
-        let candidates: Vec<String> = match home {
-            Home::Local(root) => walk_matches(&root.canonical, pattern, origin)?,
-            Home::Named(name) => match self.named.get(name) {
-                Some(Tree::Dir(root)) => walk_matches(root, pattern, origin)?,
-                Some(Tree::Embedded(files)) => files
-                    .keys()
-                    .filter(|key| matches(pattern, &key.split('/').collect::<Vec<_>>()))
-                    .cloned()
-                    .collect(),
-                None => Vec::new(),
-            },
-            Home::Unconfined => Vec::new(),
-        };
+        let candidates = self.candidates(home, pattern, origin)?;
         if candidates.is_empty() && !rule.is_some_and(|rule| rule.allow_empty) {
             return Err(unresolved(
                 expression,
@@ -379,6 +543,218 @@ impl Sources {
             .into_iter()
             .map(|relative| self.locate(expression, home, relative, origin))
             .collect()
+    }
+
+    /// The files under `home`'s root `pattern` matches, in
+    /// portable-path-byte order.
+    fn candidates(
+        &self,
+        home: &Home,
+        pattern: &[Segment],
+        origin: &str,
+    ) -> Result<Vec<String>, Box<DiagnosticRecord>> {
+        Ok(match home {
+            Home::Local(root) => walk_matches(&root.canonical, pattern, origin)?,
+            Home::Named(name) => match self.named.get(name) {
+                Some(Tree::Dir(root)) => walk_matches(root, pattern, origin)?,
+                Some(Tree::Embedded(files)) => files
+                    .keys()
+                    .filter(|key| matches(pattern, &key.split('/').collect::<Vec<_>>()))
+                    .cloned()
+                    .collect(),
+                None => Vec::new(),
+            },
+            Home::Unconfined => Vec::new(),
+        })
+    }
+
+    /// Resolve the asset location `expression`, written in the document
+    /// at `place` (`None` for a document held in memory), as the asset
+    /// type `ty` declares: located as an import location is, except that
+    /// a relative spelling starts at the source's root under `base
+    /// source`, and a pattern is admitted only where the type enables it
+    /// and the value is one item of a list. Each asset is checked for
+    /// existence, kind, and extension, and read only for its digest.
+    pub(crate) fn resolve_asset(
+        &self,
+        expression: &str,
+        place: Option<&Place>,
+        (ty, decl): (&str, &AssetDecl),
+        listed: bool,
+        origin: &str,
+    ) -> Result<Vec<AssetTarget>, Box<DiagnosticRecord>> {
+        let rule = decl.patterns.then(|| LocationsDecl {
+            patterns: Patterns {
+                star: true,
+                doublestar: true,
+                braces: true,
+            },
+            allow_empty: false,
+            site: Site::new(0, ByteSpan::new(0, 0)),
+        });
+        let parsed =
+            parse(expression, rule.as_ref()).map_err(|error| error.record(expression, origin))?;
+        if parsed.patterns && !listed {
+            let reason = NotAdmitted("a pattern expands only as one item of a list".to_owned());
+            return Err(reason.record(expression, origin));
+        }
+        let (home, start) = match &parsed.base {
+            Base::Named(name) => (self.named_home(expression, name, origin)?, String::new()),
+            Base::Root | Base::Relative => {
+                let Some(place) = place else {
+                    return Err(unresolved(
+                        expression,
+                        "a document held in memory belongs to no source; name one with $name/",
+                        origin,
+                    ));
+                };
+                let start = match (&parsed.base, decl.base) {
+                    (Base::Relative, AssetBase::Document) => parent(&place.relative).to_owned(),
+                    _ => String::new(),
+                };
+                (place.home.clone(), start)
+            }
+        };
+        let outside = || {
+            Box::new(record(
+                LOCATION_OUTSIDE_SOURCE,
+                &[expression, &home_name(&home)],
+                origin,
+            ))
+        };
+        if let Home::Unconfined = home {
+            return Err(outside());
+        }
+        let relatives = if parsed.patterns {
+            let pattern = join_pattern(&start, &parsed.path).ok_or_else(outside)?;
+            let found = self.candidates(&home, &pattern, origin)?;
+            if found.is_empty() {
+                return Err(unresolved(
+                    expression,
+                    "the pattern matches no file",
+                    origin,
+                ));
+            }
+            found
+        } else {
+            let relative = normalize(&join(&start, &parsed.path)).ok_or_else(outside)?;
+            if relative.is_empty() {
+                return Err(unresolved(
+                    expression,
+                    "it names the source's root, not an asset",
+                    origin,
+                ));
+            }
+            vec![relative]
+        };
+        relatives
+            .into_iter()
+            .map(|relative| self.asset(expression, &home, relative, (ty, decl), origin))
+            .collect()
+    }
+
+    /// The asset `relative` names under `home`'s root, checked against
+    /// its type.
+    fn asset(
+        &self,
+        expression: &str,
+        home: &Home,
+        relative: String,
+        (ty, decl): (&str, &AssetDecl),
+        origin: &str,
+    ) -> Result<AssetTarget, Box<DiagnosticRecord>> {
+        let shown = shown(home, &relative);
+        let content = self
+            .content(home, &relative)
+            .map_err(|missing| match missing {
+                Missing::NoSuchFile => unresolved(&shown, NO_SUCH_FILE, origin),
+                Missing::Unreadable(reason) => unresolved(&shown, &reason, origin),
+                Missing::Outside => Box::new(record(
+                    LOCATION_OUTSIDE_SOURCE,
+                    &[expression, &home_name(home)],
+                    origin,
+                )),
+            })?;
+        let mismatch =
+            |reason: &str| Box::new(record(ASSET_MISMATCH, &[&shown, ty, reason], origin));
+        match (decl.kind, &content) {
+            (AssetKind::File, AssetContent::Dir(_)) => {
+                return Err(mismatch("it is a directory; the type admits a file"));
+            }
+            (AssetKind::Dir, AssetContent::File(_)) => {
+                return Err(mismatch("it is a file; the type admits a directory"));
+            }
+            _ => {}
+        }
+        let name = relative.rsplit('/').next().unwrap_or_default();
+        if !decl.extensions.is_empty()
+            && !decl
+                .extensions
+                .iter()
+                .any(|extension| has_extension(name, extension))
+        {
+            let admitted: Vec<String> = decl.extensions.iter().map(|e| format!(".{e}")).collect();
+            let reason = format!("its name does not end in {}", admitted.join(" or "));
+            return Err(mismatch(&reason));
+        }
+        let digest = if decl.digest {
+            let digest = content
+                .digest()
+                .map_err(|reason| unresolved(&shown, &reason, origin))?;
+            Some(digest)
+        } else {
+            None
+        };
+        let source = match home {
+            Home::Named(name) => name.clone(),
+            _ => String::new(),
+        };
+        Ok(AssetTarget {
+            shown,
+            source,
+            digest,
+        })
+    }
+
+    /// What `relative` names under `home`'s root.
+    fn content(&self, home: &Home, relative: &str) -> Result<AssetContent, Missing> {
+        match home {
+            Home::Named(name) => match self.named.get(name) {
+                Some(Tree::Embedded(files)) => embedded_asset(files, relative),
+                Some(Tree::Dir(root)) => disk_asset(root, relative),
+                None => Err(Missing::NoSuchFile),
+            },
+            Home::Local(root) => disk_asset(&root.canonical, relative),
+            Home::Unconfined => Err(Missing::Outside),
+        }
+    }
+
+    /// The bytes of the file asset a reading resolved, located again
+    /// from its source and shown location under this source set, so a
+    /// host reading it stays inside the same confinement.
+    pub(crate) fn open_asset(&self, source: &str, location: &str) -> Result<Vec<u8>, String> {
+        let (home, relative) = if source.is_empty() {
+            (Home::Local(self.root.clone()), location)
+        } else {
+            if !self.named.contains_key(source) {
+                return Err(format!("the reading has no source ${source}"));
+            }
+            let prefix = format!("${source}/");
+            let relative = location
+                .strip_prefix(&prefix)
+                .ok_or_else(|| format!("{location} is not a location in ${source}"))?;
+            (Home::Named(source.to_owned()), relative)
+        };
+        if relative.is_empty() || normalize(relative).as_deref() != Some(relative) {
+            return Err(format!("{location} is not a normalized location"));
+        }
+        match self.content(&home, relative) {
+            Ok(AssetContent::File(file)) => file.bytes(),
+            Ok(AssetContent::Dir(_)) => Err(format!("{location} is a directory, not a file")),
+            Err(Missing::NoSuchFile) => Err(format!("{location}: {NO_SUCH_FILE}")),
+            Err(Missing::Outside) => Err(format!("{location} resolves outside its source")),
+            Err(Missing::Unreadable(reason)) => Err(format!("{location}: {reason}")),
+        }
     }
 
     /// A relative or root location written in an unconfined definition
@@ -882,6 +1258,31 @@ fn flag(node: &SyntaxNode, key: &str) -> bool {
             .map(|(_, scalar)| &scalar.value),
         Some(Value::Bool(true))
     )
+}
+
+fn fingerprint(root: &Path, named: &BTreeMap<String, Tree>) -> u64 {
+    let mut hash = stable_hash(portable(root.as_os_str()).as_bytes());
+    for (name, tree) in named {
+        hash = stable_hash_step(hash, b"\0");
+        hash = stable_hash_step(hash, name.as_bytes());
+        match tree {
+            Tree::Dir(path) => {
+                hash = stable_hash_step(hash, b"\0dir\0");
+                hash = stable_hash_step(hash, portable(path.as_os_str()).as_bytes());
+            }
+            Tree::Embedded(files) => {
+                hash = stable_hash_step(hash, b"\0embedded");
+                for (key, text) in files {
+                    hash = stable_hash_step(hash, b"\0");
+                    hash = stable_hash_step(hash, key.as_bytes());
+                    let length = u64::try_from(text.len()).unwrap_or(u64::MAX);
+                    hash = stable_hash_step(hash, &length.to_le_bytes());
+                    hash = stable_hash_step(hash, text.as_bytes());
+                }
+            }
+        }
+    }
+    hash
 }
 
 fn admit_tree(tree: &SourceTree) -> Result<Tree, String> {

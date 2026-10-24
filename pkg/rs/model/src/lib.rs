@@ -17,4 +17,4 @@ pub use item::{
 pub use origin::{Derivation, Origin, OriginId, Trace};
 pub use resolution::{DuplicateTreatment, FieldMerge, MissingRequirement, ResolutionSelection};
 pub use source::{DocumentRole, Location, Position, SourceDescriptor, SourceId, Span};
-pub use value::{Entry, Field, Value};
+pub use value::{Asset, AssetSpelling, Entry, Field, Value};

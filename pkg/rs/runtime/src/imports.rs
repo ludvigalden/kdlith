@@ -170,6 +170,12 @@ fn encode_value(out: &mut Vec<u8>, value: &Value) {
             }
             prefixed(out, reference.written.as_bytes());
         }
+        Value::Asset(asset) => {
+            out.push(7);
+            prefixed(out, asset.source.as_bytes());
+            prefixed(out, asset.location.as_bytes());
+            prefixed(out, asset.digest.as_deref().unwrap_or_default().as_bytes());
+        }
         // A value variant this version does not know still encodes
         // deterministically within the running build, so the
         // fingerprint never silently ignores a resolved value.

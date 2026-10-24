@@ -1,0 +1,7 @@
+schema bad version="1" {
+    types {
+        asset Link {
+            kind symlink
+        }
+    }
+}

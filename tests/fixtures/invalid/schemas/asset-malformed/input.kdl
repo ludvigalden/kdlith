@@ -1,0 +1,11 @@
+schema bad version="1" {
+    types {
+        asset Dotted {
+            extensions ".yaml"
+        }
+        asset Folder {
+            kind dir
+            extensions yaml
+        }
+    }
+}

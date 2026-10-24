@@ -42,6 +42,7 @@ pub(crate) const LOCATION_OUTSIDE_SOURCE: &str = "KDLITH-LOC002";
 pub(crate) const SOURCE_UNKNOWN: &str = "KDLITH-LOC003";
 pub(crate) const LOCATION_NOT_ADMITTED: &str = "KDLITH-LOC004";
 pub(crate) const SOURCE_INVALID: &str = "KDLITH-LOC005";
+pub(crate) const ASSET_MISMATCH: &str = "KDLITH-LOC008";
 pub(crate) const SOURCE_UNREADABLE: &str = "KDLITH-SRC001";
 pub(crate) const SOURCE_NOT_UTF8: &str = "KDLITH-SRC002";
 pub(crate) const SOURCE_LIMIT: &str = "KDLITH-SRC003";

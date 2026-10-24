@@ -90,6 +90,7 @@ union_type! {
         "union" => Union(UnionType),
         "map" => Map(MapType),
         "codec" => Codec(CodecType),
+        "asset" => Asset(AssetType),
     }
 }
 
@@ -215,6 +216,38 @@ object_type! {
 }
 
 object_type! {
+    /// An asset declaration: what a location naming a non-KDL file or
+    /// directory must name, and where an unprefixed relative spelling starts.
+    pub struct AssetType {
+        "name" => name: TypeName,
+        "kind" => kind: Option<AssetKind>,
+        "extensions" => extensions: Option<Vec<String>>,
+        "base" => base: Option<AssetBase>,
+        "patterns" => patterns: Option<bool>,
+        "digest" => digest: Option<bool>,
+    }
+}
+
+impl AssetType {
+    /// The identity domain its declarations register in.
+    pub const DOMAIN: &str = "AssetType";
+}
+
+enum_type! {
+    pub enum AssetKind {
+        "file" => File,
+        "dir" => Dir,
+    }
+}
+
+enum_type! {
+    pub enum AssetBase {
+        "document" => Document,
+        "source" => Source,
+    }
+}
+
+object_type! {
     /// An include directive among a declaring container's like members.
     pub struct IncludeRef {
         "target" => target: TypeName,
@@ -290,6 +323,9 @@ pub(crate) const TYPES: &[TypeShape] = &[
     MapType::SHAPE,
     CodecType::SHAPE,
     Capture::SHAPE,
+    AssetType::SHAPE,
+    AssetKind::SHAPE,
+    AssetBase::SHAPE,
     IncludeRef::SHAPE,
     Constraint::SHAPE,
     AllOrNone::SHAPE,

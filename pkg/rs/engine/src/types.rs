@@ -125,6 +125,76 @@ pub enum TypeKind {
     Map(MapType),
     /// A pattern codec: a string decoder whose output is a declared type.
     Codec(CodecDecl),
+    /// A location naming a file or directory that is not a KDL document.
+    Asset(AssetDecl),
+}
+
+/// An asset type: what the location a field holds must name, and how
+/// an unprefixed relative spelling resolves.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct AssetDecl {
+    pub kind: AssetKind,
+    /// The admitted file-name extensions, without the dot; empty admits
+    /// any.
+    pub extensions: Vec<String>,
+    pub base: AssetBase,
+    /// Whether a value may be a pattern; it expands only inside a list.
+    pub patterns: bool,
+    /// Whether the resolved asset records a content digest.
+    pub digest: bool,
+}
+
+/// What an asset location must name.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum AssetKind {
+    File,
+    Dir,
+}
+
+impl AssetKind {
+    pub fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "file" => Some(AssetKind::File),
+            "dir" => Some(AssetKind::Dir),
+            _ => None,
+        }
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            AssetKind::File => "file",
+            AssetKind::Dir => "dir",
+        }
+    }
+}
+
+/// Where an unprefixed relative asset spelling starts.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum AssetBase {
+    /// The referring document's directory.
+    Document,
+    /// The root of the referring document's source.
+    Source,
+}
+
+impl AssetBase {
+    pub fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "document" => Some(AssetBase::Document),
+            "source" => Some(AssetBase::Source),
+            _ => None,
+        }
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            AssetBase::Document => "document",
+            AssetBase::Source => "source",
+        }
+    }
 }
 
 /// A pattern codec: one whole-string regular expression, the captures it

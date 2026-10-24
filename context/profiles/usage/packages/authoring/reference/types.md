@@ -5,8 +5,8 @@ field is never inherently "argument 0" or "a child named x".
 
 ## Declarations
 
-Inside a `types` container: `string`, `enum`, `object`, `union`, and
-`map` declarations. Type expressions are quoted strings
+Inside a `types` container: `string`, `enum`, `object`, `union`,
+`map`, `codec`, and `asset` declarations. Type expressions are quoted strings
 (`"optional<list<String>>"`) checked by a registered grammar, not
 evaluated. Constructors: `optional`, `nullable`, `list`, `map`,
 `ordered-map`, `union`, `ref`. Fields are required unless optional;
@@ -38,6 +38,26 @@ A codec name is usable wherever a type expression names a type; the
 value decodes at bind time while provenance keeps the original
 spelling. An optional `namespace NAME` records the reference
 namespace a decoded identity belongs to.
+
+## Assets
+
+An asset type declares a field whose value is a location naming a
+file or directory that is not a KDL document:
+
+```kdl
+asset Spec {
+    kind file            // file (default) | dir
+    extensions yaml yml  // without the dot; none admits any
+    base source          // document (default) | source
+    patterns #true       // a pattern expands as one item of a list
+    digest #true         // record a content digest
+}
+```
+
+The reading resolves the value as it resolves an import location and
+checks that it exists, its kind, and its extension; it never reads
+the content beyond the digest. See the `data` package's
+`imports_and_sources.md`.
 
 ## Generic types
 

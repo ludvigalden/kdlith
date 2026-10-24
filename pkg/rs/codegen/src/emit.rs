@@ -263,9 +263,9 @@ impl Emission<'_> {
         // needs no dependency beyond the generated crate.
         if self.kind == DefinitionKind::Schema {
             out.line("pub use kdlith_engine::{");
-            out.line("    CheckScope, Extensions, ItemVariant, LinkOutcome, LinkReport, Origin,");
-            out.line("    ReadError, ReadOptions, Reading, Ref, ResolveError, Source, SourceTree, TypedItem,");
-            out.line("    TypedReader, UnmetQualifier, Value,");
+            out.line("    Asset, CheckScope, Extensions, ItemVariant, LinkOutcome, LinkReport, OpenError,");
+            out.line("    Origin, ReadError, ReadOptions, Reading, Ref, ResolveError, Source, SourceTree,");
+            out.line("    TypedItem, TypedReader, UnmetQualifier, Value,");
             out.line("};");
             out.line("pub use kdlith_model::Location;");
             out.line("pub use kdlith_diagnostic::DiagnosticRecord;");
@@ -342,6 +342,7 @@ impl Emission<'_> {
                 TypeKind::Union(_) => push_unique(&mut macros, "union_type"),
                 TypeKind::Map(_) => push_unique(&mut macros, "map_type"),
                 TypeKind::Codec(_) => push_unique(&mut macros, "codec_type"),
+                TypeKind::Asset(_) => push_unique(&mut macros, "asset_type"),
                 TypeKind::Builtin(_) => unreachable!("built-ins carry no site"),
                 kind => {
                     return Err(Error::UnsupportedTypeKind {
@@ -649,6 +650,14 @@ impl Emission<'_> {
                     rust_type(&map.key, self.names, &self.instances, None, self.spelling)?,
                     rust_type(&map.value, self.names, &self.instances, None, self.spelling)?
                 ));
+                out.line("}");
+            }
+            TypeKind::Asset(_) => {
+                open(out, "asset_type! {");
+                for line in doc.unwrap_or(&[]) {
+                    out.line(&format!("    /// {line}"));
+                }
+                out.line(&format!("    pub struct {name};"));
                 out.line("}");
             }
             TypeKind::Codec(codec) => {

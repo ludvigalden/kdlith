@@ -475,6 +475,16 @@ fn hash_value(mut hash: u64, value: &Value) -> u64 {
             }
             stable_hash_step(hash, reference.written.as_bytes())
         }
+        Value::Asset(asset) => {
+            hash = stable_hash_step(hash, b"asset:");
+            hash = stable_hash_step(hash, asset.source.as_bytes());
+            hash = stable_hash_step(hash, b"/");
+            hash = stable_hash_step(hash, asset.location.as_bytes());
+            match &asset.digest {
+                Some(digest) => stable_hash_step(hash, digest.as_bytes()),
+                None => hash,
+            }
+        }
         // A value variant this version does not know still hashes
         // deterministically within the running build, so a fingerprint
         // never silently ignores part of a context.

@@ -1,0 +1,27 @@
+// A schema whose records hold assets: a file relative to the source's
+// root, and a directory recording a digest.
+schema shelf version="1" {
+    types {
+        asset Spec {
+            kind file
+            extensions yaml
+            base source
+        }
+        asset Folder {
+            kind dir
+            digest #true
+        }
+        object Doc {
+            field spec Spec
+        }
+        object Tree {
+            field folder Folder
+        }
+    }
+    node doc role=record type=Doc {
+        field spec arg=0
+    }
+    node tree role=record type=Tree {
+        field folder arg=0
+    }
+}

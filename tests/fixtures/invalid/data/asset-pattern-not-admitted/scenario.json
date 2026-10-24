@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A pattern is admitted only where the asset type enables patterns, and only as one item of a list: Spec does not enable them, so doc \"specs/*.yaml\" is KDLITH-LOC004; SpecGlob does, so the list item set \"specs/*.yaml\" resolves, while the same pattern as pick's single SpecGlob value is KDLITH-LOC004 again, since a single value cannot hold a pattern's matches",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/assets/schema.kdl",
+    "data.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

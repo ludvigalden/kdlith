@@ -1,0 +1,21 @@
+{
+  "binary": "kdlith",
+  "description": "A list of an asset type that admits patterns expands each pattern item in place: specs/*.yaml under base source matches specs/B.yaml before specs/a.yaml in portable-path-byte order, never specs/other.txt, and the literal extra.yaml that follows keeps its position; every match is checked as the type declares",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/assets/schema.kdl",
+    "map/inputs.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":0},\"type_name\":\"Set\",\"fields\":[{\"name\":\"specs\",\"value\":{\"kind\":\"list\",\"value\":[{\"kind\":\"asset\",\"value\":{\"location\":\"specs/B.yaml\",\"source\":\"\"}},{\"kind\":\"asset\",\"value\":{\"location\":\"specs/a.yaml\",\"source\":\"\"}},{\"kind\":\"asset\",\"value\":{\"location\":\"extra.yaml\",\"source\":\"\"}}]},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n"
+    ],
+    "stdout-not-contains": [
+      "\"item\":\"diagnostic\"",
+      "other.txt"
+    ]
+  }
+}

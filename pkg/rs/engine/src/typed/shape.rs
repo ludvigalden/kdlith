@@ -52,6 +52,10 @@ pub enum TypeShape {
         key: Expression,
         value: Expression,
     },
+    /// An asset type: a location the reading resolved and checked.
+    Asset {
+        name: &'static str,
+    },
 }
 
 impl TypeShape {
@@ -93,6 +97,10 @@ impl TypeShape {
         Self::Map { name, key, value }
     }
 
+    pub const fn asset(name: &'static str) -> Self {
+        Self::Asset { name }
+    }
+
     pub const fn name(&self) -> &'static str {
         match self {
             Self::String { name }
@@ -101,7 +109,8 @@ impl TypeShape {
             | Self::Union { name, .. }
             | Self::Reference { name, .. }
             | Self::Codec { name, .. }
-            | Self::Map { name, .. } => name,
+            | Self::Map { name, .. }
+            | Self::Asset { name } => name,
         }
     }
 }

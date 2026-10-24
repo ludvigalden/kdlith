@@ -1,0 +1,2 @@
+doc "$lib/specs/api.yaml"
+set "$lib/specs/*.yaml"

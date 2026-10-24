@@ -370,6 +370,16 @@ pub const CODES: &[CodeDefinition] = &[
         correction: "Register each source once under a kebab name, backed by a directory that exists or by normalized embedded keys",
         retired: false,
     },
+    CodeDefinition {
+        code: "KDLITH-LOC008",
+        label: "asset-kind-mismatch",
+        severity: Severity::Error,
+        exit_class: 1,
+        trigger: "an asset location resolves to something its asset type does not admit: a directory where the type declares kind file, a file where it declares kind dir, or a file whose name ends in none of the type's declared extensions",
+        message_template: "asset <location> does not fit asset type <type>: <reason>",
+        correction: "Point the asset at a file or directory of the declared kind and extension, or widen the asset type",
+        retired: false,
+    },
     // DLC
     CodeDefinition {
         code: "KDLITH-DLC001",

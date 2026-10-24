@@ -7,6 +7,9 @@
 {"item":"effective","data":{"section":"type","entry":{"name":"AnnotationRequirement","parameters":[],"kind":"enum"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"ArgsSource","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"ArgumentSource","parameters":[],"kind":"object"}}}
+{"item":"effective","data":{"section":"type","entry":{"name":"AssetBase","parameters":[],"kind":"enum"}}}
+{"item":"effective","data":{"section":"type","entry":{"name":"AssetKind","parameters":[],"kind":"enum"}}}
+{"item":"effective","data":{"section":"type","entry":{"name":"AssetType","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"AtMostOne","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"BindingCodec","parameters":[],"kind":"enum"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"Bound","parameters":[],"kind":"object"}}}
@@ -131,6 +134,7 @@
 {"item":"effective","data":{"section":"node","entry":{"name":"annotation","parents":["schema"],"role":"declaration","type":"AnnotationDef","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"args","parents":["child","children","from"],"role":null,"type":"ArgsSource","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"argument","parents":["child","children","from"],"role":null,"type":"ArgumentSource","profile":null}}}
+{"item":"effective","data":{"section":"node","entry":{"name":"asset","parents":["types"],"role":"declaration","type":"AssetType","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"at-most-one","parents":["constraints"],"role":null,"type":"AtMostOne","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"bound","parents":["constraints"],"role":null,"type":"Bound","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"capture","parents":["codec"],"role":null,"type":"Capture","profile":null}}}

@@ -2,11 +2,11 @@
 //
 // The dialect is the language schema definitions are written in. This
 // document contributes the logical types a schema definition may
-// declare (string, enum, object, union, and map types), the compact
-// type-expression grammar used wherever a field names its type, and the
-// declarative constraints an object type may carry. Logical types are
-// kept separate from their KDL bindings: how a field is spelled in a
-// data document is declared in bindings.kdl, not here.
+// declare (string, enum, object, union, map, codec, and asset types),
+// the compact type-expression grammar used wherever a field names its
+// type, and the declarative constraints an object type may carry.
+// Logical types are kept separate from their KDL bindings: how a field
+// is spelled in a data document is declared in bindings.kdl, not here.
 //
 // The dialect definition is self-describing: every construct used below
 // is itself declared by the dialect definition documents.
@@ -109,6 +109,7 @@ dialect kdlith version="0" {
             variant union UnionType
             variant map MapType
             variant codec CodecType
+            variant asset AssetType
         }
 
         // A string type: a pattern validates the whole string; a semantic
@@ -205,6 +206,31 @@ dialect kdlith version="0" {
         // The capture's name is the key of the enclosing ordered map.
         object Capture {
             field type TypeExpression
+        }
+
+        // An asset: a location naming a file or directory that is not a
+        // KDL document, resolved like an import location and checked
+        // for existence, kind, and extension, but never read beyond a
+        // content digest. `base` decides where an unprefixed relative
+        // spelling starts: the referring document's directory, or its
+        // source's root. Patterns are admitted only when enabled.
+        object AssetType {
+            field name TypeName
+            field kind "optional<AssetKind>"
+            field extensions "optional<list<String>>"
+            field base "optional<AssetBase>"
+            field patterns "optional<Bool>"
+            field digest "optional<Bool>"
+        }
+
+        enum AssetKind {
+            member file
+            member dir
+        }
+
+        enum AssetBase {
+            member document
+            member source
         }
 
         // An include directive among a declaring container's like
@@ -496,6 +522,28 @@ dialect kdlith version="0" {
 
     node capture type=Capture parent=codec {
         field type arg=1
+    }
+
+    // An asset declaration: each setting is one child carrying its
+    // value; `extensions` lists its values without their dots.
+    node asset role=declaration type=AssetType parent=types {
+        field name arg=0
+        field kind child=kind
+        field extensions {
+            from {
+                child extensions {
+                    args
+                }
+            }
+        }
+        field base child=base
+        field patterns child=patterns
+        field digest child=digest
+        children kind max-occurs=1
+        children extensions max-occurs=1
+        children base max-occurs=1
+        children patterns max-occurs=1
+        children digest max-occurs=1
     }
 
     // The include short form: an `include NAME` child among like members

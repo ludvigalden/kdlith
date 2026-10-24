@@ -29,7 +29,8 @@ linking fault, `DLC010` a resolver refusal.
 
 `LOC001` a location naming no document; `LOC002` a location leaving
 its source; `LOC003` an unregistered `$name`; `LOC004` inadmissible
-location syntax; `LOC005` an invalid root or source. `IMP002` an
+location syntax; `LOC005` an invalid root or source; `LOC008` an
+asset of the wrong kind or extension. `IMP002` an
 import cycle; `IMP003` a repeat; `IMP006`–`IMP008` data-import
 confinement and alias faults.
 

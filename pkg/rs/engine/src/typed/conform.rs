@@ -169,6 +169,7 @@ fn reference_shape(names: &Names, decl: &ReferenceDecl, shape: &TypeShape) -> Op
 fn type_shape(names: &Names, kind: &TypeKind, shape: &TypeShape) -> Option<String> {
     match (kind, shape) {
         (TypeKind::String(_), TypeShape::String { .. }) => None,
+        (TypeKind::Asset(_), TypeShape::Asset { .. }) => None,
         (TypeKind::Enum(enumeration), TypeShape::Enum { members, .. }) => {
             let theirs: Vec<&str> = enumeration
                 .members
@@ -238,6 +239,7 @@ fn kind_name(kind: &TypeKind) -> &'static str {
         TypeKind::Union(_) => "a union",
         TypeKind::Map(_) => "a map type",
         TypeKind::Codec(_) => "a codec",
+        TypeKind::Asset(_) => "an asset type",
     }
 }
 
@@ -250,6 +252,7 @@ fn shape_kind(shape: &TypeShape) -> &'static str {
         TypeShape::Reference { .. } => "a reference",
         TypeShape::Codec { .. } => "a codec",
         TypeShape::Map { .. } => "a map type",
+        TypeShape::Asset { .. } => "an asset type",
     }
 }
 

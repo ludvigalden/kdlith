@@ -1,0 +1,2 @@
+doc "../specs/api.yaml"
+root "specs/more/x.yaml"

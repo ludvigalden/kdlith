@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "An asset location naming no file is KDLITH-LOC001 at the asset's spelling: contracts/absent.yaml resolves inside the project root, but the source holds no such file",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/assets/schema.kdl",
+    "data.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

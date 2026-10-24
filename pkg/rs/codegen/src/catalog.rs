@@ -15,6 +15,10 @@ pub(crate) fn type_doc(name: &str) -> Option<&'static [&'static str]> {
             "captures it types, and the output type a decoded value carries.",
         ],
         "Capture" => &["The capture's name is the key of the enclosing ordered map."],
+        "AssetType" => &[
+            "An asset declaration: what a location naming a non-KDL file or",
+            "directory must name, and where an unprefixed relative spelling starts.",
+        ],
         "IncludeRef" => &["An include directive among a declaring container's like members."],
         "Bound" => &[
             "An inclusive range over a numeric field's value; either end may be",
@@ -286,6 +290,12 @@ pub(crate) fn glue(name: &str) -> Option<Glue> {
             engine_inputs: &["TypeInput", "CaptureInput"],
             types: &["CodecType"],
         },
+        "AssetType" => Glue {
+            arm: ASSET_TYPE_ARM,
+            record_arm: None,
+            engine_inputs: &["TypeInput"],
+            types: &["AssetType"],
+        },
         "NodeDef" => Glue {
             arm: NODE_DEF_ARM,
             record_arm: None,
@@ -523,6 +533,23 @@ const CODEC_TYPE_ARM: &str = r##"        Item::CodecType(CodecType {
                 })
                 .collect(),
             namespace: namespace.map(|namespace| namespace.as_str().to_owned()),
+        }),
+"##;
+
+const ASSET_TYPE_ARM: &str = r##"        Item::AssetType(AssetType {
+            name,
+            kind,
+            extensions,
+            base,
+            patterns,
+            digest,
+        }) => Construct::Type(TypeInput::Asset {
+            name: name.as_str().to_owned(),
+            kind: kind.map(|kind| kind.member().to_owned()),
+            extensions: extensions.unwrap_or_default(),
+            base: base.map(|base| base.member().to_owned()),
+            patterns: patterns.unwrap_or(false),
+            digest: digest.unwrap_or(false),
         }),
 "##;
 

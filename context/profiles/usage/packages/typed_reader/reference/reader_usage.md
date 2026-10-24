@@ -51,12 +51,22 @@ belongs to no source, so its unprefixed imports fail closed
 (`KDLITH-LOC001`), while `$name/` locations resolve in the sources
 the options register.
 
+## Assets
+
+An asset type generates a newtype over `Asset` (its `location`,
+`source`, and optional `digest`). `Reading::open(&asset)` reads a file
+asset's bytes through the reading's own sources, so an embedded
+source and a directory serve it alike and it stays inside its source;
+a directory asset, and an asset another reading resolved, are refused
+with an `OpenError`.
+
 ## Re-exports
 
 The generated crate re-exports everything a tool needs
 (`CheckScope`, `Extensions`, `ReadOptions`, `ReadError`,
 `TypedReader`, `TypedItem`, `ItemVariant`, `Ref`, `Value`,
 `Reading`, `LinkReport`, `LinkOutcome`, `UnmetQualifier`,
-`ResolveError`, `Origin`, `Location`, `DiagnosticRecord`, `Source`,
+`ResolveError`, `Origin`, `Location`, `DiagnosticRecord`, `Asset`,
+`OpenError`, `Source`,
 `SourceTree`), so a host embeds its own schema library without
 depending on the engine crates directly.
