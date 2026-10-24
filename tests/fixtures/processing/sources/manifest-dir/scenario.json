@@ -1,0 +1,25 @@
+{
+  "binary": "kdlith",
+  "description": "A sources manifest declares a dir source: source acme dir=vendor/acme, relative to the manifest, backs $acme/ in map/entry.kdl. The source is unpinned, so the reading notes it once (KDLITH-LOC010, severity note) with the tree's canonical digest, the value the documented sha256sum recipe computes over vendor/acme, and still exits 0",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/sources/schema.kdl",
+    "--sources",
+    "sources.kdl",
+    "map/entry.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":1,\"index\":0},\"type_name\":\"Part\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"vendored\"},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n",
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":1},\"type_name\":\"Part\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"local\"},\"origin\":1}],\"origin\":1,\"validation\":\"valid\"}}\n",
+      "\"code\":\"KDLITH-LOC010\",\"severity\":\"note\",\"source_path\":\"sources.kdl\"",
+      "\"facts\":{\"digest\":\"sha256:c76ff89a0e3aed65b82e9e7150a004569c780a137ae090bdbfc2eb56c136dc07\",\"kind\":\"dir\",\"source\":\"acme\"}"
+    ],
+    "stderr-contains": [
+      "note[KDLITH-LOC010]: source acme (dir) is unpinned; its tree digests to sha256:c76ff89a0e3aed65b82e9e7150a004569c780a137ae090bdbfc2eb56c136dc07"
+    ]
+  }
+}

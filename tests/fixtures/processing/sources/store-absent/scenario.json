@@ -1,0 +1,22 @@
+{
+  "binary": "kdlith",
+  "description": "A pinned origin the store does not hold is KDLITH-LOC006 at the import that enters it, never a fetch: the help gives the origin to fetch, the digest the tree must have, and the store path to put it at",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/sources/schema.kdl",
+    "--sources",
+    "sources.kdl",
+    "--store",
+    "store",
+    "map/entry.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": [
+      "error[KDLITH-LOC006]: source acme is not materialised at store/sha256/bc37a4caefbdb5bfb44a8eabeb450d6f85c8ea6350de715fa165f3cf7a35d5bc: the store holds no tree there\n  --> map/entry.kdl:1:1",
+      "help: Fetch git https://example.invalid/acme.git at 3f2c9a1, directory map into store/sha256/bc37a4caefbdb5bfb44a8eabeb450d6f85c8ea6350de715fa165f3cf7a35d5bc (its tree must digest to sha256:bc37a4caefbdb5bfb44a8eabeb450d6f85c8ea6350de715fa165f3cf7a35d5bc); kdlith sources plan lists every origin with its target"
+    ]
+  }
+}

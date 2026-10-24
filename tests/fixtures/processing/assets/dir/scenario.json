@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "A dir asset names a directory relative to the document: specs resolves to the directory, and its digest folds each file under it (a.yaml and nested/b.yaml) in portable-path-byte order with its path and length, the value an independent FNV-1a implementation computes",
+  "description": "A dir asset names a directory relative to the document: specs resolves to the directory, and its digest is the canonical tree digest of the files under it (a.yaml and nested/b.yaml), the value the documented sha256sum recipe computes",
   "args": [
     "vet",
     "data",
@@ -11,7 +11,7 @@
   "expect": {
     "exit": 0,
     "stdout-contains": [
-      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":0},\"type_name\":\"Tree\",\"fields\":[{\"name\":\"folder\",\"value\":{\"kind\":\"asset\",\"value\":{\"location\":\"specs\",\"source\":\"\",\"digest\":\"fnv1a64:634eab9176543662\"}},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n"
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":0},\"type_name\":\"Tree\",\"fields\":[{\"name\":\"folder\",\"value\":{\"kind\":\"asset\",\"value\":{\"location\":\"specs\",\"source\":\"\",\"digest\":\"sha256:0d7abb414492133ed17acb32a6ddd0561adfc1c64f8af5e426beae22ef84efbf\"}},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n"
     ],
     "stdout-not-contains": [
       "\"item\":\"diagnostic\""

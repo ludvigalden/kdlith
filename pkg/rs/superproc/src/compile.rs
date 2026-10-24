@@ -195,7 +195,11 @@ fn gather(
         records.push(broken_contract(&error.to_string()));
         return Err(records);
     }
-    Ok(input.definition)
+    // A reading's warnings and notes, such as an overridden source, ride
+    // on the definition.
+    let mut definition = input.definition;
+    definition.notes = records;
+    Ok(definition)
 }
 
 /// The compiler input being gathered, with the documents still open: an

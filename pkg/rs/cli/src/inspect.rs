@@ -744,7 +744,7 @@ fn node_decl<'d>(def: &'d Definition, node: &kdlith_engine::NodeEntry) -> Option
 }
 
 /// Print each value as one JSON line; a failed write fails the run.
-fn write_lines(lines: &[serde_json::Value]) -> ExitStatus {
+pub(crate) fn write_lines(lines: &[serde_json::Value]) -> ExitStatus {
     use std::io::Write as _;
     let mut out = std::io::stdout().lock();
     for line in lines {

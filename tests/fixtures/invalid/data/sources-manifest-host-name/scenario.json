@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "A manifest may not redeclare a name the host registers: with acme registered by the host (a --source directory, then embedded through the pair helper, byte-identical), source acme in the manifest is KDLITH-LOC005; replacing a host source takes an override",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/sources/schema.kdl",
+    "--sources",
+    "sources.kdl",
+    "map/entry.kdl"
+  ],
+  "source-embedded": [
+    "acme=lib"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

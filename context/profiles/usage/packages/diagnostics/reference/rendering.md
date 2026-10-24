@@ -26,11 +26,15 @@ a required field accepts. Argument faults (`KDLITH-CLI001` through
 The machine-readable form is the data path's JSON item stream on
 standard output, whose `diagnostic` items carry the whole record:
 code, severity, source path, span, line and column, labels with
-their positions, related records, and the correction. `vet data
---diagnostics json` also writes link diagnostics there after every
-other item.
+their positions, related records, the correction, and, when the code
+documents them, `facts`: named values a consumer reads without parsing
+the message (`KDLITH-LOC009` carries `source`, `layer`, `declared`,
+`directory`, and `shadowed`; `KDLITH-LOC010` carries `source`, `kind`,
+and `digest`). `vet data --diagnostics json` also writes link
+diagnostics there after every other item.
 
 ## Exit strata
 
-Warnings alone exit 0. Errors exit 1. Argument faults exit 2. Views
+Warnings and notes alone exit 0; under `--warnings-as-errors` a
+warning exits 1, a note never does. Errors exit 1. Argument faults exit 2. Views
 keep show-then-fail: everything printable is written first.

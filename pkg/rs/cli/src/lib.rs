@@ -11,6 +11,7 @@ mod list;
 mod read;
 mod report;
 mod resolve;
+mod sources;
 mod usage;
 mod vet;
 
@@ -62,6 +63,10 @@ enum Command {
     /// Inspect, refresh, or clean derived processing state: cached
     /// results and record context snapshots
     Cache(CacheArgs),
+    /// Report the sources a manifest declares: the fetch plan, the
+    /// integrity of the trees the store holds, or every source with its
+    /// digest
+    Sources(SourcesArgs),
     /// Show the embedded changelog archive
     Changelog,
     /// Print help for a command
@@ -89,7 +94,7 @@ enum GenCommand {
     Dialect(GenFormArgs),
     /// Generate the data reader a schema definition compiles to, under
     /// the canonical dialect
-    Schema(GenSchemaArgs),
+    Schema(Box<GenSchemaArgs>),
 }
 
 #[derive(Args)]
@@ -241,6 +246,24 @@ struct LocationArgs {
     /// lives, and never leaves DIR
     #[arg(long = "source", value_name = "NAME=DIR", value_parser = handlers::parse_source)]
     sources: Vec<(String, PathBuf)>,
+    /// A sources manifest declaring sources by name: a directory, or an
+    /// origin whose tree the store holds, optionally pinned by digest
+    #[arg(long = "sources", value_name = "FILE")]
+    manifest: Option<PathBuf>,
+    /// An overrides file: override nodes only, above the manifest's own
+    #[arg(long = "overrides", value_name = "FILE")]
+    overlay: Option<PathBuf>,
+    /// Replace a declared source with a directory, as NAME=DIR
+    /// (repeatable), above every file's overrides; each override warns
+    #[arg(long = "override", value_name = "NAME=DIR", value_parser = handlers::parse_source)]
+    overrides: Vec<(String, PathBuf)>,
+    /// The store origin sources resolve from; kdlith never fetches
+    #[arg(long, value_name = "DIR")]
+    store: Option<PathBuf>,
+    /// Fail the run on any warning, an overridden source among them;
+    /// notes, such as an unpinned source, never fail it
+    #[arg(long)]
+    warnings_as_errors: bool,
     /// The sources the host binary registers, after the command line's.
     #[arg(skip)]
     hosted: Vec<(String, SourceTree)>,
@@ -254,10 +277,18 @@ impl LocationArgs {
 
     /// `options` rooted and sourced as these arguments and the host say.
     fn apply(&self, options: DataOptions) -> DataOptions {
-        self.hosted.iter().fold(
-            options.with_locations(self.root(), self.sources.clone()),
-            |options, (name, tree)| options.with_source(name.clone(), tree.clone()),
-        )
+        self.hosted
+            .iter()
+            .fold(
+                options.with_locations(self.root(), self.sources.clone()),
+                |options, (name, tree)| options.with_source(name.clone(), tree.clone()),
+            )
+            .with_manifest(
+                self.manifest.clone(),
+                self.overlay.clone(),
+                self.overrides.clone(),
+                self.store.clone(),
+            )
     }
 
     /// Reader options carrying the root and the named sources, for a
@@ -453,6 +484,33 @@ impl ViewArg {
             ViewArg::Plan => "plan",
         }
     }
+}
+
+/// `kdlith sources plan|verify|list`.
+#[derive(Args)]
+struct SourcesArgs {
+    #[command(subcommand)]
+    command: SourcesCommand,
+}
+
+#[derive(Subcommand)]
+enum SourcesCommand {
+    /// Print the fetch plan, one JSON line per origin the --sources
+    /// manifest declares: its origin, its pin or false, its path under
+    /// the store, and whether the store holds a tree there
+    Plan(SourcesVerbArgs),
+    /// Re-hash every origin tree the store holds against its pin, one
+    /// JSON line per origin; a mismatch or an absent tree fails the run
+    Verify(SourcesVerbArgs),
+    /// Print every source, one JSON line each: its kind, its pin, and the
+    /// digest of the tree a reading reads, the value to pin it by
+    List(SourcesVerbArgs),
+}
+
+#[derive(Args)]
+struct SourcesVerbArgs {
+    #[command(flatten)]
+    locations: LocationArgs,
 }
 
 /// `kdlith list types|nodes|profiles|items`.
@@ -722,9 +780,12 @@ where
         Ok(cli) => cli,
         Err(error) => return usage::report_parse_error(&error),
     };
+    let mut strict = false;
     if let Some(locations) = cli.command.locations() {
         locations.hosted = sources;
+        strict = locations.warnings_as_errors;
     }
+    report::fail_on_warnings(strict);
     match cli.command {
         Command::Gen(args) => generate::run(args.command),
         Command::Vet(args) => vet::run(args.command),
@@ -733,6 +794,7 @@ where
         Command::List(args) => list::run(args.command),
         Command::Read(args) => read::run(&args),
         Command::Cache(args) => cache::run(args.command),
+        Command::Sources(args) => sources::run(args.command),
         Command::Changelog => changelog::run(),
         Command::Help(args) => help(&args.command),
     }
@@ -770,6 +832,11 @@ impl Command {
             Command::Cache(args) => match &mut args.command {
                 CacheCommand::Refresh(args) => &mut args.locations,
                 CacheCommand::Inspect(_) | CacheCommand::Clean(_) => return None,
+            },
+            Command::Sources(args) => match &mut args.command {
+                SourcesCommand::Plan(args)
+                | SourcesCommand::Verify(args)
+                | SourcesCommand::List(args) => &mut args.locations,
             },
             Command::Changelog | Command::Help(_) => return None,
         })

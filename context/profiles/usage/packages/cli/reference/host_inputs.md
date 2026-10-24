@@ -19,6 +19,14 @@ verbs) is the host import alias form of a named source: a duplicate,
 anchor-colliding, malformed, or unresolvable alias is rejected
 (`KDLITH-IMP008`) before any document is read.
 
+`--sources FILE` names a sources manifest, `--store DIR` the store its
+origin sources are read from (kdlith never fetches), `--overrides FILE`
+an overrides file, and `--override NAME=DIR` (repeatable) replaces a
+declared source on the command line; each override is a
+`KDLITH-LOC009` warning. `--warnings-as-errors` fails the run on any
+warning; a note, such as an unpinned source's `KDLITH-LOC010`, never
+fails it.
+
 ## Profiles and scope
 
 `--profiles NAME[,NAME...]` names a profile set; `--profile NAME`

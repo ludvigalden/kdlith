@@ -16,7 +16,7 @@ use kdlith_model::{Item, SourceId};
 use kdlith_superproc::{load_dialect, load_schema_with, seed};
 
 use crate::handlers;
-use crate::report::{print_notes, report_all};
+use crate::report::report_all;
 use crate::{DiagnosticsArg, ScopeArg, VetCommand};
 
 /// Run a parsed `vet` subcommand.
@@ -117,9 +117,9 @@ pub fn vet(
     };
     match loaded {
         Ok(definition) => {
-            print_notes(&definition.notes);
+            let status = report_all(&definition.notes);
             println!("{}", summary_line(&definition));
-            ExitStatus::Success
+            status
         }
         Err(records) => report_all(&records),
     }
@@ -167,6 +167,10 @@ pub struct DataOptions {
     dialect: Option<PathBuf>,
     root: Option<PathBuf>,
     sources: Vec<(String, SourceTree)>,
+    manifest: Option<PathBuf>,
+    overlay: Option<PathBuf>,
+    overrides: Vec<(String, PathBuf)>,
+    store: Option<PathBuf>,
     profile: Option<String>,
     profiles: Vec<String>,
     handlers: Vec<String>,
@@ -181,6 +185,10 @@ impl DataOptions {
             dialect: None,
             root: None,
             sources: Vec::new(),
+            manifest: None,
+            overlay: None,
+            overrides: Vec::new(),
+            store: None,
             profile,
             profiles: Vec::new(),
             handlers,
@@ -204,6 +212,24 @@ impl DataOptions {
             .into_iter()
             .map(|(name, dir)| (name, SourceTree::dir(dir)))
             .collect();
+        self
+    }
+
+    /// The same options reading the sources manifest `manifest` and the
+    /// overrides file `overlay`, overriding each `(name, directory)`, and
+    /// resolving origin sources from `store`.
+    #[must_use]
+    pub fn with_manifest(
+        mut self,
+        manifest: Option<PathBuf>,
+        overlay: Option<PathBuf>,
+        overrides: Vec<(String, PathBuf)>,
+        store: Option<PathBuf>,
+    ) -> Self {
+        self.manifest = manifest;
+        self.overlay = overlay;
+        self.overrides = overrides;
+        self.store = store;
         self
     }
 
@@ -324,6 +350,18 @@ impl DataOptions {
         }
         for (name, tree) in &self.sources {
             options = options.with_source(name.clone(), tree.clone());
+        }
+        if let Some(manifest) = &self.manifest {
+            options = options.with_sources_manifest(manifest.clone());
+        }
+        if let Some(overlay) = &self.overlay {
+            options = options.with_overrides_file(overlay.clone());
+        }
+        for (name, dir) in &self.overrides {
+            options = options.with_override(name.clone(), dir.clone());
+        }
+        if let Some(store) = &self.store {
+            options = options.with_store(store.clone());
         }
         options
     }

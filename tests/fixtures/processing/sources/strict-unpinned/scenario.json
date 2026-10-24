@@ -1,0 +1,24 @@
+{
+  "binary": "kdlith",
+  "description": "--warnings-as-errors with only unpinned sources exits 0: KDLITH-LOC010 is a note, and notes never fail a run, so an optional pin stays optional under a strict CI gate",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/sources/schema.kdl",
+    "--sources",
+    "sources.kdl",
+    "--warnings-as-errors",
+    "map/entry.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":1,\"index\":0},\"type_name\":\"Part\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"vendored\"},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n",
+      "\"facts\":{\"digest\":\"sha256:c76ff89a0e3aed65b82e9e7150a004569c780a137ae090bdbfc2eb56c136dc07\",\"kind\":\"dir\",\"source\":\"acme\"}"
+    ],
+    "stderr-contains": [
+      "note[KDLITH-LOC010]: source acme (dir) is unpinned; its tree digests to sha256:c76ff89a0e3aed65b82e9e7150a004569c780a137ae090bdbfc2eb56c136dc07"
+    ]
+  }
+}

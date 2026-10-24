@@ -1,0 +1,4 @@
+overrides {
+    override acme dir="local/acme"
+    override acme dir="vendor/acme"
+}

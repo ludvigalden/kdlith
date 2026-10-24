@@ -1,0 +1,27 @@
+{
+  "binary": "kdlith",
+  "description": "An override written in the committed manifest replaces its declared source and is always warned: KDLITH-LOC009 (warning) names layer manifest, the displaced identity, and the directory, located at the override node; $acme/part.kdl reads from the override, the run exits 0, and an overridden source is not also noted unpinned",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/sources/schema.kdl",
+    "--sources",
+    "sources.kdl",
+    "map/entry.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":1,\"index\":0},\"type_name\":\"Part\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"manifest-override\"},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n",
+      "\"code\":\"KDLITH-LOC009\",\"severity\":\"warning\",\"source_path\":\"sources.kdl\"",
+      "\"facts\":{\"declared\":\"unpinned\",\"directory\":\"local/acme\",\"layer\":\"manifest\",\"shadowed\":[],\"source\":\"acme\"}"
+    ],
+    "stdout-not-contains": [
+      "KDLITH-LOC010"
+    ],
+    "stderr-contains": [
+      "warning[KDLITH-LOC009]: source acme is overridden by local/acme (layer manifest; unpinned not used)\n  --> sources.kdl:3:5"
+    ]
+  }
+}

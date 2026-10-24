@@ -2,8 +2,17 @@
 //! record with its location, and the exit stratum the records decide.
 
 use std::fmt::Write as _;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use kdlith_diagnostic::{DiagnosticRecord, ExitStatus, Severity};
+
+/// Whether a warning fails the run, as `--warnings-as-errors` says.
+static WARNINGS_AS_ERRORS: AtomicBool = AtomicBool::new(false);
+
+/// Set whether a warning fails the run this command decides.
+pub(crate) fn fail_on_warnings(on: bool) {
+    WARNINGS_AS_ERRORS.store(on, Ordering::Relaxed);
+}
 
 /// Print `record` and map it to its exit stratum.
 pub(crate) fn report(record: &DiagnosticRecord) -> ExitStatus {
@@ -13,7 +22,11 @@ pub(crate) fn report(record: &DiagnosticRecord) -> ExitStatus {
 /// Print every record in order and map them to one exit stratum.
 pub(crate) fn report_all(records: &[DiagnosticRecord]) -> ExitStatus {
     print_notes(records);
-    ExitStatus::from_diagnostics(records.iter().map(|r| (r.code.as_str(), r.severity)), false)
+    let strict = WARNINGS_AS_ERRORS.load(Ordering::Relaxed);
+    ExitStatus::from_diagnostics(
+        records.iter().map(|r| (r.code.as_str(), r.severity)),
+        strict,
+    )
 }
 
 /// Print records without deciding an exit, as advisory records are.

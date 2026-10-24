@@ -143,6 +143,16 @@ the local source and in a named one (`pattern-*`). Most share
 `processing/locations/schema.kdl`, whose locations rule admits the star
 pattern.
 
+`processing/sources/` holds the sources-manifest scenarios over the shared
+`processing/sources/schema.kdl`: each scenario's `map/entry.kdl` imports
+`$acme/part.kdl`, and its `sources.kdl` (with `overrides.kdl` and a
+committed `store/` where it needs them) decides which tree backs `acme`.
+Every pin, store path, and digest in them is computed outside kdlith by
+the documented recipe — `sha256sum` over each file, one `<hex>  <path>`
+line per file in path-byte order, `sha256sum` over the lines — and the
+`sources` verb goldens are written from those values.
+`invalid/data/sources-*` hold the manifest and override refusals.
+
 `schemas/vet/import-source-pattern/` holds a schema whose own import is a
 pattern in a named source (`$parts/*.kdl`) and the two documents it
 matches under `parts/`. The definition-path source scenarios load it with

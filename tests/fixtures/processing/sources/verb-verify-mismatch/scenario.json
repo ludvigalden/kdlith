@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "sources verify over a stored tree with one changed byte reports status mismatch with the digest the tree has (the sha256sum recipe's value) and KDLITH-LOC007, exit 1",
+  "args": [
+    "sources",
+    "verify",
+    "--sources",
+    "sources.kdl",
+    "--store",
+    "store"
+  ],
+  "expect": {
+    "exit": 1,
+    "stdout-golden": "stdout.golden",
+    "stderr-contains": [
+      "error[KDLITH-LOC007]: source acme is pinned sha256:bc37a4caefbdb5bfb44a8eabeb450d6f85c8ea6350de715fa165f3cf7a35d5bc, but its tree at store/sha256/bc37a4caefbdb5bfb44a8eabeb450d6f85c8ea6350de715fa165f3cf7a35d5bc digests to sha256:9635cc6cfee6f2cfd3164871b501b321b77645ba20707356eecb049db5eeaae4"
+    ]
+  }
+}

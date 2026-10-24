@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "sources list prints every source in name order with its kind, who declares it, its pin or false, and the digest of the tree a reading would read, the pinning aid (null for an origin the store does not hold); each digest is the sha256sum recipe's value",
+  "args": [
+    "sources",
+    "list",
+    "--sources",
+    "sources.kdl",
+    "--store",
+    "store"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden"
+  }
+}

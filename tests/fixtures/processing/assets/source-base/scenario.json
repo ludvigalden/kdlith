@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "A file asset under base source resolves from the root of the writing document's source, not its directory: map/inputs.kdl writes contracts/api.yaml, which names contracts/api.yaml at the project root; the type records a digest, the FNV-1a of the file's bytes as an independent implementation computes it",
+  "description": "A file asset under base source resolves from the root of the writing document's source, not its directory: map/inputs.kdl writes contracts/api.yaml, which names contracts/api.yaml at the project root; the type records a digest, the SHA-256 of the file's bytes as sha256sum computes it",
   "args": [
     "vet",
     "data",
@@ -11,7 +11,7 @@
   "expect": {
     "exit": 0,
     "stdout-contains": [
-      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":0},\"type_name\":\"Root\",\"fields\":[{\"name\":\"file\",\"value\":{\"kind\":\"asset\",\"value\":{\"location\":\"contracts/api.yaml\",\"source\":\"\",\"digest\":\"fnv1a64:36cfdd471aa0d105\"}},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n"
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":0},\"type_name\":\"Root\",\"fields\":[{\"name\":\"file\",\"value\":{\"kind\":\"asset\",\"value\":{\"location\":\"contracts/api.yaml\",\"source\":\"\",\"digest\":\"sha256:f39db8e8ede3dc2457c613e2a304e6d478f6e5ec660e4746464f41e76ac77006\"}},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n"
     ],
     "stdout-not-contains": [
       "\"item\":\"diagnostic\""

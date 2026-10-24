@@ -1,0 +1,2 @@
+{"source":"acme","target":"sha256/bc37a4caefbdb5bfb44a8eabeb450d6f85c8ea6350de715fa165f3cf7a35d5bc","pinned":"sha256:bc37a4caefbdb5bfb44a8eabeb450d6f85c8ea6350de715fa165f3cf7a35d5bc","status":"verified","digest":"sha256:bc37a4caefbdb5bfb44a8eabeb450d6f85c8ea6350de715fa165f3cf7a35d5bc"}
+{"source":"beta","target":"origin/729b7cc7e05fbd8ae46db9c09d35ef9a7101b554538a06d2961eb6b7c8f20de8","pinned":false,"status":"unpinned","digest":"sha256:9cd8ff3fcdd3e227036921aa72877dcec4fb6db8ab03d91482834fd2f128b087"}

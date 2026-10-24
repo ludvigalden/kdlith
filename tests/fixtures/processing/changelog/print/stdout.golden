@@ -275,8 +275,42 @@ published yet.
   over the re-exported `Asset`, and `Reading::open` reads a file
   asset's bytes through the reading's own sources; an asset another
   reading resolved is refused (`OpenError`).
+- Sources manifests: `--sources FILE` (`ReadOptions::with_sources_manifest`)
+  reads a `sources` document declaring sources by name, either
+  `source NAME dir=DIR` or an origin, `source NAME { origin git=… rev=…
+  path=…; pinned "sha256:…" }`, whose pin is optional. kdlith never
+  fetches: an origin resolves from the store (`--store DIR`,
+  `with_store`) at `sha256/<hex>` when pinned and at `origin/<key>`
+  when not; an absent tree is `KDLITH-LOC006` and its help names what
+  to fetch and where. A pinned tree is checked against its canonical
+  tree digest (SHA-256 over its files) on first use, a mismatch being
+  `KDLITH-LOC007`. Every unpinned source a reading uses is noted once
+  with its digest (`KDLITH-LOC010`, a note, which never fails a run).
+  The manifest's shape is the `kdlith-sources` schema
+  (`pkg/kdl/schemas/sources/sources.kdl`).
+- Overrides: `override NAME dir=DIR` replaces a declared source, written
+  in the sources manifest, in an `--overrides FILE` (`with_overrides_file`),
+  or as `--override NAME=DIR` (`with_override`), the most local layer
+  winning. Every override is a `KDLITH-LOC009` warning naming its layer,
+  the identity it displaced, its directory, and the overrides it
+  shadowed; `--warnings-as-errors`, on every verb that reads a schema or
+  data, fails the run on it. An override naming no declared source,
+  carrying a pin, or repeated in one layer is `KDLITH-LOC005`, as is a
+  manifest source reusing a name the host registers.
+- `kdlith sources plan|verify|list`: the fetch plan, a re-hash of every
+  stored origin tree against its pin, and every source with the digest
+  of the tree a reading reads, one JSON line per source.
+- Diagnostic records carry `facts`, named values a consumer reads
+  without parsing the message, serialized only when present.
 
 ### Changed
+
+- Breaking: an asset `digest` is the SHA-256 of a file's bytes, or a
+  directory's canonical tree digest, written `sha256:<hex>`, in place
+  of the interim `fnv1a64:` digest.
+- A schema load's warnings and notes, such as an overridden source,
+  are reported by every verb that loads a schema, and decide the exit
+  under `--warnings-as-errors`.
 
 - Breaking: a schema definition's own imports are confined as a data
   document's are: an unprefixed import stays under the project root and

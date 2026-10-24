@@ -1,0 +1,25 @@
+{
+  "binary": "kdlith",
+  "description": "An override in an --overrides file is the overlay layer: KDLITH-LOC009 names layer overlay, located in the overrides file, and the override's tree is read",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/sources/schema.kdl",
+    "--sources",
+    "sources.kdl",
+    "--overrides",
+    "overrides.kdl",
+    "map/entry.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":1,\"index\":0},\"type_name\":\"Part\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"overlay-override\"},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n",
+      "\"facts\":{\"declared\":\"unpinned\",\"directory\":\"local/acme\",\"layer\":\"overlay\",\"shadowed\":[],\"source\":\"acme\"}"
+    ],
+    "stderr-contains": [
+      "warning[KDLITH-LOC009]: source acme is overridden by local/acme (layer overlay; unpinned not used)\n  --> overrides.kdl:2:5"
+    ]
+  }
+}

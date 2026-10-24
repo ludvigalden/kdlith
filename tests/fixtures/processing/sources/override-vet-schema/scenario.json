@@ -1,0 +1,20 @@
+{
+  "binary": "kdlith",
+  "description": "A verb that reads only a schema reports an override too: vet schema with a manifest overriding acme prints KDLITH-LOC009 before its summary and exits 0; under --warnings-as-errors the same run would fail",
+  "args": [
+    "vet",
+    "schema",
+    "--sources",
+    "sources.kdl",
+    "{fx-suite}/processing/sources/schema.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "ok: schema found version 1"
+    ],
+    "stderr-contains": [
+      "warning[KDLITH-LOC009]: source acme is overridden by local/acme (layer manifest; unpinned not used)"
+    ]
+  }
+}

@@ -1,0 +1,5 @@
+sources {
+    source acme {
+        origin git="https://example.invalid/acme.git" path="map"
+    }
+}

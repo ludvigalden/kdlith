@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "An override must name a declared source: override ghost names nothing the manifest declares or the host registers, so there is nothing to displace and the manifest is KDLITH-LOC005 before any document is read",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/sources/schema.kdl",
+    "--sources",
+    "sources.kdl",
+    "map/entry.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

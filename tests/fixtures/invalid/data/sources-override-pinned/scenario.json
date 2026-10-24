@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "An override carries no pin: pinned= on an override is KDLITH-LOC005; a pin is changed on its source",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/sources/schema.kdl",
+    "--sources",
+    "sources.kdl",
+    "map/entry.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

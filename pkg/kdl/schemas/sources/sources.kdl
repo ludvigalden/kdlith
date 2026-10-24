@@ -1,0 +1,74 @@
+// The sources manifest and overrides file kdlith reads when a host names
+// them (--sources FILE, --overrides FILE). A manifest holds one sources
+// node; an overrides file one overrides node, holding overrides only.
+// Every directory is relative to the file that writes it.
+schema kdlith-sources version="0" {
+    types {
+        string SourceName {
+            format kebab-case
+        }
+        string Digest {
+            pattern "^sha256:[0-9a-f]{64}$"
+        }
+        object Source {
+            field name SourceName
+            field dir "optional<String>"
+            field origin "optional<Origin>"
+            field pinned "optional<Pin>"
+        }
+        object Pin {
+            field digest Digest
+        }
+        object Origin {
+            field git String
+            field rev "optional<String>"
+            field path "optional<String>"
+        }
+        object Override {
+            field name SourceName
+            field dir String
+        }
+    }
+    node sources role=container {
+        children source
+        children override
+    }
+    node overrides role=container {
+        children override
+    }
+    node source role=record type=Source {
+        parents sources
+        field name arg=0
+        field dir property=dir
+        field origin {
+            from {
+                child origin
+            }
+        }
+        field pinned {
+            from {
+                child pinned
+            }
+        }
+        children origin max-occurs=1
+        children pinned max-occurs=1
+    }
+    node origin type=Origin parent=source {
+        field git property=git
+        field rev property=rev
+        field path property=path
+    }
+    node pinned type=Pin parent=source {
+        field digest arg=0
+    }
+    node override role=record type=Override {
+        parents sources overrides
+        field name arg=0
+        field dir property=dir
+    }
+    document {
+        first {
+            exactly-one sources overrides
+        }
+    }
+}

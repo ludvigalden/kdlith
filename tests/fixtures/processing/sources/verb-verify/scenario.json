@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "sources verify re-hashes every origin tree the store holds: the pinned acme verifies against its pin and the unpinned beta reports its digest, both the values the documented sha256sum recipe computes; exit 0",
+  "args": [
+    "sources",
+    "verify",
+    "--sources",
+    "sources.kdl",
+    "--store",
+    "store"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden"
+  }
+}

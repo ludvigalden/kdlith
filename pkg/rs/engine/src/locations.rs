@@ -2,19 +2,21 @@
 //! named tree of files and never leaves the tree it resolved against;
 //! hosts add trees backed by a directory or by embedded files.
 
-use std::collections::BTreeMap;
+use std::cell::RefCell;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
 use kdlith_diagnostic::{ByteSpan, DiagnosticRecord};
 use kdlith_model::Value;
-use kdlith_runtime::{stable_hash, stable_hash_step};
 
 use crate::definition::{LocationsDecl, Patterns};
 use crate::diag::{
     ASSET_MISMATCH, LOCATION_NOT_ADMITTED, LOCATION_OUTSIDE_SOURCE, LOCATION_UNRESOLVED,
-    SOURCE_INVALID, SOURCE_UNKNOWN, SOURCE_UNREADABLE, Site, record,
+    SOURCE_UNKNOWN, SOURCE_UNREADABLE, Site, record,
 };
+use crate::digest::{bytes_digest, files_digest, tree_digest};
+use crate::sources::{Entry, Tree, View};
 use crate::syntax::{ParsedDocument, SyntaxNode};
 use crate::types::{AssetBase, AssetDecl, AssetKind};
 
@@ -55,13 +57,6 @@ impl SourceTree {
     }
 }
 
-/// A named source as a reading resolves against it.
-enum Tree {
-    /// The directory's canonical path.
-    Dir(PathBuf),
-    Embedded(BTreeMap<String, Rc<str>>),
-}
-
 /// The root of the local source one entry document belongs to: the
 /// project root, or, for an entry outside it, the entry's own directory.
 #[derive(Debug)]
@@ -71,6 +66,16 @@ pub(crate) struct LocalRoot {
     /// so its documents show root-relative, else the entry's directory
     /// as the invocation spelled it.
     shown: PathBuf,
+}
+
+impl LocalRoot {
+    /// The project root at its canonical path.
+    pub(crate) fn project(canonical: PathBuf) -> Self {
+        Self {
+            canonical,
+            shown: PathBuf::new(),
+        }
+    }
 }
 
 /// The source a document was loaded from.
@@ -159,30 +164,18 @@ impl FileContent {
 }
 
 impl AssetContent {
-    /// The content digest: a file's bytes, or a directory's files in
-    /// portable-path-byte order, each path with its length and bytes.
+    /// The content digest: a file's bytes, or a directory's canonical
+    /// tree digest, as a source is pinned by.
     fn digest(&self) -> Result<String, String> {
-        let hash = match self {
-            AssetContent::File(file) => stable_hash(&file.bytes()?),
-            AssetContent::Dir(dir) => {
-                let files = match dir {
-                    DirContent::Held(files) => files
-                        .iter()
-                        .map(|(key, text)| (key.clone(), text.as_bytes().to_vec()))
-                        .collect(),
-                    DirContent::Disk(root) => dir_files(root)?,
-                };
+        match self {
+            AssetContent::File(file) => Ok(bytes_digest(&file.bytes()?)),
+            AssetContent::Dir(DirContent::Held(files)) => files_digest(
                 files
                     .iter()
-                    .fold(stable_hash(b"dir"), |hash, (key, bytes)| {
-                        let hash = stable_hash_step(hash, key.as_bytes());
-                        let length = u64::try_from(bytes.len()).unwrap_or(u64::MAX);
-                        let hash = stable_hash_step(hash, &length.to_le_bytes());
-                        stable_hash_step(hash, bytes)
-                    })
-            }
-        };
-        Ok(format!("fnv1a64:{hash:016x}"))
+                    .map(|(key, text)| (key.as_str(), text.as_bytes())),
+            ),
+            AssetContent::Dir(DirContent::Disk(root)) => tree_digest(root),
+        }
     }
 }
 
@@ -227,32 +220,6 @@ fn disk_asset(root: &Path, relative: &str) -> Result<AssetContent, Missing> {
     }
 }
 
-/// Every regular file under `root`, keyed by its portable path relative
-/// to it, in portable-path-byte order; links are skipped.
-fn dir_files(root: &Path) -> Result<Vec<(String, Vec<u8>)>, String> {
-    let mut found = Vec::new();
-    let mut pending = vec![root.to_path_buf()];
-    while let Some(dir) = pending.pop() {
-        let read = std::fs::read_dir(&dir).map_err(|error| error.to_string())?;
-        for entry in read {
-            let entry = entry.map_err(|error| error.to_string())?;
-            let kind = entry.file_type().map_err(|error| error.to_string())?;
-            let path = entry.path();
-            if kind.is_dir() {
-                pending.push(path);
-            } else if kind.is_file() {
-                let key = path
-                    .strip_prefix(root)
-                    .map_or_else(|_| String::new(), |p| portable(p.as_os_str()));
-                let bytes = std::fs::read(&path).map_err(|error| error.to_string())?;
-                found.push((key, bytes));
-            }
-        }
-    }
-    found.sort_by(|a, b| a.0.as_bytes().cmp(b.0.as_bytes()));
-    Ok(found)
-}
-
 /// Whether a file name ends in `.EXTENSION` after a non-empty stem.
 fn has_extension(name: &str, extension: &str) -> bool {
     name.strip_suffix(extension)
@@ -261,69 +228,19 @@ fn has_extension(name: &str, extension: &str) -> bool {
 }
 
 /// The sources one reading resolves locations against, each validated
-/// before any document is read.
+/// before any document is read (see `crate::sources`).
 pub(crate) struct Sources {
     /// The project root, canonical: the local source's root.
-    root: Rc<LocalRoot>,
-    named: BTreeMap<String, Tree>,
+    pub(crate) root: Rc<LocalRoot>,
+    pub(crate) named: BTreeMap<String, Entry>,
     /// Identifies the trees: the root's and each directory's canonical
-    /// path, each embedded file's key and text.
-    fingerprint: u64,
+    /// path, each embedded file's key and text, each origin's store path.
+    pub(crate) fingerprint: u64,
+    /// The named sources a location of the reading entered.
+    pub(crate) used: RefCell<BTreeSet<String>>,
 }
 
 impl Sources {
-    /// Validate the project root and the registered sources: one
-    /// `KDLITH-LOC005` per source whose name is malformed or repeated,
-    /// whose directory does not resolve, or whose embedded key is not a
-    /// normalized relative path; every source is checked, in
-    /// registration order.
-    pub(crate) fn admit(
-        root: Option<&Path>,
-        registered: &[(String, SourceTree)],
-        origin: &str,
-    ) -> Result<Self, Vec<DiagnosticRecord>> {
-        let mut failures = Vec::new();
-        let spelled = root.map_or_else(|| PathBuf::from("."), Path::to_path_buf);
-        let canonical = match canonical_dir(&spelled) {
-            Ok(canonical) => Some(canonical),
-            Err(reason) => {
-                let subject = "(project root)";
-                failures.push(record(SOURCE_INVALID, &[subject, &reason], origin));
-                None
-            }
-        };
-        let mut named = BTreeMap::new();
-        for (name, tree) in registered {
-            let reason = if !is_source_name(name) {
-                Some("the name is not a non-empty kebab name".to_owned())
-            } else if named.contains_key(name) {
-                Some("the source is registered more than once".to_owned())
-            } else {
-                match admit_tree(tree) {
-                    Ok(tree) => {
-                        named.insert(name.clone(), tree);
-                        None
-                    }
-                    Err(reason) => Some(reason),
-                }
-            };
-            if let Some(reason) = reason {
-                failures.push(record(SOURCE_INVALID, &[name, &reason], origin));
-            }
-        }
-        match canonical {
-            Some(canonical) if failures.is_empty() => Ok(Self {
-                fingerprint: fingerprint(&canonical, &named),
-                root: Rc::new(LocalRoot {
-                    canonical,
-                    shown: PathBuf::new(),
-                }),
-                named,
-            }),
-            _ => Err(failures),
-        }
-    }
-
     /// The fingerprint of the trees this source set resolves against.
     pub(crate) fn fingerprint(&self) -> u64 {
         self.fingerprint
@@ -420,14 +337,17 @@ impl Sources {
             .map(|target| vec![target])
     }
 
-    /// The home of `$name/`: an unregistered name is `KDLITH-LOC003`.
+    /// The home of `$name/`: an unregistered name is `KDLITH-LOC003`,
+    /// and an origin the store does not hold, or holds under another
+    /// digest than its pin, fails as it is entered.
     fn named_home(
         &self,
         expression: &str,
         name: &str,
         origin: &str,
     ) -> Result<Home, Box<DiagnosticRecord>> {
-        if self.named.contains_key(name) {
+        if self.holds(name) {
+            self.enter(name, origin)?;
             return Ok(Home::Named(name.to_owned()));
         }
         let known: Vec<&str> = self.named.keys().map(String::as_str).collect();
@@ -461,9 +381,9 @@ impl Sources {
         };
         let root = match home {
             Home::Local(root) => root.canonical.clone(),
-            Home::Named(name) => match self.named.get(name) {
-                Some(Tree::Dir(root)) => root.clone(),
-                Some(Tree::Embedded(files)) => {
+            Home::Named(name) => match self.view(name) {
+                Some(View::Dir(root)) => root.to_path_buf(),
+                Some(View::Embedded(files)) => {
                     return match files.get(&relative) {
                         Some(text) => Ok(Target {
                             resolved: PathBuf::from(&shown),
@@ -555,9 +475,9 @@ impl Sources {
     ) -> Result<Vec<String>, Box<DiagnosticRecord>> {
         Ok(match home {
             Home::Local(root) => walk_matches(&root.canonical, pattern, origin)?,
-            Home::Named(name) => match self.named.get(name) {
-                Some(Tree::Dir(root)) => walk_matches(root, pattern, origin)?,
-                Some(Tree::Embedded(files)) => files
+            Home::Named(name) => match self.view(name) {
+                Some(View::Dir(root)) => walk_matches(root, pattern, origin)?,
+                Some(View::Embedded(files)) => files
                     .keys()
                     .filter(|key| matches(pattern, &key.split('/').collect::<Vec<_>>()))
                     .cloned()
@@ -719,9 +639,9 @@ impl Sources {
     /// What `relative` names under `home`'s root.
     fn content(&self, home: &Home, relative: &str) -> Result<AssetContent, Missing> {
         match home {
-            Home::Named(name) => match self.named.get(name) {
-                Some(Tree::Embedded(files)) => embedded_asset(files, relative),
-                Some(Tree::Dir(root)) => disk_asset(root, relative),
+            Home::Named(name) => match self.view(name) {
+                Some(View::Embedded(files)) => embedded_asset(files, relative),
+                Some(View::Dir(root)) => disk_asset(root, relative),
                 None => Err(Missing::NoSuchFile),
             },
             Home::Local(root) => disk_asset(&root.canonical, relative),
@@ -736,9 +656,11 @@ impl Sources {
         let (home, relative) = if source.is_empty() {
             (Home::Local(self.root.clone()), location)
         } else {
-            if !self.named.contains_key(source) {
+            if !self.holds(source) {
                 return Err(format!("the reading has no source ${source}"));
             }
+            self.enter(source, "data-document")
+                .map_err(|failure| failure.message.unwrap_or_default())?;
             let prefix = format!("${source}/");
             let relative = location
                 .strip_prefix(&prefix)
@@ -1260,32 +1182,7 @@ fn flag(node: &SyntaxNode, key: &str) -> bool {
     )
 }
 
-fn fingerprint(root: &Path, named: &BTreeMap<String, Tree>) -> u64 {
-    let mut hash = stable_hash(portable(root.as_os_str()).as_bytes());
-    for (name, tree) in named {
-        hash = stable_hash_step(hash, b"\0");
-        hash = stable_hash_step(hash, name.as_bytes());
-        match tree {
-            Tree::Dir(path) => {
-                hash = stable_hash_step(hash, b"\0dir\0");
-                hash = stable_hash_step(hash, portable(path.as_os_str()).as_bytes());
-            }
-            Tree::Embedded(files) => {
-                hash = stable_hash_step(hash, b"\0embedded");
-                for (key, text) in files {
-                    hash = stable_hash_step(hash, b"\0");
-                    hash = stable_hash_step(hash, key.as_bytes());
-                    let length = u64::try_from(text.len()).unwrap_or(u64::MAX);
-                    hash = stable_hash_step(hash, &length.to_le_bytes());
-                    hash = stable_hash_step(hash, text.as_bytes());
-                }
-            }
-        }
-    }
-    hash
-}
-
-fn admit_tree(tree: &SourceTree) -> Result<Tree, String> {
+pub(crate) fn admit_tree(tree: &SourceTree) -> Result<Tree, String> {
     match tree {
         SourceTree::Dir(path) => canonical_dir(path).map(Tree::Dir),
         SourceTree::Embedded(files) => {
@@ -1303,7 +1200,7 @@ fn admit_tree(tree: &SourceTree) -> Result<Tree, String> {
     }
 }
 
-fn canonical_dir(path: &Path) -> Result<PathBuf, String> {
+pub(crate) fn canonical_dir(path: &Path) -> Result<PathBuf, String> {
     let canonical = std::fs::canonicalize(path)
         .map_err(|error| format!("directory {} does not resolve: {error}", path.display()))?;
     if canonical.is_dir() {
@@ -1316,7 +1213,7 @@ fn canonical_dir(path: &Path) -> Result<PathBuf, String> {
 /// `path` with `.` and empty segments dropped and each `..` taking back
 /// the segment before it; `None` when a `..` would leave the root or the
 /// path is absolute.
-fn normalize(path: &str) -> Option<String> {
+pub(crate) fn normalize(path: &str) -> Option<String> {
     if path.starts_with('/') || path.contains('\\') {
         return None;
     }
@@ -1364,11 +1261,11 @@ fn home_name(home: &Home) -> String {
     }
 }
 
-fn portable(path: &std::ffi::OsStr) -> String {
+pub(crate) fn portable(path: &std::ffi::OsStr) -> String {
     path.to_string_lossy().replace('\\', "/")
 }
 
-fn is_source_name(name: &str) -> bool {
+pub(crate) fn is_source_name(name: &str) -> bool {
     !name.is_empty()
         && name
             .bytes()

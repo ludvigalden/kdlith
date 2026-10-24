@@ -1,0 +1,4 @@
+{"source":"acme","kind":"origin","declared":"manifest","pinned":"sha256:bc37a4caefbdb5bfb44a8eabeb450d6f85c8ea6350de715fa165f3cf7a35d5bc","digest":"sha256:bc37a4caefbdb5bfb44a8eabeb450d6f85c8ea6350de715fa165f3cf7a35d5bc","overridden":false}
+{"source":"beta","kind":"origin","declared":"manifest","pinned":false,"digest":"sha256:9cd8ff3fcdd3e227036921aa72877dcec4fb6db8ab03d91482834fd2f128b087","overridden":false}
+{"source":"gamma","kind":"origin","declared":"manifest","pinned":false,"digest":null,"overridden":false}
+{"source":"vendored","kind":"dir","declared":"manifest","pinned":false,"digest":"sha256:c76ff89a0e3aed65b82e9e7150a004569c780a137ae090bdbfc2eb56c136dc07","overridden":false}

@@ -1,0 +1,3 @@
+use "$acme/part.kdl"
+use "$extra/part.kdl"
+part local

@@ -85,7 +85,9 @@ same span on both paths; the reader-path binder check fires first.
 retired with the deferral marker. The location area (`LOC001`–
 `LOC005`) retired `IMP001`, `IMP004`–`IMP008` (spent numbers in the
 registry); `IMP002` (cycle) and `IMP003` (repeat) keep import-graph
-semantics. `LOC008` joins with the `asset` type kind. `KDLITH-CTX006` subsumed the retired `CTX003`; the slot
+semantics. `LOC008` joins with the `asset` type kind; `LOC006`, `LOC007`,
+`LOC009` (warning), and `LOC010` (note) join with sources manifests,
+the store, and overrides. `KDLITH-CTX006` subsumed the retired `CTX003`; the slot
 malformed constructs stay `DLC005` (a layer name the slot does not
 list is `SCH006`, or `DLC008` in a dialect definition). `BND009`
 joins with the value-resolution hook; `BND010` with reference-keyed

@@ -1,0 +1,24 @@
+{
+  "binary": "kdlith",
+  "description": "The manifests and overrides files the sources scenarios read bind under the kdlith-sources schema: a manifest with a pinned origin, an unpinned origin, a rev-only origin, and a dir source, and an overrides file, each without a diagnostic",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/../../pkg/kdl/schemas/sources/sources.kdl",
+    "{fx-suite}/processing/sources/verb-plan/sources.kdl",
+    "{fx-suite}/processing/sources/override-precedence/sources.kdl",
+    "{fx-suite}/processing/sources/override-precedence/overrides.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"type_name\":\"Source\"",
+      "\"type_name\":\"Override\"",
+      "\"value\":{\"kind\":\"string\",\"value\":\"https://example.invalid/gamma.git\"}"
+    ],
+    "stdout-not-contains": [
+      "\"item\":\"diagnostic\""
+    ]
+  }
+}

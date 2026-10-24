@@ -1,0 +1,24 @@
+{
+  "binary": "kdlith",
+  "description": "--warnings-as-errors rejects every override, a committed one included: the manifest's own override is KDLITH-LOC009, a warning, which fails the run with exit 1 after the stream",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/sources/schema.kdl",
+    "--sources",
+    "sources.kdl",
+    "--warnings-as-errors",
+    "map/entry.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":1,\"index\":0},\"type_name\":\"Part\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"manifest-override\"},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n",
+      "\"facts\":{\"declared\":\"unpinned\",\"directory\":\"local/acme\",\"layer\":\"manifest\",\"shadowed\":[],\"source\":\"acme\"}"
+    ],
+    "stderr-contains": [
+      "warning[KDLITH-LOC009]: source acme is overridden by local/acme (layer manifest; unpinned not used)"
+    ]
+  }
+}

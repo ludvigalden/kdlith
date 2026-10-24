@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "One override per name per layer: an overrides file overriding acme twice is KDLITH-LOC005, located at the second",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/sources/schema.kdl",
+    "--sources",
+    "sources.kdl",
+    "--overrides",
+    "overrides.kdl",
+    "map/entry.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "The kdlith-sources schema, the documented shape of a sources manifest and an overrides file, vets under the canonical dialect",
+  "args": [
+    "vet",
+    "schema",
+    "{fx-suite}/../../pkg/kdl/schemas/sources/sources.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "ok: schema kdlith-sources version 0 scope=complete documents=1 types=6 nodes=6"
+    ]
+  }
+}

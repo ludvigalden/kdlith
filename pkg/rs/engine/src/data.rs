@@ -49,6 +49,10 @@ pub struct ReadOptions {
     profiles: Vec<String>,
     sources: Vec<(String, SourceTree)>,
     root: Option<PathBuf>,
+    manifest: Option<PathBuf>,
+    overlay: Option<PathBuf>,
+    overrides: Vec<(String, PathBuf)>,
+    store: Option<PathBuf>,
     output_policy: Option<OutputPolicy>,
     max_invocations: Option<usize>,
 }
@@ -128,12 +132,60 @@ impl ReadOptions {
         self
     }
 
+    /// Read the sources manifest at `path`, which declares sources by
+    /// name: a directory (`source NAME dir=DIR`) or an origin whose tree
+    /// the store holds, optionally pinned by its digest; it may also
+    /// override a declared source. kdlith never fetches an origin. A
+    /// manifest name the host also registers is `KDLITH-LOC005`.
+    #[must_use]
+    pub fn with_sources_manifest(mut self, path: impl Into<PathBuf>) -> Self {
+        self.manifest = Some(path.into());
+        self
+    }
+
+    /// Read the overrides file at `path`: overrides only, a layer above
+    /// the manifest's own.
+    #[must_use]
+    pub fn with_overrides_file(mut self, path: impl Into<PathBuf>) -> Self {
+        self.overlay = Some(path.into());
+        self
+    }
+
+    /// Override the declared source `name` with the directory `dir`, the
+    /// most local layer. Every override is a `KDLITH-LOC009` warning.
+    #[must_use]
+    pub fn with_override(mut self, name: impl Into<String>, dir: impl Into<PathBuf>) -> Self {
+        self.overrides.push((name.into(), dir.into()));
+        self
+    }
+
+    /// Name the store origin sources resolve from:
+    /// `<store>/sha256/<hex>/` for a pinned origin, and
+    /// `<store>/origin/<key>/` for an unpinned one.
+    #[must_use]
+    pub fn with_store(mut self, store: impl Into<PathBuf>) -> Self {
+        self.store = Some(store.into());
+        self
+    }
+
+    /// What the reading's source set is made from.
+    pub(crate) fn source_inputs(&self) -> crate::sources::SourceInputs<'_> {
+        crate::sources::SourceInputs {
+            root: self.root.as_deref(),
+            registered: &self.sources,
+            manifest: self.manifest.as_deref(),
+            overlay: self.overlay.as_deref(),
+            overrides: &self.overrides,
+            store: self.store.as_deref(),
+        }
+    }
+
     /// The source set these options name, as a reading admits it; `None`
     /// when it does not admit, which the reading itself reports.
     pub(crate) fn asset_set(&self) -> Option<crate::locations::AssetSet> {
-        Sources::admit(self.root.as_deref(), &self.sources, ORIGIN)
+        Sources::admit(&self.source_inputs(), ORIGIN)
             .ok()
-            .map(|sources| crate::locations::AssetSet(Rc::new(sources)))
+            .map(|(sources, _)| crate::locations::AssetSet(Rc::new(sources)))
     }
 
     /// Select `def`'s profiles for the entry the reading shows as
@@ -496,7 +548,7 @@ impl<'d> DataReader<'d> {
             return Ok(Restored::Miss);
         };
         // A reading that rejects its sources reports it; so does replay.
-        let Ok(sources) = Sources::admit(options.root.as_deref(), &options.sources, ORIGIN) else {
+        let Ok((sources, _)) = Sources::admit(&options.source_inputs(), ORIGIN) else {
             return Ok(Restored::Miss);
         };
         let chain: Vec<String> = entries.iter().map(|e| e.display().to_string()).collect();
@@ -660,10 +712,16 @@ impl<'d> DataReader<'d> {
             }
             declared
         });
-        // The project root and the registered sources are checked before
-        // anything is read, every failure reported (`KDLITH-LOC005`).
-        let sources = match Sources::admit(options.root.as_deref(), &options.sources, ORIGIN) {
-            Ok(sources) => sources,
+        // The project root and the sources are checked before anything is
+        // read, every failure reported (`KDLITH-LOC005`); each override
+        // is reported before the first document.
+        let sources = match Sources::admit(&options.source_inputs(), ORIGIN) {
+            Ok((sources, warnings)) => {
+                for warning in warnings {
+                    sink(Item::Diagnostic(Box::new(warning)));
+                }
+                sources
+            }
             Err(records) => {
                 for record in records {
                     sink(Item::Diagnostic(Box::new(record)));
@@ -768,6 +826,11 @@ impl<'d> DataReader<'d> {
             if let Some(error) = reading.broken {
                 return Err(error);
             }
+        }
+        // Each unpinned source the reading used is noted once, with its
+        // tree's digest; a note never fails the reading.
+        for note in reading.sources.unpinned_notes(ORIGIN) {
+            (reading.sink)(Item::Diagnostic(Box::new(note)));
         }
         let entered = reading.invocations.len();
         let (mut failed, results, contexts) = (reading.failed, reading.results, reading.contexts);

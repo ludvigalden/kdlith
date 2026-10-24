@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "A pinned tree with one byte changed fails its integrity check: part.kdl in the store reads pinnee where the pinned tree read pinned, so its canonical digest differs from the pin and entering the source is KDLITH-LOC007",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/sources/schema.kdl",
+    "--sources",
+    "sources.kdl",
+    "--store",
+    "store",
+    "map/entry.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

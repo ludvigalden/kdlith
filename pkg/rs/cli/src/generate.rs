@@ -12,7 +12,7 @@ use kdlith_engine::{Extensions, ReadOptions};
 
 use crate::GenCommand;
 use crate::handlers::registry;
-use crate::report::{print_notes, report_all};
+use crate::report::report_all;
 use crate::vet::definition_extensions;
 
 /// Run a parsed `gen` subcommand.
@@ -29,15 +29,18 @@ pub(crate) fn run(command: GenCommand) -> ExitStatus {
         ),
         // Generation admits the named handlers' names and never runs
         // them: the generated processor installs its own.
-        GenCommand::Schema(args) => generate(
-            GenTarget::Schema,
-            &paths(&args.form.files),
-            (&args.form.crate_name, &args.form.out),
-            mode_of(args.form.dry_run, args.form.check),
-            args.locations.read_options(),
-            &definition_extensions().with_installed_handlers(&registry(&args.handlers)),
-            packaging_of(args.kdlith_path, args.kdlith_version),
-        ),
+        GenCommand::Schema(args) => {
+            let args = *args;
+            generate(
+                GenTarget::Schema,
+                &paths(&args.form.files),
+                (&args.form.crate_name, &args.form.out),
+                mode_of(args.form.dry_run, args.form.check),
+                args.locations.read_options(),
+                &definition_extensions().with_installed_handlers(&registry(&args.handlers)),
+                packaging_of(args.kdlith_path, args.kdlith_version),
+            )
+        }
     }
 }
 
@@ -126,7 +129,10 @@ pub fn generate(
         Err(codegen::Error::DefinitionRejected { records }) => return report_all(&records),
         Err(error) => return failed(form, &error),
     };
-    print_notes(tree.notes());
+    let noted = report_all(tree.notes());
+    if noted != ExitStatus::Success {
+        return noted;
+    }
     match mode {
         GenMode::DryRun => {
             println!(

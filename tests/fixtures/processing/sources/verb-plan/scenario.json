@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "sources plan prints the fetch plan, one JSON line per origin in name order: its origin tuple, its pin or false, its path under the store (sha256/<hex> when pinned, origin/<key> when not, the key as sha256sum computes it over the origin's properties), and whether the store holds a tree there. The dir source is not an origin and is not listed; nothing is fetched",
+  "args": [
+    "sources",
+    "plan",
+    "--sources",
+    "sources.kdl",
+    "--store",
+    "store"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden"
+  }
+}

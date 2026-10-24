@@ -1,0 +1,3 @@
+{"source":"acme","origin":{"git":"https://example.invalid/acme.git","path":"map","rev":"3f2c9a1"},"pinned":"sha256:bc37a4caefbdb5bfb44a8eabeb450d6f85c8ea6350de715fa165f3cf7a35d5bc","target":"sha256/bc37a4caefbdb5bfb44a8eabeb450d6f85c8ea6350de715fa165f3cf7a35d5bc","materialised":true}
+{"source":"beta","origin":{"git":"https://example.invalid/acme.git","path":"map"},"pinned":false,"target":"origin/729b7cc7e05fbd8ae46db9c09d35ef9a7101b554538a06d2961eb6b7c8f20de8","materialised":true}
+{"source":"gamma","origin":{"git":"https://example.invalid/gamma.git","rev":"v1"},"pinned":false,"target":"origin/35dff68dac97a570946a32e20e5f7f8d93f25369e7febee35cfbc05813e07e0e","materialised":false}

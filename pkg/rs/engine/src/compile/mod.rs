@@ -116,7 +116,9 @@ fn compile_input(
         return Err(cx.diags.into_records());
     }
     collect::all(&mut cx, input);
-    finish(cx, documents, governing)
+    let mut definition = finish(cx, documents, governing)?;
+    definition.notes.splice(0..0, input.notes.iter().cloned());
+    Ok(definition)
 }
 
 /// The state of one compilation.

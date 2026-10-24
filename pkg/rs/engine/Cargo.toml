@@ -15,3 +15,5 @@ kdlith-parse = { path = "../parse" }
 kdlith-runtime = { path = "../runtime" }
 regex = { workspace = true }
 serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true }

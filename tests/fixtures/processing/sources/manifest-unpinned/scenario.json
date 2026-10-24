@@ -1,0 +1,26 @@
+{
+  "binary": "kdlith",
+  "description": "An unpinned origin resolves from the store at origin/<key>, the key the SHA-256 of its properties in name order (git=...\\npath=map\\n, as sha256sum computes it); the reading notes it once (KDLITH-LOC010) with the stored tree's digest and exits 0 even under --warnings-as-errors, since a note never fails a run",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/sources/schema.kdl",
+    "--sources",
+    "sources.kdl",
+    "--store",
+    "store",
+    "--warnings-as-errors",
+    "map/entry.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":1,\"index\":0},\"type_name\":\"Part\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"unpinned\"},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n",
+      "\"facts\":{\"digest\":\"sha256:9cd8ff3fcdd3e227036921aa72877dcec4fb6db8ab03d91482834fd2f128b087\",\"kind\":\"origin\",\"source\":\"acme\"}"
+    ],
+    "stderr-contains": [
+      "note[KDLITH-LOC010]: source acme (origin) is unpinned; its tree digests to sha256:9cd8ff3fcdd3e227036921aa72877dcec4fb6db8ab03d91482834fd2f128b087"
+    ]
+  }
+}

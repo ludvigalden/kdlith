@@ -30,6 +30,19 @@ identified by `--record`; earlier entries bind so imports and
 numbering match. `--state DIR` restores the record from a snapshot
 `cache refresh` wrote instead of replaying.
 
+## sources
+
+`kdlith sources plan --sources FILE [--store DIR]` prints one JSON line
+per origin source: `source`, `origin` (`git`, `rev`, `path`), `pinned`
+(its digest or `false`), `target` (its path under the store), and
+`materialised`. `sources verify` re-hashes each stored origin tree,
+one line per origin with `status` `verified`, `unpinned`, `mismatch`
+(`KDLITH-LOC007`, exit 1), or `absent` (`KDLITH-LOC006`, exit 1) and
+the tree's `digest`. `sources list` prints every source with its
+`kind`, who `declared` it (`manifest` or `host`), `pinned`, the
+`digest` of the tree a reading reads (the value to pin it by), and
+`overridden`. Nothing is fetched.
+
 ## gen
 
 `gen dialect` and `gen schema` both require `--crate NAME` and
@@ -43,7 +56,8 @@ packaging flags `--kdlith-path` / `--kdlith-version`.
 
 ## Exit strata
 
-- 0 — success, including warnings-only runs
+- 0 — success, including warnings-only runs (a warning fails the run
+  under `--warnings-as-errors`; a note never does)
 - 1 — a diagnostic or gate failure the run reports (binding, link,
   export delivery, drift check, generation refusal, cache fault)
 - 2 — an argument fault (`KDLITH-CLI001` through `KDLITH-CLI004`),

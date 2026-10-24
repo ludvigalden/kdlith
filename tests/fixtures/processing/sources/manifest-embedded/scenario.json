@@ -1,0 +1,31 @@
+{
+  "binary": "kdlith",
+  "description": "A host-registered source and a manifest coexist when the manifest does not redeclare the host's name: acme comes from the host (a --source directory, then embedded through the pair helper, byte-identical), extra from the manifest. Only the manifest's unpinned extra is noted; a host's source is never noted",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/sources/schema.kdl",
+    "--sources",
+    "sources.kdl",
+    "map/entry.kdl"
+  ],
+  "source-embedded": [
+    "acme=lib"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":1,\"index\":0},\"type_name\":\"Part\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"embedded\"},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n",
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":2,\"index\":0},\"type_name\":\"Part\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"extra\"},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n",
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":2},\"type_name\":\"Part\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"local\"},\"origin\":2}],\"origin\":2,\"validation\":\"valid\"}}\n",
+      "\"facts\":{\"digest\":\"sha256:2d256380e1d80a4e85deac6ea90151c60e2160852d57b53f98fb28c57b0a41d0\",\"kind\":\"dir\",\"source\":\"extra\"}"
+    ],
+    "stdout-not-contains": [
+      "\"source\":\"acme\"}}"
+    ],
+    "stderr-contains": [
+      "note[KDLITH-LOC010]: source extra (dir) is unpinned; its tree digests to sha256:2d256380e1d80a4e85deac6ea90151c60e2160852d57b53f98fb28c57b0a41d0"
+    ]
+  }
+}

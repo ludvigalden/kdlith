@@ -1,0 +1,3 @@
+sources {
+    source acme dir="vendor/acme"
+}

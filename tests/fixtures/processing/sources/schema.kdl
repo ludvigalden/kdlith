@@ -1,0 +1,16 @@
+// The schema the sources scenarios share: a record, and a source-import
+// node carrying its location. Each scenario's map/entry.kdl imports
+// $acme/part.kdl and holds a record of its own.
+schema found version="1" {
+    types {
+        object Part {
+            field id String
+        }
+    }
+    node part role=record type=Part {
+        field id arg=0
+    }
+    node use role=source-import {
+        field path String arg=0
+    }
+}

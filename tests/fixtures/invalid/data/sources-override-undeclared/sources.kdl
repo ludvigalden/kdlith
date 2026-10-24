@@ -1,0 +1,4 @@
+sources {
+    source acme dir="vendor/acme"
+    override ghost dir="local/acme"
+}

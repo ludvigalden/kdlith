@@ -1,0 +1,27 @@
+{
+  "binary": "kdlith",
+  "description": "Across layers the most local override wins: manifest, overlay, and command line each override acme, the cli tree is read, and the one KDLITH-LOC009 names every override it displaced in its shadowed fact, most local first",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/sources/schema.kdl",
+    "--sources",
+    "sources.kdl",
+    "--overrides",
+    "overrides.kdl",
+    "--override",
+    "acme=cli-tree",
+    "map/entry.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":1,\"index\":0},\"type_name\":\"Part\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"cli-override\"},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n",
+      "\"facts\":{\"declared\":\"unpinned\",\"directory\":\"cli-tree\",\"layer\":\"cli\",\"shadowed\":[{\"layer\":\"overlay\",\"directory\":\"overlay-tree\"},{\"layer\":\"manifest\",\"directory\":\"manifest-tree\"}],\"source\":\"acme\"}"
+    ],
+    "stderr-contains": [
+      "warning[KDLITH-LOC009]: source acme is overridden by cli-tree (layer cli; unpinned not used); it displaces the overlay override overlay-tree and the manifest override manifest-tree"
+    ]
+  }
+}

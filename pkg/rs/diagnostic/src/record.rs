@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use serde::Serialize;
 
 /// Diagnostic severity classes. A severity is fixed once its code is
@@ -81,6 +83,11 @@ pub struct DiagnosticRecord {
     pub related: Vec<String>,
     pub correction: String,
     pub message: Option<String>,
+    /// Named values a consumer reads without parsing the message, keyed
+    /// by the code's documented fact names; absent from the serialized
+    /// form when empty.
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    pub facts: BTreeMap<String, serde_json::Value>,
 }
 
 impl From<Box<DiagnosticRecord>> for DiagnosticRecord {
@@ -112,6 +119,7 @@ impl DiagnosticRecord {
             related: Vec::new(),
             correction: definition.correction.to_owned(),
             message: None,
+            facts: BTreeMap::new(),
         })
     }
 
@@ -146,6 +154,19 @@ impl DiagnosticRecord {
     /// time; see [`crate::registry::render`].
     pub fn with_message(mut self, message: impl Into<String>) -> Self {
         self.message = Some(message.into());
+        self
+    }
+
+    /// Carry one named fact; a later fact of the same name replaces it.
+    pub fn with_fact(mut self, name: impl Into<String>, value: serde_json::Value) -> Self {
+        self.facts.insert(name.into(), value);
+        self
+    }
+
+    /// Replace the registered correction with one naming this
+    /// occurrence's specifics.
+    pub fn with_correction(mut self, correction: impl Into<String>) -> Self {
+        self.correction = correction.into();
         self
     }
 }

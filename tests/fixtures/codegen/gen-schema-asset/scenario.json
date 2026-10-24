@@ -1,7 +1,7 @@
 {
   "binary": "kdlith",
   "kind": "codegen-oracle",
-  "description": "The asset generation fixture: gen schema generates a schema declaring two asset types (a yaml file under base source, a directory recording a digest) twice into two scratch trees the harness requires byte-identical, and the generated crate, which declares each asset type as an asset newtype over the re-exported Asset, compiles inside a scratch workspace materialized from this scenario's committed template. The exercise crate depends on the generated crate alone. It reads one data document whose records hold $lib/ assets, once with lib embedded and once with lib a directory: each reading yields the same resolved locations and the directory digest an independent FNV-1a oracle computes, and each opens the file asset's bytes through its own sources and refuses the directory asset. An asset the directory reading resolved is refused by a third reading over a different lib directory, which fails closed rather than reading the other tree's file",
+  "description": "The asset generation fixture: gen schema generates a schema declaring two asset types (a yaml file under base source, a directory recording a digest) twice into two scratch trees the harness requires byte-identical, and the generated crate, which declares each asset type as an asset newtype over the re-exported Asset, compiles inside a scratch workspace materialized from this scenario's committed template. The exercise crate depends on the generated crate alone. It reads one data document whose records hold $lib/ assets, once with lib embedded and once with lib a directory: each reading yields the same resolved locations and the directory digest the documented sha256sum recipe computes, and each opens the file asset's bytes through its own sources and refuses the directory asset. An asset the directory reading resolved is refused by a third reading over a different lib directory, which fails closed rather than reading the other tree's file",
   "form": "schema",
   "entrypoint": "inputs/shelf.kdl",
   "crate": "shelf-proc",
@@ -57,8 +57,8 @@
           "inputs/other"
         ],
         "stdout-contains": [
-          "case embedded failed=false\n  asset $lib/specs/api.yaml source=lib digest=-\n  open ok \"openapi: 3.1.0\\n\"\n  asset $lib/specs source=lib digest=fnv1a64:b87b45e22e9b0ef4\n  open refused: $lib/specs is a directory, not a file\n",
-          "case dir failed=false\n  asset $lib/specs/api.yaml source=lib digest=-\n  open ok \"openapi: 3.1.0\\n\"\n  asset $lib/specs source=lib digest=fnv1a64:b87b45e22e9b0ef4\n  open refused: $lib/specs is a directory, not a file\n",
+          "case embedded failed=false\n  asset $lib/specs/api.yaml source=lib digest=-\n  open ok \"openapi: 3.1.0\\n\"\n  asset $lib/specs source=lib digest=sha256:9fd4038772602a20caf5a4c3005ed038e31d696f9e4cc4e907561b4eae0d0bb6\n  open refused: $lib/specs is a directory, not a file\n",
+          "case dir failed=false\n  asset $lib/specs/api.yaml source=lib digest=-\n  open ok \"openapi: 3.1.0\\n\"\n  asset $lib/specs source=lib digest=sha256:9fd4038772602a20caf5a4c3005ed038e31d696f9e4cc4e907561b4eae0d0bb6\n  open refused: $lib/specs is a directory, not a file\n",
           "case foreign\n  open refused $lib/specs/api.yaml: the asset was resolved by another reading\n  open refused $lib/specs: the asset was resolved by another reading\n"
         ]
       }

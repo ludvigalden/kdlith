@@ -49,9 +49,13 @@ fn load(
     options: &DataOptions,
     extensions: &Extensions,
 ) -> Result<Definition, ExitStatus> {
-    options
+    let def = options
         .load_schema(schema, extensions)
-        .map_err(|records| report_all(&records))
+        .map_err(|records| report_all(&records))?;
+    match report_all(&def.notes) {
+        ExitStatus::Success => Ok(def),
+        failed => Err(failed),
+    }
 }
 
 /// Index the data documents through the schema and print one line per

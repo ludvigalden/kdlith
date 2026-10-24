@@ -1,0 +1,10 @@
+sources {
+    source acme {
+        origin git="https://example.invalid/acme.git" rev="3f2c9a1" path="map"
+        pinned "sha256:bc37a4caefbdb5bfb44a8eabeb450d6f85c8ea6350de715fa165f3cf7a35d5bc"
+    }
+    source beta {
+        origin git="https://example.invalid/acme.git" path="map"
+    }
+    source vendored dir="vendor/acme"
+}

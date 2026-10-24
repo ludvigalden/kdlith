@@ -8,6 +8,9 @@ use kdlith_model::Value;
 #[derive(Clone, Debug, Default)]
 pub struct DefinitionInput {
     pub documents: Vec<DocumentInput>,
+    /// The reading's warnings and notes, kept on the compiled
+    /// definition's notes ahead of the compiler's own.
+    pub notes: Vec<kdlith_diagnostic::DiagnosticRecord>,
 }
 
 /// One contributing document: its path, its text, and its constructs in
