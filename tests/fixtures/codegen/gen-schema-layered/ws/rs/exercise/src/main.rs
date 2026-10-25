@@ -21,7 +21,7 @@ use std::sync::Arc;
 use settings_proc::types::{Choice, OptionName, Patch, Setting};
 use settings_proc::{
     CheckScope, DiagnosticRecord, Extensions, Item, LAYERED, Layered, ReadError, TypedItem, load,
-    reader, reader_with_contribution_resolver,
+    matches_line, reader, reader_with_contribution_resolver,
 };
 
 fn main() {
@@ -45,6 +45,15 @@ fn main() {
     let definition = load(&[schema], &extensions, CheckScope::Complete)
         .unwrap_or_else(|records| reject("schema", &records));
     println!("schema ok digest={}", definition.digest());
+
+    // The regex primitive the generated crate re-exports, evaluated
+    // with the schema's own ScopeSpelling matcher: a line the pattern
+    // covers in full matches, a trailing fragment does not, and a
+    // pattern that does not compile fails closed as no match.
+    let scope = r#"(?<name>[a-z][a-z0-9-]*)"#;
+    println!("matches_line mode={}", matches_line(scope, "mode"));
+    println!("matches_line mode!={}", matches_line(scope, "mode!"));
+    println!("matches_line unclosed={}", matches_line("(unclosed", "mode"));
     println!("option domain={}", Choice::DOMAIN);
     println!("patches {}", patch_kind(&Patch::Replace(String::from("replace"))));
     println!("patches {}", patch_kind(&Patch::Append(String::from("append"))));

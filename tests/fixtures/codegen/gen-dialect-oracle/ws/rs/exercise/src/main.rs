@@ -1,7 +1,8 @@
 //! Exercise the generated oracle processor end to end: compile the
 //! embedded canonical seed, load a committed schema through the
-//! generated loader, and read the schema's own items through the
-//! generated typed reader.
+//! generated loader, read the schema's own items through the
+//! generated typed reader, and print the doc comment the generated
+//! types carry on the canonical MergePolicy vocabulary.
 
 use std::path::PathBuf;
 
@@ -9,8 +10,9 @@ use kdlith_engine::{CheckScope, Extensions, TypedItem};
 use oracle_proc::{Item, load_schema, reader, seed};
 
 fn main() {
-    let Some(schema) = std::env::args().nth(1).map(PathBuf::from) else {
-        eprintln!("oracle-exercise: usage: oracle-exercise <schema>");
+    let mut args = std::env::args().skip(1).map(PathBuf::from);
+    let (Some(schema), Some(types)) = (args.next(), args.next()) else {
+        eprintln!("oracle-exercise: usage: oracle-exercise <schema> <generated-types>");
         std::process::exit(2);
     };
     let schema = schema.as_path();
@@ -43,6 +45,37 @@ fn main() {
         }
     }
     println!("read ok records={records} declarations={declarations}");
+
+    let generated = std::fs::read_to_string(&types).unwrap_or_else(|error| {
+        eprintln!("oracle-exercise: cannot read {}: {error}", types.display());
+        std::process::exit(2);
+    });
+    let doc = merge_policy_doc(&generated).unwrap_or_else(|| {
+        eprintln!("oracle-exercise: the generated types carry no MergePolicy doc");
+        std::process::exit(1);
+    });
+    println!("merge policy doc={doc}");
+}
+
+/// The `///` doc lines the generated types carry directly above the
+/// `MergePolicy` enum, joined as one sentence.
+fn merge_policy_doc(generated: &str) -> Option<String> {
+    let lines: Vec<&str> = generated.lines().collect();
+    let at = lines
+        .iter()
+        .position(|line| line.contains("pub enum MergePolicy"))?;
+    let mut start = at;
+    while start > 0 && lines[start - 1].trim_start().starts_with("///") {
+        start -= 1;
+    }
+    if start == at {
+        return None;
+    }
+    let doc: Vec<String> = lines[start..at]
+        .iter()
+        .map(|line| line.trim_start().trim_start_matches("///").trim().to_owned())
+        .collect();
+    Some(doc.join(" "))
 }
 
 /// Report a rejected stage and fail; the pinned run never reaches here.

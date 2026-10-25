@@ -1,7 +1,7 @@
 {
   "binary": "kdlith",
   "kind": "codegen-oracle",
-  "description": "The reference-generation oracle: gen dialect generates the super-schema entrypoint's processor twice into two scratch trees and the harness requires the trees byte-identical (the in-suite determinism pin), the workspace copy's src/**/*.rs must match pkg/rs/superproc/src/**/*.rs byte for byte apart from the single generated-marker header line, the generated crate compiles inside a scratch workspace materialized from this scenario's committed template with the repository's engine crates copied in at the pinned layout positions, and the compiled processor compiles the embedded canonical seed, loads the committed exercise schema (same digest as the reference CLI reports), and reads the schema's items through its own typed reader; the reference crate is never written and every step is judged by the harness, fail-closed on any difference",
+  "description": "The reference-generation oracle: gen dialect generates the super-schema entrypoint's processor twice into two scratch trees and the harness requires the trees byte-identical (the in-suite determinism pin), the workspace copy's src/**/*.rs must match pkg/rs/superproc/src/**/*.rs byte for byte apart from the single generated-marker header line, the generated crate compiles inside a scratch workspace materialized from this scenario's committed template with the repository's engine crates copied in at the pinned layout positions, and the compiled processor compiles the embedded canonical seed, loads the committed exercise schema (same digest as the reference CLI reports), reads the schema's items through its own typed reader, and prints the doc comment the generated types carry on the MergePolicy vocabulary type; the reference crate is never written and every step is judged by the harness, fail-closed on any difference",
   "form": "dialect",
   "entrypoint": "{fx-suite}/../../pkg/kdl/dialect.kdl",
   "crate": "oracle-proc",
@@ -27,11 +27,12 @@
     },
     {
       "exercise": {
-        "command": ["cargo", "run", "--offline", "--quiet", "--manifest-path", "ws/rs/exercise/Cargo.toml", "--", "inputs/schema.kdl"],
+        "command": ["cargo", "run", "--offline", "--quiet", "--manifest-path", "ws/rs/exercise/Cargo.toml", "--", "inputs/schema.kdl", "ws/rs/oracle-proc/src/types/types_kdl.rs"],
         "stdout-contains": [
           "seed ok",
           "schema ok digest=8037aeb1a564a166",
-          "read ok records=0 declarations=2"
+          "read ok records=0 declarations=2",
+          "merge policy doc=How a field declaring merge combines its contributions; the only policy is union, which appends to the field's list.\n"
         ]
       }
     }

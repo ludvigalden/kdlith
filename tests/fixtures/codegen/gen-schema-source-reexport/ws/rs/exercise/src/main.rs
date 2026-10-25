@@ -2,13 +2,15 @@
 //! crate's manifest names no engine crate. The schema's own $lib/
 //! imports load from a directory source, from an embedded one, and from
 //! documents held in memory; the typed reader reads a data document
-//! importing $lib/ through an embedded source; every outcome is printed.
+//! importing $lib/ through an embedded source; a value decodes through
+//! the re-exported decode surface, one mismatching element naming its
+//! path and reason. Every outcome is printed.
 
 use std::path::{Path, PathBuf};
 
 use catalog_proc::{
-    CheckScope, DiagnosticRecord, Extensions, Item, ReadOptions, Source, SourceTree, TypedItem,
-    load, load_sources, load_sources_with, load_with, reader,
+    CheckScope, DiagnosticRecord, Extensions, FromValue, Item, Mismatch, ReadOptions, Source,
+    SourceTree, TypedItem, Value, load, load_sources, load_sources_with, load_with, reader,
 };
 
 fn main() {
@@ -45,6 +47,23 @@ fn main() {
         load_sources(&held, &extensions, scope).map(|d| d.digest()),
     );
 
+    // The decode surface the re-exports carry: a consumer names the
+    // decode result types through the generated crate alone, one value
+    // decoding and one whose mismatch names its list position.
+    println!("case decode");
+    match u64::from_value(&Value::Number("7".to_owned())) {
+        Ok(count) => println!("  u64={count}"),
+        Err(mismatch) => decode_rejected(mismatch),
+    }
+    let list: Result<Vec<u64>, Mismatch> = Vec::from_value(&Value::List(vec![
+        Value::Number("1".to_owned()),
+        Value::Bool(false),
+    ]));
+    match list {
+        Err(mismatch) => println!("  mismatch {mismatch} (path {})", mismatch.path()),
+        Ok(_) => decode_rejected(Mismatch::new("the boolean decoded as a U64")),
+    }
+
     let definition =
         load_with(&paths, &extensions, scope, lib_embedded()).unwrap_or_else(|_| std::process::exit(1));
     let typed = reader(&definition)
@@ -77,6 +96,13 @@ fn report(case: &str, loaded: Result<String, Vec<DiagnosticRecord>>) {
             }
         }
     }
+}
+
+/// A decode outcome the pinned run never reaches; the printed cases are
+/// fixed by the value shapes above.
+fn decode_rejected(mismatch: Mismatch) -> ! {
+    eprintln!("source-reexport-exercise: unexpected decode outcome: {mismatch}");
+    std::process::exit(1);
 }
 
 /// Every file under `dir`, keyed by its `/`-separated path under `root`.

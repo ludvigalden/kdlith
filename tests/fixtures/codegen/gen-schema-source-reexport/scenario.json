@@ -1,7 +1,7 @@
 {
   "binary": "kdlith",
   "kind": "codegen-oracle",
-  "description": "The re-export generation fixture: gen schema --source lib=inputs/lib generates a schema whose own imports are $lib/ locations (the literal $lib/types/product.kdl and the pattern $lib/nodes/*.kdl under the root's locations rule) twice into two scratch trees the harness requires byte-identical, and the generated crate compiles inside a scratch workspace materialized from this scenario's committed template. The exercise crate depends on the generated crate alone, no engine crate, and names Source, SourceTree, ReadOptions, load_with, load_sources and load_sources_with through its re-exports. The schema loads to one digest from the directory source, from the same files embedded, and from its entry held in memory over the embedded source, and that digest is the one vet schema reports for it; without the source the $lib/ import is KDLITH-LOC003 at its site whether the entry is a file or held in memory. The typed reader, with lib embedded, reads a data document importing $lib/shared.kdl shown under $lib",
+  "description": "The re-export generation fixture: gen schema --source lib=inputs/lib generates a schema whose own imports are $lib/ locations (the literal $lib/types/product.kdl and the pattern $lib/nodes/*.kdl under the root's locations rule) twice into two scratch trees the harness requires byte-identical, and the generated crate compiles inside a scratch workspace materialized from this scenario's committed template. The exercise crate depends on the generated crate alone, no engine crate, and names Source, SourceTree, ReadOptions, FromValue, Mismatch, and Value through its re-exports. The schema loads to one digest from the directory source, from the same files embedded, and from its entry held in memory over the embedded source, and that digest is the one vet schema reports for it; without the source the $lib/ import is KDLITH-LOC003 at its site whether the entry is a file or held in memory. A scalar decodes through the re-exported decode surface and a list whose second element mismatches names its position and reason through the Mismatch path. The typed reader, with lib embedded, reads a data document importing $lib/shared.kdl shown under $lib",
   "form": "schema",
   "entrypoint": "inputs/catalog.kdl",
   "crate": "catalog-proc",
@@ -62,6 +62,7 @@
           "case held-embedded\n  digest=c487efc8c6dac4ec\n",
           "case unsourced\n  diagnostic KDLITH-LOC003 location $lib/types/product.kdl names unknown source lib: the reading has no named sources\n",
           "case held-unsourced\n  diagnostic KDLITH-LOC003 location $lib/types/product.kdl names unknown source lib: the reading has no named sources\n",
+          "case decode\n  u64=7\n  mismatch 1: expected a U64, found #false (path 1)\n",
           "case read\n  document inputs/entry.kdl\n  import $lib/shared.kdl targets=[$lib/shared.kdl]\n  document $lib/shared.kdl\n  record Product name=shared\n  record Product name=top\n  sources [(local):Local:-,lib:Embedded:pinned]\n  failed=false\n"
         ]
       }
