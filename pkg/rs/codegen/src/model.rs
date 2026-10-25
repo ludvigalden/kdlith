@@ -804,9 +804,10 @@ fn visit(
     None
 }
 
-/// Name each item's `Item` variant: after its type, unless differently
-/// named nodes of a schema bind the type, when each node keys its own
-/// variant. Two nodes spelling one variant for different items fail.
+/// Name each item's `Item` variant: after its type, or after its node
+/// where several nodes bind the type ([`role_suffixes`] settles a
+/// record and a declaration spelling one). Two nodes spelling one
+/// variant for different items fail.
 fn key_variants(
     items: &mut [ItemNode<'_>],
     names: &Names,
@@ -825,23 +826,28 @@ fn key_variants(
         }
     }
     let shared: Vec<String> = shared.into_iter().map(str::to_owned).collect();
+    for item in items.iter_mut() {
+        if shared.contains(&item.ty) {
+            item.keyed = true;
+            item.variant = pascal(node_name(item));
+        }
+    }
+    if kind == DefinitionKind::Schema {
+        role_suffixes(items);
+    }
 
     // Each variant, with the node name and type of the items it reads.
     let mut spelled: BTreeMap<String, (String, String)> = BTreeMap::new();
     let mut handlers: Vec<(bool, String, Option<String>)> = Vec::new();
     for item in items.iter_mut() {
         let node = node_name(item).to_owned();
-        if shared.contains(&item.ty) {
-            item.keyed = true;
-            item.variant = pascal(&node);
-            if !is_identifier(&item.variant) || item.variant == "Self" {
-                return Err(Error::UnspellableName {
-                    what: "item variant",
-                    owner: node,
-                    name: item.variant.clone(),
-                    reason: "it is no Rust identifier",
-                });
-            }
+        if item.keyed && (!is_identifier(&item.variant) || item.variant == "Self") {
+            return Err(Error::UnspellableName {
+                what: "item variant",
+                owner: node,
+                name: item.variant.clone(),
+                reason: "it is no Rust identifier",
+            });
         }
         match spelled.get(&item.variant) {
             // A same-named node under another parent reads the same
@@ -868,6 +874,28 @@ fn key_variants(
         }
     }
     Ok(())
+}
+
+/// Suffix the variant a record and a declaration of different types
+/// both spell with each item's role (`WorkspaceRecord`,
+/// `WorkspaceDeclaration`), stable under any declaration order.
+fn role_suffixes(items: &mut [ItemNode<'_>]) {
+    let clashing: Vec<String> = items
+        .iter()
+        .filter(|item| {
+            items.iter().any(|other| {
+                other.variant == item.variant && other.record != item.record && other.ty != item.ty
+            })
+        })
+        .map(|item| item.variant.clone())
+        .collect();
+    for item in items.iter_mut() {
+        if clashing.contains(&item.variant) {
+            let role = if item.record { "Record" } else { "Declaration" };
+            item.variant = format!("{}{role}", item.variant);
+            item.keyed = true;
+        }
+    }
 }
 
 /// The Rust and rendered names of the one object type every case and

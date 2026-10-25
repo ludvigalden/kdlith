@@ -9,7 +9,7 @@
 
 use std::path::PathBuf;
 
-use shelf_proc::{CheckScope, DiagnosticRecord, Extensions, Item, TypedItem, Value, load, reader};
+use capture_proc::{CheckScope, DiagnosticRecord, Extensions, Item, TypedItem, Value, load, reader};
 
 /// Captured slots as `name=value`, a string slot as its text and an
 /// unset one as `unset`; a macro, so each item's captured value is read

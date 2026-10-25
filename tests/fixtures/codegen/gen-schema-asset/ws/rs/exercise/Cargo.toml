@@ -5,4 +5,4 @@ edition = "2024"
 rust-version = "1.85"
 
 [dependencies]
-shelf-proc = { path = "../shelf-proc" }
+asset-proc = { path = "../asset-proc" }

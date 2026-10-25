@@ -4,7 +4,7 @@
 # pins. Kept in lockstep with the repository root manifest.
 [workspace]
 resolver = "2"
-members = ["shelf-proc", "diagnostic", "engine", "exercise", "model", "parse", "runtime", "superproc"]
+members = ["asset-proc", "diagnostic", "engine", "exercise", "model", "parse", "runtime", "superproc"]
 
 [workspace.package]
 version = "0.1.0"

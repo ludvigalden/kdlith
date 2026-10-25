@@ -1,0 +1,6 @@
+host "pkg/a"
+profile {
+    host "cargo"
+    zone "eu"
+}
+host "pkg/b"

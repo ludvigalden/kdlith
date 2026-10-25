@@ -1,0 +1,75 @@
+{
+  "binary": "kdlith",
+  "kind": "codegen-oracle",
+  "description": "gen schema generates a schema whose root document declares types named after the traits the declaration macros derive (a string Hash, an enum Clone, objects Debug and Default, a union PartialEq, a map Eq) while two imported documents declare their own string, enum, and object types that reference them, so each sibling module imports every derive-named type by name beside the derives the macros expand. Every derive, macro, and trait path a declaration macro spells is fully qualified, so no imported name shadows one: the crate generates twice into byte-identical trees, the sibling import is pinned by text, the crate compiles inside a scratch workspace materialized from this scenario's committed template, and the compiled consumer reads the committed data document through the generated reader, comparing the derive-named enum, matching the derive-named union, and hashing the derive-named string type",
+  "form": "schema",
+  "entrypoint": "inputs/schema.kdl",
+  "crate": "derive-proc",
+  "steps": [
+    {
+      "generate": "ws/rs/derive-proc"
+    },
+    {
+      "generate": "gen-again"
+    },
+    {
+      "determinism": [
+        "ws/rs/derive-proc",
+        "gen-again"
+      ]
+    },
+    {
+      "exercise": {
+        "command": [
+          "cat",
+          "ws/rs/derive-proc/src/types/entries_kdl.rs"
+        ],
+        "stdout-contains": [
+          "use super::{Clone, Debug, Eq, Hash, PartialEq};\n"
+        ]
+      }
+    },
+    {
+      "compile": {
+        "workspace": "ws",
+        "copy": {
+          "crates": [
+            "diagnostic",
+            "engine",
+            "model",
+            "parse",
+            "runtime",
+            "superproc"
+          ],
+          "kdl": true
+        },
+        "command": [
+          "cargo",
+          "build",
+          "--offline",
+          "--manifest-path",
+          "ws/rs/derive-proc/Cargo.toml"
+        ]
+      }
+    },
+    {
+      "exercise": {
+        "command": [
+          "cargo",
+          "run",
+          "--offline",
+          "--quiet",
+          "--manifest-path",
+          "ws/rs/exercise/Cargo.toml",
+          "--",
+          "inputs/schema.kdl",
+          "inputs/data.kdl"
+        ],
+        "stdout-contains": [
+          "schema ok digest=ce8305fe81df42d7\n",
+          "read ok items=4 digests=3\nentry id=one hash=abc-def deep=true value=number:7\ndefault id=base\nentry id=two hash=x-y deep=false value=text:seven\nnote text=hello hash=n-1\n"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+// Every type the root document declares takes the name of a trait the
+// declaration macros derive: a string Hash, an enum Clone, objects
+// Debug and Default, a union PartialEq, and a map Eq. The imported
+// document's types use them, so its generated module imports each one
+// by name beside the derives it is named after.
+schema derive version="1" {
+    import "entries.kdl"
+    import "notes.kdl"
+    types {
+        string Hash {
+            format kebab-case
+        }
+        enum Clone {
+            member deep
+            member shallow
+        }
+        object Debug {
+            field hash Hash
+        }
+        object Default {
+            field id String
+        }
+        union PartialEq {
+            variant number U64
+            variant text String
+        }
+        map Eq {
+            key-type String
+            value-type String
+        }
+    }
+    node default role=declaration type=Default {
+        field id arg=0
+    }
+}

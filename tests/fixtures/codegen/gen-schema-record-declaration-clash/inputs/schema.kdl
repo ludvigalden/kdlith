@@ -1,0 +1,35 @@
+// A record and a declaration share the node name host and, through
+// their types, the item variant Host: a root host record of type Host,
+// and a host declaration of type Kind inside a profile, beside a zone
+// declaration that binds Kind too. Generation keys each by its role.
+schema fleet version="1" {
+    types {
+        object Host {
+            field path String
+        }
+        object Kind {
+            field name String
+        }
+    }
+    node host role=record type=Host {
+        field path arg=0
+    }
+    node profile role=container {
+        children host
+        children zone
+    }
+    node host role=declaration type=Kind parent=profile {
+        field name arg=0
+        identity {
+            domain kinds
+            compose qualified-name name
+        }
+    }
+    node zone role=declaration type=Kind parent=profile {
+        field name arg=0
+        identity {
+            domain kinds
+            compose qualified-name name
+        }
+    }
+}

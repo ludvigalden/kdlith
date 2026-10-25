@@ -1,0 +1,4 @@
+entry "one" hash=abc-def mode=deep value=7 tier=high
+default "base"
+entry "two" hash=x-y mode=shallow value=seven label=red
+note "hello" hash=n-1 weight=light

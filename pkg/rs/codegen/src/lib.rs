@@ -5,6 +5,7 @@
 mod catalog;
 mod emit;
 mod emit_compile;
+mod layout;
 mod manifest;
 mod model;
 mod render;

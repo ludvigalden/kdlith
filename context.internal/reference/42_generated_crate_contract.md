@@ -15,7 +15,11 @@ named `Self`.
 A schema crate spells every prelude and engine name by path
 (`::core::option::Option`, `::std::vec::Vec`,
 `::kdlith_engine::Ref`), so a schema may declare types named
-`Option`, `Vec`, or `Ref`. A dialect crate keeps the reference
+`Option`, `Vec`, or `Ref`. The declaration macros spell every derive,
+macro, and trait by path (`::core::hash::Hash`, `::core::clone::Clone`)
+on both forms, so a declared type a sibling module imports by name —
+`Hash`, `Clone`, `Debug`, `Default`, `PartialEq`, `Eq` — never shadows
+one. A dialect crate keeps the reference
 processor's unqualified spellings, so the dialect form fails closed
 on those names instead. A dialect declares no reference types, so on
 the schema form the only reference-type name generation refuses is
@@ -40,7 +44,13 @@ the schema still vets. When differently named nodes bind one type,
 each reads as its own variant named after the node, so a consumer
 tells them apart by variant while the type-level projection matches
 all of them; nodes of one name under different parents share one
-variant. Generation fails closed when two nodes would spell one
+variant. When a record and a declaration of different types would
+spell one variant on the schema form — a record node `workspace` of
+type `Workspace` beside a declaration node `workspace` whose type backs
+several nodes — each such item keys its own variant by node, suffixed
+with its role: `WorkspaceRecord` and `WorkspaceDeclaration`. The suffix
+depends on the item alone, never on declaration order, and each keeps
+its own node handler. Generation fails closed when two nodes would spell one
 variant for different items (`KDLITH-GEN004`) or a node keys a
 variant that is no Rust identifier. Every generation refusal prints
 `kdlith: gen <form>: <reason>` and exits 1.

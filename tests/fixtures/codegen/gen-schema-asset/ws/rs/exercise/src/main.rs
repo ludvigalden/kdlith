@@ -7,7 +7,7 @@
 
 use std::path::{Path, PathBuf};
 
-use shelf_proc::{
+use asset_proc::{
     Asset, CheckScope, Extensions, Item, ReadOptions, Reading, SourceTree, TypedItem, load_with,
     reader,
 };

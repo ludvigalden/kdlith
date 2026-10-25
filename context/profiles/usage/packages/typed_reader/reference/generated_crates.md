@@ -10,6 +10,9 @@ manifest does not own (`KDLITH-GEN001`, nothing written);
 generation never deletes anything.
 
 - `--dry-run` prints the plan and each owned path, writing nothing
+- every generated Rust file is already rustfmt-formatted (style
+  edition 2024, default widths), so rustfmt leaves a generated crate
+  unchanged and `--check` compares exactly the bytes a write produces
 - `--check` compares the generated tree against `DIR`: absent is
   missing, differing bytes are changed, and a manifest-owned path
   the tree no longer generates is stale — each one `KDLITH-GEN002`
@@ -90,6 +93,21 @@ Generic instances generate under mangled names
 (`Pair<String, Mode>` becomes `PairStringMode`), and two
 instantiations spelling one mangled name fail closed the same way.
 Such a definition still vets: the limit is the generated crate's.
+
+A type may take the name of a trait the generated code derives
+(`Hash`, `Clone`, `Debug`, `Default`, `PartialEq`, `Eq`): every derive,
+macro, and trait is spelled by its full path. Each record or
+declaration reads as an `Item` variant named after its type. Where a
+record and a declaration of different types would spell one variant,
+each takes its node's name suffixed with its role, so a schema may
+declare a record `workspace` beside a declaration `workspace`:
+
+```rust
+pub enum Item {
+    Workspace => WorkspaceRecord,
+    Kind => WorkspaceDeclaration | Component,
+}
+```
 
 ## Two forms
 

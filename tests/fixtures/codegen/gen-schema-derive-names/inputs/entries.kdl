@@ -1,0 +1,31 @@
+// Types and nodes that reference every derive-named type of the root
+// document, each through its sibling module's import.
+schema derive version="1" {
+    types {
+        string Label {
+            format kebab-case
+        }
+        enum Tier {
+            member low
+            member high
+        }
+        object Entry {
+            field id String
+            field hash Hash
+            field mode Clone
+            field value PartialEq
+            field debug "optional<Debug>"
+            field tags "optional<Eq>"
+            field label "optional<Label>"
+            field tier "optional<Tier>"
+        }
+    }
+    node entry role=record type=Entry {
+        field id arg=0
+        field hash property=hash
+        field mode property=mode
+        field value property=value
+        field label property=label
+        field tier property=tier
+    }
+}

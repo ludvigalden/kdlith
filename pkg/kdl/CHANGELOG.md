@@ -403,6 +403,16 @@ published yet.
 
 ### Fixed
 
+- A schema whose record and declaration of different types would read
+  as one item variant no longer fails generation with `KDLITH-GEN004`:
+  each such item keys its own variant by node, suffixed with its role
+  (`WorkspaceRecord`, `WorkspaceDeclaration`).
+- A generated crate compiles when a schema declares a type named after
+  a derived trait (`Hash`, `Clone`, `Debug`, `PartialEq`, …): the
+  declaration macros spell every derive and trait by its full path.
+- Generated Rust files are rustfmt-clean: rustfmt leaves a generated
+  crate unchanged, and `gen --check` compares the same formatted bytes
+  a write produces.
 - A data document's imports are confined to the entry document's
   directory: a target that resolves outside it — including through a
   symbolic link — is refused with `KDLITH-IMP006` before the target is

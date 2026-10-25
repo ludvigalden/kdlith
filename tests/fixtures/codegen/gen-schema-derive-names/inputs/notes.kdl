@@ -1,0 +1,20 @@
+// A second document importing derive-named types from its siblings, as
+// the first does: both sit behind the types module's glob re-exports.
+schema derive version="1" {
+    types {
+        enum Weight {
+            member light
+            member heavy
+        }
+        object Note {
+            field text String
+            field hash Hash
+            field weight "optional<Weight>"
+        }
+    }
+    node note role=record type=Note {
+        field text arg=0
+        field hash property=hash
+        field weight property=weight
+    }
+}

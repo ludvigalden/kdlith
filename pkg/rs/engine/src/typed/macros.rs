@@ -12,7 +12,15 @@ macro_rules! string_type {
     // generic instance its Rust name (`PairStringMode`) cannot.
     (as $spelled:expr; $(#[$meta:meta])* $vis:vis struct $name:ident;) => {
         $(#[$meta])*
-        #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+        #[derive(
+            ::core::clone::Clone,
+            ::core::fmt::Debug,
+            ::core::cmp::PartialEq,
+            ::core::cmp::Eq,
+            ::core::cmp::PartialOrd,
+            ::core::cmp::Ord,
+            ::core::hash::Hash,
+        )]
         $vis struct $name(::std::string::String);
 
         impl $name {
@@ -49,7 +57,7 @@ macro_rules! string_type {
             fn from_value(
                 value: &$crate::__private::Value,
             ) -> ::core::result::Result<Self, $crate::Mismatch> {
-                $crate::text_value(value).map(|text| Self(text.to_owned()))
+                $crate::text_value(value).map(|text| Self(::std::borrow::ToOwned::to_owned(text)))
             }
         }
 
@@ -108,7 +116,14 @@ macro_rules! enum_type {
         }
     ) => {
         $(#[$meta])*
-        #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+        #[derive(
+            ::core::clone::Clone,
+            ::core::marker::Copy,
+            ::core::fmt::Debug,
+            ::core::cmp::PartialEq,
+            ::core::cmp::Eq,
+            ::core::hash::Hash,
+        )]
         #[non_exhaustive]
         $vis enum $name {
             $($(#[$vmeta])* $variant),+
@@ -168,7 +183,14 @@ macro_rules! enum_type {
         }
     ) => {
         $(#[$meta])*
-        #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+        #[derive(
+            ::core::clone::Clone,
+            ::core::marker::Copy,
+            ::core::fmt::Debug,
+            ::core::cmp::PartialEq,
+            ::core::cmp::Eq,
+            ::core::hash::Hash,
+        )]
         $vis enum $name {
             $($(#[$vmeta])* $variant),+
         }
@@ -280,7 +302,7 @@ macro_rules! object_type {
     };
     (as $spelled:expr; $(#[$meta:meta])* $vis:vis struct $name:ident {}) => {
         $(#[$meta])*
-        #[derive(Clone, Debug, PartialEq, Eq)]
+        #[derive(::core::clone::Clone, ::core::fmt::Debug, ::core::cmp::PartialEq, ::core::cmp::Eq)]
         #[non_exhaustive]
         $vis struct $name {}
 
@@ -306,7 +328,7 @@ macro_rules! object_type {
     };
     (as $spelled:expr; exhaustive; $(#[$meta:meta])* $vis:vis struct $name:ident {}) => {
         $(#[$meta])*
-        #[derive(Clone, Debug, PartialEq, Eq)]
+        #[derive(::core::clone::Clone, ::core::fmt::Debug, ::core::cmp::PartialEq, ::core::cmp::Eq)]
         $vis struct $name {}
 
         impl $crate::FromFields for $name {
@@ -336,7 +358,7 @@ macro_rules! object_type {
         }
     ) => {
         $(#[$meta])*
-        #[derive(Clone, Debug, PartialEq, Eq)]
+        #[derive(::core::clone::Clone, ::core::fmt::Debug, ::core::cmp::PartialEq, ::core::cmp::Eq)]
         #[non_exhaustive]
         $vis struct $name {
             $($(#[$fmeta])* pub $field: $ty),+
@@ -378,7 +400,7 @@ macro_rules! object_type {
         }
     ) => {
         $(#[$meta])*
-        #[derive(Clone, Debug, PartialEq, Eq)]
+        #[derive(::core::clone::Clone, ::core::fmt::Debug, ::core::cmp::PartialEq, ::core::cmp::Eq)]
         $vis struct $name {
             $($(#[$fmeta])* pub $field: $ty),+
         }
@@ -450,7 +472,7 @@ macro_rules! union_type {
         }
     ) => {
         $(#[$meta])*
-        #[derive(Clone, Debug, PartialEq, Eq)]
+        #[derive(::core::clone::Clone, ::core::fmt::Debug, ::core::cmp::PartialEq, ::core::cmp::Eq)]
         #[non_exhaustive]
         $vis enum $name {
             $($(#[$vmeta])* $variant($ty)),+
@@ -516,7 +538,7 @@ macro_rules! union_type {
         }
     ) => {
         $(#[$meta])*
-        #[derive(Clone, Debug, PartialEq, Eq)]
+        #[derive(::core::clone::Clone, ::core::fmt::Debug, ::core::cmp::PartialEq, ::core::cmp::Eq)]
         $vis enum $name {
             $($(#[$vmeta])* $variant($ty)),+
         }
@@ -588,7 +610,14 @@ macro_rules! reference_type {
         }
     ) => {
         $(#[$meta])*
-        #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+        #[derive(
+            ::core::clone::Clone,
+            ::core::fmt::Debug,
+            ::core::cmp::PartialEq,
+            ::core::cmp::Eq,
+            ::core::cmp::PartialOrd,
+            ::core::cmp::Ord,
+        )]
         $vis struct $name(pub $crate::Ref<$target>);
 
         impl $name {
@@ -652,7 +681,7 @@ macro_rules! codec_type {
     };
     (as $spelled:expr; $(#[$meta:meta])* $vis:vis struct $name:ident($output:ty);) => {
         $(#[$meta])*
-        #[derive(Clone, Debug, PartialEq, Eq)]
+        #[derive(::core::clone::Clone, ::core::fmt::Debug, ::core::cmp::PartialEq, ::core::cmp::Eq)]
         $vis struct $name(pub $output);
 
         impl $crate::FromValue for $name {
@@ -697,7 +726,7 @@ macro_rules! asset_type {
     };
     (as $spelled:expr; $(#[$meta:meta])* $vis:vis struct $name:ident;) => {
         $(#[$meta])*
-        #[derive(Clone, Debug, PartialEq, Eq)]
+        #[derive(::core::clone::Clone, ::core::fmt::Debug, ::core::cmp::PartialEq, ::core::cmp::Eq)]
         $vis struct $name(pub $crate::Asset);
 
         impl ::core::ops::Deref for $name {
@@ -746,7 +775,7 @@ macro_rules! map_type {
     };
     (as $spelled:expr; $(#[$meta:meta])* $vis:vis struct $name:ident($key:ty => $value:ty);) => {
         $(#[$meta])*
-        #[derive(Clone, Debug, PartialEq, Eq)]
+        #[derive(::core::clone::Clone, ::core::fmt::Debug, ::core::cmp::PartialEq, ::core::cmp::Eq)]
         $vis struct $name(pub ::std::collections::BTreeMap<$key, $value>);
 
         impl $crate::FromValue for $name {
@@ -796,7 +825,7 @@ macro_rules! inline_union_type {
         }
     ) => {
         $(#[$meta])*
-        #[derive(Clone, Debug, PartialEq, Eq)]
+        #[derive(::core::clone::Clone, ::core::fmt::Debug, ::core::cmp::PartialEq, ::core::cmp::Eq)]
         #[non_exhaustive]
         $vis enum $name {
             $($(#[$vmeta])* $variant($ty)),+
@@ -846,7 +875,7 @@ macro_rules! inline_union_type {
         }
     ) => {
         $(#[$meta])*
-        #[derive(Clone, Debug, PartialEq, Eq)]
+        #[derive(::core::clone::Clone, ::core::fmt::Debug, ::core::cmp::PartialEq, ::core::cmp::Eq)]
         $vis enum $name {
             $($(#[$vmeta])* $variant($ty)),+
         }
@@ -902,7 +931,7 @@ macro_rules! contribution_type {
         }
     ) => {
         $(#[$meta])*
-        #[derive(Clone, Debug, PartialEq, Eq)]
+        #[derive(::core::clone::Clone, ::core::fmt::Debug, ::core::cmp::PartialEq, ::core::cmp::Eq)]
         #[non_exhaustive]
         $vis enum $name {
             $($(#[$vmeta])* $variant($ty)),+
@@ -918,8 +947,11 @@ macro_rules! contribution_type {
                 {
                     fits.push((stringify!($variant), Self::$variant(read)));
                 })+
-                let mut fits = fits.into_iter();
-                match (fits.next(), fits.next()) {
+                let mut fits = ::core::iter::IntoIterator::into_iter(fits);
+                match (
+                    ::core::iter::Iterator::next(&mut fits),
+                    ::core::iter::Iterator::next(&mut fits),
+                ) {
                     (::core::option::Option::Some((_, one)), ::core::option::Option::None) => {
                         ::core::result::Result::Ok(one)
                     }
@@ -971,7 +1003,7 @@ macro_rules! contribution_type {
         }
     ) => {
         $(#[$meta])*
-        #[derive(Clone, Debug, PartialEq, Eq)]
+        #[derive(::core::clone::Clone, ::core::fmt::Debug, ::core::cmp::PartialEq, ::core::cmp::Eq)]
         $vis enum $name {
             $($(#[$vmeta])* $variant($ty)),+
         }
@@ -986,8 +1018,11 @@ macro_rules! contribution_type {
                 {
                     fits.push((stringify!($variant), Self::$variant(read)));
                 })+
-                let mut fits = fits.into_iter();
-                match (fits.next(), fits.next()) {
+                let mut fits = ::core::iter::IntoIterator::into_iter(fits);
+                match (
+                    ::core::iter::Iterator::next(&mut fits),
+                    ::core::iter::Iterator::next(&mut fits),
+                ) {
                     (::core::option::Option::Some((_, one)), ::core::option::Option::None) => {
                         ::core::result::Result::Ok(one)
                     }
@@ -1043,7 +1078,7 @@ macro_rules! item_type {
     // declarations: its contributions stream as contribution items.
     ($(#[$meta:meta])* $vis:vis enum $name:ident {}) => {
         $(#[$meta])*
-        #[derive(Clone, Debug, PartialEq, Eq)]
+        #[derive(::core::clone::Clone, ::core::fmt::Debug, ::core::cmp::PartialEq, ::core::cmp::Eq)]
         #[non_exhaustive]
         $vis enum $name {}
 
@@ -1060,7 +1095,7 @@ macro_rules! item_type {
     // spells the marker uniformly across the item arms.
     (exhaustive; $(#[$meta:meta])* $vis:vis enum $name:ident {}) => {
         $(#[$meta])*
-        #[derive(Clone, Debug, PartialEq, Eq)]
+        #[derive(::core::clone::Clone, ::core::fmt::Debug, ::core::cmp::PartialEq, ::core::cmp::Eq)]
         $vis enum $name {}
 
         impl $crate::__private::serde::Serialize for $name {
@@ -1086,7 +1121,7 @@ macro_rules! item_type {
         }
     ) => {
         $(#[$meta])*
-        #[derive(Clone, Debug, PartialEq, Eq)]
+        #[derive(::core::clone::Clone, ::core::fmt::Debug, ::core::cmp::PartialEq, ::core::cmp::Eq)]
         #[non_exhaustive]
         $vis enum $name {
             $($($variant($ty)),+),+
@@ -1125,7 +1160,7 @@ macro_rules! item_type {
         }
     ) => {
         $(#[$meta])*
-        #[derive(Clone, Debug, PartialEq, Eq)]
+        #[derive(::core::clone::Clone, ::core::fmt::Debug, ::core::cmp::PartialEq, ::core::cmp::Eq)]
         $vis enum $name {
             $($($variant($ty)),+),+
         }
@@ -1158,7 +1193,7 @@ macro_rules! item_type {
     };
     ($(#[$meta:meta])* $vis:vis enum $name:ident { $($(#[$vmeta:meta])* $variant:ident),+ $(,)? }) => {
         $(#[$meta])*
-        #[derive(Clone, Debug, PartialEq, Eq)]
+        #[derive(::core::clone::Clone, ::core::fmt::Debug, ::core::cmp::PartialEq, ::core::cmp::Eq)]
         #[non_exhaustive]
         $vis enum $name {
             $($(#[$vmeta])* $variant($variant)),+
@@ -1199,7 +1234,7 @@ macro_rules! item_type {
         $(#[$meta:meta])* $vis:vis enum $name:ident { $($(#[$vmeta:meta])* $variant:ident),+ $(,)? }
     ) => {
         $(#[$meta])*
-        #[derive(Clone, Debug, PartialEq, Eq)]
+        #[derive(::core::clone::Clone, ::core::fmt::Debug, ::core::cmp::PartialEq, ::core::cmp::Eq)]
         $vis enum $name {
             $($(#[$vmeta])* $variant($variant)),+
         }

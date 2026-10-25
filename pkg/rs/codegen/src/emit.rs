@@ -1,6 +1,5 @@
-//! File emission under the pinned writer profile: pre-formatted text,
-//! LF newlines, fixed indentation, the generated marker first, and
-//! width-pinned wrapping.
+//! File emission under the pinned writer profile: rustfmt-formatted
+//! text, LF newlines, the generated marker first.
 
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
@@ -9,6 +8,7 @@ use kdlith_diagnostic::DiagnosticRecord;
 use kdlith_engine::{DefinitionKind, Names, ReferenceDecl, Role, TypeDecl, TypeExpr, TypeKind};
 
 use crate::catalog;
+use crate::layout::{Expr, assignment, use_list, version_order};
 use crate::manifest::{MANIFEST_NAME, manifest_text};
 use crate::model::{Document, Emission, InlineUnion, ItemNode, kind_name};
 use crate::render::{
@@ -16,16 +16,6 @@ use crate::render::{
     spells_btree_map,
 };
 use crate::{Error, Packaging};
-
-/// Width a `use` list or other greedy-wrapped list fills to.
-const LIST_WIDTH: usize = 100;
-/// The widest one-line `use` list rustfmt keeps on one line, and the
-/// widest wrapped line it keeps inside one: both stop short of
-/// `LIST_WIDTH`.
-const USE_SINGLE_WIDTH: usize = 98;
-const USE_WRAPPED_WIDTH: usize = 99;
-/// Width a builder chain still takes on one line.
-const CHAIN_WIDTH: usize = 65;
 
 const BUILTINS: [&str; 6] = ["String", "Bool", "Integer", "Decimal", "U64", "ValueExpr"];
 
@@ -92,39 +82,16 @@ impl Out {
         }
     }
 
-    /// A `use path::{names};` statement: single name unwrapped, one line
-    /// when it fits, greedily wrapped lines otherwise.
+    /// A `use path::{names};` statement, as rustfmt lays it out.
     fn use_list(&mut self, path: &str, names: &[String]) {
-        if names.is_empty() {
-            return;
+        if !names.is_empty() {
+            self.text.push_str(&use_list("", path, names));
         }
-        if let [only] = names {
-            self.line(&format!("use {path}::{only};"));
-            return;
-        }
-        let single = format!("use {}::{{{}}};", path, names.join(", "));
-        if single.len() <= USE_SINGLE_WIDTH {
-            self.line(&single);
-            return;
-        }
-        self.line(&format!("use {path}::{{"));
-        let mut buffer = String::new();
-        for name in names {
-            // The line is the four-space indent plus the buffer; adding
-            // a name costs its own width plus ", ".
-            if !buffer.is_empty() && 4 + buffer.len() + 2 + name.len() + 1 > USE_WRAPPED_WIDTH {
-                self.line(&format!("    {buffer},"));
-                buffer.clear();
-            }
-            if !buffer.is_empty() {
-                buffer.push_str(", ");
-            }
-            buffer.push_str(name);
-        }
-        if !buffer.is_empty() {
-            self.line(&format!("    {buffer},"));
-        }
-        self.line("};");
+    }
+
+    /// `lhs expr;`, as rustfmt lays the item out at `indent`.
+    fn assign(&mut self, lhs: &str, expr: &Expr, indent: usize) {
+        self.line(&assignment(lhs, expr, indent));
     }
 
     fn finish(mut self) -> String {
@@ -245,48 +212,98 @@ impl Emission<'_> {
             out.line(&format!("pub mod {module};"));
         }
         out.blank();
-        match self.kind {
-            DefinitionKind::Dialect => {
-                out.line("pub use compile::{");
-                out.line(
-                    "    load_dialect, load_dialect_sources, load_schema, load_schema_sources, load_schema_sources_with,",
-                );
-                out.line("    load_schema_with, seed,");
-                out.line("};");
-            }
-            _ => out.line("pub use compile::{load, load_sources, load_sources_with, load_with};"),
-        }
-        out.line("pub use kdlith_engine::{");
-        out.line("    ContributionResolver, LAYERED, Layered, ResolutionCall, SharedContributionResolver,");
-        out.line("    SharedResolver, Unresolvable, ValueResolver,");
-        out.line("};");
+        let names = |list: &[&str]| list.iter().map(|name| (*name).to_owned()).collect();
+        let compile: Vec<String> = match self.kind {
+            DefinitionKind::Dialect => names(&[
+                "load_dialect",
+                "load_dialect_sources",
+                "load_schema",
+                "load_schema_sources",
+                "load_schema_sources_with",
+                "load_schema_with",
+                "seed",
+            ]),
+            _ => names(&["load", "load_sources", "load_sources_with", "load_with"]),
+        };
+        let resolution: Vec<String> = names(&[
+            "ContributionResolver",
+            "LAYERED",
+            "Layered",
+            "ResolutionCall",
+            "SharedContributionResolver",
+            "SharedResolver",
+            "Unresolvable",
+            "ValueResolver",
+        ]);
+        let mut exports: Vec<(&str, Vec<String>)> = vec![
+            ("compile", compile),
+            ("kdlith_engine", resolution),
+            (
+                "processors",
+                vec![
+                    "DECLARATIONS".to_owned(),
+                    self.item_enum.to_owned(),
+                    "reader".to_owned(),
+                    "reader_with_contribution_resolver".to_owned(),
+                    "reader_with_resolver".to_owned(),
+                ],
+            ),
+        ];
         // The dialect form stays byte-equal to the reference processor;
         // schema crates also carry the tool-author surface so a tool
         // needs no dependency beyond the generated crate.
         if self.kind == DefinitionKind::Schema {
-            out.line("pub use kdlith_engine::{");
-            out.line(
-                "    Asset, CheckScope, Extensions, FromValue, ItemVariant, LinkOutcome, LinkReport,",
-            );
-            out.line(
-                "    Mismatch, OpenError, Origin, ReadError, ReadOptions, Reading, Ref, Regex,",
-            );
-            out.line(
-                "    ResolveError, Source, SourceTree, TypedItem, TypedReader, UnmetQualifier,",
-            );
-            out.line("    Value, matches_line,");
-            out.line("};");
-            out.line("pub use kdlith_model::Location;");
-            out.line("pub use kdlith_diagnostic::DiagnosticRecord;");
+            exports.push(("kdlith_diagnostic", names(&["DiagnosticRecord"])));
+            exports.push((
+                "kdlith_engine",
+                names(&[
+                    "Asset",
+                    "CheckScope",
+                    "Extensions",
+                    "FromValue",
+                    "ItemVariant",
+                    "LinkOutcome",
+                    "LinkReport",
+                    "Mismatch",
+                    "OpenError",
+                    "Origin",
+                    "ReadError",
+                    "ReadOptions",
+                    "Reading",
+                    "Ref",
+                    "Regex",
+                    "ResolveError",
+                    "Source",
+                    "SourceTree",
+                    "TypedItem",
+                    "TypedReader",
+                    "UnmetQualifier",
+                    "Value",
+                    "matches_line",
+                ]),
+            ));
+            exports.push(("kdlith_model", names(&["Location"])));
         }
-        out.line("pub use processors::{");
-        out.line(&format!(
-            "    DECLARATIONS, {}, reader, reader_with_contribution_resolver, reader_with_resolver,",
-            self.item_enum
-        ));
-        out.line("};");
         if let Some(contribution) = self.contribution_enum {
-            out.line(&format!("pub use processors::{contribution};"));
+            exports.push(("processors", vec![contribution.to_owned()]));
+        }
+        // rustfmt orders the group by path, then by the first name: a
+        // lone name before a braced list.
+        let key = |(path, names): &(&str, Vec<String>)| {
+            let first = names.iter().min_by(|a, b| version_order(a, b));
+            (path.to_string(), names.len() > 1, first.cloned())
+        };
+        exports.sort_by(|one, other| {
+            let (one, other) = (key(one), key(other));
+            version_order(&one.0, &other.0)
+                .then(one.1.cmp(&other.1))
+                .then_with(|| match (&one.2, &other.2) {
+                    (Some(a), Some(b)) => version_order(a, b),
+                    _ => std::cmp::Ordering::Equal,
+                })
+        });
+        for (path, names) in &exports {
+            out.text.push_str(&use_list("pub ", path, names));
         }
         rust_file(&out.finish())
     }
@@ -427,25 +444,26 @@ impl Emission<'_> {
         if shaped {
             out.blank();
             out.line("/// The shapes of this document's types, in declaration order.");
-            out.line(&format!(
-                "pub(crate) const TYPES: &[{}] = &[",
-                self.spelling.engine("TypeShape")
-            ));
             let shapes = doc
                 .types
                 .iter()
                 .map(|decl| decl.name)
-                .chain(doc.references.iter().map(|decl| decl.name));
-            for name in shapes {
-                let name = self.rust_name(name);
-                match self.spelling {
-                    Spelling::Imported => out.line(&format!("    {name}::SHAPE,")),
-                    Spelling::Qualified => {
-                        out.line(&format!("    <{name} as ::kdlith_engine::Shaped>::SHAPE,"));
+                .chain(doc.references.iter().map(|decl| decl.name))
+                .map(|name| {
+                    let name = self.rust_name(name);
+                    match self.spelling {
+                        Spelling::Imported => Expr::path(format!("{name}::SHAPE")),
+                        Spelling::Qualified => {
+                            Expr::Qualified(format!("<{name} as ::kdlith_engine::Shaped>::SHAPE"))
+                        }
                     }
-                }
-            }
-            out.line("];");
+                })
+                .collect();
+            let lhs = format!(
+                "pub(crate) const TYPES: &[{}] =",
+                self.spelling.engine("TypeShape")
+            );
+            out.assign(&lhs, &Expr::Array(shapes), 0);
         }
         Ok(rust_file(&out.finish()))
     }
@@ -531,7 +549,11 @@ impl Emission<'_> {
         out.blank();
         out.line(&format!("impl {name} {{"));
         out.line("    /// The identity domain its declarations register in.");
-        out.line(&format!("    pub const DOMAIN: &str = {domain:?};"));
+        out.assign(
+            "pub const DOMAIN: &str =",
+            &Expr::literal(format!("{domain:?}")),
+            4,
+        );
         out.line("}");
     }
 
@@ -745,7 +767,7 @@ impl Emission<'_> {
             .collect();
         // Module declarations and re-exports are alphabetical; the
         // shape table below stays in contribution order.
-        sorted.sort();
+        sorted.sort_by(|a, b| version_order(a, b));
         for module in &sorted {
             out.line(&format!("mod {module};"));
         }
@@ -761,14 +783,11 @@ impl Emission<'_> {
         }
         out.blank();
         out.line("/// Every type's shape, by contributing document.");
-        out.line(&format!(
-            "pub(crate) const TYPES: &[&[{}]] = &[",
+        let lhs = format!(
+            "pub(crate) const TYPES: &[&[{}]] =",
             self.spelling.engine("TypeShape")
-        ));
-        for module in &modules {
-            out.line(&format!("    {module}::TYPES,"));
-        }
-        out.line("];");
+        );
+        out.assign(&lhs, &module_tables(&modules, "TYPES"), 0);
         rust_file(&out.finish())
     }
 
@@ -799,26 +818,29 @@ impl Emission<'_> {
             .collect();
         for (name, parents) in parent_constants(&entries) {
             out.blank();
-            out.line(&format!(
-                "const {}: &[&str] = &[{}];",
-                name,
-                parents
-                    .iter()
-                    .map(|parent| format!("\"{parent}\""))
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            ));
+            let parents = parents.iter().map(|parent| Expr::string(parent)).collect();
+            out.assign(
+                &format!("const {name}: &[&str] ="),
+                &Expr::Array(parents),
+                0,
+            );
         }
         out.blank();
-        out.line("pub(crate) const NODES: &[NodeShape] = &[");
-        for entry in &entries {
-            let constant = parent_constants(&entries)
-                .into_iter()
-                .find(|(_, parents)| parents == &entry.parents)
-                .map(|(name, _)| name);
-            out.line(&node_shape(entry, constant.as_deref()));
-        }
-        out.line("];");
+        let shapes = entries
+            .iter()
+            .map(|entry| {
+                let constant = parent_constants(&entries)
+                    .into_iter()
+                    .find(|(_, parents)| parents == &entry.parents)
+                    .map(|(name, _)| name);
+                node_shape(entry, constant.as_deref())
+            })
+            .collect();
+        out.assign(
+            "pub(crate) const NODES: &[NodeShape] =",
+            &Expr::Array(shapes),
+            0,
+        );
         rust_file(&out.finish())
     }
 
@@ -841,7 +863,7 @@ impl Emission<'_> {
             .map(|doc| doc.module.clone())
             .collect();
         let mut sorted = modules.clone();
-        sorted.sort();
+        sorted.sort_by(|a, b| version_order(a, b));
         for module in &sorted {
             out.line(&format!("mod {module};"));
         }
@@ -849,11 +871,11 @@ impl Emission<'_> {
         out.line("use kdlith_engine::NodeShape;");
         out.blank();
         out.line("/// Every node declaration, by contributing document.");
-        out.line("pub(crate) const NODES: &[&[NodeShape]] = &[");
-        for module in &modules {
-            out.line(&format!("    {module}::NODES,"));
-        }
-        out.line("];");
+        out.assign(
+            "pub(crate) const NODES: &[&[NodeShape]] =",
+            &module_tables(&modules, "NODES"),
+            0,
+        );
         for constant in &self.annotations {
             out.blank();
             let site = match constant.placement.as_deref() {
@@ -872,10 +894,11 @@ impl Emission<'_> {
                 "/// The `{}` annotation of the `{}` node declaration{site}.",
                 constant.annotation, constant.node
             ));
-            out.line(&format!(
-                "pub const {}: {} = {};",
-                constant.name, constant.ty, constant.value
-            ));
+            out.assign(
+                &format!("pub const {}: {} =", constant.name, constant.ty),
+                &Expr::literal(constant.value.clone()),
+                0,
+            );
         }
         rust_file(&out.finish())
     }
@@ -911,7 +934,7 @@ impl Emission<'_> {
                 .slot_documents()
                 .map(|doc| doc.module.clone())
                 .collect();
-            sorted.sort();
+            sorted.sort_by(|a, b| version_order(a, b));
             for module in &sorted {
                 out.line(&format!("mod {module};"));
             }
@@ -920,15 +943,15 @@ impl Emission<'_> {
         out.line("use kdlith_engine::SlotShape;");
         out.blank();
         out.line("/// Every context slot, by contributing document.");
-        if slots == 0 {
-            out.line("pub(crate) const SLOTS: &[&[SlotShape]] = &[];");
-        } else {
-            out.line("pub(crate) const SLOTS: &[&[SlotShape]] = &[");
-            for doc in self.slot_documents() {
-                out.line(&format!("    {}::SLOTS,", doc.module));
-            }
-            out.line("];");
-        }
+        let modules: Vec<String> = self
+            .slot_documents()
+            .map(|doc| doc.module.clone())
+            .collect();
+        out.assign(
+            "pub(crate) const SLOTS: &[&[SlotShape]] =",
+            &module_tables(&modules, "SLOTS"),
+            0,
+        );
         rust_file(&out.finish())
     }
 
@@ -981,38 +1004,38 @@ impl Emission<'_> {
             out.blank();
         }
         let slot_shape = self.spelling.engine("SlotShape");
-        out.line(&format!("pub(crate) const SLOTS: &[{slot_shape}] = &["));
+        let mut shapes = Vec::new();
         for slot in &doc.slots {
             let name = self.names.resolve(slot.name);
             // A slot owns no inline union's enum, so one in its type
             // fails closed.
             let ty = rust_type(&slot.ty, self.names, &self.instances, None, self.spelling)?;
             let expression = if !imported {
-                format!("<{ty} as ::kdlith_engine::LogicalType>::expression")
+                Expr::Qualified(format!(
+                    "<{ty} as ::kdlith_engine::LogicalType>::expression"
+                ))
             } else if ty.contains('<') {
-                format!("<{ty} as LogicalType>::expression")
+                Expr::Qualified(format!("<{ty} as LogicalType>::expression"))
             } else {
-                format!("{ty}::expression")
+                Expr::path(format!("{ty}::expression"))
             };
-            let mut segments = vec![format!("{slot_shape}::new(\"{name}\", {expression})")];
+            let mut shape = Expr::call(
+                format!("{slot_shape}::new"),
+                vec![Expr::string(name), expression],
+            );
             if let Some(namespace) = slot.namespace {
-                segments.push(format!(
-                    ".in_namespace(\"{}\")",
-                    self.names.resolve(namespace)
-                ));
+                shape = shape.method(
+                    "in_namespace",
+                    vec![Expr::string(self.names.resolve(namespace))],
+                );
             }
-            let single = format!("    {},", segments.join(""));
-            if single.len() <= CHAIN_WIDTH || segments.len() == 1 {
-                out.line(&single);
-            } else {
-                out.line(&format!("    {}", segments[0]));
-                for (at, segment) in segments.iter().enumerate().skip(1) {
-                    let comma = if at + 1 == segments.len() { "," } else { "" };
-                    out.line(&format!("        {segment}{comma}"));
-                }
-            }
+            shapes.push(shape);
         }
-        out.line("];");
+        out.assign(
+            &format!("pub(crate) const SLOTS: &[{slot_shape}] ="),
+            &Expr::Array(shapes),
+            0,
+        );
         Ok(rust_file(&out.finish()))
     }
 
@@ -1020,7 +1043,7 @@ impl Emission<'_> {
     /// declarations, and the one reader.
     fn processors_mod_rs(&self) -> Result<String, Error> {
         let mut sorted: Vec<String> = self.items.iter().map(|item| item.ty.clone()).collect();
-        sorted.sort();
+        sorted.sort_by(|a, b| version_order(a, b));
         sorted.dedup();
 
         let mut out = Out::new();
@@ -1042,11 +1065,13 @@ impl Emission<'_> {
             .map(|doc| doc.module.clone())
             .collect();
         let mut mods_sorted = modules.clone();
-        mods_sorted.sort();
+        mods_sorted.sort_by(|a, b| version_order(a, b));
         for module in &mods_sorted {
             out.line(&format!("mod {module};"));
         }
-        out.blank();
+        if !mods_sorted.is_empty() {
+            out.blank();
+        }
         let spelling = self.spelling;
         let item = self.item_enum;
         if spelling == Spelling::Imported {
@@ -1094,9 +1119,15 @@ impl Emission<'_> {
             out.line("        match self {");
             let covered = identity_arms.len();
             for (variant, accessor) in identity_arms {
-                out.line(&format!(
-                    "            Self::{variant}(value) => {option}::Some(value.{accessor}),"
-                ));
+                let some = format!("{option}::Some(value.{accessor})");
+                let arm = format!("            Self::{variant}(value) => {some},");
+                if arm.chars().count() <= 100 {
+                    out.line(&arm);
+                } else {
+                    out.line(&format!("            Self::{variant}(value) => {{"));
+                    out.line(&format!("                {some}"));
+                    out.line("            }");
+                }
             }
             // A wildcard over variants all named would be unreachable.
             let variants = self
@@ -1129,11 +1160,11 @@ impl Emission<'_> {
         }
         out.line("/// Every handler, by contributing document.");
         let handler = spelling.engine("Handler");
-        out.line(&format!("const HANDLERS: &[&[{handler}<{item}>]] = &["));
-        for module in &modules {
-            out.line(&format!("    {module}::HANDLERS,"));
-        }
-        out.line("];");
+        out.assign(
+            &format!("const HANDLERS: &[&[{handler}<{item}>]] ="),
+            &module_tables(&modules, "HANDLERS"),
+            0,
+        );
         out.blank();
         let (kind_word, kind_path) = match self.kind {
             DefinitionKind::Dialect => ("dialect", "Dialect"),
@@ -1143,19 +1174,26 @@ impl Emission<'_> {
             "/// Everything this processor declares about the {kind_word} it reads."
         ));
         let declarations = spelling.engine("Declarations");
-        out.line(&format!(
-            "pub static DECLARATIONS: {declarations}<{item}> ="
-        ));
-        out.line(&format!(
-            "    {declarations}::new({}::{kind_path}, \"{}\", \"{}\")",
-            spelling.engine("DefinitionKind"),
-            self.name,
-            self.version
-        ));
-        out.line("        .types(types::TYPES)");
-        out.line("        .nodes(bindings::NODES)");
-        out.line("        .slots(contexts::SLOTS)");
-        out.line("        .handlers(HANDLERS);");
+        let value = Expr::call(
+            format!("{declarations}::new"),
+            vec![
+                Expr::path(format!(
+                    "{}::{kind_path}",
+                    spelling.engine("DefinitionKind")
+                )),
+                Expr::literal(format!("{:?}", self.name)),
+                Expr::literal(format!("{:?}", self.version)),
+            ],
+        )
+        .method("types", vec![Expr::path("types::TYPES")])
+        .method("nodes", vec![Expr::path("bindings::NODES")])
+        .method("slots", vec![Expr::path("contexts::SLOTS")])
+        .method("handlers", vec![Expr::path("HANDLERS")]);
+        out.assign(
+            &format!("pub static DECLARATIONS: {declarations}<{item}> ="),
+            &value,
+            0,
+        );
         out.blank();
         let (param, reads) = match self.kind {
             DefinitionKind::Dialect => ("dialect", "definitions written in the compiled dialect"),
@@ -1163,12 +1201,20 @@ impl Emission<'_> {
         };
         let definition = spelling.engine("Definition");
         let typed_reader = spelling.engine("TypedReader");
-        let returns = format!(
-            "{}<{typed_reader}<'_, {item}>, {}<{}>>",
-            spelling.path("core::result", "Result"),
+        let ok = format!("{typed_reader}<'_, {item}>");
+        let err = format!(
+            "{}<{}>",
             spelling.path("std::vec", "Vec"),
             spelling.path("kdlith_diagnostic", "DiagnosticRecord")
         );
+        let result = spelling.path("core::result", "Result");
+        // `) -> {returns} {` on one line, else the generic arguments
+        // one per line, as rustfmt breaks a return type.
+        let returns = if format!(") -> {result}<{ok}, {err}> {{").chars().count() <= 100 {
+            format!("{result}<{ok}, {err}>")
+        } else {
+            format!("{result}<\n    {ok},\n    {err},\n>")
+        };
         out.line(&format!("/// A reader of {reads} `{param}`."));
         match spelling {
             Spelling::Imported => out.line(&format!(
@@ -1341,43 +1387,40 @@ impl Emission<'_> {
         out.line(&format!("use super::{item_enum};"));
         out.use_list("crate::types", &types);
         out.blank();
-        let handlers: Vec<String> = items
+        let handlers = items
             .iter()
             .map(|item| {
                 let (ty, role) = (&item.ty, if item.record { "record" } else { "declaration" });
                 if item.keyed {
                     let node = self.names.resolve(item.node.name);
                     let variant = &item.variant;
-                    return format!(
-                        "{handler_path}::{role}_with::<{ty}>(|fields| \
-                         {read_fields}(fields).map({item_enum}::{variant}))\
-                         .node(\"{node}\")"
-                    );
+                    let read = Expr::call(read_fields.clone(), vec![Expr::path("fields")])
+                        .method("map", vec![Expr::path(format!("{item_enum}::{variant}"))]);
+                    let closure = Expr::Closure {
+                        param: "fields".to_owned(),
+                        body: Box::new(read),
+                    };
+                    return Expr::turbofish(
+                        format!("{handler_path}::{role}_with"),
+                        ty,
+                        vec![closure],
+                    )
+                    .method("node", vec![Expr::string(node)]);
                 }
-                let handler = format!("{handler_path}::{role}::<{ty}>()");
+                let handler = Expr::turbofish(format!("{handler_path}::{role}"), ty, Vec::new());
                 // A typeless node's items carry the node's name.
                 if item.local {
-                    format!("{handler}.named(\"{}\")", item.item_name)
+                    handler.method("named", vec![Expr::string(&item.item_name)])
                 } else {
                     handler
                 }
             })
             .collect();
-        let single = format!(
-            "pub(crate) const HANDLERS: &[{handler_path}<{item_enum}>] = &[{}];",
-            handlers.join(", ")
+        out.assign(
+            &format!("pub(crate) const HANDLERS: &[{handler_path}<{item_enum}>] ="),
+            &Expr::Array(handlers),
+            0,
         );
-        if single.len() <= LIST_WIDTH {
-            out.line(&single);
-        } else {
-            out.line(&format!(
-                "pub(crate) const HANDLERS: &[{handler_path}<{item_enum}>] = &["
-            ));
-            for handler in &handlers {
-                out.line(&format!("    {handler},"));
-            }
-            out.line("];");
-        }
         rust_file(&out.finish())
     }
 
@@ -1448,54 +1491,45 @@ pub(crate) fn placement_parents(
         .collect()
 }
 
-/// One node declaration's `NodeShape` entry, wrapped per the pinned
-/// chain width.
-fn node_shape(entry: &NodeEntry, constant: Option<&str>) -> String {
-    let mut segments = vec![format!("NodeShape::new(\"{}\")", entry.name)];
+/// One node declaration's `NodeShape` entry.
+fn node_shape(entry: &NodeEntry, constant: Option<&str>) -> Expr {
+    let mut shape = Expr::call("NodeShape::new", vec![Expr::string(&entry.name)]);
     if !entry.parents.is_empty() {
-        match constant {
-            Some(constant) => segments.push(format!(".under({constant})")),
-            None => segments.push(format!(
-                ".under(&[{}])",
-                entry
-                    .parents
-                    .iter()
-                    .map(|parent| format!("\"{parent}\""))
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            )),
-        }
+        let parents = match constant {
+            Some(constant) => Expr::path(constant),
+            None => Expr::Array(entry.parents.iter().map(|p| Expr::string(p)).collect()),
+        };
+        shape = shape.method("under", vec![parents]);
         if entry.root {
-            segments.push(".also_root()".to_owned());
+            shape = shape.method("also_root", Vec::new());
         }
     }
     if let Some(role) = entry.role {
-        segments.push(match role {
-            Role::Record => ".record()".to_owned(),
-            Role::Declaration => ".declaration()".to_owned(),
-            Role::Contribution => ".contribution()".to_owned(),
-            Role::ContextControl => ".context_control()".to_owned(),
-            Role::SourceImport => ".source_import()".to_owned(),
-            Role::Container => ".container()".to_owned(),
+        let role = match role {
+            Role::Record => "record",
+            Role::Declaration => "declaration",
+            Role::Contribution => "contribution",
+            Role::ContextControl => "context_control",
+            Role::SourceImport => "source_import",
+            Role::Container => "container",
             _ => unreachable!("every role is spelled"),
-        });
+        };
+        shape = shape.method(role, Vec::new());
     }
     if let Some(ty) = &entry.ty {
-        segments.push(format!(".ty(\"{ty}\")"));
+        shape = shape.method("ty", vec![Expr::string(ty)]);
     }
-    let single = format!("    {},", segments.join(""));
-    if single.len() <= CHAIN_WIDTH {
-        return single;
-    }
-    let mut lines = format!("    {}", segments[0]);
-    for (at, segment) in segments.iter().enumerate().skip(1) {
-        if at + 1 == segments.len() {
-            let _ = write!(lines, "\n        {segment},");
-        } else {
-            let _ = write!(lines, "\n        {segment}");
-        }
-    }
-    lines
+    shape
+}
+
+/// A module-level table of each module's table `name`, in order.
+fn module_tables(modules: &[String], name: &str) -> Expr {
+    Expr::Array(
+        modules
+            .iter()
+            .map(|module| Expr::path(format!("{module}::{name}")))
+            .collect(),
+    )
 }
 
 /// Parent lists shared by two or more nodes with three or more parents

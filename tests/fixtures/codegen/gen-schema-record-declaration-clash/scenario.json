@@ -1,0 +1,78 @@
+{
+  "binary": "kdlith",
+  "kind": "codegen-oracle",
+  "description": "gen schema generates a schema whose record and declaration share the node name host and read as one item variant through their own types: a root host record of type Host, and a host declaration of type Kind inside a profile beside a zone declaration binding Kind too. Each clashing item keys its own variant by node, suffixed with its role (HostRecord, HostDeclaration), deterministically and independent of declaration order, while zone keeps its node-keyed variant; the crate generates twice into byte-identical trees, the item enum and each role's node handler are pinned by text, the crate compiles inside a scratch workspace materialized from this scenario's committed template, and the compiled consumer reads the committed data document through the generated reader, matching every role-keyed variant exhaustively and naming each declaration through the generated name accessor",
+  "form": "schema",
+  "entrypoint": "inputs/schema.kdl",
+  "crate": "fleet-proc",
+  "steps": [
+    {
+      "generate": "ws/rs/fleet-proc"
+    },
+    {
+      "generate": "gen-again"
+    },
+    {
+      "determinism": [
+        "ws/rs/fleet-proc",
+        "gen-again"
+      ]
+    },
+    {
+      "exercise": {
+        "command": [
+          "cat",
+          "ws/rs/fleet-proc/src/processors/mod.rs",
+          "ws/rs/fleet-proc/src/processors/schema_kdl.rs"
+        ],
+        "stdout-contains": [
+          "    pub enum Item {\n        Host => HostRecord,\n        Kind => HostDeclaration | Zone,\n    }\n",
+          "    ::kdlith_engine::Handler::record_with::<Host>(|fields| {\n        ::kdlith_engine::read_fields(fields).map(Item::HostRecord)\n    })\n    .node(\"host\"),\n",
+          "    ::kdlith_engine::Handler::declaration_with::<Kind>(|fields| {\n        ::kdlith_engine::read_fields(fields).map(Item::HostDeclaration)\n    })\n    .node(\"host\"),\n"
+        ]
+      }
+    },
+    {
+      "compile": {
+        "workspace": "ws",
+        "copy": {
+          "crates": [
+            "diagnostic",
+            "engine",
+            "model",
+            "parse",
+            "runtime",
+            "superproc"
+          ],
+          "kdl": true
+        },
+        "command": [
+          "cargo",
+          "build",
+          "--offline",
+          "--manifest-path",
+          "ws/rs/fleet-proc/Cargo.toml"
+        ]
+      }
+    },
+    {
+      "exercise": {
+        "command": [
+          "cargo",
+          "run",
+          "--offline",
+          "--quiet",
+          "--manifest-path",
+          "ws/rs/exercise/Cargo.toml",
+          "--",
+          "inputs/schema.kdl",
+          "inputs/data.kdl"
+        ],
+        "stdout-contains": [
+          "schema ok digest=da5c9bc56f46e18a\n",
+          "read ok items=4\nhost record path=pkg/a name=-\nhost declaration kind=cargo name=cargo\nzone kind=eu name=eu\nhost record path=pkg/b name=-\n"
+        ]
+      }
+    }
+  ]
+}

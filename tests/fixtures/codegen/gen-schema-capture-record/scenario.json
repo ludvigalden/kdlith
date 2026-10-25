@@ -4,17 +4,17 @@
   "description": "Record-level context capture through a generated crate: gen schema generates a committed self-contained schema whose root region control sets its slot for its children only, twice into scratch trees the harness requires byte-identical; the generated crate compiles inside a scratch workspace materialized from this scenario's committed template beside a consumer depending on the generated crate alone. The compiled processor reads a committed data document that imports one part and its byte-identical copy under repeated=instantiate through its typed reader twice: unarmed, every document, record, and declaration carries no captured slot; asked to capture region, each record and declaration carries the slot as that item binds under it, beside the declaring node's name — the bin declaration and the pick record inside the region block carry its value, matching the value the pick's context-sourced field bound, while the fruit records around the block carry it unset, as each document item does at its first node. The import of the copy shares the part's invocation identity, so it replays the first's bound result, and its records carry the same captured values as the bound ones",
   "form": "schema",
   "entrypoint": "inputs/shelf.kdl",
-  "crate": "shelf-proc",
+  "crate": "capture-proc",
   "steps": [
     {
-      "generate": "ws/rs/shelf-proc"
+      "generate": "ws/rs/capture-proc"
     },
     {
       "generate": "gen-again"
     },
     {
       "determinism": [
-        "ws/rs/shelf-proc",
+        "ws/rs/capture-proc",
         "gen-again"
       ]
     },
@@ -37,7 +37,7 @@
           "build",
           "--offline",
           "--manifest-path",
-          "ws/rs/shelf-proc/Cargo.toml"
+          "ws/rs/capture-proc/Cargo.toml"
         ]
       }
     },
