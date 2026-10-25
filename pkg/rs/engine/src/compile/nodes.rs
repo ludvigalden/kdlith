@@ -396,11 +396,10 @@ fn field_binding(
     })
 }
 
-/// The sources listed in a `from` block (`top`) or inside a nested
-/// `child`/`children` source, which admits only the positional, property,
-/// and child sources. A `children-group` reference appears only at the
-/// top level, held as a pending group source until every declaration is
-/// read.
+/// The sources listed in a `from` block (`top`) or in a nested
+/// `child`/`children` source (positional, property, and child only).
+/// A `children-group` reference appears only at the top level, held
+/// pending until every declaration is read.
 fn source_list(
     cx: &mut Cx<'_>,
     doc: usize,

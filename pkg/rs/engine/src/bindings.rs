@@ -278,10 +278,9 @@ pub struct FieldBinding {
     /// An inline type expression; absent when the node's type gives it.
     pub ty: Option<TypeExpr>,
     pub sources: Vec<Source>,
-    /// Pending `children-group` from-sources: the group expansion pass
-    /// splices one children source per member into `sources` at
-    /// `position` once every declaration is read, so the expanded
-    /// binding is exactly the hand-written repeated-source form.
+    /// Pending `children-group` from-sources, spliced one children
+    /// source per member into `sources` at `position` by the group
+    /// expansion pass — the hand-written repeated-source form.
     pub(crate) pending_groups: Vec<PendingGroupSource>,
     /// Required when two or more alternative sources (not `children` or
     /// `context`) populate the field; with `reject`, supplying more than

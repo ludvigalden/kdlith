@@ -172,13 +172,10 @@ fn parents(cx: &mut Cx<'_>, decl: &mut NodeDecl, complete: bool) {
     };
 }
 
-/// Each pending `children-group` from-source becomes one children source
-/// per member, spliced into the field's sources at the reference's
-/// position, in member order — exactly the hand-written repeated-source
-/// form. Unlike a children rule, which only grants permission and is
-/// safely left unresolved under local checking, a from source decides
-/// where a field's data comes from: an unresolvable group reference
-/// fails closed under every checking scope, never silently dropped.
+/// Each pending `children-group` from-source splices one children
+/// source per member at the reference's position (member order).
+/// A from source decides where data comes from, so an unresolved
+/// name fails closed under every checking scope.
 fn sources(cx: &mut Cx<'_>, decl: &mut NodeDecl) {
     for field in &mut decl.fields {
         if field.pending_groups.is_empty() {
@@ -199,7 +196,9 @@ fn sources(cx: &mut Cx<'_>, decl: &mut NodeDecl) {
                     compact: false,
                 })
                 .collect::<Vec<_>>();
-            field.sources.splice(group.position..group.position, spliced);
+            field
+                .sources
+                .splice(group.position..group.position, spliced);
         }
     }
 }
