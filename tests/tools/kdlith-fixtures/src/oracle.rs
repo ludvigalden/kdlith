@@ -34,20 +34,28 @@ pub(crate) fn run(scenario: &CodegenOracle, cwd: &Path, env: &RunEnv<'_>) -> Res
     Ok(())
 }
 
-/// The repository root above the suite: the nearest ancestor holding
-/// the workspace manifest and the reference processor. The compile
-/// step's copies and the `{fx-repo}` placeholder resolve against it.
+/// Resolve the repository root: an explicit `KDLITH_FX_REPO` override
+/// when it names a root holding the workspace manifest and the
+/// reference processor, else the nearest such ancestor of the suite.
+/// The override keeps runs under an external scratch root working —
+/// the suite copy may sit below no repository at all — and a value
+/// that fails the check is a loud failure, never a silent fallback
+/// that could mask a stale inherited root.
 fn locate_repo(suite: &Path) -> Result<PathBuf, String> {
+    if let Some(value) = std::env::var_os(ENV_REPO) {
+        let root = PathBuf::from(&value);
+        return if is_repo_root(&root) {
+            Ok(root)
+        } else {
+            Err(format!(
+                "{ENV_REPO} names {}, which is not a repository root holding Cargo.toml and pkg/rs/superproc/Cargo.toml",
+                root.display()
+            ))
+        };
+    }
     let mut dir = suite.to_path_buf();
     loop {
-        if dir.join("Cargo.toml").is_file()
-            && dir
-                .join("pkg")
-                .join("rs")
-                .join("superproc")
-                .join("Cargo.toml")
-                .is_file()
-        {
+        if is_repo_root(&dir) {
             return Ok(dir);
         }
         if !dir.pop() {
@@ -57,6 +65,16 @@ fn locate_repo(suite: &Path) -> Result<PathBuf, String> {
             ));
         }
     }
+}
+
+fn is_repo_root(dir: &Path) -> bool {
+    dir.join("Cargo.toml").is_file()
+        && dir
+            .join("pkg")
+            .join("rs")
+            .join("superproc")
+            .join("Cargo.toml")
+            .is_file()
 }
 
 /// Placeholder expansion against the suite root and the repository

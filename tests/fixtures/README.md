@@ -497,9 +497,12 @@ Each entry of `steps` is an object carrying exactly one step kind:
   declared command and judge its exit and stream substrings, as a
   positive control does.
 
-The `{fx-repo}` placeholder expands to the repository root above the
-suite (also exported as `KDLITH_FX_REPO` to the run's subprocesses), so
-a compare step can name the read-only reference tree. The workspace a
+The `{fx-repo}` placeholder expands to the resolved repository root —
+an explicit `KDLITH_FX_REPO` override when it names a repository root,
+else the nearest one above the suite (the override is re-exported as
+`KDLITH_FX_REPO` to the run's subprocesses) — so a compare step can
+name the read-only reference tree and a suite materialized under an
+external scratch root still resolves the repository. The workspace a
 compile step builds exists to satisfy the generated crate's own pinned
 layout — its `../<name>` path dependencies and its
 `include_str!("../../../kdl/...")` seed includes — so the crate
@@ -604,8 +607,11 @@ symlinks and special files. The binary then runs:
 - and with `KDLITH_FX_SUITE`, `KDLITH_FX_KDLITH`, `KDLITH_FX_SCRATCH`, and
   `KDLITH_FX_SCENARIO` exported.
 
-A codegen-oracle run also exports `KDLITH_FX_REPO`, the repository root
-above the suite, to every subprocess its steps start, and sets
+A codegen-oracle run also exports `KDLITH_FX_REPO`, the resolved
+repository root (an explicit override when one is set, else the nearest
+root above the suite; an inherited value naming a root is honored, a
+value naming anything else is a loud failure), to every subprocess its
+steps start, and sets
 `CARGO_TARGET_DIR` to `cargo-target/` inside the run directory, so the
 compile and exercise steps of two suite runs at once never build into
 one shared target directory. The directory is torn down with the run.
