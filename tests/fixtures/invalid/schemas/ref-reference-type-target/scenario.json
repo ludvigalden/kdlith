@@ -1,12 +1,16 @@
 {
   "binary": "kdlith",
-  "description": "A ref<T> whose target names a declared reference type rather than a type is refused at definition compile, since ref<T> looks its target up among types only",
+  "description": "A ref<T> whose target names a declared reference type rather than a type is refused at definition compile with the honest SCH001 message, since ref<T> looks its target up among types only: exit 1, stderr pinned byte for byte",
   "args": [
     "vet",
     "schema",
     "input.kdl"
   ],
-  "expect-invalid": {
-    "input": "expect-invalid.txt"
+  "expect": {
+    "exit": 1,
+    "stderr-contains": [
+      "error[KDLITH-SCH001]"
+    ],
+    "stderr-golden": "stderr.golden"
   }
 }
