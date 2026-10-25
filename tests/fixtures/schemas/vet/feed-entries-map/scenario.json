@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "The passing form of an entries-fed map field: group's labels is ordered-map<String, Label>, the entries value= names Label, and the entry node label declares type=Label, so the three names agree, the conformance pass agrees, and the definition vets clean; the failing twin is invalid/schemas/feed-entries-type-mismatch",
+  "args": [
+    "vet",
+    "schema",
+    "schema.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "ok: schema probes version 1 scope=complete documents=1 types=2 nodes=2 slots=0 profiles=0 digest=cc63cfac09a2e9a9"
+    ]
+  }
+}

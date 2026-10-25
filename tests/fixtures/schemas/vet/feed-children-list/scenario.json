@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "The passing form of a children-fed list field: holder's parts is list<Widget> and the child part (no role, placed under holder) binds Widget whole, so the conformance pass agrees and the definition vets clean; the failing twin is invalid/schemas/feed-children-type-mismatch",
+  "args": [
+    "vet",
+    "schema",
+    "schema.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "ok: schema probes version 1 scope=complete documents=1 types=2 nodes=2 slots=0 profiles=0 digest=8d64e9dad6779a65"
+    ]
+  }
+}

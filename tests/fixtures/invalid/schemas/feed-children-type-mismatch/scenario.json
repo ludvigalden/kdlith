@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A children-fed list field typed as the wrong element kind: holder's parts is list<String> but the child part binds Widget whole, so the conformance pass refuses with KDLITH-SCH020 at the field's site; the passing twin is schemas/vet/feed-children-list",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

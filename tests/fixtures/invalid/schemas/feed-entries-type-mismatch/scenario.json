@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "An entries-fed map field whose value type disagrees with the entry node's type: group's labels is ordered-map<String, String> but the entry node label declares type=Label and binds Label, so the conformance pass refuses with KDLITH-SCH020 at the field's site; the passing twin is schemas/vet/feed-entries-map",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "The passing form of a union field fed by a case-dispatched child: panel declares no role and is placed under board, and every case-selected type (Plain, Rich) is held as a variant type of the field's union Choice, so the conformance pass agrees and the definition vets clean; the failing twin (role'd, unparented panel) is invalid/schemas/feed-child-unplaced-union",
+  "args": [
+    "vet",
+    "schema",
+    "schema.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "ok: schema probes version 1 scope=complete documents=1 types=4 nodes=2 slots=0 profiles=0 digest=5268fba53cf1a453"
+    ]
+  }
+}

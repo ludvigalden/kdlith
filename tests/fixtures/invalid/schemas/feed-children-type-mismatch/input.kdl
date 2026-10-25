@@ -1,0 +1,10 @@
+schema probes version="1" {
+    types {
+        object Widget { field size String }
+        object Holder { field parts "list<String>" }
+    }
+    node holder role=record type=Holder {
+        field parts { from { children part } }
+    }
+    node part type=Widget parent=holder { field size arg=0 }
+}

@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A union-typed field fed by a case-dispatched child that declares no parent and carries role=record: the child emits as its own item and never routes to the field, and no node of its name is placed under the owner, so the field would bind one positional scalar; the conformance pass refuses with KDLITH-SCH020 at the field's site; the passing twin (parent placed, no role, every case type held as a union variant) is schemas/vet/feed-union-child",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

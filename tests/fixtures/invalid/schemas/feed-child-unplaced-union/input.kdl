@@ -1,0 +1,22 @@
+schema probes version="1" {
+    types {
+        object Plain { field label String }
+        object Rich { field label String }
+        union Choice {
+            variant plain Plain
+            variant rich Rich
+        }
+        object Board { field control Choice }
+    }
+    node board role=record type=Board {
+        field control { from { child panel } }
+    }
+    node panel role=record {
+        field kind String property=kind
+        field label String arg=0
+        cases {
+            case property=kind equals="plain" type=Plain
+            case property=kind equals="rich" type=Rich
+        }
+    }
+}

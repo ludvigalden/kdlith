@@ -1,0 +1,17 @@
+schema probes version="1" {
+    types {
+        object Label { field text String }
+        object Group {
+            field name String
+            field labels "ordered-map<String, Label>"
+        }
+    }
+    node group role=declaration type=Group {
+        field name arg=0
+        field labels {
+            from { entries label key="arg(0)" value=Label }
+            duplicate-keys reject
+        }
+    }
+    node label type=Label parent=group { field text arg=1 }
+}
