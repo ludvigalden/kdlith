@@ -1,0 +1,14 @@
+schema panels version="1" {
+    types {
+        object Icon { field glyph String }
+        object Board {
+            field icons "list<Icon>"
+        }
+    }
+    node board role=record type=Board {
+        field icons { from { children icon } }
+    }
+    node icon type=Icon {
+        field glyph arg=0
+    }
+}

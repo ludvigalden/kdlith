@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A list-typed field fed by a children source naming a node that declares no parent: no node of that name is placed under the owner, so the binder hands the field one positional scalar per occurrence, and the conformance pass refuses with KDLITH-SCH020 at the field's site; the passing twins are schemas/vet/feed-children-list (a placed children-fed list) and the placement spelling of schemas/vet/when-branches",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

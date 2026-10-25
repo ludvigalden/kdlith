@@ -10,14 +10,17 @@
 //! newtypes pass to `resolve` and call the carrier's methods through
 //! `Deref`, with no `.0`; finally read each
 //! document again and print every declaration's provenance: its shown
-//! path and line, and the namespace of the import that loaded it. Every name
-//! the exercise spells comes from the generated crate alone.
+//! path and line, and the namespace of the import that loaded it. Each
+//! linked reading also iterates its declarations as their own generated
+//! types and looks a contribution's settled value up by its own target
+//! and scope, which reports none under this resolver-less reader. Every
+//! name the exercise spells comes from the generated crate alone.
 
 use std::path::{Path, PathBuf};
 
 use linking_proc::types::{
-    ConfigPathRef, ConfigVarDef, ConfigVarRef, Depends, InputSetDef, InputSetRef, Pin, Takes,
-    ToolDef, ToolRef, Use,
+    ConfigPathRef, ConfigVarDef, ConfigVarRef, Depends, InputSetDef, InputSetRef, Overlay, Pin,
+    Takes, ToolDef, ToolRef, Use,
 };
 use linking_proc::{
     CheckScope, DiagnosticRecord, Extensions, Item, ItemVariant, LinkOutcome, Location, Origin,
@@ -203,6 +206,35 @@ fn print_linked(document: &Path, reading: &Reading<Item>) {
         reading.duplicates().len(),
         reading.diagnostics().len(),
     );
+    // The reading's declarations iterated as their own generated
+    // types, and a contribution's settled value looked up by its own
+    // target and scope: this reader installs no contribution
+    // resolver, so the reading settles nothing and the lookup reports
+    // none — the reading surface answers, never a default.
+    let tools: Vec<String> = reading.declarations::<ToolDef>().map(tool).collect();
+    let vars: Vec<String> = reading.declarations::<ConfigVarDef>().map(config_var).collect();
+    println!(
+        "declared ToolDef=[{}] ConfigVarDef=[{}]",
+        tools.join(","),
+        vars.join(",")
+    );
+    for item in reading.items() {
+        let TypedItem::Contribution(contribution) = item else {
+            continue;
+        };
+        let settled =
+            reading.settled_by::<Overlay>(&contribution.target, contribution.scope.as_deref());
+        let outcome = match settled {
+            Some(Ok(_)) => "settled",
+            Some(Err(_)) => "mismatch",
+            None => "-",
+        };
+        println!(
+            "settled-by target={} scope={} {outcome}",
+            contribution.target.written,
+            contribution.scope.as_deref().unwrap_or("-"),
+        );
+    }
     for entry in &report.types {
         for link in &entry.links {
             let candidates: Vec<String> = link

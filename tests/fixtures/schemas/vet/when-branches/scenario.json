@@ -9,7 +9,7 @@
   "expect": {
     "exit": 0,
     "stdout-contains": [
-      "ok: schema ui version 1 scope=complete documents=1 types=4 nodes=3 slots=0 profiles=0 digest=120dca5d402dc79f"
+      "ok: schema ui version 1 scope=complete documents=1 types=4 nodes=3 slots=0 profiles=0 digest=5d4bfff0cc0c05df"
     ]
   }
 }

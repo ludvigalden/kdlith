@@ -43,10 +43,10 @@ schema ui version="1" {
             when property=variant equals=plain max-occurs=0
         }
     }
-    node icon type=Icon {
+    node icon type=Icon parent=button {
         field glyph arg=0
     }
-    node menu type=Icon {
+    node menu type=Icon parent=button {
         field glyph arg=0
     }
 }

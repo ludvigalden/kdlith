@@ -12,7 +12,10 @@
 //! union match with no wildcard arm and the generated object rebuild
 //! by a struct literal. The generated string newtype keys a map looked
 //! up by `&str` and formats as its text, and each item names itself
-//! through its identity field, or nothing for a record.
+//! through its identity field, or nothing for a record. Last, the
+//! reading collected whole iterates its option declarations through
+//! the generated type and looks each settled contribution up by
+//! target and scope on the reading surface alone.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -102,6 +105,35 @@ fn main() {
         tally.resolutions.len(),
         tally.codes.join(",")
     );
+
+    // The reading collected whole: its declarations iterate as their
+    // own generated type, and the settled contribution for a target
+    // the reading holds is looked up by target and scope on the
+    // reading surface alone — no forward scan joining contributions
+    // to their resolutions.
+    let collected = layered.collect(&[data]).unwrap_or_else(|error| {
+        eprintln!("layered-exercise: collecting {} broke: {error}", data.display());
+        std::process::exit(1);
+    });
+    let choices: Vec<&str> = collected
+        .declarations::<Choice>()
+        .map(|choice| choice.name.as_str())
+        .collect();
+    println!("collected choices={}", choices.join(","));
+    for item in collected.items() {
+        let TypedItem::Contribution(contribution) = item else {
+            continue;
+        };
+        let target = &contribution.target.written;
+        let scope = contribution.scope.as_deref().unwrap_or("-");
+        let settled = collected.settled_by::<Setting>(&contribution.target, contribution.scope.as_deref());
+        let outcome = match settled {
+            Some(Ok(setting)) => format!("settled={}", setting.value),
+            Some(Err(mismatch)) => format!("mismatch={mismatch}"),
+            None => "-".to_owned(),
+        };
+        println!("settled-by target={target} scope={scope} {outcome}");
+    }
 }
 
 #[derive(Default)]
