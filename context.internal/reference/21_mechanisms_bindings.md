@@ -59,7 +59,10 @@ carrying the property's value as argument 0, opened and closed at the
 property's position — before the node's block children, in property
 order, meeting union dispatch, occurrence bounds, and duplicate
 detection exactly as the child would. Several properties are several
-sibling children, never an implicit wrapper. The bound item stream is
+sibling children, never an implicit wrapper. A property cannot repeat
+a name (`KDLITH-SYN003`, checked before the splice), so a compact
+source admits at most one term per child name; repeating a name takes
+the block form. The bound item stream is
 the block spelling's; only the `origins` view tells the spellings
 apart, since a literal's origin is the property's span. A child
 admits the spelling only when its one argument fills everything it

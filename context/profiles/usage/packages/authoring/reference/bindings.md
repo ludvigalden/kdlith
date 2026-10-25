@@ -46,6 +46,10 @@ VALUE as its argument, at the property's position. It qualifies only
 when the child's one argument fills everything it binds; anything
 richer keeps the block form (`KDLITH-DLC005` on the source,
 `KDLITH-BND005` on a property spelling a non-compact child).
+Properties cannot repeat a name — a repeated property is
+`KDLITH-SYN003`, checked before the compact splice — so a compact
+source admits at most one term per child name; spelling a name more
+than once uses the block form.
 
 ## Cardinality and conditions
 

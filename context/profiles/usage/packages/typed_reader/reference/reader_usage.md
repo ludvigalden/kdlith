@@ -37,7 +37,11 @@ order. Each reading node's items stream as a variant of the crate's
 `Item` enum, named after the node's type (`Item::Widget`); when
 differently named nodes bind one type, each node keys its own
 variant (`Item::Widget`, `Item::Gadget`, `Item::Part`), and
-`ItemVariant<Widget>` matches all of them. The schema form also
+`ItemVariant<Widget>` matches all of them.
+`TypedItem::contribution::<C>()` decodes a preserved contribution's
+value — or a settled resolution's value once the reading's resolver
+has answered — as the type named at the call, and is `None` on every
+other item. The schema form also
 exposes `load`, `load_with(entries, extensions, scope,
 ReadOptions)`, and `load_sources` / `load_sources_with` for a schema
 held in memory.
@@ -63,10 +67,10 @@ with an `OpenError`.
 ## Re-exports
 
 The generated crate re-exports everything a tool needs
-(`CheckScope`, `Extensions`, `ReadOptions`, `ReadError`,
-`TypedReader`, `TypedItem`, `ItemVariant`, `Ref`, `Value`,
-`Reading`, `LinkReport`, `LinkOutcome`, `UnmetQualifier`,
-`ResolveError`, `Origin`, `Location`, `DiagnosticRecord`, `Asset`,
-`OpenError`, `Source`,
-`SourceTree`), so a host embeds its own schema library without
-depending on the engine crates directly.
+(`Asset`, `CheckScope`, `Extensions`, `FromValue`, `ItemVariant`,
+`LinkOutcome`, `LinkReport`, `Mismatch`, `OpenError`, `Origin`,
+`ReadError`, `ReadOptions`, `Reading`, `Ref`, `Regex`, `ResolveError`,
+`Source`, `SourceTree`, `TypedItem`, `TypedReader`, `UnmetQualifier`,
+`Value`, `matches_line`, plus `Location` and `DiagnosticRecord`), so
+a host embeds its own schema library without depending on the engine
+crates directly.

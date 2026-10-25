@@ -68,6 +68,10 @@ A declaration may carry an `identity { domain NAME compose
 qualified-name FIELD FIELD }` block composing its qualified symbol
 from bound fields, and `reference NAME target=TYPE codec=…
 qualification=explicit|explicit-or-context|imported-or-context`
-declares how reference values spell and resolve. Data fields typed
+declares how reference values spell and resolve. The identity block
+pins the declaration's domain whatever a `cases` block selects: an
+identity-bearing declaration registers under the block's domain even
+when case dispatch retypes it, while a declaration without one
+registers under the type the case selected. Data fields typed
 with a declared reference type bind structured references that
 linking resolves — see the `data` package's linking reference.
