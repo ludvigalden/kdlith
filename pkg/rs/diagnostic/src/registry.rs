@@ -712,6 +712,16 @@ pub const CODES: &[CodeDefinition] = &[
         correction: "Spell the rule's base min-occurs/max-occurs; they are the bounds when no branch matches",
         retired: false,
     },
+    CodeDefinition {
+        code: "KDLITH-SCH020",
+        label: "invalid-field-child-binding",
+        severity: Severity::Error,
+        exit_class: 1,
+        trigger: "a field a child, children, or entries source populates is typed other than the feeding node's bound type, or names a node holding a processing role, which emits as its own item and never feeds the field",
+        message_template: "node <node>: field <field> fed by <kind> <child> expects <expected>, but the child binds <types>",
+        correction: "Type the field as the child's bound type, give the child no role, or select the child's parts through nested sources",
+        retired: false,
+    },
     // BND
     CodeDefinition {
         code: "KDLITH-BND001",

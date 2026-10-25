@@ -8,6 +8,7 @@ mod conditions;
 mod conform;
 mod document;
 mod expansions;
+mod feed;
 mod groups;
 pub mod input;
 mod link;
@@ -236,6 +237,7 @@ fn finish<'d>(
             literals::run(&mut cx, &bindings);
             annotations::run(&mut cx, &bindings);
             conditions::run(&mut cx, &bindings);
+            feed::run(&mut cx, &bindings);
         }
     }
     if cx.diags.has_errors() {
