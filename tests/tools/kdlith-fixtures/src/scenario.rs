@@ -84,8 +84,10 @@ impl GenForm {
 #[derive(Debug)]
 pub(crate) enum OracleStep {
     /// Run the processor's `gen` form into `out` (relative to the
-    /// materialized copy); a nonzero exit fails the scenario.
-    Generate { out: String },
+    /// materialized copy) with the declared `args` appended after the
+    /// pinned argument shape; a nonzero exit fails the scenario, so a
+    /// gen flag the processor refuses fails here by construction.
+    Generate { out: String, args: Vec<String> },
     /// Require every named tree (relative to the materialized copy) to
     /// hold exactly the same files with exactly the same bytes.
     Determinism { trees: Vec<String> },
@@ -393,12 +395,39 @@ fn oracle_step(index: usize, value: &Value) -> Result<OracleStep, String> {
     }
     let mismatch = |kind: &str, want: &str| format!("{MANIFEST}: {what} {kind} must be {want}");
     if let Some(v) = obj.get("generate") {
-        let out = v
-            .as_str()
-            .ok_or_else(|| mismatch("generate", "a string output directory"))?;
-        return Ok(OracleStep::Generate {
-            out: contained(out, &format!("{what} generate output"))?,
-        });
+        let (out, args) = match v {
+            Value::String(out) => (
+                contained(out, &format!("{what} generate output"))?,
+                Vec::new(),
+            ),
+            Value::Object(spec) => {
+                check_keys(spec, &["out", "args"], &format!("{what} generate"))?;
+                let out = required_string(spec, "out")?;
+                let out = contained(&out, &format!("{what} generate output"))?;
+                let args = match spec.get("args") {
+                    None => Vec::new(),
+                    Some(list) => {
+                        let args = string_array(list, &format!("{what} generate args"))?;
+                        if args.is_empty() {
+                            return Err(format!(
+                                "{MANIFEST}: {what} generate args must not be empty"
+                            ));
+                        }
+                        for arg in &args {
+                            check_placeholder_string(arg, &format!("{what} generate args entry"))?;
+                        }
+                        args
+                    }
+                };
+                (out, args)
+            }
+            other => {
+                return Err(format!(
+                    "{MANIFEST}: {what} generate must be a string output directory or an object with \"out\", got {other}"
+                ));
+            }
+        };
+        return Ok(OracleStep::Generate { out, args });
     }
     if let Some(v) = obj.get("determinism") {
         let list = v

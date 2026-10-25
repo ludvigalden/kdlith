@@ -471,9 +471,14 @@ exercises. The keys beyond `binary` and `description`:
 
 Each entry of `steps` is an object carrying exactly one step kind:
 
-- `{ "generate": "out" }` — run `kdlith gen <form> <entrypoint> --crate
-  <crate> --out <out>`, plus `--source NAME=DIR` for each `sources`
-  entry; a nonzero exit fails the scenario.
+- `{ "generate": "out" }` or `{ "generate": { "out": "...", "args": [...] } }`
+  — run `kdlith gen <form> <entrypoint> --crate <crate> --out <out>`,
+  plus `--source NAME=DIR` for each `sources` entry; the object form's
+  `args` (optional, never empty, strings only) append after that pinned
+  argument shape in declared order, placeholders allowed, so a gen flag
+  reaches the processor without a declared command. The harness holds no
+  flag whitelist: a flag the processor refuses exits nonzero and fails
+  the scenario. A nonzero exit fails the scenario either way.
 - `{ "determinism": ["tree-a", "tree-b", ...] }` — require every named
   tree to hold exactly the same files with the same bytes; a difference
   names its path.

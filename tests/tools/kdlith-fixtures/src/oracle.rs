@@ -80,7 +80,7 @@ fn run_step(
     expansion: &Expansion<'_>,
 ) -> Result<(), String> {
     match step {
-        OracleStep::Generate { out } => generate(scenario, out, cwd, env, expansion),
+        OracleStep::Generate { out, args } => generate(scenario, out, args, cwd, env, expansion),
         OracleStep::Determinism { trees } => determinism(trees, cwd, env, expansion),
         OracleStep::Compare {
             generated,
@@ -108,10 +108,14 @@ fn run_step(
     }
 }
 
-/// Run the processor's `gen` form into `out`; a nonzero exit fails.
+/// Run the processor's `gen` form into `out` with the declared `args`
+/// appended after the pinned argument shape; a nonzero exit fails. The
+/// harness holds no flag whitelist: a flag the processor refuses
+/// reaches it and fails the step here.
 fn generate(
     scenario: &CodegenOracle,
     out: &str,
+    args: &[String],
     cwd: &Path,
     env: &RunEnv<'_>,
     expansion: &Expansion<'_>,
@@ -128,6 +132,9 @@ fn generate(
     for source in &scenario.sources {
         argv.push("--source".to_owned());
         argv.push(expansion.string(source, env));
+    }
+    for arg in args {
+        argv.push(expansion.string(arg, env));
     }
     let output = spawn(env.kdlith, &argv, cwd, env, expansion)
         .map_err(|e| format!("cannot run {}: {e}", env.kdlith.display()))?;
