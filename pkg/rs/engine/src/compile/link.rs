@@ -3,7 +3,7 @@
 //! unambiguous, and dependent targets must resolve.
 
 use crate::bindings::{
-    BindingCatalog, Effect, EffectTarget, NodeDecl, NodeDeclId, SetFrom, Source,
+    BindingCatalog, Effect, EffectTarget, NodeDecl, NodeDeclId, Role, SetFrom, Source,
 };
 use crate::compile::Cx;
 use crate::definition::{DefinitionKind, SlotDuplicates};
@@ -515,26 +515,48 @@ fn slot_ref(cx: &mut Cx<'_>, site: Site, slot: Sym) {
     }
 }
 
-/// A dependent value's `against`: the target field exists and holds a
-/// reference to a type declaring the member field. Either shape broken
-/// is malformed: the binder could only drop the payload silently.
+/// A dependent value's `against`: the node carries a role and a
+/// target field holding a reference — `ref<T>` or a declared
+/// reference type — to a type declaring the member. Any broken
+/// shape is malformed: the payload drops silently.
 fn dependent(
     cx: &mut Cx<'_>,
     node: &NodeDecl,
     label: &str,
     value: &crate::bindings::DependentBinding,
 ) {
+    let construct = format!("value binding of node {label}");
+    if node.role.is_none() {
+        let reason = format!(
+            "the node declares no role, so nothing binds its payload; declare role={}, \
+             role={}, role={}, role={}, role={}, or role={}",
+            Role::Record.name(),
+            Role::Declaration.name(),
+            Role::Contribution.name(),
+            Role::ContextControl.name(),
+            Role::SourceImport.name(),
+            Role::Container.name(),
+        );
+        cx.malformed(value.site, &construct, &reason);
+        return;
+    }
     let Some(binding) = node.fields.iter().find(|f| f.name == value.target) else {
         let spelled = format!("{} of node {label}", cx.names.resolve(value.target));
         unresolved(cx, value.site, "field", &spelled);
         return;
     };
-    let construct = format!("value binding of node {label}");
+    // A bare type name admits the field only when it names a declared
+    // reference type; the identity domain is that declaration's target.
     let target = match crate::plan::field_type(&cx.types, node, binding) {
         Some(TypeExpr::Ref(inner)) => match inner.as_ref() {
             TypeExpr::Named(target) => Some(*target),
             _ => None,
         },
+        Some(TypeExpr::Named(name)) => cx
+            .references
+            .iter()
+            .find(|decl| decl.name == *name)
+            .map(|decl| decl.target),
         _ => None,
     };
     let Some(target) = target else {
