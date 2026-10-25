@@ -262,6 +262,17 @@ fn expr(cx: &mut Cx<'_>, symbols: &SymbolCatalog, site: Site, ty: &TypeExpr, par
                 );
                 return;
             };
+            // A declared reference type is not unknown; the filled
+            // message names the actual fault, and the compile still
+            // fails closed here.
+            if symbols.reference(*target).is_some() {
+                let spelled = cx.names.resolve(*target).to_owned();
+                let message = format!(
+                    "{spelled} is a declared reference type; ref takes a declared type name"
+                );
+                cx.diags.error_with_message(UNKNOWN_TYPE, site, &message);
+                return;
+            }
             if !named(cx, site, *target) {
                 return;
             }

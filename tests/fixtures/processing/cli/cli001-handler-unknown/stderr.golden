@@ -1,3 +1,4 @@
 error[KDLITH-CLI001]: invalid value 'nope' for '--handler <NAME>': no built-in handler "nope"; the catalog carries clear-namespace, copy-fields, remove-fields
 
 For more information, try '--help'.
+  help: Pass a value of the documented form; see the command's --help

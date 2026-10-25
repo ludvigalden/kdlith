@@ -51,6 +51,17 @@ impl fmt::Display for UnknownFormat {
 
 impl StdError for UnknownFormat {}
 
+/// The registered correction of `code` as the `  help:` line the
+/// render path prints, or nothing when the code carries none.
+fn help_line(code: &str) -> String {
+    match lookup(code) {
+        Some(definition) if !definition.correction.is_empty() => {
+            format!("\n  help: {}", definition.correction)
+        }
+        _ => String::new(),
+    }
+}
+
 /// Report a clap parse outcome and decide the exit. `--help` and
 /// `--version` print to stdout and exit 0; every rejection goes to
 /// stderr under its registered code and exits 2.
@@ -61,12 +72,13 @@ pub(crate) fn report_parse_error(error: &ClapError) -> ExitStatus {
     }
     let rendered = error.render().to_string();
     let code = code_of(error);
+    let help = help_line(code);
     let text = match rendered.strip_prefix("error: ") {
-        Some(statement) => format!("error[{code}]: {statement}"),
+        Some(statement) => format!("error[{code}]: {}{help}\n", statement.trim_end()),
         // clap printed help because the command line named no
         // subcommand; the fault line follows the help text.
         None => format!(
-            "{}\nerror[{code}]: a subcommand is required but one was not provided\n",
+            "{}\nerror[{code}]: a subcommand is required but one was not provided{help}\n",
             rendered.trim_end()
         ),
     };
@@ -77,7 +89,10 @@ pub(crate) fn report_parse_error(error: &ClapError) -> ExitStatus {
 /// Report an argument-form fault the parser cannot see, such as a
 /// `help` path naming no command.
 pub(crate) fn report_invalid_argument(statement: &str) -> ExitStatus {
-    eprintln!("error[{INVALID_ARGUMENT}]: {statement}");
+    eprintln!(
+        "error[{INVALID_ARGUMENT}]: {statement}{}",
+        help_line(INVALID_ARGUMENT)
+    );
     ExitStatus::Usage
 }
 
@@ -89,8 +104,9 @@ pub(crate) fn report_inapplicable_view(view: &str, target: &str) -> ExitStatus {
         |definition| definition.message_template,
     );
     eprintln!(
-        "error[{INAPPLICABLE_VIEW}]: {}",
-        render(template, &[view, target])
+        "error[{INAPPLICABLE_VIEW}]: {}{}",
+        render(template, &[view, target]),
+        help_line(INAPPLICABLE_VIEW)
     );
     ExitStatus::Usage
 }

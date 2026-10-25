@@ -4,3 +4,4 @@ error[KDLITH-CLI001]: invalid value 'bogus' for '--view <VIEW>'
   tip: a similar value exists: 'bound'
 
 For more information, try '--help'.
+  help: Pass a value of the documented form; see the command's --help

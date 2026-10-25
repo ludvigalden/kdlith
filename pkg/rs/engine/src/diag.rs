@@ -106,6 +106,18 @@ impl<'d> Diagnostics<'d> {
         self.records.push(record);
     }
 
+    /// An error whose message the detecting layer filled in full
+    /// because the registered template cannot phrase the condition
+    /// honestly; the record's message wins over the template at
+    /// presentation.
+    pub(crate) fn error_with_message(&mut self, code: &'static str, site: Site, message: &str) {
+        let record = DiagnosticRecord::from_code(code)
+            .expect("engine diagnostic codes are registered and never retired")
+            .with_message(message)
+            .with_origin(self.origin);
+        self.records.push(self.located(record, site));
+    }
+
     /// A condition with a secondary label at an earlier site.
     pub(crate) fn labelled(
         &mut self,

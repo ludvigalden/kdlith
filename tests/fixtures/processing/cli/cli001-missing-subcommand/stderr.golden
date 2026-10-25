@@ -10,3 +10,4 @@ Commands:
 Options:
   -h, --help  Print help
 error[KDLITH-CLI001]: a subcommand is required but one was not provided
+  help: Pass a value of the documented form; see the command's --help

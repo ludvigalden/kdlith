@@ -1,1 +1,2 @@
 error[KDLITH-CLI004]: the bound view does not apply to a dialect target
+  help: Choose a view the target supports; see the command's --help

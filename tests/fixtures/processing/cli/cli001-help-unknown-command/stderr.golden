@@ -1,1 +1,2 @@
 error[KDLITH-CLI001]: unrecognized command 'nosuch'
+  help: Pass a value of the documented form; see the command's --help

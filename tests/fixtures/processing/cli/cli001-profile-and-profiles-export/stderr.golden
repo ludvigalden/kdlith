@@ -1,1 +1,2 @@
 error[KDLITH-CLI001]: the argument '--profile <NAME>' cannot be used with '--profiles <NAMES>'
+  help: Pass a value of the documented form; see the command's --help

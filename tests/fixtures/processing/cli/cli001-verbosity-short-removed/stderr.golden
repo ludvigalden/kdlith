@@ -3,3 +3,4 @@ error[KDLITH-CLI001]: unexpected argument '-v' found
 Usage: kdlith <COMMAND>
 
 For more information, try '--help'.
+  help: Pass a value of the documented form; see the command's --help

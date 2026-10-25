@@ -1,3 +1,4 @@
 error[KDLITH-CLI001]: invalid value '' for '--profiles <NAMES>': profiles takes NAME[,NAME...] with no empty name, not ""
 
 For more information, try '--help'.
+  help: Pass a value of the documented form; see the command's --help
