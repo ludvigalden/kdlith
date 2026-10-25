@@ -160,6 +160,7 @@ union_type! {
         "property" => Property(PropertySource),
         "child" => Child(ChildSource),
         "children" => Children(ChildrenSource),
+        "children-group" => ChildrenGroup(ChildrenGroupSource),
         "entries" => Entries(EntriesSource),
         "expand" => Expand(ExpandSource),
         "context" => Context(ContextSource),
@@ -195,6 +196,16 @@ object_type! {
         "name" => name: NodeName,
         "sources" => sources: Vec<Source>,
         "compact" => compact: Option<bool>,
+    }
+}
+
+object_type! {
+    /// A pending children-group reference in a from block: one children
+    /// source per member of the named group splices in at this source's
+    /// position when the schema is compiled, as the hand-written form
+    /// spells them.
+    pub struct ChildrenGroupSource {
+        "name" => name: NodeGroupName,
     }
 }
 
@@ -304,6 +315,7 @@ pub(crate) const TYPES: &[TypeShape] = &[
     PropertySource::SHAPE,
     ChildSource::SHAPE,
     ChildrenSource::SHAPE,
+    ChildrenGroupSource::SHAPE,
     EntriesSource::SHAPE,
     ExpandSource::SHAPE,
     ContextSource::SHAPE,

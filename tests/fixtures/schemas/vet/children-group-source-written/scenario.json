@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "The hand-written repeated-source control for schemas/vet/children-group-source: the same schema with the deck's cards field spelled as two explicit children sources instead of one children-group reference vets to the same digest line the spliced form pins, proving the group expansion desugars to exactly the repeated-source form (canonical summary and bound plan byte-identical)",
+  "args": [
+    "vet",
+    "schema",
+    "schema.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "ok: schema cards version 1 scope=complete documents=1 types=2 nodes=3 slots=0 profiles=0 digest=f593bebe02f6884f"
+    ]
+  }
+}

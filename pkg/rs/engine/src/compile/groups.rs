@@ -2,7 +2,7 @@
 //! `children-group` rule and `parents group=` reference expands to
 //! per-member rules and parents before scopes are built.
 
-use crate::bindings::{ChildRule, NodeDecl, Placement};
+use crate::bindings::{ChildRule, NodeDecl, Placement, Source};
 use crate::compile::Cx;
 use crate::compile::link::unresolved;
 use crate::definition::CheckScope;
@@ -57,6 +57,7 @@ pub(crate) fn expand(cx: &mut Cx<'_>) {
     for decl in &mut nodes {
         children(cx, decl, complete);
         parents(cx, decl, complete);
+        sources(cx, decl);
     }
     cx.nodes = nodes;
 }
@@ -169,4 +170,36 @@ fn parents(cx: &mut Cx<'_>, decl: &mut NodeDecl, complete: bool) {
         (true, false) => Placement::RootAndUnder(under),
         (false, _) => Placement::Under(under),
     };
+}
+
+/// Each pending `children-group` from-source becomes one children source
+/// per member, spliced into the field's sources at the reference's
+/// position, in member order — exactly the hand-written repeated-source
+/// form. Unlike a children rule, which only grants permission and is
+/// safely left unresolved under local checking, a from source decides
+/// where a field's data comes from: an unresolvable group reference
+/// fails closed under every checking scope, never silently dropped.
+fn sources(cx: &mut Cx<'_>, decl: &mut NodeDecl) {
+    for field in &mut decl.fields {
+        if field.pending_groups.is_empty() {
+            continue;
+        }
+        let pending = std::mem::take(&mut field.pending_groups);
+        // Positions are ascending, so splicing from the back keeps every
+        // earlier position valid.
+        for group in pending.iter().rev() {
+            let Some(members) = resolve(cx, group.site, group.name, true) else {
+                continue;
+            };
+            let spliced = members
+                .iter()
+                .map(|member| Source::Children {
+                    name: *member,
+                    sources: Vec::new(),
+                    compact: false,
+                })
+                .collect::<Vec<_>>();
+            field.sources.splice(group.position..group.position, spliced);
+        }
+    }
 }

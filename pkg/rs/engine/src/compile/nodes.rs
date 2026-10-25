@@ -5,8 +5,8 @@ use kdlith_model::Value;
 
 use crate::bindings::{
     BindingCodec, CaseRule, ChildRule, Collision, ContextPolicy, DependentBinding, DuplicateKeys,
-    Effect, EffectGroup, EffectTarget, FieldBinding, NodeAnnotation, NodeDecl, Placement, Role,
-    SetFrom, Source,
+    Effect, EffectGroup, EffectTarget, FieldBinding, NodeAnnotation, NodeDecl, PendingGroupSource,
+    Placement, Role, SetFrom, Source,
 };
 use crate::compile::Cx;
 use crate::compile::reader::Construct;
@@ -289,6 +289,7 @@ fn field_binding(
             policy: None,
         });
     }
+    let mut pending_groups: Vec<PendingGroupSource> = Vec::new();
     let mut collision = None;
     let mut duplicate_keys = None;
     let mut seen = [None; 3];
@@ -308,7 +309,15 @@ fn field_binding(
         }
         if slot == 0 {
             Construct::new(cx, doc, child).finish(cx);
-            sources.extend(source_list(cx, doc, child, true, 0));
+            let (listed, mut listed_pending) = source_list(cx, doc, child, true, 0);
+            // The from block's sources follow the shorthands, so every
+            // pending position shifts by the sources already held.
+            let offset = sources.len();
+            for group in &mut listed_pending {
+                group.position += offset;
+            }
+            pending_groups.append(&mut listed_pending);
+            sources.extend(listed);
             continue;
         }
         let mut policy = Construct::new(cx, doc, child);
@@ -328,7 +337,7 @@ fn field_binding(
             None => {}
         }
     }
-    if sources.is_empty() {
+    if sources.is_empty() && pending_groups.is_empty() {
         // A source rejected while reading is reported already; the field
         // is not also reported as having none.
         if cx.diags.count() == mark {
@@ -337,10 +346,13 @@ fn field_binding(
         }
         return None;
     }
+    // A pending children-group reference is a spelling of the field:
+    // its expansion is at least one children source.
     let spellings = sources
         .iter()
         .filter(|s| !matches!(s, Source::Context { .. } | Source::Expand { .. }))
-        .count();
+        .count()
+        + pending_groups.len();
     let alternatives = sources
         .iter()
         .filter(|s| {
@@ -377,6 +389,7 @@ fn field_binding(
         name: cx.names.intern(&name),
         ty,
         sources,
+        pending_groups,
         collision,
         duplicate_keys,
         site,
@@ -385,22 +398,25 @@ fn field_binding(
 
 /// The sources listed in a `from` block (`top`) or inside a nested
 /// `child`/`children` source, which admits only the positional, property,
-/// and child sources.
+/// and child sources. A `children-group` reference appears only at the
+/// top level, held as a pending group source until every declaration is
+/// read.
 fn source_list(
     cx: &mut Cx<'_>,
     doc: usize,
     node: &SyntaxNode,
     top: bool,
     depth: usize,
-) -> Vec<Source> {
+) -> (Vec<Source>, Vec<PendingGroupSource>) {
     let mut sources = Vec::new();
+    let mut pending_groups = Vec::new();
     if depth > MAX_SOURCE_DEPTH {
         cx.malformed(
             Site::new(doc, node.span),
             &node.name,
             &format!("sources nest deeper than {MAX_SOURCE_DEPTH}"),
         );
-        return sources;
+        return (sources, pending_groups);
     }
     for child in &node.children {
         let site = Site::new(doc, child.span);
@@ -428,7 +444,9 @@ fn source_list(
                     }
                 };
                 part.finish(cx);
-                let nested = source_list(cx, doc, child, false, depth + 1);
+                // Nested sources never carry a pending group: the
+                // children-group arm admits only at the top level.
+                let (nested, _) = source_list(cx, doc, child, false, depth + 1);
                 let Some(name) = name.filter(|n| cx.kebab(site, &label, n, "child name")) else {
                     continue;
                 };
@@ -447,6 +465,21 @@ fn source_list(
                     }
                 });
                 continue;
+            }
+            // Held as pending until every declaration is read; the
+            // shared tail extends nothing for it.
+            "children-group" if top => {
+                let name = part.string_arg(cx, 0, "node group name");
+                if let Some(name) =
+                    name.filter(|name| cx.kebab(site, &label, name, "node group name"))
+                {
+                    pending_groups.push(PendingGroupSource {
+                        position: sources.len(),
+                        name: cx.names.intern(&name),
+                        site,
+                    });
+                }
+                None
             }
             "entries" if top => {
                 let node_name = part.string_arg(cx, 0, "entry node");
@@ -487,7 +520,7 @@ fn source_list(
         part.finish_leaf(cx);
         sources.extend(source);
     }
-    sources
+    (sources, pending_groups)
 }
 
 fn entries(

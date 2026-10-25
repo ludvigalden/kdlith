@@ -55,6 +55,12 @@ pub(crate) fn type_doc(name: &str) -> Option<&'static [&'static str]> {
             "Declaration-group expansion: the entries of the named keyed member",
             "of the named declaration splice into the collection being bound.",
         ],
+        "ChildrenGroupSource" => &[
+            "A pending children-group reference in a from block: one children",
+            "source per member of the named group splices in at this source's",
+            "position when the schema is compiled, as the hand-written form",
+            "spells them.",
+        ],
         "AccumulateOp" => &[
             "How an accumulating effect combines with the slot's incoming",
             "value: append concatenates lists; merge combines maps key-wise.",

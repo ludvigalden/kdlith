@@ -160,6 +160,14 @@ published yet.
   members is the new `KDLITH-SCH015`, and a member naming no declared
   node or a child spelled both directly and through a group is
   `KDLITH-SCH005`.
+- A `children-group NAME` reference in a `from` block: one children
+  source per group member splices into the field's sources at the
+  reference's position when the schema is compiled, exactly the
+  hand-written repeated-source form, which changes the canonical
+  dialect digest. An undeclared group is `KDLITH-SCH006` under every
+  checking scope: unlike a children rule, which only grants permission,
+  a from source decides where a field's data comes from, so an
+  unresolvable reference is never silently dropped.
 - `root=#true` on a node declaration that also gives `parent=` or
   `parents` admits the node at the document root as well, so a
   recursive container that may also start a document needs one

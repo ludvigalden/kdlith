@@ -278,6 +278,11 @@ pub struct FieldBinding {
     /// An inline type expression; absent when the node's type gives it.
     pub ty: Option<TypeExpr>,
     pub sources: Vec<Source>,
+    /// Pending `children-group` from-sources: the group expansion pass
+    /// splices one children source per member into `sources` at
+    /// `position` once every declaration is read, so the expanded
+    /// binding is exactly the hand-written repeated-source form.
+    pub(crate) pending_groups: Vec<PendingGroupSource>,
     /// Required when two or more alternative sources (not `children` or
     /// `context`) populate the field; with `reject`, supplying more than
     /// one is an error even when the values are equal.
@@ -325,6 +330,16 @@ pub enum Source {
         slot: Sym,
         policy: Option<ContextPolicy>,
     },
+}
+
+/// A pending `children-group` from-source, resolved by the group
+/// expansion pass after the declaration pass completes.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct PendingGroupSource {
+    /// Where in the field's `sources` the spliced members land.
+    pub(crate) position: usize,
+    pub(crate) name: Sym,
+    pub(crate) site: Site,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

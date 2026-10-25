@@ -842,6 +842,9 @@ fn source(input: &Source) -> SourceInput {
             sources: children.sources.iter().map(&source).collect(),
             compact: children.compact.unwrap_or(false),
         },
+        Source::ChildrenGroup(children_group) => SourceInput::ChildrenGroup {
+            name: children_group.name.as_str().to_owned(),
+        },
         Source::Entries(entries) => SourceInput::Entries {
             node: entries.node.as_str().to_owned(),
             key: entries.key.clone(),

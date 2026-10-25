@@ -19,6 +19,7 @@
 {"item":"effective","data":{"section":"type","entry":{"name":"CaseRule","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"ChildRule","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"ChildSource","parameters":[],"kind":"object"}}}
+{"item":"effective","data":{"section":"type","entry":{"name":"ChildrenGroupSource","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"ChildrenSource","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"ClearEffect","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"CodecType","parameters":[],"kind":"object"}}}
@@ -143,6 +144,7 @@
 {"item":"effective","data":{"section":"node","entry":{"name":"child","parents":["child","children","from"],"role":null,"type":"ChildSource","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"children","parents":["child","children","from"],"role":null,"type":"ChildrenSource","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"children","parents":["node"],"role":null,"type":"ChildRule","profile":null}}}
+{"item":"effective","data":{"section":"node","entry":{"name":"children-group","parents":["from"],"role":null,"type":"ChildrenGroupSource","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"children-group","parents":["node"],"role":null,"type":"ChildRule","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"clear","parents":["effects"],"role":null,"type":"ClearEffect","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"codec","parents":["types"],"role":"declaration","type":"CodecType","profile":null}}}

@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A children-group from-source naming a node group the schema does not declare is an unresolved schema reference (KDLITH-SCH006, node group kind) under every checking scope — never a silently dropped source that would leave the field binding weaker, unlike a children-group rule, which is safely left unresolved under local checking",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

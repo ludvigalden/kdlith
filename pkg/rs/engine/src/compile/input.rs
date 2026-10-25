@@ -300,6 +300,13 @@ pub enum SourceInput {
         sources: Vec<SourceInput>,
         compact: bool,
     },
+    /// A pending `children-group` reference in a from block: the
+    /// compiler splices one children source per group member into the
+    /// field's sources at this source's position once every declaration
+    /// is read.
+    ChildrenGroup {
+        name: String,
+    },
     Entries {
         node: String,
         key: String,

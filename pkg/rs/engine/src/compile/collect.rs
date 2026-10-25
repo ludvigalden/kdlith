@@ -8,8 +8,8 @@ use kdlith_runtime::Repeated;
 use crate::bindings::{
     BindingCodec, CaseRule, ChildRule, Collision, Condition, ContextPolicy, DependentBinding,
     DescendantRule, DuplicateKeys, Effect, EffectGroup, EffectTarget, FieldBinding, IdentityDecl,
-    NodeAnnotation, NodeDecl, Placement, Role, SequenceDecl, SequenceStep, SetFrom, Source,
-    WhenBranch,
+    NodeAnnotation, NodeDecl, PendingGroupSource, Placement, Role, SequenceDecl, SequenceStep,
+    SetFrom, Source, WhenBranch,
 };
 use crate::compile::Cx;
 use crate::compile::conditions;
@@ -854,12 +854,24 @@ fn field_binding(
         }
     };
     let mut sources = Vec::new();
+    let mut pending_groups = Vec::new();
     for input in &input.sources {
-        if let Some(source) = source(cx, site, &label, input) {
-            sources.push(source);
+        match input {
+            SourceInput::ChildrenGroup { name } => {
+                pending_groups.push(PendingGroupSource {
+                    position: sources.len(),
+                    name: cx.names.intern(name),
+                    site,
+                });
+            }
+            _ => {
+                if let Some(source) = source(cx, site, &label, input) {
+                    sources.push(source);
+                }
+            }
         }
     }
-    if sources.is_empty() {
+    if sources.is_empty() && pending_groups.is_empty() {
         let reason = format!("field {name} has no source");
         cx.diags.error(INVALID_BINDING, site, &[owner, &reason]);
         return None;
@@ -884,10 +896,13 @@ fn field_binding(
                 None
             }
         });
+    // A pending children-group reference is a spelling of the field:
+    // its expansion is at least one children source.
     let spellings = sources
         .iter()
         .filter(|s| !matches!(s, Source::Context { .. } | Source::Expand { .. }))
-        .count();
+        .count()
+        + pending_groups.len();
     let alternatives = sources
         .iter()
         .filter(|s| {
@@ -924,6 +939,7 @@ fn field_binding(
         name: cx.names.intern(&name),
         ty,
         sources,
+        pending_groups,
         collision,
         duplicate_keys,
         site,
@@ -953,6 +969,14 @@ fn source(cx: &mut Cx<'_>, site: Site, label: &str, input: &SourceInput) -> Opti
             sources: nested(cx, site, label, sources),
             compact: *compact,
         }),
+        // The field pass peels every top-level children-group reference
+        // off as a pending source before this point, so one reaching
+        // here is nested inside a child or children source, where no
+        // from-block source nests.
+        SourceInput::ChildrenGroup { .. } => {
+            cx.malformed(site, label, "children-group is a source of a from block");
+            None
+        }
         SourceInput::Entries { node, key, value } => entries(cx, site, label, node, key, value),
         SourceInput::Expand { target, member } => {
             if !cx.type_name(site, label, target) {

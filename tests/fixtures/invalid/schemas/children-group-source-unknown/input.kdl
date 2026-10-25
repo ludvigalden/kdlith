@@ -1,0 +1,16 @@
+schema s version="1" {
+    types {
+        object Card { field label String }
+        object Deck {
+            field name String
+            field cards "list<Card>"
+        }
+    }
+    node deck role=record type=Deck {
+        field name arg=0
+        field cards { from { children-group parts } }
+    }
+    node card type=Card parent=deck {
+        field label arg=0
+    }
+}
