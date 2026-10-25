@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::fmt::Write as _;
 
 use serde::Serialize;
 
@@ -168,5 +169,43 @@ impl DiagnosticRecord {
     pub fn with_correction(mut self, correction: impl Into<String>) -> Self {
         self.correction = correction.into();
         self
+    }
+
+    /// The plain-text presentation of the record: a
+    /// `<severity>[CODE]: message` head, the primary location as
+    /// `--> path:line:col`, one `note:` line per label, and the
+    /// correction as a `help:` line. This is the one presentation —
+    /// the CLI prints these bytes verbatim — so consumers never
+    /// re-roll their own.
+    pub fn render(&self) -> String {
+        let severity = match self.severity {
+            Severity::Warning => "warning",
+            Severity::Note => "note",
+            _ => "error",
+        };
+        let mut line = format!("{severity}[{}]", self.code);
+        if let Some(message) = &self.message {
+            let _ = write!(line, ": {message}");
+        }
+        if let Some(path) = &self.source_path {
+            let _ = write!(line, "\n  --> {path}");
+            if let (Some(row), Some(col)) = (self.line, self.col) {
+                let _ = write!(line, ":{row}:{col}");
+            }
+        }
+        for label in &self.labels {
+            let _ = write!(line, "\n  note: {}", label.message);
+            if let Some(path) = &label.source_path {
+                let _ = write!(line, " ({path}");
+                if let (Some(row), Some(col)) = (label.line, label.col) {
+                    let _ = write!(line, ":{row}:{col}");
+                }
+                line.push(')');
+            }
+        }
+        if !self.correction.is_empty() {
+            let _ = write!(line, "\n  help: {}", self.correction);
+        }
+        line
     }
 }

@@ -1,10 +1,9 @@
 //! Diagnostics on stderr: one `<severity>[CODE]: message` line per
 //! record with its location, and the exit stratum the records decide.
 
-use std::fmt::Write as _;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use kdlith_diagnostic::{DiagnosticRecord, ExitStatus, Severity};
+use kdlith_diagnostic::{DiagnosticRecord, ExitStatus};
 
 /// Whether a warning fails the run, as `--warnings-as-errors` says.
 static WARNINGS_AS_ERRORS: AtomicBool = AtomicBool::new(false);
@@ -32,38 +31,6 @@ pub(crate) fn report_all(records: &[DiagnosticRecord]) -> ExitStatus {
 /// Print records without deciding an exit, as advisory records are.
 pub(crate) fn print_notes(records: &[DiagnosticRecord]) {
     for record in records {
-        eprintln!("{}", render(record));
+        eprintln!("{}", record.render());
     }
-}
-
-fn render(record: &DiagnosticRecord) -> String {
-    let severity = match record.severity {
-        Severity::Warning => "warning",
-        Severity::Note => "note",
-        _ => "error",
-    };
-    let mut line = format!("{severity}[{}]", record.code);
-    if let Some(message) = &record.message {
-        let _ = write!(line, ": {message}");
-    }
-    if let Some(path) = &record.source_path {
-        let _ = write!(line, "\n  --> {path}");
-        if let (Some(row), Some(col)) = (record.line, record.col) {
-            let _ = write!(line, ":{row}:{col}");
-        }
-    }
-    for label in &record.labels {
-        let _ = write!(line, "\n  note: {}", label.message);
-        if let Some(path) = &label.source_path {
-            let _ = write!(line, " ({path}");
-            if let (Some(row), Some(col)) = (label.line, label.col) {
-                let _ = write!(line, ":{row}:{col}");
-            }
-            line.push(')');
-        }
-    }
-    if !record.correction.is_empty() {
-        let _ = write!(line, "\n  help: {}", record.correction);
-    }
-    line
 }

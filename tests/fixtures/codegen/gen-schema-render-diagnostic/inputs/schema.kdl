@@ -1,0 +1,14 @@
+// A self-contained schema with one record node: a data document that
+// carries a property the node does not bind provokes one binding
+// diagnostic, the same record the CLI's vet data reports for the same
+// document.
+schema demo version="1" {
+    types {
+        object Entry {
+            field id String
+        }
+    }
+    node entry role=record type=Entry {
+        field id property=id
+    }
+}
