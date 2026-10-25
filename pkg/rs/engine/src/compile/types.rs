@@ -6,6 +6,7 @@ use crate::compile::reader::Construct;
 use crate::decode::found;
 use crate::diag::{NOT_INSTALLED, Site, duplicate, duplicate_key};
 use crate::names::Sym;
+use crate::pattern::anchored;
 use crate::syntax::SyntaxNode;
 use crate::types::{
     CaptureDef, CodecDecl, Constraint, DefaultSpec, EnumMember, EnumType, FieldDef, FormatRule,
@@ -13,7 +14,6 @@ use crate::types::{
     ValidatorUse, Variant,
 };
 use kdlith_model::{FieldMerge, Value};
-use regex::Regex;
 
 pub(crate) fn container(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) {
     Construct::new(cx, doc, node).finish(cx);
@@ -757,7 +757,7 @@ fn codec(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) -> Option<(String, Vec<
         cx.missing(site, &label, "match");
         return None;
     };
-    let regex = match Regex::new(&format!("^(?:{pattern})$")) {
+    let regex = match anchored(&pattern) {
         Ok(regex) => regex,
         Err(error) => {
             let reason = format!("match does not compile: {error}");

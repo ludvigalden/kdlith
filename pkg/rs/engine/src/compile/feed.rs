@@ -63,9 +63,10 @@ pub(crate) fn run(cx: &mut Cx<'_>, bindings: &BindingCatalog) {
                 let Some(feeding) = child_decl(bindings, owner, child) else {
                     // No declaration is placed under the owner, so the
                     // binder hands the field the child's one positional
-                    // value. An entries source is refused outright in
-                    // the scope pass; a repeated source is left alone.
-                    if !matches!(collects, Collects::Single) {
+                    // value — the same scalars for a single `child` and
+                    // a repeated `children` source. An entries source
+                    // is refused outright in the scope pass.
+                    if !matches!(collects, Collects::Single | Collects::Append) {
                         continue;
                     }
                     let Some(TypeExpr::Named(name)) = expected(cx, owner, field, collects) else {

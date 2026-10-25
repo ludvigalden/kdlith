@@ -10,6 +10,7 @@ use regex::Regex;
 use crate::definition::{Qualification, ReferenceDecl};
 use crate::extensions::TYPE_EXPRESSION_VALIDATOR;
 use crate::names::{Names, Sym};
+use crate::pattern::anchored;
 use crate::syntax::parse_u64;
 use crate::type_expr::{self, ExprError};
 use crate::types::{Builtin, CodecDecl, StringType, TypeCatalog, TypeExpr, TypeId, TypeKind};
@@ -58,7 +59,7 @@ impl Decoder {
             let Some(pattern) = pattern else {
                 continue;
             };
-            match Regex::new(&format!("^(?:{pattern})$")) {
+            match anchored(pattern) {
                 Ok(regex) => {
                     if matches!(&decl.kind, TypeKind::Codec(_)) {
                         decoder.codecs.insert(id, regex);
