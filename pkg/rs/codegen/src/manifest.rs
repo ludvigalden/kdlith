@@ -15,9 +15,9 @@ use crate::emit::GeneratedTree;
 pub const MANIFEST_NAME: &str = "kdlith-manifest";
 
 /// The diagnostic the writer refuses an unowned overwrite with.
-const UNOWNED: &str = "KDLITH-GEN001";
+pub(crate) const UNOWNED: &str = "KDLITH-GEN001";
 /// The diagnostic the drift check classifies findings with.
-const DRIFT: &str = "KDLITH-GEN002";
+pub(crate) const DRIFT: &str = "KDLITH-GEN002";
 /// The provenance every generation diagnostic carries.
 const ORIGIN: &str = "codegen";
 
@@ -182,7 +182,7 @@ pub fn check(tree: &GeneratedTree, out: &Path) -> Result<Vec<DiagnosticRecord>, 
 }
 
 /// A registered code's record, message rendered from its template.
-fn record(code: &'static str, values: &[&str]) -> DiagnosticRecord {
+pub(crate) fn record(code: &'static str, values: &[&str]) -> DiagnosticRecord {
     let mut record = DiagnosticRecord::from_code(code)
         .unwrap_or_else(|| panic!("the generation code {code} is registered and never retired"));
     if let Some(definition) = lookup(code) {

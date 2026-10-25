@@ -50,7 +50,9 @@ Context faults (`CTX004` snapshot mismatch, `CTX005` an effect on an
 undeclared slot or namespace, `CTX006` a slot duplicate under
 `reject`); source faults (`SRC001`–`SRC003`, including the
 invocation bound); cache faults (`CAC002` an unusable owned entry);
-generation faults (`GEN001` unowned overwrite, `GEN002` drift);
+generation faults (`GEN001` unowned overwrite, `GEN002` drift,
+`GEN006` a workspace dependency missing, different, or local, `GEN007`
+a source that cannot pin the kdlith crates);
 argument faults (`CLI001`–`CLI004`, exit 2, before any document is
 read); syntax faults (`SYN…` from the KDL parser); export faults
 (`EXP002` provisional delivery).

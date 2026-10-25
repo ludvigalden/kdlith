@@ -315,6 +315,25 @@ published yet.
   document read against two different trees of a source never shares
   a cache entry or a restore; a changed source is a miss, never a
   stale hit. A reading that uses no named source keys as before.
+- `gen schema` and `gen dialect` take `--kdlith-workspace`: the
+  generated manifest names each kdlith crate `{ workspace = true }` and
+  inherits the workspace lints, so the consuming workspace's root
+  manifest names the kdlith source. It excludes `--kdlith-path` and
+  `--kdlith-version`.
+- `kdlith gen workspace --sources FILE` checks a consuming workspace
+  against one named source (default `kdlith`), an origin of the kdlith
+  repository root at a full commit: the root `[workspace.dependencies]`
+  must spell each crate a schema reader needs as
+  `{ git = "<git>", rev = "<rev>" }`. A line that is missing, different,
+  or local is `KDLITH-GEN006` with the expected line; the root manifest
+  is never written. An overridden source writes the owned
+  `.cargo/config.toml`, a `[patch]` of the kdlith git source covering
+  every kdlith crate a schema reader resolves, pointed at the override's
+  checkout; without an override the file holds the kdlith marker
+  alone. An unowned file is refused (`KDLITH-GEN001`), `--check`
+  reports drift as `KDLITH-GEN002`, and a source that cannot pin the
+  crates is `KDLITH-GEN007`. A writing run prints the one-time cargo
+  cache seed for an unreachable origin as a note.
 
 ### Changed
 

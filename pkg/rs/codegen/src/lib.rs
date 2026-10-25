@@ -8,9 +8,14 @@ mod emit_compile;
 mod manifest;
 mod model;
 mod render;
+mod workspace;
 
 pub use emit::GeneratedTree;
 pub use manifest::{MANIFEST_NAME, WriteError, check, write};
+pub use workspace::{
+    CARGO_CONFIG, CargoSource, cargo_patch, cargo_source, check_patch, check_workspace,
+    patch_crates, seed_recipe, workspace_dependencies, write_patch,
+};
 
 /// The exact first line of every generated Rust file: the one header
 /// element an oracle comparison excludes, and nothing else.
@@ -31,7 +36,7 @@ pub const COMMENT_MARKER: &str = concat!(
 use std::path::Path;
 
 use kdlith_diagnostic::{DiagnosticRecord, registry};
-use kdlith_engine::{CheckScope, Definition, Extensions, ReadOptions};
+use kdlith_engine::{CheckScope, Definition, DefinitionKind, Extensions, ReadOptions};
 
 /// Why a definition cannot generate a crate.
 ///
@@ -217,6 +222,22 @@ pub enum Packaging {
     Path(String),
     /// Registry dependencies at the given version requirement.
     Registry(String),
+    /// Workspace dependencies (`{ workspace = true }`) with the lints
+    /// inherited too: the consuming workspace's root manifest names the
+    /// kdlith source, as `kdlith gen workspace` checks.
+    Workspace,
+}
+
+/// The directories, under `pkg/rs`, of the kdlith crates a generated
+/// crate of `kind` depends on directly, in manifest order.
+pub(crate) fn dependency_dirs(kind: DefinitionKind) -> Vec<&'static str> {
+    let mut dirs = vec!["diagnostic", "engine"];
+    match kind {
+        DefinitionKind::Dialect => dirs.push("runtime"),
+        DefinitionKind::Schema => dirs.extend(["model", "superproc"]),
+        _ => {}
+    }
+    dirs
 }
 
 /// Generate the processor crate for `definition`, published as

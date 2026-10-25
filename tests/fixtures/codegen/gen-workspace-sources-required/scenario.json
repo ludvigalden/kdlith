@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "gen workspace without --sources is an argument fault: the kdlith source comes only from a sources manifest, so KDLITH-CLI001, exit 2, nothing written",
+  "args": [
+    "gen",
+    "workspace",
+    "--check"
+  ],
+  "expect": {
+    "exit": 2,
+    "stderr-contains": [
+      "error[KDLITH-CLI001]: gen workspace needs --sources FILE\n"
+    ],
+    "absent": [
+      ".cargo"
+    ]
+  }
+}

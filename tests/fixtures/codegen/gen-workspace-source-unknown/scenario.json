@@ -1,0 +1,20 @@
+{
+  "binary": "kdlith",
+  "description": "gen workspace --kdlith-source naming a source the manifest does not declare is KDLITH-LOC003, the message listing the declared sources; exit 1, nothing written",
+  "args": [
+    "gen",
+    "workspace",
+    "--sources",
+    "sources.kdl",
+    "--kdlith-source",
+    "kdlith-next",
+    "--check"
+  ],
+  "expect": {
+    "exit": 1,
+    "stderr-golden": "stderr.golden",
+    "absent": [
+      ".cargo"
+    ]
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "gen workspace refuses an abbreviated rev=: cargo pins a full commit, so KDLITH-GEN007, exit 1, nothing written",
+  "args": [
+    "gen",
+    "workspace",
+    "--sources",
+    "sources.kdl",
+    "--check"
+  ],
+  "expect": {
+    "exit": 1,
+    "stderr-golden": "stderr.golden",
+    "absent": [
+      ".cargo"
+    ]
+  }
+}

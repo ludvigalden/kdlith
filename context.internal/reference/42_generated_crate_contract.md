@@ -68,4 +68,21 @@ other. The generated `Cargo.toml` is standalone: by default the
 kdlith dependencies are sibling paths, `--kdlith-path PATH` re-roots
 them, and `--kdlith-version VER` writes registry dependencies —
 values verbatim, flags mutually exclusive, empty or non-UTF-8 values
-failing closed. `gen dialect` takes neither flag.
+failing closed. `gen dialect` takes neither flag. `--kdlith-workspace`
+(both forms, exclusive with the other two) writes
+`{ workspace = true }` dependencies and `[lints] workspace = true`, so
+the bytes stay a pure function of the inputs while the source moves to
+the consumer's root manifest.
+
+`gen workspace` is the workspace-level half. It reads one named source
+of a sources manifest (an origin at the repository root with a 40-hex
+`rev`, else `KDLITH-GEN007`), checks the root
+`[workspace.dependencies]` line by line (`KDLITH-GEN006` missing,
+different, or local; the root manifest is never written, and kdlith
+links no TOML library), and owns `.cargo/config.toml` by its first-line
+marker: a `[patch."<git>"]` over the schema reader's transitive kdlith
+closure when the source is overridden, the marker alone otherwise. The
+closure is a codegen constant (`SCHEMA_CLOSURE`); the
+`codegen/gen-workspace-oracle` fixture compares it with the
+repository's own `cargo metadata` resolve graph, since a partial patch
+resolves crates twice and an extra entry is an unused patch.

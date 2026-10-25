@@ -1,0 +1,2 @@
+error[KDLITH-LOC003]: location $kdlith-next/pkg/rs names unknown source kdlith-next: the source set holds kdlith
+  help: Register the source (--source NAME=DIR, or a source the host provides), or correct its name

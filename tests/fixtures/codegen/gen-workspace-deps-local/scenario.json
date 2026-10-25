@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "gen workspace --check catches a local checkout leaking into the committed root manifest: a path dependency under [workspace.dependencies] and a [patch] entry naming the kdlith git source are each KDLITH-GEN006 local, even though the [workspace.dependencies] line of the patched crate is the expected one; exit 1",
+  "args": [
+    "gen",
+    "workspace",
+    "--sources",
+    "sources.kdl",
+    "--check"
+  ],
+  "expect": {
+    "exit": 1,
+    "stderr-golden": "stderr.golden"
+  }
+}

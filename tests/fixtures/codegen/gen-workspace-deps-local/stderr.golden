@@ -1,0 +1,4 @@
+error[KDLITH-GEN006]: workspace dependency kdlith-engine in Cargo.toml is local: expected kdlith-engine = { git = "https://github.com/ludvigalden/kdlith", rev = "0123456789abcdef0123456789abcdef01234567" }
+  help: Write the expected line under [workspace.dependencies]; keep a local checkout in the generated .cargo/config.toml, never in the committed manifest
+error[KDLITH-GEN006]: workspace dependency kdlith-superproc in Cargo.toml is local: expected kdlith-superproc = { git = "https://github.com/ludvigalden/kdlith", rev = "0123456789abcdef0123456789abcdef01234567" }
+  help: Write the expected line under [workspace.dependencies]; keep a local checkout in the generated .cargo/config.toml, never in the committed manifest

@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "gen workspace --check reports KDLITH-GEN006 different for a kdlith crate pinned at another rev, and for one written as a dotted [workspace.dependencies.kdlith-model] table instead of the one expected inline line; each message carries the exact line to paste; exit 1",
+  "args": [
+    "gen",
+    "workspace",
+    "--sources",
+    "sources.kdl",
+    "--check"
+  ],
+  "expect": {
+    "exit": 1,
+    "stderr-golden": "stderr.golden"
+  }
+}

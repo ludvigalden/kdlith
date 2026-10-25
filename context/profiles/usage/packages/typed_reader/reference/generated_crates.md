@@ -20,9 +20,65 @@ generation never deletes anything.
 schema's own import locations, `--handler NAME` to admit a built-in
 context handler the schema names, and the packaging flags:
 `--kdlith-path PATH` roots the crate's kdlith path dependencies at
-PATH, `--kdlith-version VER` writes them as registry dependencies.
-Either value is written verbatim; the two flags are mutually
-exclusive. Without either, the manifest keeps sibling paths.
+PATH, `--kdlith-version VER` writes them as registry dependencies,
+and `--kdlith-workspace` writes each as `{ workspace = true }` and
+replaces the crate's own `[lints.clippy]` table with
+`[lints] workspace = true`. Values are written verbatim; the three
+flags are mutually exclusive. Without any, the manifest keeps sibling
+paths. `gen dialect` takes `--kdlith-workspace` too.
+
+## Workspace dependencies
+
+Under `--kdlith-workspace` the consuming workspace's root manifest
+names the kdlith source, and `kdlith gen workspace` keeps it in line
+with a sources manifest. The source (`--kdlith-source NAME`, default
+`kdlith`) must be an origin of the kdlith repository root with a full
+40-hex `rev`; anything else is `KDLITH-GEN007`, and an undeclared name
+`KDLITH-LOC003`.
+
+```kdl
+sources {
+    source kdlith {
+        origin git="https://github.com/ludvigalden/kdlith" rev="<40-hex commit>"
+    }
+}
+```
+
+- The root `Cargo.toml` is checked, never written. Each crate a schema
+  reader needs (`diagnostic`, `engine`, `model`, `superproc`) must be
+  spelled `kdlith-<crate> = { git = "<git>", rev = "<rev>" }` under
+  `[workspace.dependencies]`; otherwise `KDLITH-GEN006` names the crate
+  as missing, different, or local (a path dependency, or a `[patch]`
+  entry in that manifest) with the expected line.
+- An override of the source (in the manifest, an `--overrides FILE`, or
+  `--override NAME=DIR`) names a local kdlith checkout D. The run then
+  writes `<root>/.cargo/config.toml`, first line the kdlith marker, with
+  a `[patch."<git>"]` entry `{ path = "D/pkg/rs/<crate>" }` for every
+  crate a schema reader resolves (`diagnostic`, `engine`, `model`,
+  `parse`, `runtime`, `superproc`), and warns `KDLITH-LOC009`. Without
+  an override the file holds the marker alone. An existing file whose
+  first line is not the marker is refused (`KDLITH-GEN001`) and left as
+  it is. Keep the override and the patch file out of version control.
+- `--check` writes nothing: root dependency findings are
+  `KDLITH-GEN006`, and a patch file that is missing, unowned, changed,
+  or stale (a patch with no override) is `KDLITH-GEN002`.
+
+The patch applies only once cargo has fetched the original git source.
+With an empty cargo git cache and an origin cargo cannot reach, seed
+the cache once from the local checkout; a writing run prints this
+recipe as a note:
+
+```sh
+GIT_CONFIG_COUNT=1 \
+GIT_CONFIG_KEY_0=url.<checkout>.insteadOf \
+GIT_CONFIG_VALUE_0=https://github.com/ludvigalden/kdlith \
+CARGO_NET_GIT_FETCH_WITH_CLI=true \
+cargo generate-lockfile
+```
+
+The variables apply to that one command, and the checkout must hold
+the pinned commit. Once a lock file resolved with the patch exists, the
+origin is not needed again.
 
 ## Naming limits
 
@@ -39,4 +95,4 @@ Such a definition still vets: the limit is the generated crate's.
 
 `gen dialect` regenerates a reference-processor-shaped crate;
 `gen schema` generates a domain crate. The dialect form takes none
-of the schema-only flags.
+of the schema-only flags; `--kdlith-workspace` is shared.

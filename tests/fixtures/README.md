@@ -382,6 +382,21 @@ records, the context each call receives, the provider's command list
 arriving as unexecuted data, and the `KDLITH-BND009` rejection of a
 value the file does not hold.
 
+The `codegen/gen-workspace-*` scenarios cover the workspace packaging.
+Each single-invocation scenario carries a consumer's root `Cargo.toml`, a
+`sources.kdl` declaring the `kdlith` origin at a fixed 40-hex rev, and,
+where the state needs one, a `.cargo/config.toml`. They pin the root
+dependency check (`KDLITH-GEN006` missing, different, local), the patch
+file (marker only, unowned refusal, drift), and the unusable or unknown
+source. Nothing in them needs the origin to exist: the verb never
+fetches. `codegen/gen-workspace-oracle` compiles a
+`--kdlith-workspace` crate in a scratch workspace and writes the patch
+from an override naming the repository checkout (`KDLITH_FX_REPO`). Its
+closure guard runs `cargo metadata --offline --locked` over the
+repository's own manifest, walks the normal-dependency resolve graph
+from the four crates a schema reader names with `jq`, and requires the
+kdlith crates it reaches to equal the patched crate list.
+
 ## Scenario format v0
 
 `scenario.json` is a JSON object parsed strictly: an unknown key at any level

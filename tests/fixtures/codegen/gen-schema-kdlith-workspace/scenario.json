@@ -1,0 +1,23 @@
+{
+  "binary": "kdlith",
+  "description": "gen schema --kdlith-workspace names each kdlith crate the schema form depends on as { workspace = true } and inherits the workspace lints ([lints] workspace = true in place of the local [lints.clippy] table), while [package] keeps the generator's version, edition, rust-version, and autotests = false literal: the written Cargo.toml is pinned byte for byte and carries no path, git, or version requirement",
+  "args": [
+    "gen",
+    "schema",
+    "schema.kdl",
+    "--crate",
+    "parts-proc",
+    "--out",
+    "out",
+    "--kdlith-workspace"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "ok: generated schema crate parts-proc at out (11 owned files)\n"
+    ],
+    "files": {
+      "out/Cargo.toml": "cargo-toml.golden"
+    }
+  }
+}

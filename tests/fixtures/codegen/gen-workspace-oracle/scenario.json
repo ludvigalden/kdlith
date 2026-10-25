@@ -1,0 +1,184 @@
+{
+  "binary": "kdlith",
+  "kind": "codegen-oracle",
+  "description": "The workspace packaging end to end. gen schema --kdlith-workspace generates a schema crate twice into byte-identical trees inside a scratch workspace whose root manifest names the kdlith crates under [workspace.dependencies] (here as paths to the copied crates), compiles it with the inherited dependencies and lints, and reads the committed data document through the generated reader; --kdlith-workspace with --kdlith-path, and with --kdlith-version, each fail closed with KDLITH-CLI002 and write nothing. Then gen workspace, run in a consumer whose root manifest carries the four expected git lines, writes the owned .cargo/config.toml from an override naming the repository checkout: its first line is the kdlith marker, it warns KDLITH-LOC009, and it patches the kdlith git source with one path entry under <checkout>/pkg/rs per crate. The closure guard computes, from the repository's own cargo metadata resolve graph (normal dependencies only), the kdlith crates a schema reader's four direct dependencies reach, and requires that list to equal the patch's crate list exactly: a crate missing from the patch would resolve twice, an extra one is an unused patch. Finally gen workspace --check passes with the same override and reports KDLITH-GEN002 changed without it",
+  "form": "schema",
+  "entrypoint": "inputs/schema.kdl",
+  "crate": "parts-proc",
+  "steps": [
+    {
+      "exercise": {
+        "command": [
+          "sh",
+          "-c",
+          "\"$KDLITH_FX_KDLITH\" gen schema inputs/schema.kdl --crate parts-proc --out refused --kdlith-workspace --kdlith-path ../ws/rs; echo \"exit=$?\"; test -e refused || echo \"refused absent\""
+        ],
+        "stdout-contains": [
+          "exit=2\nrefused absent\n"
+        ],
+        "stderr-contains": [
+          "error[KDLITH-CLI002]: the argument '--kdlith-workspace' cannot be used with '--kdlith-path <PATH>'\n"
+        ]
+      }
+    },
+    {
+      "exercise": {
+        "command": [
+          "sh",
+          "-c",
+          "\"$KDLITH_FX_KDLITH\" gen schema inputs/schema.kdl --crate parts-proc --out refused --kdlith-version 0.1.0 --kdlith-workspace; echo \"exit=$?\"; test -e refused || echo \"refused absent\""
+        ],
+        "stdout-contains": [
+          "exit=2\nrefused absent\n"
+        ],
+        "stderr-contains": [
+          "error[KDLITH-CLI002]: the argument '--kdlith-version <VER>' cannot be used with '--kdlith-workspace'\n"
+        ]
+      }
+    },
+    {
+      "exercise": {
+        "command": [
+          "sh",
+          "-c",
+          "exec \"$KDLITH_FX_KDLITH\" gen schema inputs/schema.kdl --crate parts-proc --out ws/rs/parts-proc --kdlith-workspace"
+        ],
+        "stdout-contains": [
+          "ok: generated schema crate parts-proc at ws/rs/parts-proc (11 owned files)\n"
+        ]
+      }
+    },
+    {
+      "exercise": {
+        "command": [
+          "sh",
+          "-c",
+          "exec \"$KDLITH_FX_KDLITH\" gen schema inputs/schema.kdl --crate parts-proc --out gen-again --kdlith-workspace"
+        ],
+        "stdout-contains": [
+          "ok: generated schema crate parts-proc at gen-again (11 owned files)\n"
+        ]
+      }
+    },
+    {
+      "determinism": [
+        "ws/rs/parts-proc",
+        "gen-again"
+      ]
+    },
+    {
+      "exercise": {
+        "command": [
+          "sh",
+          "-c",
+          "exec \"$KDLITH_FX_KDLITH\" gen schema inputs/schema.kdl --crate parts-proc --out ws/rs/parts-proc --kdlith-workspace --check"
+        ],
+        "stdout-contains": [
+          "ok: schema crate parts-proc at ws/rs/parts-proc is current (11 owned files)\n"
+        ]
+      }
+    },
+    {
+      "compile": {
+        "workspace": "ws",
+        "copy": {
+          "crates": [
+            "diagnostic",
+            "engine",
+            "model",
+            "parse",
+            "runtime",
+            "superproc"
+          ],
+          "kdl": true
+        },
+        "command": [
+          "cargo",
+          "build",
+          "--offline",
+          "--manifest-path",
+          "ws/rs/exercise/Cargo.toml"
+        ]
+      }
+    },
+    {
+      "exercise": {
+        "command": [
+          "cargo",
+          "run",
+          "--offline",
+          "--quiet",
+          "--manifest-path",
+          "ws/rs/exercise/Cargo.toml",
+          "--",
+          "inputs/schema.kdl",
+          "inputs/data.kdl"
+        ],
+        "stdout-contains": [
+          "schema ok\n",
+          "read errors=false lines=2\n",
+          "part id=alpha count=3\n",
+          "part id=beta count=none\n"
+        ]
+      }
+    },
+    {
+      "exercise": {
+        "command": [
+          "sh",
+          "-c",
+          "cd consumer && \"$KDLITH_FX_KDLITH\" gen workspace --sources sources.kdl --override kdlith=\"$KDLITH_FX_REPO\" && sed \"s#$KDLITH_FX_REPO#<repo>#\" .cargo/config.toml"
+        ],
+        "stdout-contains": [
+          "ok: wrote .cargo/config.toml (6 patched crates from ",
+          "# generated by kdlith 0.1.0; do not edit.\n\n[patch.\"https://github.com/ludvigalden/kdlith\"]\nkdlith-diagnostic = { path = \"<repo>/pkg/rs/diagnostic\" }\nkdlith-engine = { path = \"<repo>/pkg/rs/engine\" }\nkdlith-model = { path = \"<repo>/pkg/rs/model\" }\nkdlith-parse = { path = \"<repo>/pkg/rs/parse\" }\nkdlith-runtime = { path = \"<repo>/pkg/rs/runtime\" }\nkdlith-superproc = { path = \"<repo>/pkg/rs/superproc\" }\n"
+        ],
+        "stderr-contains": [
+          "warning[KDLITH-LOC009]: source kdlith is overridden by "
+        ]
+      }
+    },
+    {
+      "exercise": {
+        "command": [
+          "sh",
+          "-c",
+          "set -e; cargo metadata --offline --locked --format-version 1 --manifest-path \"$KDLITH_FX_REPO/Cargo.toml\" | jq -r '. as $m | ($m.packages | map({key: .id, value: .name}) | from_entries) as $name | ($m.resolve.nodes | map({key: .id, value: [.deps[] | select(any(.dep_kinds[]; .kind == null)) | .pkg]}) | from_entries) as $deps | [$m.packages[] | select(.name | IN(\"kdlith-diagnostic\", \"kdlith-engine\", \"kdlith-model\", \"kdlith-superproc\")) | .id] as $start | {seen: $start, todo: $start} | until(.todo | length == 0; ([.todo[] | $deps[.][]] | unique) as $next | ($next - .seen) as $new | .seen += $new | .todo = $new) | .seen[] | $name[.] | select(startswith(\"kdlith-\"))' | sort > closure.txt; sed -n 's/^\\(kdlith-[a-z]*\\) = .*/\\1/p' consumer/.cargo/config.toml | sort > patched.txt; cat closure.txt; diff closure.txt patched.txt && echo closure-match"
+        ],
+        "stdout-contains": [
+          "kdlith-diagnostic\nkdlith-engine\nkdlith-model\nkdlith-parse\nkdlith-runtime\nkdlith-superproc\nclosure-match\n"
+        ]
+      }
+    },
+    {
+      "exercise": {
+        "command": [
+          "sh",
+          "-c",
+          "cd consumer && exec \"$KDLITH_FX_KDLITH\" gen workspace --sources sources.kdl --override kdlith=\"$KDLITH_FX_REPO\" --check"
+        ],
+        "stdout-contains": [
+          "ok: workspace . is current for source kdlith (4 dependencies, 6 patched crates from "
+        ]
+      }
+    },
+    {
+      "exercise": {
+        "command": [
+          "sh",
+          "-c",
+          "cd consumer && \"$KDLITH_FX_KDLITH\" gen workspace --sources sources.kdl --check; echo \"exit=$?\""
+        ],
+        "stdout-contains": [
+          "exit=1\n"
+        ],
+        "stdout-not-contains": [
+          "ok: workspace"
+        ],
+        "stderr-contains": [
+          "error[KDLITH-GEN002]: .cargo/config.toml is stale\n"
+        ]
+      }
+    }
+  ]
+}

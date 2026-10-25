@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "gen workspace refuses a source whose origin declares no rev=: KDLITH-GEN007 before the root manifest is read, exit 1, nothing written",
+  "args": [
+    "gen",
+    "workspace",
+    "--sources",
+    "sources.kdl",
+    "--check"
+  ],
+  "expect": {
+    "exit": 1,
+    "stderr-golden": "stderr.golden",
+    "absent": [
+      ".cargo"
+    ]
+  }
+}

@@ -1,0 +1,6 @@
+[workspace.dependencies] of Cargo.toml for source kdlith:
+kdlith-diagnostic = { git = "https://github.com/ludvigalden/kdlith", rev = "0123456789abcdef0123456789abcdef01234567" }
+kdlith-engine = { git = "https://github.com/ludvigalden/kdlith", rev = "0123456789abcdef0123456789abcdef01234567" }
+kdlith-model = { git = "https://github.com/ludvigalden/kdlith", rev = "0123456789abcdef0123456789abcdef01234567" }
+kdlith-superproc = { git = "https://github.com/ludvigalden/kdlith", rev = "0123456789abcdef0123456789abcdef01234567" }
+plan: .cargo/config.toml (marker only, no override, dry run)

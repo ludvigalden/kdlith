@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "gen workspace --check with no override against an owned .cargo/config.toml that still patches the kdlith source: KDLITH-GEN002 stale (the local patch outlived its override), exit 1, the file untouched",
+  "args": [
+    "gen",
+    "workspace",
+    "--sources",
+    "sources.kdl",
+    "--check"
+  ],
+  "expect": {
+    "exit": 1,
+    "stderr-golden": "stderr.golden",
+    "files": {
+      ".cargo/config.toml": ".cargo/config.toml"
+    }
+  }
+}

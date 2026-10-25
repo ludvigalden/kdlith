@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "gen workspace with no override writes .cargo/config.toml holding the kdlith marker alone, so the file is owned and checkable while patching nothing; stdout prints the expected dependency lines and the one-time cold-cache seed recipe as a note; the root Cargo.toml is current, so exit 0",
+  "args": [
+    "gen",
+    "workspace",
+    "--sources",
+    "sources.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden",
+    "files": {
+      ".cargo/config.toml": "config-toml.golden",
+      "Cargo.toml": "Cargo.toml"
+    }
+  }
+}

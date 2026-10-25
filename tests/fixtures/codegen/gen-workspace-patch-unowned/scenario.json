@@ -1,0 +1,22 @@
+{
+  "binary": "kdlith",
+  "description": "gen workspace refuses to overwrite an existing .cargo/config.toml whose first line is not a kdlith marker: KDLITH-GEN001, exit 1, and the file is left byte for byte unchanged",
+  "args": [
+    "gen",
+    "workspace",
+    "--sources",
+    "sources.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stdout-not-contains": [
+      "ok: wrote"
+    ],
+    "stderr-contains": [
+      "error[KDLITH-GEN001]: refusing to overwrite unowned .cargo/config.toml\n"
+    ],
+    "files": {
+      ".cargo/config.toml": "config-toml.golden"
+    }
+  }
+}

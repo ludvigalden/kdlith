@@ -1,0 +1,20 @@
+{
+  "binary": "kdlith",
+  "description": "gen dialect --kdlith-workspace writes the dialect form's three kdlith dependencies (diagnostic, engine, runtime) as { workspace = true } with [lints] workspace = true; the written Cargo.toml is pinned byte for byte",
+  "args": [
+    "gen",
+    "dialect",
+    "{fx-suite}/../../pkg/kdl/dialect.kdl",
+    "--crate",
+    "demo",
+    "--out",
+    "out",
+    "--kdlith-workspace"
+  ],
+  "expect": {
+    "exit": 0,
+    "files": {
+      "out/Cargo.toml": "cargo-toml.golden"
+    }
+  }
+}

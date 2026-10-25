@@ -111,7 +111,9 @@ pub use snapshots::{
     ValidationStatus as SnapshotValidation, definition_layout_digest, snapshot_fingerprint,
 };
 pub use source_context::{AppliedSourceValue, apply as apply_source_context};
-pub use sources::{SourcesReport, list_sources, plan_sources, verify_sources};
+pub use sources::{
+    DeclaredSource, SourcesReport, declared_source, list_sources, plan_sources, verify_sources,
+};
 pub use structure::{Occurs, OrderRule, ScopeRules, ScopeState, Violation};
 pub use symbols::{ContributionDescriptor, DeclarationDescriptor, ReferencePolicy, SymbolCatalog};
 pub use syntax::ParsedDocument;

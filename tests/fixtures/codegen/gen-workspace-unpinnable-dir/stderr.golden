@@ -1,0 +1,2 @@
+error[KDLITH-GEN007]: source kdlith cannot pin the kdlith crates: it is declared as a dir source, not an origin with git= and rev=
+  help: Declare the source as an origin of the kdlith repository root with git= and a full commit rev=

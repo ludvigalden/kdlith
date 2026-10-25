@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "gen workspace --dry-run prints the four [workspace.dependencies] lines the named source pins, ready to paste, and the patch file plan; it checks nothing, writes nothing, and exits 0",
+  "args": [
+    "gen",
+    "workspace",
+    "--sources",
+    "sources.kdl",
+    "--dry-run"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden",
+    "absent": [
+      ".cargo"
+    ]
+  }
+}

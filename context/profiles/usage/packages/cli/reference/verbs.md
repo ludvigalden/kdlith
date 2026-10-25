@@ -52,7 +52,18 @@ against `--out` and reports drift (`KDLITH-GEN002`) without writing;
 the two modes exclude each other. A write over a path the run's
 manifest does not own is refused (`KDLITH-GEN001`). `gen schema`
 additionally takes `--root`, `--source`, `--handler`, and the
-packaging flags `--kdlith-path` / `--kdlith-version`.
+packaging flags `--kdlith-path` / `--kdlith-version`; both forms take
+`--kdlith-workspace`, which excludes the other two.
+
+`gen workspace --sources FILE [--root DIR] [--kdlith-source NAME]`
+checks a consuming cargo workspace against the kdlith source the
+sources manifest declares (default name `kdlith`): it prints the
+`[workspace.dependencies]` lines a generated schema reader needs, each
+`kdlith-<crate> = { git = "<git>", rev = "<rev>" }`, reports a line
+that is missing, different, or local (`KDLITH-GEN006`), and writes the
+owned `.cargo/config.toml`. `--dry-run` and `--check` behave as on the
+other forms; see the typed reader's generated-crates reference for the
+patch file and the one-time cache seed.
 
 ## Exit strata
 

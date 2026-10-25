@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "gen workspace --check over a root manifest naming no kdlith crate: each of the four crates a schema reader needs is KDLITH-GEN006 missing, its message carrying the exact line to paste, and the absent patch file is KDLITH-GEN002 missing; exit 1 and nothing is created",
+  "args": [
+    "gen",
+    "workspace",
+    "--sources",
+    "sources.kdl",
+    "--check"
+  ],
+  "expect": {
+    "exit": 1,
+    "stderr-golden": "stderr.golden",
+    "absent": [
+      ".cargo"
+    ]
+  }
+}

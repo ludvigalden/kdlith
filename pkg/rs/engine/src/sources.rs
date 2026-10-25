@@ -13,8 +13,8 @@ use kdlith_runtime::{stable_hash, stable_hash_step};
 use serde_json::{Value as Json, json};
 
 use crate::diag::{
-    SOURCE_INTEGRITY, SOURCE_INVALID, SOURCE_NOT_MATERIALISED, SOURCE_OVERRIDDEN, SOURCE_UNPINNED,
-    record,
+    SOURCE_INTEGRITY, SOURCE_INVALID, SOURCE_NOT_MATERIALISED, SOURCE_OVERRIDDEN, SOURCE_UNKNOWN,
+    SOURCE_UNPINNED, record,
 };
 use crate::digest::{files_digest, set_fingerprint, tree_digest};
 use crate::locations::{
@@ -726,6 +726,56 @@ pub fn list_sources(options: &crate::ReadOptions) -> Result<SourcesReport, Vec<D
         }));
     }
     Ok(SourcesReport { lines, records })
+}
+
+/// One source of a reading's source set, as a host that resolves it
+/// outside a reading sees it: the kind it is declared as, the origin it
+/// declares, and the directory an override replaces its tree with.
+#[derive(Clone, Debug)]
+#[non_exhaustive]
+pub struct DeclaredSource {
+    /// `origin`, `dir`, or `embedded`: the declared kind, which an
+    /// override does not change.
+    pub kind: &'static str,
+    /// The declared origin; `None` unless the kind is `origin`.
+    pub origin: Option<SourceOrigin>,
+    /// The canonical directory of the override that applies, if any.
+    pub overridden: Option<PathBuf>,
+}
+
+/// The source `name` of the set `options` name, with the admission
+/// warnings (each override's `KDLITH-LOC009`). An unknown name is
+/// `KDLITH-LOC003` at `$name/<subject>`. Nothing is fetched.
+pub fn declared_source(
+    options: &crate::ReadOptions,
+    name: &str,
+    subject: &str,
+) -> Result<(DeclaredSource, Vec<DiagnosticRecord>), Vec<DiagnosticRecord>> {
+    let (sources, warnings) = Sources::admit(&options.source_inputs(), ORIGIN)?;
+    let Some(entry) = sources.named.get(name) else {
+        let known: Vec<&str> = sources.named.keys().map(String::as_str).collect();
+        let reason = if known.is_empty() {
+            "the source set holds no named sources".to_owned()
+        } else {
+            format!("the source set holds {}", known.join(", "))
+        };
+        let location = format!("${name}/{subject}");
+        return Err(vec![record(
+            SOURCE_UNKNOWN,
+            &[&location, name, &reason],
+            ORIGIN,
+        )]);
+    };
+    let overridden = match (&entry.overridden, &entry.tree) {
+        (Some(_), Tree::Dir(dir)) => Some(dir.clone()),
+        _ => None,
+    };
+    let source = DeclaredSource {
+        kind: entry.kind(),
+        origin: entry.origin.as_ref().map(|tree| tree.origin.clone()),
+        overridden,
+    };
+    Ok((source, warnings))
 }
 
 const ORIGIN: &str = "sources-manifest";

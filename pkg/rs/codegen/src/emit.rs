@@ -191,8 +191,10 @@ impl Emission<'_> {
         })
     }
 
-    /// The crate manifest: standalone, no workspace inheritance, its
-    /// kdlith dependencies named by the emission's packaging.
+    /// The crate manifest, its kdlith dependencies named by the
+    /// emission's packaging: standalone, or under the workspace
+    /// packaging inheriting the dependencies and the lints from the
+    /// consuming workspace.
     fn cargo_toml(&self) -> String {
         let mut out = Out::new();
         out.line(crate::COMMENT_MARKER);
@@ -204,21 +206,21 @@ impl Emission<'_> {
         out.line("rust-version = \"1.85\"");
         out.line("autotests = false");
         out.blank();
-        out.line("[lints.clippy]");
-        out.line("all = { level = \"warn\", priority = -1 }");
+        if self.packaging == Packaging::Workspace {
+            out.line("[lints]");
+            out.line("workspace = true");
+        } else {
+            out.line("[lints.clippy]");
+            out.line("all = { level = \"warn\", priority = -1 }");
+        }
         out.blank();
         out.line("[dependencies]");
-        let mut crates = vec!["diagnostic", "engine"];
-        match self.kind {
-            DefinitionKind::Dialect => crates.push("runtime"),
-            DefinitionKind::Schema => crates.extend(["model", "superproc"]),
-            _ => {}
-        }
-        for dir in crates {
+        for dir in crate::dependency_dirs(self.kind) {
             out.line(&match &self.packaging {
                 Packaging::Sibling => format!("kdlith-{dir} = {{ path = \"../{dir}\" }}"),
                 Packaging::Path(root) => format!("kdlith-{dir} = {{ path = \"{root}/{dir}\" }}"),
                 Packaging::Registry(version) => format!("kdlith-{dir} = \"{version}\""),
+                Packaging::Workspace => format!("kdlith-{dir} = {{ workspace = true }}"),
             });
         }
         out.finish()

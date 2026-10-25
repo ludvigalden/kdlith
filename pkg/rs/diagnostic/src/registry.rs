@@ -1026,6 +1026,26 @@ pub const CODES: &[CodeDefinition] = &[
         correction: "Wrap the closing field or variant in a list, map, or ref; Rust needs indirection to size a recursive type",
         retired: false,
     },
+    CodeDefinition {
+        code: "KDLITH-GEN006",
+        label: "workspace-dependency-mismatch",
+        severity: Severity::Error,
+        exit_class: 1,
+        trigger: "gen workspace finds a kdlith crate a generated schema reader needs missing from the workspace root manifest's [workspace.dependencies], spelled otherwise than the git and rev the named source pins, or local: a path dependency, or an entry of a [patch] table in that manifest",
+        message_template: "workspace dependency <crate> in <file> is <state>: expected <line>",
+        correction: "Write the expected line under [workspace.dependencies]; keep a local checkout in the generated .cargo/config.toml, never in the committed manifest",
+        retired: false,
+    },
+    CodeDefinition {
+        code: "KDLITH-GEN007",
+        label: "source-cannot-pin-crates",
+        severity: Severity::Error,
+        exit_class: 1,
+        trigger: "the source gen workspace takes the kdlith crates from is not an origin, its rev= is not a full 40-hex commit, or its path= is not the repository root",
+        message_template: "source <source> cannot pin the kdlith crates: <reason>",
+        correction: "Declare the source as an origin of the kdlith repository root with git= and a full commit rev=",
+        retired: false,
+    },
     // EXP
     CodeDefinition {
         code: "KDLITH-EXP001",

@@ -80,7 +80,7 @@ struct HelpArgs {
     command: Vec<String>,
 }
 
-/// `kdlith gen dialect|schema`.
+/// `kdlith gen dialect|schema|workspace`.
 #[derive(Args)]
 struct GenArgs {
     #[command(subcommand)]
@@ -95,6 +95,10 @@ enum GenCommand {
     /// Generate the data reader a schema definition compiles to, under
     /// the canonical dialect
     Schema(Box<GenSchemaArgs>),
+    /// Check the workspace root's kdlith dependencies against a named
+    /// source and write the owned .cargo/config.toml that patches them
+    /// to the source's local override
+    Workspace(Box<GenWorkspaceArgs>),
 }
 
 #[derive(Args)]
@@ -118,6 +122,11 @@ struct GenFormArgs {
     /// documents
     #[arg(required = true)]
     files: Vec<PathBuf>,
+    /// Name each kdlith dependency `{ workspace = true }` and inherit the
+    /// workspace lints: the consuming workspace's root manifest names the
+    /// kdlith source (see gen workspace)
+    #[arg(long)]
+    kdlith_workspace: bool,
 }
 
 #[derive(Args)]
@@ -135,7 +144,7 @@ struct GenSchemaArgs {
     #[arg(
         long = "kdlith-path",
         value_name = "PATH",
-        conflicts_with = "kdlith_version",
+        conflicts_with_all = ["kdlith_version", "kdlith_workspace"],
         value_parser = handlers::parse_kdlith_path
     )]
     kdlith_path: Option<String>,
@@ -144,9 +153,30 @@ struct GenSchemaArgs {
     #[arg(
         long = "kdlith-version",
         value_name = "VER",
+        conflicts_with = "kdlith_workspace",
         value_parser = handlers::parse_kdlith_version
     )]
     kdlith_version: Option<String>,
+}
+
+/// `kdlith gen workspace`.
+#[derive(Args)]
+struct GenWorkspaceArgs {
+    #[command(flatten)]
+    locations: LocationArgs,
+    /// The source of the sources manifest the kdlith crates come from:
+    /// its origin's git= and rev= pin them, and its override, if any,
+    /// names the local checkout the patch points at
+    #[arg(long, value_name = "NAME", default_value = "kdlith")]
+    kdlith_source: String,
+    /// Print the expected dependency lines and the patch file plan;
+    /// write nothing
+    #[arg(long)]
+    dry_run: bool,
+    /// Compare the root dependencies and the patch file without writing;
+    /// report every difference and exit nonzero on any
+    #[arg(long, conflicts_with = "dry_run")]
+    check: bool,
 }
 
 /// `kdlith vet dialect|schema|data`.
@@ -806,6 +836,7 @@ impl Command {
         Some(match self {
             Command::Gen(args) => match &mut args.command {
                 GenCommand::Schema(args) => &mut args.locations,
+                GenCommand::Workspace(args) => &mut args.locations,
                 GenCommand::Dialect(_) => return None,
             },
             Command::Vet(args) => match &mut args.command {
