@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A node with no role= carries a value dependent block: nothing can bind its payload (no role-bearing item exists to hold the pending binding), so the definition fails closed with KDLITH-DLC005 at the value block's site when it compiles, naming the six admitting roles in the hint",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

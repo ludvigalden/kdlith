@@ -1,0 +1,2 @@
+setting "s1" text="hello"
+put-text "s1" "a-text-payload"

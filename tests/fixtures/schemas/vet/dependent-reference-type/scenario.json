@@ -1,0 +1,20 @@
+{
+  "binary": "kdlith",
+  "description": "A schema-form dependent block whose against field is typed by the declared reference type name SettingRef (not plain ref<Setting>) compiles, and its fixture-value payload streams as a pending binding whose against resolves to the Setting declaration through the reference declaration's target, so linking validates it under complete scope and the run exits 0",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"item\":\"pending-binding\"",
+      "\"raw\":{\"kind\":\"string\",\"value\":\"a-text-payload\"}"
+    ]
+  }
+}

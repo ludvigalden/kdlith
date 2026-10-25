@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A dependent value binding whose against target is a field typed by a bare type name that is not a declared reference type (an object type, not ref<T> and not a reference declaration) is still refused with KDLITH-DLC005, so the declared-reference widening admits only names a reference block declares",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

@@ -1,0 +1,18 @@
+schema kinds version="1" {
+    types {
+        object Setting {
+            field name String
+            field text String
+        }
+    }
+    node setting role=declaration type=Setting {
+        field name arg=0
+        field text property=text
+    }
+    node put-text role=contribution {
+        field target Setting arg=0
+        value codec=from-kind {
+            against target=target member=text
+        }
+    }
+}
