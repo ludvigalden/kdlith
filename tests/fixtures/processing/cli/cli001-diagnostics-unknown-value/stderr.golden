@@ -1,0 +1,5 @@
+error[KDLITH-CLI001]: invalid value 'yaml' for '--diagnostics <FORMAT>'
+  [possible values: json]
+
+For more information, try '--help'.
+  help: Pass a value of the documented form; see the command's --help

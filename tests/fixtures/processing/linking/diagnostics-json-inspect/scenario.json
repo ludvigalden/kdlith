@@ -1,0 +1,26 @@
+{
+  "binary": "kdlith",
+  "description": "inspect data --diagnostics json in the source view over a reading with a duplicate declaration and an unresolved reference streams every item unchanged, then writes each diagnostic of the run to stdout as one compact JSON line per record, KDLITH-REF002 then KDLITH-REF001 in print order, beside the same stderr text the run without the flag prints; the run still exits 1",
+  "args": [
+    "inspect",
+    "data",
+    "--diagnostics",
+    "json",
+    "--schema",
+    "{fx-suite}/processing/linking/schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stdout-contains": [
+      "{\"code\":\"KDLITH-REF002\"",
+      "{\"code\":\"KDLITH-REF001\""
+    ],
+    "stderr-contains": [
+      "error[KDLITH-REF002]",
+      "error[KDLITH-REF001]"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

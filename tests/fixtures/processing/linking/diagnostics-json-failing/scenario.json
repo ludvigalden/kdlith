@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "vet data --diagnostics json over a reading with a duplicate declaration and an unresolved reference writes each link diagnostic to stdout as a diagnostic item after the item stream, KDLITH-REF002 then KDLITH-REF001 in the link report's order, while stderr carries the same text the run without the flag prints and the run still exits 1",
+  "description": "vet data --diagnostics json over a reading with a duplicate declaration and an unresolved reference writes every diagnostic of the run to stdout as one compact JSON line per record after the item stream, KDLITH-REF002 then KDLITH-REF001 in print order, while stderr carries the same text the run without the flag prints and the run still exits 1",
   "args": [
     "vet",
     "data",
@@ -13,8 +13,8 @@
   "expect": {
     "exit": 1,
     "stdout-contains": [
-      "{\"item\":\"diagnostic\",\"data\":{\"code\":\"KDLITH-REF002\"",
-      "{\"item\":\"diagnostic\",\"data\":{\"code\":\"KDLITH-REF001\""
+      "{\"code\":\"KDLITH-REF002\"",
+      "{\"code\":\"KDLITH-REF001\""
     ],
     "stderr-contains": [
       "error[KDLITH-REF002]",

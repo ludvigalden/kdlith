@@ -249,8 +249,9 @@ struct VetDataArgs {
     /// resolve to exactly one declaration (complete)
     #[arg(long, value_enum, default_value_t = ScopeArg::Complete)]
     scope: ScopeArg,
-    /// Also write each link diagnostic to stdout as a diagnostic item,
-    /// after the item stream; stderr and the exit are unchanged
+    /// Also write every diagnostic of the run to stdout as one compact
+    /// JSON line per record, beside the unchanged stderr text; the exit
+    /// is unchanged
     #[arg(long = "diagnostics", value_enum, value_name = "FORMAT")]
     diagnostics: Option<DiagnosticsArg>,
     /// Data documents
@@ -392,11 +393,18 @@ enum ScopeArg {
     Complete,
 }
 
-/// The `--diagnostics` value of `vet data`.
+/// The `--diagnostics` value of the data verbs.
 #[derive(Clone, Copy, Debug, ValueEnum)]
 enum DiagnosticsArg {
-    /// Diagnostic items in the item stream's JSON line form
+    /// Every diagnostic of the run as one compact JSON line on stdout
     Json,
+}
+
+impl DiagnosticsArg {
+    /// Whether the format arms the stdout JSON mirror.
+    pub(crate) fn json(self) -> bool {
+        matches!(self, DiagnosticsArg::Json)
+    }
 }
 
 /// `kdlith inspect dialect|schema|data`.
@@ -485,6 +493,10 @@ struct InspectDataArgs {
     /// under both, failing the run under complete only)
     #[arg(long, value_enum, default_value_t = ScopeArg::Complete)]
     scope: ScopeArg,
+    /// Also write every diagnostic of the run to stdout as one compact
+    /// JSON line per record, beside the unchanged stderr text
+    #[arg(long = "diagnostics", value_enum, value_name = "FORMAT")]
+    diagnostics: Option<DiagnosticsArg>,
     /// Data documents
     #[arg(required = true)]
     files: Vec<PathBuf>,
@@ -711,6 +723,10 @@ struct ReadDataArgs {
     /// A built-in context handler to install, by name (repeatable)
     #[arg(long = "handler", value_name = "NAME", value_parser = handlers::parse_handler)]
     handlers: Vec<String>,
+    /// Also write every diagnostic of the run to stdout as one compact
+    /// JSON line per record, beside the unchanged stderr text
+    #[arg(long = "diagnostics", value_enum, value_name = "FORMAT")]
+    diagnostics: Option<DiagnosticsArg>,
     /// The data document holding the record
     file: PathBuf,
     /// The identity of the record to read
@@ -776,6 +792,10 @@ struct ExportArgs {
     /// not resolve to exactly one declaration (complete)
     #[arg(long, value_enum, default_value_t = ScopeArg::Complete)]
     scope: ScopeArg,
+    /// Also write every diagnostic of the run to stdout as one compact
+    /// JSON line per record, beside the unchanged stderr text
+    #[arg(long = "diagnostics", value_enum, value_name = "FORMAT")]
+    diagnostics: Option<DiagnosticsArg>,
     #[command(flatten)]
     locations: LocationArgs,
     #[command(flatten)]

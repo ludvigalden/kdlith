@@ -1,0 +1,26 @@
+{
+  "binary": "kdlith",
+  "description": "read data --diagnostics json finds the record asked for and prints it as one JSON line, then writes the binding diagnostic KDLITH-BND005 the same reading raised to stdout as one compact JSON line, beside the unchanged stderr text; the diagnostic still fails the run with exit 1",
+  "args": [
+    "read",
+    "data",
+    "--diagnostics",
+    "json",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "input.kdl",
+    "one"
+  ],
+  "expect": {
+    "exit": 1,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":6},\"type_name\":\"Item\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"one\"}",
+      "{\"code\":\"KDLITH-BND005\""
+    ],
+    "stderr-contains": [
+      "error[KDLITH-BND005]"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

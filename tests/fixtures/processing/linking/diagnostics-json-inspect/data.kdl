@@ -1,0 +1,5 @@
+namespace stock
+config-var region
+config-var region
+use "region"
+pin "region"

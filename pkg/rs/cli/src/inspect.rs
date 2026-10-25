@@ -15,9 +15,10 @@ use kdlith_engine::{
 use kdlith_model::Location;
 use kdlith_superproc::{Item, load_dialect, load_schema_with, reader};
 
+use crate::DiagnosticsArg;
 use crate::InspectCommand;
 use crate::ViewArg;
-use crate::report::report_all;
+use crate::report::{mirror_diagnostics_as_json, report_all};
 use crate::vet::{Linked, VetTarget, definition_extensions, governing_dialect};
 
 /// Run a parsed `inspect` subcommand. The view matrix is decided before
@@ -47,6 +48,7 @@ pub(crate) fn run(command: InspectCommand) -> ExitStatus {
             Err(status) => status,
         },
         InspectCommand::Data(args) => {
+            mirror_diagnostics_as_json(args.diagnostics.is_some_and(DiagnosticsArg::json));
             let rendering = match dispatch(args.view, VetTarget::Data) {
                 Ok(rendering) => rendering,
                 Err(status) => return status,

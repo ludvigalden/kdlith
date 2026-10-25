@@ -11,6 +11,7 @@ use kdlith_engine::{Restored, record_identity};
 use kdlith_model::Item;
 use kdlith_parse::Parser;
 
+use crate::DiagnosticsArg;
 use crate::ReadArgs;
 use crate::report::{report, report_all};
 
@@ -82,6 +83,7 @@ pub(crate) fn source_error(code: &str, values: &[&str]) -> DiagnosticRecord {
 /// binds; a store that cannot serve it replays, and a snapshot from
 /// another definition or entry chain fails (`KDLITH-CTX004`).
 pub(crate) fn read_data(args: &crate::ReadDataArgs) -> ExitStatus {
+    crate::report::mirror_diagnostics_as_json(args.diagnostics.is_some_and(DiagnosticsArg::json));
     let options = match args
         .profiles
         .clone()

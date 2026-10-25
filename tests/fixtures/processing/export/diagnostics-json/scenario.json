@@ -1,0 +1,30 @@
+{
+  "binary": "kdlith",
+  "description": "export --diagnostics json under --scope local: every root still exports with its reference as written, and the link diagnostic KDLITH-REF001 is written to stdout as one compact JSON line after the exported items, beside the unchanged stderr text; the run exits 0",
+  "args": [
+    "export",
+    "--diagnostics",
+    "json",
+    "--schema",
+    "{fx-suite}/processing/linking/schema.kdl",
+    "data.kdl",
+    "--emit",
+    "roots",
+    "--format",
+    "ndjson",
+    "--scope",
+    "local"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"written\":\"region\"",
+      "{\"code\":\"KDLITH-REF001\""
+    ],
+    "stderr-contains": [
+      "error[KDLITH-REF001]: reference region in config-vars does not resolve"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

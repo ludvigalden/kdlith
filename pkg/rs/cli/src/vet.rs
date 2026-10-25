@@ -16,7 +16,7 @@ use kdlith_model::{Item, SourceId};
 use kdlith_superproc::{load_dialect, load_schema_with, seed};
 
 use crate::handlers;
-use crate::report::report_all;
+use crate::report::{mirror_diagnostics_as_json, report_all};
 use crate::{DiagnosticsArg, ScopeArg, VetCommand};
 
 /// Run a parsed `vet` subcommand.
@@ -36,22 +36,18 @@ pub(crate) fn run(command: VetCommand) -> ExitStatus {
             scope_of(args.scope),
             args.locations.read_options(),
         ),
-        VetCommand::Data(args) => match args.profiles.data_options(args.locations, args.handlers) {
-            Ok(options) => {
-                let options = options
-                    .with_dialect(args.dialect)
-                    .with_scope(scope_of(args.scope));
-                match args.diagnostics {
-                    None => vet_data(args.schema.as_deref(), &paths(&args.files), &options),
-                    Some(DiagnosticsArg::Json) => vet_data_diagnostic_items(
-                        args.schema.as_deref(),
-                        &paths(&args.files),
-                        &options,
-                    ),
+        VetCommand::Data(args) => {
+            mirror_diagnostics_as_json(args.diagnostics.is_some_and(DiagnosticsArg::json));
+            match args.profiles.data_options(args.locations, args.handlers) {
+                Ok(options) => {
+                    let options = options
+                        .with_dialect(args.dialect)
+                        .with_scope(scope_of(args.scope));
+                    vet_data(args.schema.as_deref(), &paths(&args.files), &options)
                 }
+                Err(status) => status,
             }
-            Err(status) => status,
-        },
+        }
     }
 }
 
@@ -390,40 +386,6 @@ impl DataOptions {
 /// go to stderr.
 pub fn vet_data(schema: Option<&Path>, entries: &[&Path], options: &DataOptions) -> ExitStatus {
     stream_data(schema, entries, options, write_item)
-}
-
-/// [`vet_data`], then each link diagnostic written to stdout as a
-/// diagnostic item, in the link report's order, after the stream. The
-/// stderr text and the exit are those `vet_data` decides; a failed
-/// write fails the run.
-fn vet_data_diagnostic_items(
-    schema: Option<&Path>,
-    entries: &[&Path],
-    options: &DataOptions,
-) -> ExitStatus {
-    stream_data_then(
-        schema,
-        entries,
-        options,
-        false,
-        write_item,
-        |_, _, linked, status| {
-            let Some(linked) = linked else {
-                return status;
-            };
-            let mut out = std::io::stdout().lock();
-            for record in &linked.report.diagnostics {
-                let item = Item::Diagnostic(Box::new(record.clone()));
-                if write_item(&mut out, &item).is_err() {
-                    return ExitStatus::Failure;
-                }
-            }
-            if std::io::Write::flush(&mut out).is_err() {
-                return ExitStatus::Failure;
-            }
-            status
-        },
-    )
 }
 
 /// [`vet_data`] with each item written by `render`, which may reframe

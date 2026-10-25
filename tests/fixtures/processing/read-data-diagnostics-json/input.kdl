@@ -1,0 +1,17 @@
+locale en-gb
+group shelf {
+    label a "First"
+    label b "Second"
+}
+section "Main" {
+    public
+    item one kind=book group=shelf code=AB12 copies=2 {
+        tags x y
+        title "Dune"
+        image "cover.png"
+        video "trailer.mp4" seconds=90
+    }
+    item two kind=film group=shelf code=CD34 suiit="nope"
+}
+setting shelf "on"
+use "other.kdl"

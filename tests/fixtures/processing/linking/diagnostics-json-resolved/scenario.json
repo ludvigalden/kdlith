@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "vet data --diagnostics json over a reading whose references all resolve writes no diagnostic item: stdout is the item stream alone, byte-identical to the run without the flag, stderr stays empty, and the run exits 0",
+  "description": "vet data --diagnostics json over a reading whose references all resolve writes no diagnostic line: stdout is the item stream alone, byte-identical to the run without the flag, stderr stays empty, and the run exits 0",
   "args": [
     "vet",
     "data",
@@ -13,7 +13,8 @@
   "expect": {
     "exit": 0,
     "stdout-not-contains": [
-      "\"item\":\"diagnostic\""
+      "\"item\":\"diagnostic\"",
+      "\"code\":\"KDLITH-"
     ],
     "stdout-golden": "stdout.golden",
     "stderr-golden": "stderr.golden"

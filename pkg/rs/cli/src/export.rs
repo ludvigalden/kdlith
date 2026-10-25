@@ -8,12 +8,13 @@ use std::path::{Path, PathBuf};
 use kdlith_diagnostic::ExitStatus;
 use kdlith_engine::{Delivery, Emit, OutputPolicy, export_read};
 
-use crate::report::{print_notes, report_all};
+use crate::report::{mirror_diagnostics_as_json, print_notes, report_all};
 use crate::vet::{DataOptions, scope_of};
-use crate::{DeliveryArg, ExportArgs, SensitiveArg};
+use crate::{DeliveryArg, DiagnosticsArg, ExportArgs, SensitiveArg};
 
 /// Run a parsed `export` argument set.
 pub(crate) fn run(args: ExportArgs) -> ExitStatus {
+    mirror_diagnostics_as_json(args.diagnostics.is_some_and(DiagnosticsArg::json));
     let emit = if args.emit == "roots" {
         Emit::Roots
     } else {

@@ -227,9 +227,10 @@ published yet.
   `ReadOptions::with_match_root`, name the directory profile match
   rules read entry paths relative to; without one it is the current
   directory.
-- `vet data --diagnostics json` writes each link diagnostic to
-  standard output as a `diagnostic` item after the item stream, beside
-  the unchanged standard error text and exit.
+- `--diagnostics json` on the data verbs (`vet data`, `inspect data`,
+  `export`, and `read data`) writes every diagnostic the run prints to
+  standard output as one compact JSON line per record, beside the
+  unchanged standard error text and exit.
 - A `child` or `children` source declaring `compact=#true` admits the
   child spelled as a property of the node it selects from:
   `select tag=go` binds exactly as `select { tag go }`, one child per
@@ -268,7 +269,7 @@ published yet.
   codegen-oracle scenario's `sources` key passes `--source` to its
   generate steps.
 - The `asset` type kind: `asset NAME { kind file|dir; extensions …;
-  base document|source; patterns #true; digest #true }` declares a
+base document|source; patterns #true; digest #true }` declares a
   field whose value is a location naming a file or directory that is
   not a KDL document. The reading resolves it as it resolves an import
   location (relative, `/root`, or `$name/`, from the referring
@@ -286,7 +287,7 @@ published yet.
 - Sources manifests: `--sources FILE` (`ReadOptions::with_sources_manifest`)
   reads a `sources` document declaring sources by name, either
   `source NAME dir=DIR` or an origin, `source NAME { origin git=… rev=…
-  path=…; pinned "sha256:…" }`, whose pin is optional. kdlith never
+path=…; pinned "sha256:…" }`, whose pin is optional. kdlith never
   fetches: an origin resolves from the store (`--store DIR`,
   `with_store`) at `sha256/<hex>` when pinned and at `origin/<key>`
   when not; an absent tree is `KDLITH-LOC006` and its help names what
