@@ -10,7 +10,8 @@ use kdlith_diagnostic::registry::{lookup, render};
 use kdlith_diagnostic::{ByteSpan, DiagnosticRecord};
 use kdlith_model::{
     Asset, BoundContribution, ExpansionRequest, Field, Identity, ImportRequest, Item, Location,
-    NodeId, PendingBinding, ResolvedContribution, ScopeCompletion, SourceId, SourceSet,
+    NodeId, PendingBinding, Reference, ResolvedContribution, ScopeCompletion, SourceId,
+    SourceSet,
 };
 use kdlith_runtime::{Handlers, SessionError, SlotValue};
 use serde::Serialize;
@@ -418,6 +419,43 @@ impl<T> Reading<T> {
             TypedItem::Declaration { value, .. } => value.variant().ok_or(ResolveError::NotOfType),
             _ => Err(ResolveError::NotOfType),
         }
+    }
+
+    /// Every declaration of the reading, in stream order, read as `D`:
+    /// the processor's declaration type, or one type some declaration
+    /// nodes declare. Declarations not read as `D` are skipped, as
+    /// [`Reading::settled`] reports `ResolveError::NotOfType` for them.
+    pub fn declarations<'a, D>(&'a self) -> impl Iterator<Item = &'a D> + 'a
+    where
+        T: ItemVariant<D>,
+        D: 'a,
+    {
+        self.items.iter().filter_map(|item| match item {
+            TypedItem::Declaration { value, .. } => value.variant(),
+            _ => None,
+        })
+    }
+
+    /// The settled contribution for `target` within `scope`, decoded as
+    /// `C`, mirroring [`TypedItem::contribution`]: `None` when the
+    /// reading settled nothing there; `Some(Err(..))` when the settled
+    /// value does not decode as `C`. Pass `target` as the reading holds
+    /// it (a contribution's or pending binding's reference), so the
+    /// resolver and this lookup join by the same reference; `scope` of
+    /// `None` matches only the scope-less resolution.
+    pub fn settled_by<C: FromValue>(
+        &self,
+        target: &Reference,
+        scope: Option<&str>,
+    ) -> Option<Result<C, Mismatch>> {
+        self.items.iter().find_map(|item| match item {
+            TypedItem::Resolution(resolved)
+                if &resolved.target == target && resolved.scope.as_deref() == scope =>
+            {
+                Some(C::from_value(&resolved.value))
+            }
+            _ => None,
+        })
     }
 }
 
