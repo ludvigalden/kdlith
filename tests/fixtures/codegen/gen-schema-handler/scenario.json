@@ -1,7 +1,7 @@
 {
   "binary": "kdlith",
   "kind": "codegen-oracle",
-  "description": "gen schema --handler admits a built-in context handler a schema names: the committed processing/bind/handler-effect schema, read by suite path, names copy-fields in its context control's following effects. Without the flag generation fails closed with KDLITH-DLC006 and writes nothing; gen schema --help lists the flag; with --handler copy-fields the schema generates twice into two scratch trees the harness requires byte-identical (the harness's generate step passes no flags, so both runs are declared commands invoking the processor under test). The generated crate compiles inside a scratch workspace materialized from this scenario's committed template. The compiled consumer supplies the handler's implementation itself: loading without admitting the name is rejected with KDLITH-DLC006, loading with the name admitted through the installed handlers succeeds, and the generated typed reader with those handlers installed reads the committed data document's stamp record with at=sv-se, the locale the handler copied into context, as vet data --handler copy-fields binds it",
+  "description": "gen schema --handler admits a built-in context handler a schema names: the committed processing/bind/handler-effect schema, read by suite path, names copy-fields in its context control's following effects. Without the flag generation fails closed with KDLITH-DLC006 and writes nothing; gen schema --help lists the flag; with --handler copy-fields the schema generates twice into two scratch trees the harness requires byte-identical, both runs the harness's generate step with the flag carried through its declarative args field. The generated crate compiles inside a scratch workspace materialized from this scenario's committed template. The compiled consumer supplies the handler's implementation itself: loading without admitting the name is rejected with KDLITH-DLC006, loading with the name admitted through the installed handlers succeeds, and the generated typed reader with those handlers installed reads the committed data document's stamp record with at=sv-se, the locale the handler copied into context, as vet data --handler copy-fields binds it",
   "form": "schema",
   "entrypoint": "{fx-suite}/processing/bind/handler-effect/schema.kdl",
   "crate": "stamp-proc",
@@ -20,16 +20,10 @@
       }
     },
     {
-      "exercise": {
-        "command": ["sh", "-c", "exec \"$KDLITH_FX_KDLITH\" gen schema \"$KDLITH_FX_SUITE/processing/bind/handler-effect/schema.kdl\" --handler copy-fields --crate stamp-proc --out ws/rs/stamp-proc"],
-        "stdout-contains": ["ok: generated schema crate stamp-proc at ws/rs/stamp-proc (12 owned files)\n"]
-      }
+      "generate": { "out": "ws/rs/stamp-proc", "args": ["--handler", "copy-fields"] }
     },
     {
-      "exercise": {
-        "command": ["sh", "-c", "exec \"$KDLITH_FX_KDLITH\" gen schema \"$KDLITH_FX_SUITE/processing/bind/handler-effect/schema.kdl\" --handler copy-fields --crate stamp-proc --out gen-again"],
-        "stdout-contains": ["ok: generated schema crate stamp-proc at gen-again (12 owned files)\n"]
-      }
+      "generate": { "out": "gen-again", "args": ["--handler", "copy-fields"] }
     },
     { "determinism": ["ws/rs/stamp-proc", "gen-again"] },
     {

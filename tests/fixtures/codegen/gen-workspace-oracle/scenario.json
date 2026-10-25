@@ -37,27 +37,15 @@
       }
     },
     {
-      "exercise": {
-        "command": [
-          "sh",
-          "-c",
-          "exec \"$KDLITH_FX_KDLITH\" gen schema inputs/schema.kdl --crate parts-proc --out ws/rs/parts-proc --kdlith-workspace"
-        ],
-        "stdout-contains": [
-          "ok: generated schema crate parts-proc at ws/rs/parts-proc (11 owned files)\n"
-        ]
+      "generate": {
+        "out": "ws/rs/parts-proc",
+        "args": ["--kdlith-workspace"]
       }
     },
     {
-      "exercise": {
-        "command": [
-          "sh",
-          "-c",
-          "exec \"$KDLITH_FX_KDLITH\" gen schema inputs/schema.kdl --crate parts-proc --out gen-again --kdlith-workspace"
-        ],
-        "stdout-contains": [
-          "ok: generated schema crate parts-proc at gen-again (11 owned files)\n"
-        ]
+      "generate": {
+        "out": "gen-again",
+        "args": ["--kdlith-workspace"]
       }
     },
     {
@@ -67,15 +55,9 @@
       ]
     },
     {
-      "exercise": {
-        "command": [
-          "sh",
-          "-c",
-          "exec \"$KDLITH_FX_KDLITH\" gen schema inputs/schema.kdl --crate parts-proc --out ws/rs/parts-proc --kdlith-workspace --check"
-        ],
-        "stdout-contains": [
-          "ok: schema crate parts-proc at ws/rs/parts-proc is current (11 owned files)\n"
-        ]
+      "generate": {
+        "out": "ws/rs/parts-proc",
+        "args": ["--kdlith-workspace", "--check"]
       }
     },
     {

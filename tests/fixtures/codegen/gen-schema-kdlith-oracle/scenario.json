@@ -1,7 +1,7 @@
 {
   "binary": "kdlith",
   "kind": "codegen-oracle",
-  "description": "gen schema --kdlith-path ../ws/rs generates a schema crate whose manifest roots its kdlith path dependencies at the scenario's copied crates, outside the sibling layout the default assumes: the crate generates twice into two scratch trees the harness requires byte-identical (the harness's generate step passes no flags, so both runs are declared commands invoking the processor under test), compiles inside a scratch workspace materialized from this scenario's committed template with the repository's engine and reference-processor crates copied in at the pinned layout positions, and the compiled consumer — depending on nothing but the generated crate — loads the schema and reads the committed data document's records through the generated typed reader. Both misuse modes are pinned as declared commands: the two packaging flags together fail closed with the clap conflict usage error and write nothing, and an empty --kdlith-path value fails closed with the value parser's error and writes nothing",
+  "description": "gen schema --kdlith-path ../ws/rs generates a schema crate whose manifest roots its kdlith path dependencies at the scenario's copied crates, outside the sibling layout the default assumes: the crate generates twice into two scratch trees the harness requires byte-identical, both runs the harness's generate step with --kdlith-path ../ws/rs carried through its declarative args field, compiles inside a scratch workspace materialized from this scenario's committed template with the repository's engine and reference-processor crates copied in at the pinned layout positions, and the compiled consumer — depending on nothing but the generated crate — loads the schema and reads the committed data document's records through the generated typed reader. Both misuse modes are pinned as declared commands: the two packaging flags together fail closed with the clap conflict usage error and write nothing, and an empty --kdlith-path value fails closed with the value parser's error and writes nothing",
   "form": "schema",
   "entrypoint": "inputs/schema.kdl",
   "crate": "parts-proc",
@@ -21,16 +21,10 @@
       }
     },
     {
-      "exercise": {
-        "command": ["sh", "-c", "exec \"$KDLITH_FX_KDLITH\" gen schema inputs/schema.kdl --crate parts-proc --out gen --kdlith-path ../ws/rs"],
-        "stdout-contains": ["ok: generated schema crate parts-proc at gen (11 owned files)\n"]
-      }
+      "generate": { "out": "gen", "args": ["--kdlith-path", "../ws/rs"] }
     },
     {
-      "exercise": {
-        "command": ["sh", "-c", "exec \"$KDLITH_FX_KDLITH\" gen schema inputs/schema.kdl --crate parts-proc --out gen-again --kdlith-path ../ws/rs"],
-        "stdout-contains": ["ok: generated schema crate parts-proc at gen-again (11 owned files)\n"]
-      }
+      "generate": { "out": "gen-again", "args": ["--kdlith-path", "../ws/rs"] }
     },
     { "determinism": ["gen", "gen-again"] },
     {

@@ -1,0 +1,22 @@
+{
+  "binary": "kdlith",
+  "description": "the generate step's args field is fail-closed by construction: the harness holds no flag whitelist, so an unknown gen flag passed through args reaches the processor under test, which refuses it under the argument-error stratum (KDLITH-CLI001, exit 2) and writes nothing — through the declarative channel the same refusal fails the generate step's exit check, and the scenario fails with the processor's streams attached. Here the refusal itself is pinned directly on the gen command line, the same shape the packaging oracle uses for its empty --kdlith-path pin",
+  "args": [
+    "gen",
+    "schema",
+    "{fx-suite}/processing/bind/handler-effect/schema.kdl",
+    "--crate",
+    "stamp-proc",
+    "--out",
+    "refused",
+    "--handler-not-a-flag",
+    "copy-fields"
+  ],
+  "expect": {
+    "exit": 2,
+    "stderr-contains": [
+      "error[KDLITH-CLI001]: unexpected argument '--handler-not-a-flag' found"
+    ],
+    "absent": ["refused"]
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "binary": "kdlith",
+  "kind": "codegen-oracle",
+  "description": "the generate step's declarative args field: its entries append after the pinned gen argument shape, placeholder-expanded, so a gen flag reaches the processor without a declared command. The committed handler-effect schema names a handler its own crate does not install, so generation fails closed without the flag (the refusal the handler oracle pins as KDLITH-DLC006); admitted through args, --handler copy-fields lets the schema generate its crate into the scenario tree, and the passing generate step proves the flag arrived — a dropped or misspelled args entry fails the step's exit check",
+  "form": "schema",
+  "entrypoint": "{fx-suite}/processing/bind/handler-effect/schema.kdl",
+  "crate": "stamp-proc",
+  "steps": [
+    {
+      "generate": {
+        "out": "ws/rs/stamp-proc",
+        "args": ["--handler", "copy-fields"]
+      }
+    },
+    {
+      "exercise": {
+        "command": ["sh", "-c", "test -f ws/rs/stamp-proc/Cargo.toml && echo generated"],
+        "stdout-contains": ["generated\n"]
+      }
+    }
+  ]
+}
