@@ -10,8 +10,7 @@ use kdlith_diagnostic::registry::{lookup, render};
 use kdlith_diagnostic::{ByteSpan, DiagnosticRecord};
 use kdlith_model::{
     Asset, BoundContribution, ExpansionRequest, Field, Identity, ImportRequest, Item, Location,
-    NodeId, PendingBinding, Reference, ResolvedContribution, ScopeCompletion, SourceId,
-    SourceSet,
+    NodeId, PendingBinding, Reference, ResolvedContribution, ScopeCompletion, SourceId, SourceSet,
 };
 use kdlith_runtime::{Handlers, SessionError, SlotValue};
 use serde::Serialize;
