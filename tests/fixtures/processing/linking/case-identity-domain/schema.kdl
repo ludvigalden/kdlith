@@ -1,0 +1,35 @@
+schema demo version="1" {
+    types {
+        object Bolt {
+            field name String
+            field kind String
+        }
+        object Nut {
+            field name String
+            field kind String
+        }
+        object Use {
+            field target PartRef
+        }
+        codec PartRef output=String {
+            match #"(?<name>[a-z-]+)"#
+            capture name String
+        }
+    }
+    node part role=declaration {
+        field name String arg=0
+        field kind String property=kind
+        cases {
+            case property=kind equals="bolt" type=Bolt
+            case property=kind equals="nut" type=Nut
+        }
+        identity {
+            domain parts
+            compose qualified-name name
+        }
+    }
+    node use role=record type=Use {
+        field target arg=0
+    }
+    reference PartRef target=Bolt codec=PartRef lookup=parts qualification=explicit
+}

@@ -1,0 +1,3 @@
+part "hex" kind=bolt
+part "wing" kind=nut
+use hex
