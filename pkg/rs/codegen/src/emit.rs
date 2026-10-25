@@ -263,9 +263,16 @@ impl Emission<'_> {
         // needs no dependency beyond the generated crate.
         if self.kind == DefinitionKind::Schema {
             out.line("pub use kdlith_engine::{");
-            out.line("    Asset, CheckScope, Extensions, ItemVariant, LinkOutcome, LinkReport, OpenError,");
-            out.line("    Origin, ReadError, ReadOptions, Reading, Ref, ResolveError, Source, SourceTree,");
-            out.line("    TypedItem, TypedReader, UnmetQualifier, Value,");
+            out.line(
+                "    Asset, CheckScope, Extensions, FromValue, ItemVariant, LinkOutcome, LinkReport,",
+            );
+            out.line(
+                "    Mismatch, OpenError, Origin, ReadError, ReadOptions, Reading, Ref, Regex,",
+            );
+            out.line(
+                "    ResolveError, Source, SourceTree, TypedItem, TypedReader, UnmetQualifier,",
+            );
+            out.line("    Value, matches_line,");
             out.line("};");
             out.line("pub use kdlith_model::Location;");
             out.line("pub use kdlith_diagnostic::DiagnosticRecord;");

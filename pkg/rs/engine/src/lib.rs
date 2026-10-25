@@ -20,6 +20,7 @@ mod locations;
 mod manifest;
 mod names;
 mod overlap;
+mod pattern;
 mod plan;
 mod resolution;
 mod snapshot_store;
@@ -99,6 +100,9 @@ pub use list::{
 pub use locations::{SourceTree, is_literal, pattern_names};
 pub use manifest::SourceOrigin;
 pub use names::{Names, Sym};
+/// The pinned `regex` type is public API: tools and the generated
+/// crates that re-export it name it through the engine.
+pub use pattern::{Regex, matches_line};
 pub use plan::{ContextPlan, ContextRead, DeferredBinding, EffectStep, NodePlan, ProcessingPlan};
 pub use resolution::{ResolutionError, SharedContributionResolver, resolve};
 pub use snapshot_store::{SnapshotLoad, encode_snapshot_entry, load_snapshot};

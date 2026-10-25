@@ -76,6 +76,8 @@ enum_type! {
 }
 
 enum_type! {
+    /// How a field declaring merge combines its contributions; the
+    /// only policy is union, which appends to the field's list.
     pub enum MergePolicy {
         "union" => Union,
     }

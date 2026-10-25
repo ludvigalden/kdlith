@@ -67,6 +67,10 @@ pub(crate) fn type_doc(name: &str) -> Option<&'static [&'static str]> {
             "How merge treats a key the held map already carries; the",
             "fail-closed default rejects.",
         ],
+        "MergePolicy" => &[
+            "How a field declaring merge combines its contributions; the",
+            "only policy is union, which appends to the field's list.",
+        ],
         "SourceContextDef" => &[
             "Fields derived from source metadata before the document's first",
             "semantic node; the mode is explicit, with no default.",
