@@ -1,0 +1,23 @@
+{
+  "binary": "kdlith",
+  "description": "With no reference type declared for the contribution's target, every from-kind payload that fits the kind its setting holds still reads clean under complete scope: the index fallback reaches each setting's declaration and selects the same shapes — a flag setting a Bool, a number setting a U64, a text setting a String, and a choice setting one of the choices it declares — and the run exits 0 with no diagnostic",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "{fx-suite}/processing/linking/pending-kind-noref-schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"raw\":{\"kind\":\"bool\",\"value\":true}",
+      "\"raw\":{\"kind\":\"number\",\"value\":\"3\"}",
+      "\"raw\":{\"kind\":\"string\",\"value\":\"main\"}",
+      "\"raw\":{\"kind\":\"string\",\"value\":\"slow\"}",
+      "\"item\":\"scope-complete\""
+    ]
+  }
+}

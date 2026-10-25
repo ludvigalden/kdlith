@@ -1,0 +1,2 @@
+setting "depth" kind=number
+put "depth" "big"

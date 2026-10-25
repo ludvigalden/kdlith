@@ -1,0 +1,33 @@
+// The shared pending-kind schema with no reference declaration: the
+// put contribution's target is a plain ref<Setting>, so no declared
+// reference type covers it and linking has no link entry for it.
+// Payload validation still reaches the setting's declaration through
+// the identity-index fallback.
+schema pending-kind-noref version="1" {
+    types {
+        object Setting {
+            field name String
+            field kind "optional<String>"
+            field choices "optional<list<String>>"
+        }
+        codec SettingName output=String {
+            match #"(?<name>[a-z0-9-]+)"#
+            capture name String
+        }
+    }
+    node setting role=declaration type=Setting {
+        field name arg=0
+        field kind property=kind
+        field choices {
+            from {
+                args
+            }
+        }
+    }
+    node put role=contribution {
+        field target "ref<Setting>" arg=0
+        value codec=from-kind {
+            against target=target member=kind
+        }
+    }
+}

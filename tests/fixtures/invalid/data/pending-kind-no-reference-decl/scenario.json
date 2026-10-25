@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A from-kind payload fails closed with KDLITH-REF005 under complete scope even when the schema declares no reference type for the contribution's target: a string payload against a kind=number setting, whose declaration is reached through the identity index rather than a resolved link",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "{fx-suite}/processing/linking/pending-kind-noref-schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}
