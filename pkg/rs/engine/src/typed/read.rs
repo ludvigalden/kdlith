@@ -16,8 +16,8 @@ use kdlith_runtime::{Handlers, SessionError, SlotValue};
 use serde::Serialize;
 
 use crate::bindings::Role;
-use crate::data::{DataReader, Entering, EntrySource, ReadOptions, Source};
-use crate::definition::{CheckScope, Definition};
+use crate::data::{DataReader, Entering, EntrySource, Profiling, ReadOptions, Sides, Source};
+use crate::definition::{CheckScope, Definition, ProfileSelection};
 use crate::link::{
     DuplicateDeclaration, ImportNamespaces, Link, LinkInputs, LinkOutcome, LinkReport, link_reading,
 };
@@ -45,6 +45,11 @@ pub enum TypedItem<T> {
         /// locate its diagnostics; not part of the item's serialized form.
         #[serde(skip)]
         text: String,
+        /// The profiles the document's entry invocation selected, as
+        /// [`TypedReader::provenance`] asked for them; empty unless it
+        /// was asked for. Not part of the serialized form.
+        #[serde(skip)]
+        profiles: Vec<String>,
         /// The slots [`TypedReader::capturing`] named, in the order it
         /// named them, each with its value as the document's first node
         /// binds under it; `None` where the slot is unset. Empty unless
@@ -158,6 +163,12 @@ pub enum ReadError {
     /// [`TypedReader::capturing`] named a slot the definition does not
     /// declare.
     UnknownSlot(String),
+    /// [`TypedReader::provenance`] was asked of a definition that
+    /// declares no profiles: no document can declare one.
+    NoProfiles,
+    /// [`TypedReader::provenance`] surfaced a profile the reading's
+    /// options name that the definition does not declare.
+    UnknownProfile(String),
 }
 
 impl std::fmt::Display for ReadError {
@@ -167,6 +178,10 @@ impl std::fmt::Display for ReadError {
             ReadError::UnsupportedItem => f.write_str("the binder yielded an unsupported item"),
             ReadError::UnknownSlot(name) => {
                 write!(f, "the definition declares no context slot {name}")
+            }
+            ReadError::NoProfiles => f.write_str("the definition declares no profiles"),
+            ReadError::UnknownProfile(name) => {
+                write!(f, "the definition declares no profile {name}")
             }
         }
     }
@@ -471,6 +486,9 @@ pub struct TypedReader<'d, T: 'static> {
     /// The context slots each document item carries, by name, in the
     /// order they were asked for.
     capture: Vec<String>,
+    /// Whether each document item carries the profiles its entry
+    /// invocation selected.
+    provenance: bool,
 }
 
 impl<'d, T: 'static> TypedReader<'d, T> {
@@ -487,6 +505,7 @@ impl<'d, T: 'static> TypedReader<'d, T> {
                 options: ReadOptions::new(),
                 linking: None,
                 capture: Vec::new(),
+                provenance: false,
             });
         }
         let processor = format!("{} {}", declarations.kind.root_name(), declarations.name);
@@ -573,6 +592,20 @@ impl<'d, T: 'static> TypedReader<'d, T> {
     #[must_use]
     pub fn capturing(mut self, slots: &[&str]) -> Self {
         self.capture = slots.iter().map(|&slot| slot.to_owned()).collect();
+        self
+    }
+
+    /// Carry, on every document item, the profiles its entry invocation
+    /// selected — the one it named or match-selected, or each member of
+    /// the selected set, in listed order — in place of carrying none; a
+    /// document an import reaches carries the entry's selection, which
+    /// is the selection it binds under. A definition that declares no
+    /// profiles, or an option naming a profile it does not declare,
+    /// fails the reading before any document is read
+    /// ([`ReadError::NoProfiles`], [`ReadError::UnknownProfile`]).
+    #[must_use]
+    pub fn provenance(mut self) -> Self {
+        self.provenance = true;
         self
     }
 
@@ -687,13 +720,27 @@ impl<'d, T: 'static> TypedReader<'d, T> {
         sink: &mut dyn FnMut(TypedItem<T>),
         follow: bool,
     ) -> Result<(bool, Option<LinkReport>), ReadError> {
+        if self.provenance {
+            self.check_provenance()?;
+        }
         let captured = self.captured_slots()?;
-        // The data reader gives each document's text, and its entry
-        // context when asked, just before its document item, and each
-        // record's or declaration's context just before it, so they pair
-        // in stream order.
+        // The data reader gives each document's text, its entry context
+        // when asked, and its entry's profile selection when asked, just
+        // before its document item, and each record's or declaration's
+        // context just before it, so they pair in stream order.
         let text = Cell::new(String::new());
         let mut texts = |read: &str| text.set(read.to_owned());
+        let selected = Cell::new(Vec::<String>::new());
+        let def = self.reader.definition();
+        let mut profiled = |selection: &ProfileSelection| {
+            selected.set(
+                selection
+                    .members()
+                    .iter()
+                    .map(|&sym| def.names.resolve(sym).to_owned())
+                    .collect(),
+            );
+        };
         let context = RefCell::new(Vec::new());
         let mut entered = |values: &[Option<SlotValue>]| {
             *context.borrow_mut() = captured
@@ -702,6 +749,7 @@ impl<'d, T: 'static> TypedReader<'d, T> {
                 .collect();
         };
         let entering: Option<Entering<'_>> = (!captured.is_empty()).then_some(&mut entered);
+        let profiling: Option<Profiling<'_>> = self.provenance.then_some(&mut profiled);
         let mut origins: HashMap<SourceId, Origin> = HashMap::new();
         let mut imports = ImportNamespaces::default();
         let mut mismatched = false;
@@ -727,7 +775,7 @@ impl<'d, T: 'static> TypedReader<'d, T> {
                 };
                 origins.insert(document.source, origin);
             }
-            let typed = match self.typed(item, &text, &context, &origins) {
+            let typed = match self.typed(item, &text, &selected, &context, &origins) {
                 // A reading a record failed to type is incomplete, so no
                 // target is settled from its contributions.
                 Some(Ok(TypedItem::Resolution(_))) if mismatched => return,
@@ -749,8 +797,11 @@ impl<'d, T: 'static> TypedReader<'d, T> {
             entries,
             &self.options,
             &mut typing,
-            &mut texts,
-            entering,
+            Sides {
+                texts: Some(&mut texts),
+                entering,
+                profiling,
+            },
             follow,
         )?;
         if unsupported {
@@ -776,6 +827,24 @@ impl<'d, T: 'static> TypedReader<'d, T> {
             .collect()
     }
 
+    /// The unknown states [`TypedReader::provenance`] fails closed on,
+    /// before any document is read: a definition that declares no
+    /// profiles, and a profile the reading's options name that the
+    /// definition does not declare.
+    fn check_provenance(&self) -> Result<(), ReadError> {
+        let def = self.reader.definition();
+        if def.profiles.is_empty() {
+            return Err(ReadError::NoProfiles);
+        }
+        let (named, set) = self.options.profile_inputs();
+        for name in named.into_iter().chain(set.iter().map(String::as_str)) {
+            if def.declared_profile(name).is_none() {
+                return Err(ReadError::UnknownProfile(name.to_owned()));
+            }
+        }
+        Ok(())
+    }
+
     /// One engine item as the processor reads it: a record or
     /// declaration through its handler, every other item as its twin;
     /// `None` for an item this reader does not know.
@@ -783,6 +852,7 @@ impl<'d, T: 'static> TypedReader<'d, T> {
         &self,
         item: Item,
         text: &Cell<String>,
+        selected: &Cell<Vec<String>>,
         context: &RefCell<Vec<(String, Option<SlotValue>)>>,
         origins: &HashMap<SourceId, Origin>,
     ) -> Option<Result<TypedItem<T>, Box<DiagnosticRecord>>> {
@@ -793,6 +863,7 @@ impl<'d, T: 'static> TypedReader<'d, T> {
                 source: document.source,
                 path: document.path,
                 text: text.take(),
+                profiles: selected.take(),
                 context: context.take(),
             },
             Item::Record(record) => {

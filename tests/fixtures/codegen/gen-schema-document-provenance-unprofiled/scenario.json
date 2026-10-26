@@ -1,0 +1,31 @@
+{
+  "binary": "kdlith",
+  "kind": "codegen-oracle",
+  "description": "Provenance refused on an unprofiled schema: gen schema generates a schema declaring no profiles twice into two scratch trees the harness requires byte-identical, and the generated crate compiles inside a scratch workspace materialized from this scenario's committed template. The compiled processor reads its committed data plainly, then asks its typed reader for provenance: the reading fails before any document is read, because no document can declare a profile a schema declaring none never selects",
+  "form": "schema",
+  "entrypoint": "inputs/schema.kdl",
+  "crate": "plain-proc",
+  "steps": [
+    { "generate": "ws/rs/plain-proc" },
+    { "generate": "gen-again" },
+    { "determinism": ["ws/rs/plain-proc", "gen-again"] },
+    {
+      "compile": {
+        "workspace": "ws",
+        "copy": {
+          "crates": ["diagnostic", "engine", "model", "parse", "runtime", "superproc"],
+          "kdl": true
+        },
+        "command": ["cargo", "build", "--offline", "--manifest-path", "ws/rs/plain-proc/Cargo.toml"]
+      }
+    },
+    {
+      "exercise": {
+        "command": ["cargo", "run", "--offline", "--quiet", "--manifest-path", "ws/rs/exercise/Cargo.toml", "--", "inputs/schema.kdl", "inputs/data.kdl"],
+        "stdout-contains": [
+          "schema ok digest=990478ccf92b94b5\nread plain failed=false documents=1\nno-profiles error=the definition declares no profiles items=0\n"
+        ]
+      }
+    }
+  ]
+}

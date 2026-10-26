@@ -1,0 +1,12 @@
+// A schema declaring no profiles: no entry invocation selects one, so
+// a typed reader asked for provenance has nothing to carry.
+schema plain version="1" {
+    types {
+        object Part {
+            field id String
+        }
+    }
+    node part role=record type=Part {
+        field id arg=0
+    }
+}

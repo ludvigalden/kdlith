@@ -222,7 +222,7 @@ impl Definition {
     }
 
     /// The symbol of the declared profile spelled `name`.
-    fn declared_profile(&self, name: &str) -> Option<Sym> {
+    pub(crate) fn declared_profile(&self, name: &str) -> Option<Sym> {
         self.names
             .get(name)
             .and_then(|sym| self.profile(sym))

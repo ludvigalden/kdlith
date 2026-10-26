@@ -1,0 +1,24 @@
+# The scratch workspace that compiles a generated schema processor: the
+# same inheritance tables the repository root defines, so the copied
+# engine crates resolve their version, edition, lints, and dependency
+# pins. Kept in lockstep with the repository root manifest.
+[workspace]
+resolver = "2"
+members = ["diagnostic", "engine", "exercise", "model", "parse", "plain-proc", "runtime", "superproc"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+
+[workspace.dependencies]
+clap = { version = "=4.6.7", features = ["derive"] }
+libtest-mimic = "=0.8.2"
+regex = "=1.13.1"
+rustix = { version = "=1.1.5", features = ["fs", "pipe", "process"] }
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = { version = "=1.0.151", features = ["preserve_order"] }
+sha2 = { version = "=0.10.9", default-features = false }
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }

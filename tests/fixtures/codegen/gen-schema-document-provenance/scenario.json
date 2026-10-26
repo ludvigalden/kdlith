@@ -1,0 +1,31 @@
+{
+  "binary": "kdlith",
+  "kind": "codegen-oracle",
+  "description": "Provenance on typed documents through a generated crate: gen schema generates a schema declaring two match-ruled profiles twice into two scratch trees the harness requires byte-identical, and the generated crate compiles inside a scratch workspace materialized from this scenario's committed template. The compiled processor reads committed data through its typed reader four ways: unarmed, each document item carries no profiles; asked for provenance under a named profile, each document — the entry and the one its import reaches — carries that profile; asked with no name, each carries the profile the entry's source path match-selected; and asked under a listed set the entry's path satisfies twice, each carries both members in listed order. A reader asked for provenance whose options name a profile the schema does not declare fails before any document is read",
+  "form": "schema",
+  "entrypoint": "inputs/schema.kdl",
+  "crate": "provenance-proc",
+  "steps": [
+    { "generate": "ws/rs/provenance-proc" },
+    { "generate": "gen-again" },
+    { "determinism": ["ws/rs/provenance-proc", "gen-again"] },
+    {
+      "compile": {
+        "workspace": "ws",
+        "copy": {
+          "crates": ["diagnostic", "engine", "model", "parse", "runtime", "superproc"],
+          "kdl": true
+        },
+        "command": ["cargo", "build", "--offline", "--manifest-path", "ws/rs/provenance-proc/Cargo.toml"]
+      }
+    },
+    {
+      "exercise": {
+        "command": ["cargo", "run", "--offline", "--quiet", "--manifest-path", "ws/rs/exercise/Cargo.toml", "--", "inputs/schema.kdl", "inputs/stock.kdl", "inputs/retail.kdl"],
+        "stdout-contains": [
+          "schema ok digest=6ef5613b875adbc1\nread plain failed=false\ndocument inputs/stock.kdl profiles=[]\ndocument inputs/part.kdl profiles=[]\nread named failed=false\ndocument inputs/retail.kdl profiles=[retail]\ndocument inputs/part.kdl profiles=[retail]\nread inferred failed=false\ndocument inputs/stock.kdl profiles=[plain]\ndocument inputs/part.kdl profiles=[plain]\nread listed failed=false\ndocument inputs/retail.kdl profiles=[retail,plain]\ndocument inputs/part.kdl profiles=[retail,plain]\nunknown-profile error=the definition declares no profile nope items=0\n"
+        ]
+      }
+    }
+  ]
+}

@@ -39,5 +39,17 @@ reading (`ReadError::UnknownSlot`) before any document is read.
 `inspect data --view context` reports slot values at a different
 point — each entry's context as the entry left it.
 
+## Declaring profiles
+
+`.provenance()` is opt-in: each `TypedItem::Document` then carries the
+profiles its entry invocation selected — the one profile it named or
+its source path match-selected, or each member of the selected set, in
+listed order (`profiles`, empty when it was not asked for). A document
+an import reaches carries the entry's selection, which is the selection
+it binds under. A definition that declares no profiles, or a profile
+the reading's options name that the definition does not declare, fails
+the reading (`ReadError::NoProfiles`, `ReadError::UnknownProfile`)
+before any document is read.
+
 None of these fields is part of an item's serialized form, so
 `vet data` output and exports are unchanged.

@@ -1,0 +1,31 @@
+// A schema declaring two profiles with one match rule each, so every
+// entry invocation selects one by name, by set, or from its source
+// path: the selection a typed reader asked for provenance carries.
+// Neither profile restricts roots, so every reading binds the same
+// records whatever profile selected them.
+schema provenance version="1" {
+    types {
+        object Part {
+            field id String
+        }
+    }
+    node part role=record type=Part {
+        field id arg=0
+    }
+    node use role=source-import {
+        field path String arg=0
+    }
+    profile retail {
+        match {
+            file-name "retail.kdl"
+        }
+    }
+    profile plain default=#true {
+        match {
+            path-prefix "inputs"
+        }
+    }
+    document {
+        following part use
+    }
+}

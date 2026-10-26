@@ -38,6 +38,11 @@ const ORIGIN: &str = "data-document";
 /// bound under just before the item.
 pub(crate) type Entering<'e> = &'e mut dyn FnMut(&[Option<SlotValue>]);
 
+/// Takes the profile selection of the entry document a document item
+/// belongs to, just before the item: the selection every document the
+/// entry's imports reach binds under.
+pub(crate) type Profiling<'p> = &'p mut dyn FnMut(&ProfileSelection);
+
 /// What one reading supplies beyond its definition: the profile, or the
 /// profile set, the invocation names, the project root, and the named
 /// sources import locations may address as `$name/`. A source that is
@@ -187,6 +192,13 @@ impl ReadOptions {
         Sources::admit(&self.source_inputs(), ORIGIN)
             .ok()
             .map(|(sources, _)| crate::locations::AssetSet(Rc::new(sources)))
+    }
+
+    /// The profile these options name, and the set they admit, as they
+    /// spell them: what a typed reader asked for provenance validates
+    /// and surfaces.
+    pub(crate) fn profile_inputs(&self) -> (Option<&str>, &[String]) {
+        (self.profile.as_deref(), &self.profiles)
     }
 
     /// Select `def`'s profiles for the entry the reading shows as
@@ -399,20 +411,17 @@ impl<'d> DataReader<'d> {
     /// with `entered`, also giving it, at the same point, every slot's
     /// value in slot order as the document's invocation entered it, and
     /// immediately before each record or declaration, the values it
-    /// bound under. An entry may be a document held in memory.
+    /// bound under; with `profiling`, also giving it, at the same point,
+    /// the profile selection of the entry document the item belongs to.
+    /// An entry may be a document held in memory.
     pub(crate) fn read_documents(
         &self,
         entries: &[EntrySource<'_>],
         options: &ReadOptions,
         sink: &mut dyn FnMut(Item),
-        texts: &mut dyn FnMut(&str),
-        entered: Option<Entering<'_>>,
+        sides: Sides<'_, '_, '_>,
         follow: bool,
     ) -> Result<bool, ReadError> {
-        let sides = Sides {
-            texts: Some(texts),
-            entering: entered,
-        };
         self.read_inner(entries, options, sink, sides, follow, follow)
             .map(|outcome| outcome.failed)
     }
@@ -708,7 +717,7 @@ impl<'d> DataReader<'d> {
         entries: &[EntrySource<'_>],
         options: &ReadOptions,
         sink: &mut dyn FnMut(Item),
-        sides: Sides<'_, '_>,
+        sides: Sides<'_, '_, '_>,
         follow: bool,
         resolving: bool,
     ) -> Result<Outcome, ReadError> {
@@ -764,6 +773,7 @@ impl<'d> DataReader<'d> {
         let Sides {
             mut texts,
             mut entering,
+            mut profiling,
         } = sides;
         let armed = entering.is_some();
         let mut enter = |values: &[Option<SlotValue>]| {
@@ -776,6 +786,11 @@ impl<'d> DataReader<'d> {
                 texts(text);
             }
         };
+        let mut declare = |selection: &ProfileSelection| {
+            if let Some(profiling) = &mut profiling {
+                profiling(selection);
+            }
+        };
         let mut reading = Reading {
             reader: self,
             selection: ProfileSelection::Unprofiled,
@@ -785,6 +800,7 @@ impl<'d> DataReader<'d> {
             places: HashMap::new(),
             texts: &mut give,
             entering: if armed { Some(&mut enter) } else { None },
+            profiling: &mut declare as Profiling<'_>,
             invocations: Invocations::new()
                 .with_limit(options.max_invocations.unwrap_or(MAX_INVOCATIONS))
                 .with_schema_fingerprint(self.schema_fingerprint()),
@@ -899,17 +915,20 @@ fn entry_values(
 }
 
 /// Where a reading gives what a consumer pairs with each document item,
-/// just before it: the document's text, and its entry context.
-struct Sides<'t, 'e> {
-    texts: Option<&'t mut dyn FnMut(&str)>,
-    entering: Option<Entering<'e>>,
+/// just before it: the document's text, its entry context, and the
+/// profile selection of the entry it belongs to.
+pub(crate) struct Sides<'t, 'e, 'p> {
+    pub(crate) texts: Option<&'t mut dyn FnMut(&str)>,
+    pub(crate) entering: Option<Entering<'e>>,
+    pub(crate) profiling: Option<Profiling<'p>>,
 }
 
-impl Sides<'_, '_> {
+impl Sides<'_, '_, '_> {
     fn none() -> Self {
         Self {
             texts: None,
             entering: None,
+            profiling: None,
         }
     }
 }
@@ -972,6 +991,9 @@ struct Reading<'r, 'd> {
     places: HashMap<InvocationId, Place>,
     /// Where each document's text goes just before its document item.
     texts: &'r mut dyn FnMut(&str),
+    /// Where the entry selection a document binds under goes, at the
+    /// same point; a no-op when no consumer asked for it.
+    profiling: Profiling<'r>,
     /// Where each document's entry context goes just before its text,
     /// when a consumer asked for it.
     entering: Option<Entering<'r>>,
@@ -1150,8 +1172,10 @@ impl Reading<'_, '_> {
         crate::assets::resolve_item(self.reader.def, &self.sources, place, shown, item)
     }
 
-    /// Give a document's item, its text first to whoever asked for it.
+    /// Give a document's item, its text first, and the entry selection
+    /// it binds under, to whoever asked for them.
     fn document(&mut self, source: SourceId, shown: &str, digest: &str, text: &str) {
+        (self.profiling)(&self.selection);
         (self.texts)(text);
         (self.sink)(Item::Document(
             SourceDocument::new(source, shown.to_owned()).with_digest(digest),
