@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A per-field qualify-from overrides the reference type's choice: the same bare code under two fields of one record resolves differently, each through the slot its field chose",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/linking/qualify-from.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

@@ -241,6 +241,7 @@ fn field_binding(
     let property = part.string_prop(cx, "property");
     let child = part.string_prop(cx, "child");
     let context = part.string_prop(cx, "context");
+    let qualify_from = part.string_prop(cx, "qualify-from");
     part.finish(cx);
     let name = name?;
     let label = format!("field {name} of {owner}");
@@ -268,6 +269,10 @@ fn field_binding(
         }
     };
     let mut sources = Vec::new();
+    let qualify_from = qualify_from.and_then(|slot| {
+        cx.kebab(site, &label, &slot, "qualify-from slot")
+            .then(|| cx.names.intern(&slot))
+    });
     if let Some(index) = arg {
         sources.push(Source::Argument(index));
     }
@@ -390,6 +395,7 @@ fn field_binding(
         ty,
         sources,
         pending_groups,
+        qualify_from,
         collision,
         duplicate_keys,
         site,

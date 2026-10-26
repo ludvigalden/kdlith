@@ -125,7 +125,8 @@ pub(crate) fn type_doc(name: &str) -> Option<&'static [&'static str]> {
         ],
         "ReferenceDef" => &[
             "A named reference type: its target, codec, lookup domain,",
-            "qualification policy, and declared qualifiers.",
+            "qualification policy, qualifier context slot, and declared",
+            "qualifiers.",
         ],
         "OpenWorldDef" => &[
             "The open-world arm of a reference type: the member of the",
@@ -183,6 +184,14 @@ pub(crate) fn field_comment(ty: &str, field: &str) -> Option<&'static [&'static 
         ("QualifierRule", "required") => {
             &["A declared qualifier is required unless it says otherwise."]
         }
+        ("ReferenceDef", "qualify-from") => &[
+            "The context slot an unqualified reference's qualifier comes from;",
+            "absent is the `namespace` slot.",
+        ],
+        ("FieldBinding", "qualify-from") => &[
+            "The context slot this field's unqualified references take their",
+            "qualifier from, overriding the field's reference type's choice.",
+        ],
         _ => return None,
     })
 }
@@ -655,6 +664,7 @@ const REFERENCE_DEF_ARM: &str = r##"        Item::ReferenceDef(ReferenceDef {
             codec,
             lookup,
             qualification,
+            qualify_from,
             qualifiers,
             open_world,
         }) => Construct::Reference(ReferenceInput {
@@ -663,6 +673,7 @@ const REFERENCE_DEF_ARM: &str = r##"        Item::ReferenceDef(ReferenceDef {
             codec: codec.as_ref().map(|codec| codec.as_str().to_owned()),
             lookup: lookup.as_ref().map(|domain| domain.as_str().to_owned()),
             qualification: qualification.member().to_owned(),
+            qualify_from: qualify_from.as_ref().map(|slot| slot.as_str().to_owned()),
             qualifiers: qualifiers
                 .iter()
                 .map(|qualifier| QualifierInput {

@@ -71,6 +71,10 @@ pub(crate) struct FieldInfo {
     /// The declared reference type the field is typed by, whose codec
     /// parses its spelling.
     pub(crate) reference: Option<ReferenceDecl>,
+    /// The context slot an unqualified reference the field holds takes
+    /// its qualifier from, when the field binding or its reference type
+    /// names one; `None` defers to the definition's default slot.
+    pub(crate) qualify: Option<SlotId>,
 }
 
 /// Everything the binder needs about one node declaration.
@@ -152,8 +156,10 @@ pub(crate) struct Tables {
     /// Each slot's name, type, declared accumulation operation, and
     /// declared duplicate policy, by slot index.
     pub(crate) slots: Vec<SlotInfo>,
-    /// The slot named `namespace`: the context a reference whose
-    /// qualification may come from context captures where it binds.
+    /// The slot named `namespace`: the default context a reference whose
+    /// qualification may come from context captures where it binds, when
+    /// neither its reference type nor its field names another slot
+    /// through `qualify-from`.
     pub(crate) namespace: Option<SlotId>,
 }
 
@@ -171,7 +177,9 @@ pub(crate) struct SlotInfo {
     pub(crate) layers: Vec<String>,
 }
 
-/// The context slot naming the namespace in effect at a position.
+/// The context slot naming the qualifier source in effect at a position
+/// when nothing more specific names one: the default a reference type's
+/// or a field's `qualify-from` overrides.
 const NAMESPACE_SLOT: &str = "namespace";
 
 /// One binding source and the owner field it supplies.
@@ -344,6 +352,7 @@ fn decl_info(def: &Definition, id: NodeDeclId, decl: &NodeDecl) -> DeclInfo {
                 sensitivity: field.sensitivity,
                 expand: Vec::new(),
                 reference: reference_type(def, &field.ty),
+                qualify: None,
             })
             .collect(),
         None => decl
@@ -360,6 +369,7 @@ fn decl_info(def: &Definition, id: NodeDeclId, decl: &NodeDecl) -> DeclInfo {
                 sensitivity: None,
                 expand: Vec::new(),
                 reference: binding.ty.as_ref().and_then(|ty| reference_type(def, ty)),
+                qualify: None,
             })
             .collect(),
     };
@@ -388,6 +398,16 @@ fn decl_info(def: &Definition, id: NodeDeclId, decl: &NodeDecl) -> DeclInfo {
                 }
                 Source::Argument(0) => path = Some(at),
                 _ => {}
+            }
+        }
+        // The field's own `qualify-from` wins over its reference type's;
+        // either displaces the definition's default slot.
+        if info.qualify.is_none() {
+            let slot = binding
+                .qualify_from
+                .or(info.reference.as_ref().and_then(|decl| decl.qualify_from));
+            if let Some(slot) = slot {
+                info.qualify = def.plan.context.slot(slot);
             }
         }
     }

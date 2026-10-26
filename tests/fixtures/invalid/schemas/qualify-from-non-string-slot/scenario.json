@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A qualify-from naming a declared slot whose type admits values other than strings is refused at schema compile: the slot cannot supply a qualifier spelling",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

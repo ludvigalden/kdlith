@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "Two reference types carrying different qualify-from slots resolve bare codes in their respective slots' systems: a bare code under the source slot resolves in the source slot's system, one under the target slot in the target slot's, under complete scope",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/linking/qualify-from.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

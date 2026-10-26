@@ -67,8 +67,13 @@ public constant per fact.
 A declaration may carry an `identity { domain NAME compose
 qualified-name FIELD FIELD }` block composing its qualified symbol
 from bound fields, and `reference NAME target=TYPE codec=…
-qualification=explicit|explicit-or-context|imported-or-context`
-declares how reference values spell and resolve. The identity block
+qualification=explicit|explicit-or-context|imported-or-context
+qualify-from=SLOT` declares how reference values spell and resolve.
+The optional `qualify-from` names the context slot an unqualified
+reference of that type takes its qualifier from; absent is the
+`namespace` slot, and the named slot must be declared and hold only
+strings. A field binding may carry its own `qualify-from=`, which
+overrides the reference type's choice for that field. The identity block
 pins the declaration's domain whatever a `cases` block selects: an
 identity-bearing declaration registers under the block's domain even
 when case dispatch retypes it, while a declaration without one

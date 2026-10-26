@@ -597,6 +597,7 @@ fn declaration(value: Item) -> Option<Construct> {
             codec,
             lookup,
             qualification,
+            qualify_from,
             qualifiers,
             open_world,
         }) => Construct::Reference(ReferenceInput {
@@ -605,6 +606,7 @@ fn declaration(value: Item) -> Option<Construct> {
             codec: codec.as_ref().map(|codec| codec.as_str().to_owned()),
             lookup: lookup.as_ref().map(|domain| domain.as_str().to_owned()),
             qualification: qualification.member().to_owned(),
+            qualify_from: qualify_from.as_ref().map(|slot| slot.as_str().to_owned()),
             qualifiers: qualifiers
                 .iter()
                 .map(|qualifier| QualifierInput {
@@ -856,6 +858,10 @@ fn field_binding(name: String, binding: &FieldBinding) -> FieldBindingInput {
         name,
         ty: binding.ty.as_ref().map(|ty| ty.as_str().to_owned()),
         sources,
+        qualify_from: binding
+            .qualify_from
+            .as_ref()
+            .map(|slot| slot.as_str().to_owned()),
         collision: binding
             .collision
             .map(|collision| collision.member().to_owned()),

@@ -279,6 +279,9 @@ pub struct FieldBindingInput {
     pub name: String,
     pub ty: Option<String>,
     pub sources: Vec<SourceInput>,
+    /// The context slot this field's unqualified references qualify from,
+    /// overriding the reference type's own choice.
+    pub qualify_from: Option<String>,
     pub collision: Option<String>,
     pub duplicate_keys: Option<String>,
 }
@@ -465,6 +468,9 @@ pub struct ReferenceInput {
     pub codec: Option<String>,
     pub lookup: Option<String>,
     pub qualification: String,
+    /// The context slot an unqualified reference's qualifier comes from,
+    /// when the declaration names one; absent is the `namespace` slot.
+    pub qualify_from: Option<String>,
     pub qualifiers: Vec<QualifierInput>,
     pub open_world: Option<OpenWorldInput>,
 }

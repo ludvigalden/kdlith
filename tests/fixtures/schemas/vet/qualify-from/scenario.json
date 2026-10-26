@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A schema whose reference types choose their qualifier context slot compiles clean: two qualify-from slots beside the default namespace slot, a per-field override on one field binding, and a reference type with no qualify-from",
+  "args": [
+    "vet",
+    "schema",
+    "{fx-suite}/processing/linking/qualify-from.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

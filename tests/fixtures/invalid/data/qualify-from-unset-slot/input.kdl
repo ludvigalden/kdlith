@@ -1,0 +1,5 @@
+system "LOCAL"
+namespace "LOCAL"
+concept "alpha"
+target "SNOMED"
+claim "unset" "beta"

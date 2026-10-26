@@ -10,7 +10,7 @@
     "exit": 0,
     "stdout-contains": [
       "ok: dialect kdlith version 0 scope=complete documents=5 ",
-      " digest=692e44afbee215de"
+      " digest=2d367a9dcbb0c310"
     ]
   }
 }

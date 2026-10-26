@@ -253,15 +253,17 @@ dialect kdlith version="0" {
 
         // A named reference type: the target it resolves to, the
         // registered syntax codec that parses its spelling, the lookup
-        // domain, the qualification policy, the declared qualifiers, and
-        // the open-world arm that admits unresolved references into
-        // declarations defined upstream.
+        // domain, the qualification policy, the context slot an
+        // unqualified reference takes its qualifier from, the declared
+        // qualifiers, and the open-world arm that admits unresolved
+        // references into declarations defined upstream.
         object ReferenceDef {
             field name TypeName
             field target TypeName
             field codec "optional<TypeName>"
             field lookup "optional<DomainName>"
             field qualification Qualification
+            field qualify-from "optional<SlotName>"
             field qualifiers "list<QualifierRule>"
             field open-world "optional<OpenWorldDef>"
         }
@@ -587,6 +589,7 @@ dialect kdlith version="0" {
         field codec property=codec
         field lookup property=lookup
         field qualification property=qualification
+        field qualify-from property=qualify-from
         field qualifiers {
             from {
                 children qualifier

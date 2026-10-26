@@ -660,6 +660,10 @@ pub struct ReferenceDecl {
     /// The lookup domain, when it differs from the target's.
     pub lookup: Option<Sym>,
     pub qualification: Qualification,
+    /// The context slot supplying an unqualified reference's qualifier:
+    /// `None` is the default `namespace` slot. A field's own
+    /// `qualify-from` overrides it for that field.
+    pub qualify_from: Option<Sym>,
     pub qualifiers: Vec<QualifierDecl>,
     /// The open-world arm, when the reference type declares one.
     pub open_world: Option<OpenWorldDecl>,

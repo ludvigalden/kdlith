@@ -123,8 +123,9 @@ impl Decoder {
     }
 
     /// Decode `value` as `ty` at a bind position: `context` is the
-    /// namespace in effect there, which a reference whose qualification
-    /// may come from context carries.
+    /// qualifier-context value in effect there — the value of the slot
+    /// the reference's binding chose — which a reference whose
+    /// qualification may come from context carries.
     pub(crate) fn decode_at(
         &self,
         types: &TypeCatalog,

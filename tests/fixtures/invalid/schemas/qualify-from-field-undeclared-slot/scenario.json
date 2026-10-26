@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A field binding's qualify-from naming no declared context slot is refused at schema compile, exactly as a reference type's is",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "The references view reports both chosen slots' resolutions in one report: one link resolved through the source slot, one through the target slot, in the report of the reference types that chose them",
+  "args": [
+    "inspect",
+    "data",
+    "--view",
+    "references",
+    "--schema",
+    "{fx-suite}/processing/linking/qualify-from.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

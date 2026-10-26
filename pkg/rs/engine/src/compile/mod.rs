@@ -235,6 +235,7 @@ fn finish<'d>(
     collect::open_world_arms(&mut cx, &bindings);
     let symbols = SymbolCatalog::build(&bindings, &cx.references);
     source_context_check(&mut cx);
+    collect::qualify_from_slots(&mut cx, &bindings, &symbols);
     if cx.scope == CheckScope::Complete && !cx.diags.has_errors() {
         link::run(&mut cx, &bindings, &symbols);
         if !cx.diags.has_errors() {

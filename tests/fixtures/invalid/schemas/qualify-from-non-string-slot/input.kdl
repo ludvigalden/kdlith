@@ -1,0 +1,22 @@
+// A qualify-from naming a declared slot whose type admits values other
+// than strings is refused at schema compile: the slot cannot supply a
+// qualifier spelling.
+schema qualify-bad version="1" {
+    context {
+        slot count U64
+    }
+    reference R target=FooDef codec=Endpoint lookup=foos qualification=explicit-or-context qualify-from=count {
+        qualifier system String required=#false
+    }
+    types {
+        object FooDef {
+            field system String
+            field code String
+        }
+        codec Endpoint output=String {
+            match #"(?:(?<system>[A-Z][A-Za-z0-9_]*):)?(?<code>\S+)"#
+            capture system String
+            capture code String
+        }
+    }
+}

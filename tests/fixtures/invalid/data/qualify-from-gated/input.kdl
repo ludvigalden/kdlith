@@ -1,0 +1,3 @@
+import "part.kdl" as=lex
+source "SNOMED"
+claim "gated" "beta"

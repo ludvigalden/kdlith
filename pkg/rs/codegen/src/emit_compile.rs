@@ -830,6 +830,10 @@ fn field_binding(name: String, binding: &FieldBinding) -> FieldBindingInput {
         name,
         ty: binding.ty.as_ref().map(|ty| ty.as_str().to_owned()),
         sources,
+        qualify_from: binding
+            .qualify_from
+            .as_ref()
+            .map(|slot| slot.as_str().to_owned()),
         collision: binding
             .collision
             .map(|collision| collision.member().to_owned()),

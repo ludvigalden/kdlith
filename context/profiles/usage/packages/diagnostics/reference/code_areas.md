@@ -21,7 +21,9 @@ duplicate root declaration; `SCH006` an undeclared reference;
 `SCH009` an expansion or generic cycle; `SCH010` conflicting union
 prefixes; `SCH011` profile selection failure; `SCH012`–`SCH013`
 profile inheritance faults; `SCH015`–`SCH019` group and `when`-branch
-faults. `DLC005` names a malformed construct, `DLC006` an uninstalled
+faults; `SCH020` an invalid field child binding; `SCH021` an invalid
+open-world arm; `SCH022` a `qualify-from` naming no declared string
+slot. `DLC005` names a malformed construct, `DLC006` an uninstalled
 extension, `DLC007` a broken type expression, `DLC008` a dialect
 linking fault, `DLC010` a resolver refusal.
 

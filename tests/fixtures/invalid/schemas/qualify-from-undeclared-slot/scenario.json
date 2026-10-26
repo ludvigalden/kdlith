@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A reference type's qualify-from naming no declared context slot is refused at schema compile: the slot cannot supply the qualifier an unqualified reference omits",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

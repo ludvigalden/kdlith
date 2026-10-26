@@ -71,6 +71,23 @@ const OFF_TYPE_FIELD: &str = "KDLITH-BND014";
 
 const DOCUMENT_ROOT: &str = "the document root";
 
+/// How a position checks a scalar against its type: whether a
+/// concealed value's mismatch names the value, and the context slot an
+/// unqualified reference it holds takes its qualifier from (`None` is
+/// the definition's default slot).
+#[derive(Clone, Copy)]
+struct CheckAs {
+    conceal: bool,
+    qualify: Option<SlotId>,
+}
+
+impl CheckAs {
+    const PLAIN: Self = Self {
+        conceal: false,
+        qualify: None,
+    };
+}
+
 /// What a diagnostic shows in place of a value the output policy
 /// withholds.
 const CONCEALED: &str = "a withheld sensitive value";
@@ -660,7 +677,7 @@ impl<'d, 's> Binder<'d, 's> {
         value: Value,
         span: ByteSpan,
     ) -> Option<Value> {
-        self.check_as(cx, ty, what, value, span, false)
+        self.check_as(cx, ty, what, value, span, CheckAs::PLAIN)
     }
 
     /// Check a scalar against `ty`; a concealed value's mismatch never
@@ -672,27 +689,28 @@ impl<'d, 's> Binder<'d, 's> {
         what: &str,
         value: Value,
         span: ByteSpan,
-        conceal: bool,
+        how: CheckAs,
     ) -> Option<Value> {
         let Some(ty) = ty else {
             return Some(value);
         };
         let site = self.location(span);
-        // The namespace in effect at this position, never a later one.
-        let namespace = self
-            .tables
-            .namespace
+        // The qualifier source in effect at this position, never a later
+        // one: the field's chosen slot, else the definition's default.
+        let qualifier = how
+            .qualify
+            .or(self.tables.namespace)
             .and_then(|slot| cx.context().get(slot))
             .and_then(|held| match &held.value {
                 Value::String(text) => Some(text.clone()),
                 _ => None,
             });
-        let at = (site, namespace.as_deref());
+        let at = (site, qualifier.as_deref());
         let decoded = self
             .decoder
             .decode_at(&self.def.types, &self.def.names, &ty, &value, at);
         if decoded.is_none() {
-            self.mismatched_as(cx, &ty, what, &value, span, conceal);
+            self.mismatched_as(cx, &ty, what, &value, span, how.conceal);
         }
         decoded
     }
@@ -726,7 +744,9 @@ impl<'d, 's> Binder<'d, 's> {
         let ty = self.item_type(owner, bind).cloned();
         let what = self.field_label(owner, bind.field);
         let conceal = self.conceals(owner, bind.field);
-        match self.check_as(cx, ty, &what, value, span, conceal) {
+        let qualify = self.tables.decls[owner.index()].fields[bind.field].qualify;
+        let how = CheckAs { conceal, qualify };
+        match self.check_as(cx, ty, &what, value, span, how) {
             Some(value) => self.route(cx, frame, bind, value, span),
             None => frame.rejected.push(bind.field),
         }
@@ -984,8 +1004,11 @@ impl<'d, 's> Binder<'d, 's> {
         match outcome {
             Ok(value) => {
                 let conceal = self.conceals(frame.owner, at);
-                let checked =
-                    self.check_as(cx, info.ty.clone(), &label, value, frame.span, conceal);
+                let how = CheckAs {
+                    conceal,
+                    qualify: info.qualify,
+                };
+                let checked = self.check_as(cx, info.ty.clone(), &label, value, frame.span, how);
                 match checked {
                     Some(value) => {
                         if info.sensitivity == Some(Sensitivity::Secret) {
@@ -2468,22 +2491,28 @@ impl<'d, 's> Binder<'d, 's> {
             };
             let ty = self.key_type(parent.owner, bind).cloned();
             let what = format!("the key of {}", self.name(frame.name));
-            let entry = match self.check(cx, ty.clone(), &what, Value::String(key.clone()), span) {
-                None => return,
-                Some(Value::String(key)) => Entry::new(key, value),
-                // The link stage resolves a referenced key like any
-                // reference a field holds.
-                Some(Value::Reference(reference)) => Entry::referenced(reference, value),
-                Some(other) => {
-                    let field = self.field_label(parent.owner, bind.field);
-                    let expected =
-                        ty.map_or_else(String::new, |ty| summary::expr(&self.def.names, &ty));
-                    let found = decode::found(&other);
-                    let values = [key.as_str(), field.as_str(), &expected, &found];
-                    self.diagnose(cx, UNSUPPORTED_KEY, span, &values);
-                    return;
-                }
+            let qualify = self.tables.decls[parent.owner.index()].fields[bind.field].qualify;
+            let how = CheckAs {
+                conceal: false,
+                qualify,
             };
+            let entry =
+                match self.check_as(cx, ty.clone(), &what, Value::String(key.clone()), span, how) {
+                    None => return,
+                    Some(Value::String(key)) => Entry::new(key, value),
+                    // The link stage resolves a referenced key like any
+                    // reference a field holds.
+                    Some(Value::Reference(reference)) => Entry::referenced(reference, value),
+                    Some(other) => {
+                        let field = self.field_label(parent.owner, bind.field);
+                        let expected =
+                            ty.map_or_else(String::new, |ty| summary::expr(&self.def.names, &ty));
+                        let found = decode::found(&other);
+                        let values = [key.as_str(), field.as_str(), &expected, &found];
+                        self.diagnose(cx, UNSUPPORTED_KEY, span, &values);
+                        return;
+                    }
+                };
             value = Value::Map(vec![entry]);
         }
         let span = frame.span;

@@ -1,0 +1,4 @@
+system "LOCAL"
+namespace "LOCAL"
+concept "alpha"
+claim "default" plain="alpha"

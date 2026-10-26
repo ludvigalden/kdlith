@@ -32,10 +32,11 @@ use crate::definition::{
 };
 use crate::diag::{
     EMPTY_WHEN_COMPOSITION, FALLBACK_LESS_WHEN_RULE, INVALID_BINDING, INVALID_OPEN_WORLD_ARM,
-    LOCATION_NOT_ADMITTED, NOT_INSTALLED, OVERLAPPING_WHEN_BRANCHES, SECOND_DEFAULT, Site,
-    duplicate, duplicate_key,
+    INVALID_QUALIFY_FROM, LOCATION_NOT_ADMITTED, NOT_INSTALLED, OVERLAPPING_WHEN_BRANCHES,
+    SECOND_DEFAULT, Site, duplicate, duplicate_key,
 };
 use crate::names::Sym;
+use crate::symbols::SymbolCatalog;
 use crate::syntax::parse_u64;
 use crate::types::{
     AssetBase, AssetDecl, AssetKind, CaptureDef, CodecDecl, Constraint, DefaultSpec, EnumMember,
@@ -841,6 +842,10 @@ fn field_binding(
 ) -> Option<FieldBinding> {
     let name = input.name.clone();
     let label = format!("field {name} of {owner}");
+    let qualify_from = input.qualify_from.as_deref().and_then(|slot| {
+        cx.kebab(site, &label, slot, "qualify-from slot")
+            .then(|| cx.names.intern(slot))
+    });
     let ty = match &input.ty {
         Some(text) if typed_owner => {
             let reason = format!("field {name} gives a type although the node's type= declares it");
@@ -942,6 +947,7 @@ fn field_binding(
         ty,
         sources,
         pending_groups,
+        qualify_from,
         collision,
         duplicate_keys,
         site,
@@ -1675,6 +1681,10 @@ fn reference(cx: &mut Cx<'_>, site: Site, input: &ReferenceInput) {
         cx.kebab(site, &label, lookup, "lookup domain")
             .then(|| cx.names.intern(lookup))
     });
+    let qualify_from = input.qualify_from.as_deref().and_then(|slot| {
+        cx.kebab(site, &label, slot, "qualify-from slot")
+            .then(|| cx.names.intern(slot))
+    });
     let qualification = match Qualification::from_name(&input.qualification) {
         Some(qualification) => qualification,
         None => {
@@ -1735,6 +1745,7 @@ fn reference(cx: &mut Cx<'_>, site: Site, input: &ReferenceInput) {
         namespace,
         lookup,
         qualification,
+        qualify_from,
         qualifiers,
         open_world,
         site,
@@ -1790,6 +1801,58 @@ pub(crate) fn open_world_arms(cx: &mut Cx<'_>, bindings: &BindingCatalog) {
             arm.system_field = system_field;
             arm.identity_len = identity_len;
         }
+    }
+}
+
+/// Every `qualify-from`, on a reference type or on a field binding,
+/// names a declared context slot whose type admits only strings: the
+/// slot supplies the qualifier an unqualified reference omits, so
+/// nothing else can come from it. A `qualify-from` naming no declared
+/// slot, or a slot holding anything but strings, is rejected loudly,
+/// never silently dropped.
+pub(crate) fn qualify_from_slots(
+    cx: &mut Cx<'_>,
+    bindings: &BindingCatalog,
+    symbols: &SymbolCatalog,
+) {
+    for index in 0..cx.references.len() {
+        let (what, slot, site) = {
+            let reference = &cx.references[index];
+            (
+                format!("reference {}", cx.names.resolve(reference.name)),
+                reference.qualify_from,
+                reference.site,
+            )
+        };
+        if let Some(slot) = slot {
+            check_qualify_slot(cx, symbols, site, &what, slot);
+        }
+    }
+    for (_, decl) in bindings.iter() {
+        let node = cx.names.resolve(decl.name).to_owned();
+        for field in &decl.fields {
+            let Some(slot) = field.qualify_from else {
+                continue;
+            };
+            let what = format!("field {} of node {}", cx.names.resolve(field.name), node);
+            check_qualify_slot(cx, symbols, field.site, &what, slot);
+        }
+    }
+}
+
+/// One `qualify-from` slot reference: declared, and string-valued.
+fn check_qualify_slot(cx: &mut Cx<'_>, symbols: &SymbolCatalog, site: Site, what: &str, slot: Sym) {
+    let Some(decl) = cx.slots.iter().find(|decl| decl.name == slot) else {
+        let spelled = cx.names.resolve(slot).to_owned();
+        let reason = format!("names no declared context slot ({spelled})");
+        cx.diags.error(INVALID_QUALIFY_FROM, site, &[what, &reason]);
+        return;
+    };
+    if !super::link::admits_only_strings(cx, symbols, &decl.ty, 0) {
+        let spelled = cx.names.resolve(slot).to_owned();
+        let reason =
+            format!("names context slot {spelled}, whose type admits values other than strings");
+        cx.diags.error(INVALID_QUALIFY_FROM, site, &[what, &reason]);
     }
 }
 

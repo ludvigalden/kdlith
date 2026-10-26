@@ -244,13 +244,17 @@ enum_type! {
 
 object_type! {
     /// A named reference type: its target, codec, lookup domain,
-    /// qualification policy, and declared qualifiers.
+    /// qualification policy, qualifier context slot, and declared
+    /// qualifiers.
     pub struct ReferenceDef {
         "name" => name: TypeName,
         "target" => target: TypeName,
         "codec" => codec: Option<TypeName>,
         "lookup" => lookup: Option<DomainName>,
         "qualification" => qualification: Qualification,
+        // The context slot an unqualified reference's qualifier comes from;
+        // absent is the `namespace` slot.
+        "qualify-from" => qualify_from: Option<SlotName>,
         "qualifiers" => qualifiers: Vec<QualifierRule>,
         "open-world" => open_world: Option<OpenWorldDef>,
     }

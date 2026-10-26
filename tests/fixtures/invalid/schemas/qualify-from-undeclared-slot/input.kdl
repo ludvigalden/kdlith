@@ -1,0 +1,22 @@
+// A qualify-from naming no declared context slot is refused at schema
+// compile: nothing can supply the qualifier an unqualified reference
+// omits, so the reference type is rejected loudly.
+schema qualify-bad version="1" {
+    context {
+        slot namespace String
+    }
+    reference R target=FooDef codec=Endpoint lookup=foos qualification=explicit-or-context qualify-from=source {
+        qualifier system String required=#false
+    }
+    types {
+        object FooDef {
+            field system String
+            field code String
+        }
+        codec Endpoint output=String {
+            match #"(?:(?<system>[A-Z][A-Za-z0-9_]*):)?(?<code>\S+)"#
+            capture system String
+            capture code String
+        }
+    }
+}

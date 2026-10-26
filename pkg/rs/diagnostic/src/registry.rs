@@ -732,6 +732,16 @@ pub const CODES: &[CodeDefinition] = &[
         correction: "Declare at least one value, target a declaration that composes an identity, and name a member the target's outermost identity field reaches whose type admits every value",
         retired: false,
     },
+    CodeDefinition {
+        code: "KDLITH-SCH022",
+        label: "invalid-qualify-from",
+        severity: Severity::Error,
+        exit_class: 1,
+        trigger: "a qualify-from on a reference type or a field binding names no declared context slot, or names a slot whose type admits values other than strings",
+        message_template: "<what>: qualify-from is invalid: <reason>",
+        correction: "Name a declared context slot whose type admits only strings",
+        retired: false,
+    },
     // BND
     CodeDefinition {
         code: "KDLITH-BND001",

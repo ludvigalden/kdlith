@@ -5,7 +5,10 @@
 after it streams: every reference held by a field typed with a
 declared reference type — including each key of a map whose key type
 is one — is looked up among the reading's declarations under that
-reference type's qualification policy.
+reference type's qualification policy. An unqualified reference's
+missing qualifier is filled at bind time from the context slot its
+field chose: the field binding's `qualify-from=`, else its reference
+type's, else the `namespace` slot.
 
 ## Link codes
 

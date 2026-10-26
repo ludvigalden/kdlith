@@ -1,0 +1,28 @@
+// A field binding's qualify-from naming no declared context slot is
+// refused at schema compile, exactly as a reference type's is.
+schema qualify-bad version="1" {
+    context {
+        slot namespace String
+        slot source String
+    }
+    types {
+        object Use {
+            field target R
+        }
+        object FooDef {
+            field system String
+            field code String
+        }
+        codec Endpoint output=String {
+            match #"(?:(?<system>[A-Z][A-Za-z0-9_]*):)?(?<code>\S+)"#
+            capture system String
+            capture code String
+        }
+    }
+    node use role=record type=Use {
+        field target arg=0 qualify-from=missing
+    }
+    reference R target=FooDef codec=Endpoint lookup=foos qualification=explicit-or-context qualify-from=source {
+        qualifier system String required=#false
+    }
+}

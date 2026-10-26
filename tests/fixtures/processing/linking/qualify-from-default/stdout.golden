@@ -1,0 +1,6 @@
+{"item":"document","data":{"source":0,"path":"data.kdl"}}
+{"item":"declaration","data":{"node":{"source":0,"index":0},"identity":{"domain":"systems","name":["LOCAL"]},"type_name":"SystemDef","fields":[{"name":"name","value":{"kind":"string","value":"LOCAL"},"origin":0}],"origin":0,"validation":"valid"}}
+{"item":"declaration","data":{"node":{"source":0,"index":2},"identity":{"domain":"concepts","name":["LOCAL","alpha"]},"type_name":"ConceptDef","fields":[{"name":"system","value":{"kind":"string","value":"LOCAL"},"origin":2},{"name":"code","value":{"kind":"string","value":"alpha"},"origin":2}],"origin":2,"validation":"valid"}}
+{"item":"record","data":{"node":{"source":0,"index":3},"type_name":"ClaimDef","fields":[{"name":"id","value":{"kind":"string","value":"default"},"origin":3},{"name":"plain","value":{"kind":"reference","value":{"domain":"concepts","name":["alpha"],"qualifiers":[],"written":"alpha","site":{"source":0,"span":{"start":{"offset":65,"line":4,"column":17},"end":{"offset":78,"line":4,"column":30}}},"context":"LOCAL"}},"origin":3}],"origin":3,"validation":"provisional"}}
+{"item":"scope-complete","data":{"source":0,"scope":null}}
+{"item":"sources","data":{"sources":[{"name":null,"kind":"local","identity":"sha256:e9918a5d8eebe9b7824200da19c645397f87e6f907e5f4dbcb7444ef3c61af17","overridden":false}]}}

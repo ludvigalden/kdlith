@@ -1,0 +1,96 @@
+// The qualifier-context schema the qualify-from scenarios share:
+// systems, concepts composed from a system and a code, and claims whose
+// references take the qualifier of an unqualified code from a chosen
+// context slot — the reference type's qualify-from, or the field's own
+// overriding it — instead of the default `namespace` slot.
+schema qualify version="1" {
+    types {
+        object SystemDef {
+            field name String
+        }
+        object ConceptDef {
+            field system String
+            field code String
+        }
+        object ClaimDef {
+            field id String
+            // Bare codes here take their system from the `source` slot.
+            field source "optional<SourceRef>"
+            // Bare codes here take their system from the `target` slot.
+            field target "optional<TargetRef>"
+            // The field binding's own qualify-from (on `alt` below)
+            // overrides SourceRef's choice, so the same bare code under
+            // the two fields resolves differently.
+            field alt "optional<SourceRef>"
+            // No qualify-from anywhere: the default `namespace` slot.
+            field plain "optional<EndpointRef>"
+        }
+        codec Endpoint output=String {
+            match #"(?:(?<system>[A-Z][A-Za-z0-9_]*):)?(?<code>\S+)"#
+            capture system String
+            capture code String
+        }
+    }
+    context {
+        slot namespace String duplicates=last-wins
+        slot source String duplicates=last-wins
+        slot target String duplicates=last-wins
+    }
+    node namespace role=context-control {
+        field value String arg=0
+        effects target=following {
+            set namespace field=value
+        }
+    }
+    node source role=context-control {
+        field value String arg=0
+        effects target=following {
+            set source field=value
+        }
+    }
+    node target role=context-control {
+        field value String arg=0
+        effects target=following {
+            set target field=value
+        }
+    }
+    node import role=source-import {
+        field path String arg=0
+        field namespace "optional<String>" property=as
+    }
+    node system role=declaration type=SystemDef {
+        field name arg=0
+        identity {
+            domain systems
+            compose qualified-name name
+        }
+    }
+    node concept role=declaration type=ConceptDef {
+        field code arg=0
+        field system context=namespace
+        identity {
+            domain concepts
+            compose qualified-name system code
+        }
+    }
+    node claim role=record type=ClaimDef {
+        field id arg=0
+        field source arg=1
+        field target arg=2
+        field alt property=alt qualify-from=target
+        field plain property=plain
+        identity {
+            domain claims
+            compose qualified-name id
+        }
+    }
+    reference SourceRef target=ConceptDef codec=Endpoint lookup=concepts qualification=explicit-or-context qualify-from=source {
+        qualifier system String required=#false
+    }
+    reference TargetRef target=ConceptDef codec=Endpoint lookup=concepts qualification=explicit-or-context qualify-from=target {
+        qualifier system String required=#false
+    }
+    reference EndpointRef target=ConceptDef codec=Endpoint lookup=concepts qualification=explicit-or-context {
+        qualifier system String required=#false
+    }
+}

@@ -145,13 +145,17 @@ dialect kdlith version="0" {
 
         // One logical field and the sources that populate it. The
         // shorthand fields abbreviate the common single-source cases and
-        // compile to the same sources as the explicit from block.
+        // compile to the same sources as the explicit from block. A
+        // qualify-from names the context slot this field's unqualified
+        // references take their qualifier from, overriding the field's
+        // reference type's own choice.
         object FieldBinding {
             field type "optional<TypeExpression>"
             field arg "optional<U64>"
             field property "optional<FieldName>"
             field child "optional<NodeName>"
             field context "optional<SlotName>"
+            field qualify-from "optional<SlotName>"
             field sources "list<Source>"
             field collision "optional<Collision>"
             field duplicate-keys "optional<DuplicateKeys>"
@@ -413,13 +417,16 @@ dialect kdlith version="0" {
     // context=SLOT one context slot. The from block lists explicit sources
     // for everything else. Shorthands and from blocks compile to the same
     // representation; the compiler rejects overlapping bindings,
-    // unconsumed arguments, and contradictory ownership of children.
+    // unconsumed arguments, and contradictory ownership of children. A
+    // qualify-from=SLOT names the context slot this field's unqualified
+    // references qualify from, overriding the field's reference type.
     node field type=FieldBinding parent=node {
         field type arg=1
         field arg property=arg
         field property property=property
         field child property=child
         field context property=context
+        field qualify-from property=qualify-from
         field sources {
             from {
                 child from {

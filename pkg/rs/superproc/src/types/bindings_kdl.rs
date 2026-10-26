@@ -146,6 +146,9 @@ object_type! {
         "property" => property: Option<FieldName>,
         "child" => child: Option<NodeName>,
         "context" => context: Option<SlotName>,
+        // The context slot this field's unqualified references take their
+        // qualifier from, overriding the field's reference type's choice.
+        "qualify-from" => qualify_from: Option<SlotName>,
         "sources" => sources: Vec<Source>,
         "collision" => collision: Option<Collision>,
         "duplicate-keys" => duplicate_keys: Option<DuplicateKeys>,

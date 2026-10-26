@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "Qualification from a chosen slot composes with aliased-import namespace gating: the bare code's system fills from the source slot and matches a declaration the namespaced import gates, so the reference reports REF001 naming the namespace that holds it",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

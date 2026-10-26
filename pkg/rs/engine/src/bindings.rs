@@ -278,6 +278,10 @@ pub struct FieldBinding {
     /// An inline type expression; absent when the node's type gives it.
     pub ty: Option<TypeExpr>,
     pub sources: Vec<Source>,
+    /// The context slot this field's unqualified references take their
+    /// qualifier from, overriding the field's reference type's choice.
+    /// `None` defers to the reference type, else the `namespace` slot.
+    pub qualify_from: Option<Sym>,
     /// Pending `children-group` from-sources, spliced one children
     /// source per member into `sources` at `position` by the group
     /// expansion pass — the hand-written repeated-source form.

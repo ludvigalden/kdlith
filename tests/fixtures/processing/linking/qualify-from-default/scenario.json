@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A reference type with no qualify-from takes the qualifier of a bare code from the default namespace slot exactly as before the mechanism existed, beside reference types that chose other slots",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/linking/qualify-from.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

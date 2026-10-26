@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A bare code whose chosen slot is unset stays unqualified and cannot resolve: the reference reports REF001, the same posture as an unset namespace slot before the mechanism existed",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

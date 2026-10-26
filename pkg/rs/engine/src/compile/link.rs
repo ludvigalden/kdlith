@@ -439,7 +439,12 @@ fn fallback_identity(cx: &mut Cx<'_>, symbols: &SymbolCatalog, id: NodeDeclId, n
 }
 
 /// Whether every value `ty` decodes to is a string.
-fn admits_only_strings(cx: &Cx<'_>, symbols: &SymbolCatalog, ty: &TypeExpr, depth: u8) -> bool {
+pub(crate) fn admits_only_strings(
+    cx: &Cx<'_>,
+    symbols: &SymbolCatalog,
+    ty: &TypeExpr,
+    depth: u8,
+) -> bool {
     // A union or codec chain this deep is cyclic; leave it unnoted.
     if depth > 32 {
         return true;

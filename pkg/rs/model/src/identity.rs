@@ -51,8 +51,10 @@ pub struct Reference {
     pub qualifiers: Vec<(String, String)>,
     pub written: String,
     pub site: Location,
-    /// The context namespace in effect where the reference was bound,
-    /// for a reference whose qualification may come from context.
+    /// The qualifier-context value in effect where the reference was
+    /// bound, for a reference whose qualification may come from
+    /// context: the value of the slot its reference type or field
+    /// chose through `qualify-from`, else the `namespace` slot.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub context: Option<Box<str>>,
 }
