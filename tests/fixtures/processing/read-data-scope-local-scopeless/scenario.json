@@ -1,0 +1,24 @@
+{
+  "binary": "kdlith",
+  "description": "read data --scope local consults only the scope-less partition: font, contributed with no scope, is found there and resolves to sans, while the scoped mode partitions stay unconsulted",
+  "args": [
+    "read",
+    "data",
+    "--scope",
+    "local",
+    "--schema",
+    "{fx-suite}/processing/resolution/scope.kdl",
+    "{fx-suite}/processing/resolution/scope-partition/data.kdl",
+    "font"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"item\":\"resolution\"",
+      "\"written\":\"font\"",
+      "sans",
+      "\"layers\":[\"user\"]",
+      "\"scope\":null"
+    ]
+  }
+}

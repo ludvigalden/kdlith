@@ -1,0 +1,22 @@
+{
+  "binary": "kdlith",
+  "description": "a read data --scope value other than local or complete is an argument-form fault: exit 2 under KDLITH-CLI001 naming the possible values, nothing is read",
+  "args": [
+    "read",
+    "data",
+    "--scope",
+    "wide",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "{fx-suite}/processing/bind/stream/input.kdl",
+    "one"
+  ],
+  "expect": {
+    "exit": 2,
+    "stderr-contains": [
+      "error[KDLITH-CLI001]"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

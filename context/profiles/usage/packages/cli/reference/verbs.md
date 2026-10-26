@@ -28,7 +28,11 @@ kdlith export --schema shop.kdl --emit roots --format ndjson orders.kdl
 `read data` reads the last entry document and prints one record
 identified by `--record`; earlier entries bind so imports and
 numbering match. `--state DIR` restores the record from a snapshot
-`cache refresh` wrote instead of replaying.
+`cache refresh` wrote instead of replaying. `--scope local|complete`
+(default `complete`) selects the partition the lookup consults: every
+`(target, scope)` partition the resolver settled under `complete`, the
+scope-less partition under `local`; a record is found under both, and
+the scope never gates the exit.
 
 ## sources
 

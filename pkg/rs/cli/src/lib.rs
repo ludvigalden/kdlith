@@ -386,7 +386,7 @@ impl ProfileArgs {
     }
 }
 
-/// The `--scope` value of `vet` and `inspect data`.
+/// The `--scope` value of `vet`, `inspect data`, and `read data`.
 #[derive(Clone, Copy, Debug, ValueEnum)]
 enum ScopeArg {
     Local,
@@ -723,6 +723,11 @@ struct ReadDataArgs {
     /// A built-in context handler to install, by name (repeatable)
     #[arg(long = "handler", value_name = "NAME", value_parser = handlers::parse_handler)]
     handlers: Vec<String>,
+    /// Look the identity up over every (target, scope) partition the
+    /// resolver settled (complete) or only the scope-less partition, a
+    /// record matching under both (local)
+    #[arg(long, value_enum, default_value_t = ScopeArg::Complete)]
+    scope: ScopeArg,
     /// Also write every diagnostic of the run to stdout as one compact
     /// JSON line per record, beside the unchanged stderr text
     #[arg(long = "diagnostics", value_enum, value_name = "FORMAT")]

@@ -1,0 +1,22 @@
+{
+  "binary": "kdlith",
+  "description": "read data under the default complete scope looks the identity up over every (target, scope) partition the resolver settled: mode, contributed only under the declared scopes dev and staging, is found by its first partition in sorted order, dev, settled by the user-over-base layer order to contrast",
+  "args": [
+    "read",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/resolution/scope.kdl",
+    "{fx-suite}/processing/resolution/scope-partition/data.kdl",
+    "mode"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"item\":\"resolution\"",
+      "\"written\":\"mode\"",
+      "\"contrast\"",
+      "\"layers\":[\"user\"]",
+      "\"scope\":\"dev\""
+    ]
+  }
+}
