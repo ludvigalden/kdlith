@@ -73,6 +73,9 @@ variant may carry `prefix="…"`: for a union bound from a scalar
 value, the variant is selected when the value's text starts with the
 prefix, and a scalar no prefix selects binds as the first
 un-prefixed variant, in declaration order, whose type accepts it.
+A scalar spelling routed into a reference-typed variant binds as the
+decoded reference, which a generated typed reader decodes into that
+variant exactly as binding routed it.
 Prefixes are checked pairwise at compile time (`KDLITH-SCH010`); once
 a prefix selects a variant, a failure inside it is an error, never a
 fallback.

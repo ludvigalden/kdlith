@@ -1,0 +1,31 @@
+{
+  "binary": "kdlith",
+  "kind": "codegen-oracle",
+  "description": "Typed-reader parity for a reference-typed union variant: gen schema generates a schema whose two unions each hold a reference-typed variant twice into two scratch trees the harness requires byte-identical, the generated crate compiles inside a scratch workspace materialized from this scenario's committed template, and the compiled processor reads a committed data document through its own typed reader, decoding each scalar exactly as binding routed it: a bare slug the binder's fallback routed into the un-prefixed reference variant reads back as that variant carrying the reference its codec decoded, and a `pin:`-prefixed spelling the prefix selected into the other union's reference variant reads back as its variant carrying the reference the pinned codec decoded, each with its lookup domain, name, and written spelling, beside a number and a plain string decoding as their scalar variants. A committed document whose prefixed spelling the pinned codec rejects and whose unprefixed spelling no variant accepts is rejected with the binding's value-type code twice, the prefix-selected refusal never falling back",
+  "form": "schema",
+  "entrypoint": "inputs/schema.kdl",
+  "crate": "union-ref-proc",
+  "steps": [
+    { "generate": "ws/rs/union-ref-proc" },
+    { "generate": "gen-again" },
+    { "determinism": ["ws/rs/union-ref-proc", "gen-again"] },
+    {
+      "compile": {
+        "workspace": "ws",
+        "copy": {
+          "crates": ["diagnostic", "engine", "model", "parse", "runtime", "superproc"],
+          "kdl": true
+        },
+        "command": ["cargo", "build", "--offline", "--manifest-path", "ws/rs/union-ref-proc/Cargo.toml"]
+      }
+    },
+    {
+      "exercise": {
+        "command": ["cargo", "run", "--offline", "--quiet", "--manifest-path", "ws/rs/exercise/Cargo.toml", "--", "inputs/schema.kdl", "inputs/data.kdl", "inputs/bad-data.kdl"],
+        "stdout-contains": [
+          "schema ok digest=582cae7f41ab3873\nread ok items=5\ndeclared name=alpha\ncount number=320\ncount target domain=targets name=alpha written=alpha\nnote text=hello\nnote pinned domain=targets name=alpha written=pin:alpha\nrejected KDLITH-BND003 x2\n"
+        ]
+      }
+    }
+  ]
+}

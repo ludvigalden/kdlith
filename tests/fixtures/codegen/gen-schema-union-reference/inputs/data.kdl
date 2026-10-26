@@ -1,0 +1,5 @@
+target alpha
+count 320
+count alpha
+note "hello"
+note "pin:alpha"

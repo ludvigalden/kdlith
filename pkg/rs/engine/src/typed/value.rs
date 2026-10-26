@@ -165,33 +165,39 @@ pub fn object_value<T: FromFields>(value: &Value) -> Result<T, Mismatch> {
 /// as binding did: the variant whose prefix its text starts with, with
 /// no fallback when that variant's type rejects it, else the first
 /// un-prefixed variant, in declaration order, whose type `accepts` it.
-/// `variants` lists each discriminator with its prefix, in declaration
-/// order.
+/// A reference bound from a scalar spelling keeps that spelling, so
+/// prefix selection reads it the same way. `variants` lists each
+/// discriminator with its prefix, in declaration order.
 pub fn variant_value<'v>(
     value: &'v Value,
     variants: &[(&'static str, Option<&'static str>)],
     accepts: impl Fn(&str, &Value) -> bool,
 ) -> Result<(&'v str, &'v Value), Mismatch> {
-    match value {
+    // A scalar no text — a number or flag — never prefix-matches, as
+    // binding's own dispatch reads only a string's text.
+    let text = match value {
         Value::Map(entries) if entries.len() == 1 => {
-            Ok((entries[0].key.as_str(), &entries[0].value))
+            return Ok((entries[0].key.as_str(), &entries[0].value));
         }
-        Value::String(_) | Value::Number(_) | Value::Bool(_) => {
-            if let Value::String(text) = value
-                && let Some((node, _)) = variants
-                    .iter()
-                    .find(|(_, prefix)| prefix.is_some_and(|prefix| text.starts_with(prefix)))
-            {
-                return Ok((*node, value));
-            }
-            variants
-                .iter()
-                .find(|(node, prefix)| prefix.is_none() && accepts(node, value))
-                .map(|(node, _)| (*node, value))
-                .ok_or_else(|| Mismatch::expected("one union variant", value))
-        }
-        other => Err(Mismatch::expected("one union variant", other)),
+        Value::String(text) => Some(text.as_str()),
+        // Binding stores the reference it decoded from the scalar
+        // spelling, never the spelling itself; the spelling is kept.
+        Value::Reference(reference) => Some(reference.written.as_str()),
+        Value::Number(_) | Value::Bool(_) => None,
+        other => return Err(Mismatch::expected("one union variant", other)),
+    };
+    if let Some(text) = text
+        && let Some((node, _)) = variants
+            .iter()
+            .find(|(_, prefix)| prefix.is_some_and(|prefix| text.starts_with(prefix)))
+    {
+        return Ok((*node, value));
     }
+    variants
+        .iter()
+        .find(|(node, prefix)| prefix.is_none() && accepts(node, value))
+        .map(|(node, _)| (*node, value))
+        .ok_or_else(|| Mismatch::expected("one union variant", value))
 }
 
 /// An enum value: the member its text names.

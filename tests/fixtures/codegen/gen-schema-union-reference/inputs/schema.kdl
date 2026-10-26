@@ -1,0 +1,40 @@
+// A schema whose unions hold reference-typed variants: a bare scalar
+// spelling routed into one binds as the reference its codec decoded.
+schema targets version="1" {
+    types {
+        object TargetDef {
+            field name String
+        }
+        codec Slug output=String {
+            match #"(?<name>[a-z][a-z0-9-]*)"#
+            capture name String
+        }
+        codec Pinned output=String {
+            match #"pin:(?<name>[a-z][a-z0-9-]*)"#
+            capture name String
+        }
+        union NumOrTarget {
+            variant number U64
+            variant target TargetRef
+        }
+        union TextOrPinned {
+            variant text String
+            variant pinned PinnedTargetRef prefix="pin:"
+        }
+    }
+    node target role=declaration type=TargetDef {
+        field name arg=0
+        identity {
+            domain targets
+            compose qualified-name name
+        }
+    }
+    node count role=record {
+        field v NumOrTarget arg=0
+    }
+    node note role=record {
+        field v TextOrPinned arg=0
+    }
+    reference TargetRef target=TargetDef codec=Slug lookup=targets qualification=explicit
+    reference PinnedTargetRef target=TargetDef codec=Pinned lookup=targets qualification=explicit
+}
