@@ -6,10 +6,10 @@ use kdlith_model::{FieldMerge, Value};
 use kdlith_runtime::Repeated;
 
 use crate::bindings::{
-    BindingCodec, CaseRule, ChildRule, Collision, Condition, ContextPolicy, DependentBinding,
-    DescendantRule, DuplicateKeys, Effect, EffectGroup, EffectTarget, FieldBinding, IdentityDecl,
-    NodeAnnotation, NodeDecl, PendingGroupSource, Placement, Role, SequenceDecl, SequenceStep,
-    SetFrom, Source, WhenBranch,
+    BindingCatalog, BindingCodec, CaseRule, ChildRule, Collision, Condition, ContextPolicy,
+    DependentBinding, DescendantRule, DuplicateKeys, Effect, EffectGroup, EffectTarget,
+    FieldBinding, IdentityDecl, NodeAnnotation, NodeDecl, PendingGroupSource, Placement, Role,
+    SequenceDecl, SequenceStep, SetFrom, Source, WhenBranch,
 };
 use crate::compile::Cx;
 use crate::compile::conditions;
@@ -24,14 +24,16 @@ use crate::compile::input::{
 use crate::compile::types::{declare, field_name, format_rule, validator_use};
 use crate::decode::found;
 use crate::definition::{
-    AccumulateOp, AnnotationDecl, DocumentRule, DuplicateTreatment, ImportDecl, LocationsDecl,
-    MatchKind, MatchRule, MergeDuplicates, MissingRequirement, Patterns, ProfileDecl, ProviderDecl,
-    Qualification, QualifierDecl, ReferenceDecl, ResolutionPolicyDecl, ResolutionSelection,
-    SlotDecl, SlotDuplicates, SourceContextDecl, SourceContextMode, SourceFieldDecl,
+    AccumulateOp, AnnotationDecl, CheckScope, DocumentRule, DuplicateTreatment, ImportDecl,
+    LocationsDecl, MatchKind, MatchRule, MergeDuplicates, MissingRequirement, OpenWorldDecl,
+    Patterns, ProfileDecl, ProviderDecl, Qualification, QualifierDecl, ReferenceDecl,
+    ResolutionPolicyDecl, ResolutionSelection, SlotDecl, SlotDuplicates, SourceContextDecl,
+    SourceContextMode, SourceFieldDecl,
 };
 use crate::diag::{
-    EMPTY_WHEN_COMPOSITION, FALLBACK_LESS_WHEN_RULE, INVALID_BINDING, LOCATION_NOT_ADMITTED,
-    NOT_INSTALLED, OVERLAPPING_WHEN_BRANCHES, SECOND_DEFAULT, Site, duplicate, duplicate_key,
+    EMPTY_WHEN_COMPOSITION, FALLBACK_LESS_WHEN_RULE, INVALID_BINDING, INVALID_OPEN_WORLD_ARM,
+    LOCATION_NOT_ADMITTED, NOT_INSTALLED, OVERLAPPING_WHEN_BRANCHES, SECOND_DEFAULT, Site,
+    duplicate, duplicate_key,
 };
 use crate::names::Sym;
 use crate::syntax::parse_u64;
@@ -1702,6 +1704,30 @@ fn reference(cx: &mut Cx<'_>, site: Site, input: &ReferenceInput) {
             site,
         });
     }
+    let mut open_world = None;
+    if let Some(arm) = &input.open_world {
+        if !field_name(&arm.system_member) {
+            let found = found(&Value::String(arm.system_member.clone()));
+            cx.mistyped(site, "the system-member of open-world", "FieldName", &found);
+        } else {
+            let values: Vec<String> = arm.values.split_whitespace().map(str::to_owned).collect();
+            if values.is_empty() {
+                let reason = "the arm declares no values";
+                cx.diags
+                    .error(INVALID_OPEN_WORLD_ARM, site, &[&input.name, reason]);
+            }
+            open_world = Some(OpenWorldDecl {
+                // Anchored to the target's identity by `open_world_arms`,
+                // which sees the bindings; the member stands in until
+                // then and an arm that cannot anchor is dropped there.
+                system_field: cx.names.intern(&arm.system_member),
+                identity_len: 0,
+                system_member: cx.names.intern(&arm.system_member),
+                values,
+                site,
+            });
+        }
+    }
     cx.references.push(ReferenceDecl {
         name,
         target,
@@ -1710,8 +1736,139 @@ fn reference(cx: &mut Cx<'_>, site: Site, input: &ReferenceInput) {
         lookup,
         qualification,
         qualifiers,
+        open_world,
         site,
     });
+}
+
+/// Every open-world arm a reference type declares: each is anchored to
+/// the outermost identity field of its target's composition, and an
+/// unanchorable arm is reported under complete checking and dropped so
+/// it never admits anything. When the outermost field's or its declared
+/// qualifier's type names a reference type, the member and values are
+/// checked against that reference's target; otherwise the declaration
+/// is named only in the data, and the link stage reads the member off
+/// the declaration it finds.
+pub(crate) fn open_world_arms(cx: &mut Cx<'_>, bindings: &BindingCatalog) {
+    for index in 0..cx.references.len() {
+        let (target, name) = {
+            let reference = &cx.references[index];
+            (
+                reference.target,
+                cx.names.resolve(reference.name).to_owned(),
+            )
+        };
+        let Some(arm) = cx.references[index].open_world.clone() else {
+            continue;
+        };
+        let Some((system_field, identity_len)) = outermost_identity(bindings, target) else {
+            if cx.scope == CheckScope::Complete {
+                let reason = format!(
+                    "target {} composes no identity, so no outermost segment names the declaration an unresolved reference admits",
+                    cx.names.resolve(target)
+                );
+                cx.diags
+                    .error(INVALID_OPEN_WORLD_ARM, arm.site, &[&name, &reason]);
+            }
+            cx.references[index].open_world = None;
+            continue;
+        };
+        if cx.scope == CheckScope::Complete
+            && let Some(qualifiers) = cx.references[index]
+                .qualifiers
+                .iter()
+                .find(|qualifier| qualifier.name == system_field)
+                .map(|qualifier| &qualifier.ty)
+            && let Some(holder) = system_member_type(cx, target, system_field, qualifiers)
+            && let Some(reason) = member_reason(cx, holder, &arm)
+        {
+            cx.diags
+                .error(INVALID_OPEN_WORLD_ARM, arm.site, &[&name, &reason]);
+        }
+        let arm = &mut cx.references[index].open_world;
+        if let Some(arm) = arm {
+            arm.system_field = system_field;
+            arm.identity_len = identity_len;
+        }
+    }
+}
+
+/// The outermost identity field of the first declaration binding
+/// `target` with an identity block, and how many fields that identity
+/// composes.
+fn outermost_identity(bindings: &BindingCatalog, target: Sym) -> Option<(Sym, usize)> {
+    let (_, node) = bindings.iter().find(|(_, node)| {
+        node.ty == Some(target) && node.identity.as_ref().is_some_and(|i| !i.fields.is_empty())
+    })?;
+    let fields = &node.identity.as_ref()?.fields;
+    Some((*fields.first()?, fields.len()))
+}
+
+/// The type the arm's member is statically checked against: the target
+/// of the reference type the outermost identity field names — through
+/// the field's own declared type or its declared qualifier. Any other
+/// type names its declaration only in the data.
+fn system_member_type(
+    cx: &Cx<'_>,
+    target: Sym,
+    system_field: Sym,
+    qualifier: &TypeExpr,
+) -> Option<Sym> {
+    // Only a name some declared reference type carries counts — a
+    // built-in spelled as a name is not one — and the target's field
+    // names one before the qualifier the outermost segment spells as.
+    let declared = |name: &Sym| {
+        cx.references
+            .iter()
+            .find(|reference| reference.name == *name)
+            .map(|reference| reference.target)
+    };
+    let field = object_field(cx, target, system_field).and_then(|ty| match ty {
+        TypeExpr::Named(name) => declared(name),
+        _ => None,
+    });
+    field.or(match qualifier {
+        TypeExpr::Named(name) => declared(name),
+        _ => None,
+    })
+}
+
+/// Why the arm's member or one of its values is invalid against the
+/// statically known holder type, when it is.
+fn member_reason(cx: &Cx<'_>, holder: Sym, arm: &OpenWorldDecl) -> Option<String> {
+    let member = cx.names.resolve(arm.system_member);
+    let Some(field) = object_field(cx, holder, arm.system_member) else {
+        return Some(format!(
+            "system-member {member} is not a field of {}",
+            cx.names.resolve(holder)
+        ));
+    };
+    let TypeExpr::Named(ty) = field else {
+        return None;
+    };
+    let decl = cx.types.get(cx.types.lookup(*ty)?)?;
+    let TypeKind::Enum(enumeration) = &decl.kind else {
+        return None;
+    };
+    let members: Vec<&str> = enumeration
+        .members
+        .iter()
+        .map(|member| member.name.as_str())
+        .collect();
+    arm.values
+        .iter()
+        .find(|value| !members.contains(&value.as_str()))
+        .map(|value| format!("value {value} is not a member of {}", cx.names.resolve(*ty)))
+}
+
+/// The declared type of one field of an object type, when the type and
+/// field both exist.
+fn object_field<'a, 'd>(cx: &'a Cx<'d>, ty: Sym, field: Sym) -> Option<&'a TypeExpr> {
+    let decl = cx.types.get(cx.types.lookup(ty)?)?;
+    let TypeKind::Object(object) = &decl.kind else {
+        return None;
+    };
+    Some(&object.fields.iter().find(|def| def.name == field)?.ty)
 }
 
 /// The declared contribution-resolution policy. The resolver must be

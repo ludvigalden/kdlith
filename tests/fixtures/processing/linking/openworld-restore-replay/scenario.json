@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "The replay twin of processing/linking/openworld-restore: the same entry document and record read without --state, so the restore scenario's stdout must equal this one's byte for byte — the external reference resolves external on both paths",
+  "args": [
+    "read",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/linking/openworld.kdl",
+    "--entry",
+    "entry.kdl",
+    "data.kdl",
+    "external-mention"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

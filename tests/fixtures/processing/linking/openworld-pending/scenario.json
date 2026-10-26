@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A dependent payload whose against-reference resolved external skips validation exactly as an unresolved one does: the pending item stays pending, no REF005, and the reading vets clean under complete scope",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/linking/openworld.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

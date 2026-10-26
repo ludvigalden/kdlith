@@ -1,0 +1,68 @@
+{
+  "heavy": true,
+  "binary": "kdlith",
+  "kind": "codegen-oracle",
+  "description": "The open-world generation fixture: gen schema generates the committed open-world linking schema, whose reference type declares the open-world arm, twice into two scratch trees the harness requires byte-identical; the generated crate compiles inside a scratch workspace materialized from this scenario's committed template, and the compiled processor loads the committed schema through its own loader, collects a committed data document as a reading linked under complete scope through its own typed reader, and resolves every mention's endpoint reference through the reading: a mention of a declared concept resolves to its declaration, a mention spelled with its system qualifier answers external, and a bare code whose system fills from context answers external too — no diagnostic, no default value",
+  "form": "schema",
+  "entrypoint": "{fx-suite}/processing/linking/openworld.kdl",
+  "crate": "openworld-proc",
+  "steps": [
+    {
+      "generate": "ws/rs/openworld-proc"
+    },
+    {
+      "generate": "gen-again"
+    },
+    {
+      "determinism": [
+        "ws/rs/openworld-proc",
+        "gen-again"
+      ]
+    },
+    {
+      "compile": {
+        "workspace": "ws",
+        "copy": {
+          "crates": [
+            "diagnostic",
+            "engine",
+            "model",
+            "parse",
+            "runtime",
+            "superproc"
+          ]
+        },
+        "command": [
+          "cargo",
+          "build",
+          "--offline",
+          "--manifest-path",
+          "ws/rs/openworld-proc/Cargo.toml"
+        ]
+      }
+    },
+    {
+      "exercise": {
+        "command": [
+          "cargo",
+          "run",
+          "--offline",
+          "--quiet",
+          "--manifest-path",
+          "ws/rs/exercise/Cargo.toml",
+          "--",
+          "processing/linking/openworld.kdl",
+          "inputs/data.kdl"
+        ],
+        "stdout-contains": [
+          "schema ok digest=e1c0cabc4d754b6e documents=1\n",
+          "read ok mentions=3 declarations=4\n",
+          "linked failed=false\n",
+          "mention id=resolved LOCAL:alpha -> LOCAL.alpha\n",
+          "mention id=spelled SNOMED:1234 -> external\n",
+          "mention id=bare 66076007 -> external\n"
+        ]
+      }
+    }
+  ]
+}

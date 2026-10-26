@@ -24,7 +24,7 @@ use linking_proc::types::{
 };
 use linking_proc::{
     CheckScope, DiagnosticRecord, Extensions, Item, ItemVariant, LinkOutcome, Location, Origin,
-    Reading, Ref, ResolveError, TypedItem, load, reader,
+    Reading, Ref, ResolveError, Resolved, TypedItem, load, reader,
 };
 
 fn main() {
@@ -313,11 +313,15 @@ fn resolved<D, O>(
     Item: ItemVariant<D> + ItemVariant<O>,
 {
     let site = at(reading, site);
-    let resolve = reading.resolve(target).map(|value| {
-        let gated = reading
-            .link_of(target)
-            .map_or("?".to_owned(), |link| link.gated.join(","));
-        format!("{} gated=[{gated}]", name(value))
+    let resolve = reading.resolve(target).map(|resolved| match resolved {
+        Resolved::Declaration(value) => {
+            let gated = reading
+                .link_of(target)
+                .map_or("?".to_owned(), |link| link.gated.join(","));
+            format!("{} gated=[{gated}]", name(value))
+        }
+        Resolved::External => "external".to_owned(),
+        _ => unreachable!("Resolved holds only a declaration or external"),
     });
     println!("resolve {node} site={site} -> {}", answer(resolve));
     let settled = reading.settled::<D, D>(target).map(name);

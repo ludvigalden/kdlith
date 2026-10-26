@@ -1,0 +1,6 @@
+system "SNOMED" distribution=external
+system "ATC" distribution=reference-only
+namespace "SNOMED"
+mentions "external-arm" "SNOMED:1234"
+namespace "ATC"
+mentions "reference-only-arm" "A01AA"

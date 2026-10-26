@@ -229,6 +229,10 @@ fn finish<'d>(
     collect::merge_policy(&mut cx);
     groups::expand(&mut cx);
     let bindings = scopes::build(&mut cx);
+    // Before the symbol catalog snapshots them: the pass anchors every
+    // open-world arm the references declare, so the catalog and the
+    // definition agree on the arm the link stage reads.
+    collect::open_world_arms(&mut cx, &bindings);
     let symbols = SymbolCatalog::build(&bindings, &cx.references);
     source_context_check(&mut cx);
     if cx.scope == CheckScope::Complete && !cx.diags.has_errors() {

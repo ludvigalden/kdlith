@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "The passing twin of the SCH021 controls: an arm whose outermost identity field's qualifier names a reference type vets green when its member and every listed value are admitted by that reference's target type",
+  "args": [
+    "vet",
+    "schema",
+    "schema.kdl"
+  ],
+  "expect": {
+    "exit": 0
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "The references view renders the external outcome with the same line shape as a resolved one: one link resolved to a declared concept, one linked external through its spelled system qualifier, and one whose system filled from context, in one report, and the run exits 0",
+  "args": [
+    "inspect",
+    "data",
+    "--view",
+    "references",
+    "--schema",
+    "{fx-suite}/processing/linking/openworld.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

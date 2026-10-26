@@ -9,7 +9,7 @@
   "expect": {
     "exit": 0,
     "stdout-contains": [
-      "digest=f03f75bbe108bafe"
+      "digest=692e44afbee215de"
     ]
   }
 }

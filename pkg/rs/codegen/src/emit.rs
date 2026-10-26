@@ -291,6 +291,7 @@ impl Emission<'_> {
                     "Ref",
                     "Regex",
                     "ResolveError",
+                    "Resolved",
                     "Source",
                     "SourceTree",
                     "TypedItem",

@@ -292,7 +292,10 @@ shared `schema.kdl`, which declares configuration variables composed
 from a namespace context and a local name, tools whose reference type
 requires a `contract` qualifier, and input sets a namespaced import can
 contribute, with an explicit, an explicit-or-context, and an
-imported-or-context reference type. Each qualification policy resolves
+imported-or-context reference type. The `openworld-*` scenarios run
+over the shared `openworld.kdl`, whose reference type declares the
+open-world arm: external linking under both scopes, a value-set arm,
+and a bound-result cache restore pair. Each qualification policy resolves
 under the default complete scope (exit 0); `namespace-gated` pins the
 unresolved message naming the namespace; and the `scope-*` and
 `inspect-scope-*` pairs run one failing input under both scopes, pinning
@@ -302,7 +305,10 @@ outcome on its own, a gated namespace, a contribution's target, and
 a duplicate declaration, while `references-scope-local` shows the view
 linking under local scope too. The
 `invalid/data/reference-*` negatives pin `KDLITH-REF001` through
-`KDLITH-REF004` with no `--scope` flag, so they prove the default. The
+`KDLITH-REF004` with no `--scope` flag, so they prove the default, and
+the `invalid/data/openworld-*` negatives pin the open-world arm's
+fail-closed posture: an unlisted member value and a schema declaring
+no arm are both `KDLITH-REF001`. The
 `pending-*` scenarios, over the shared `pending-schema.kdl`, pin pending
 payload validation: `pending-payload-valid` passes, and
 `invalid/data/pending-*` and `pending-unresolved-order` pin

@@ -127,6 +127,12 @@ pub(crate) fn type_doc(name: &str) -> Option<&'static [&'static str]> {
             "A named reference type: its target, codec, lookup domain,",
             "qualification policy, and declared qualifiers.",
         ],
+        "OpenWorldDef" => &[
+            "The open-world arm of a reference type: the member of the",
+            "declaration its outermost identity segment names, and the",
+            "values that mark that declaration defined upstream,",
+            "whitespace-separated in one string.",
+        ],
         "ResolutionPolicyDef" => &[
             "The contribution-resolution policy: the registered resolver and",
             "the descriptors of how it applies contributions across layers.",
@@ -367,7 +373,7 @@ pub(crate) fn glue(name: &str) -> Option<Glue> {
         "ReferenceDef" => Glue {
             arm: REFERENCE_DEF_ARM,
             record_arm: None,
-            engine_inputs: &["ReferenceInput", "QualifierInput"],
+            engine_inputs: &["ReferenceInput", "QualifierInput", "OpenWorldInput"],
             types: &["ReferenceDef"],
         },
         "ResolutionPolicyDef" => Glue {
@@ -650,6 +656,7 @@ const REFERENCE_DEF_ARM: &str = r##"        Item::ReferenceDef(ReferenceDef {
             lookup,
             qualification,
             qualifiers,
+            open_world,
         }) => Construct::Reference(ReferenceInput {
             name: name.as_str().to_owned(),
             target: target.as_str().to_owned(),
@@ -666,6 +673,10 @@ const REFERENCE_DEF_ARM: &str = r##"        Item::ReferenceDef(ReferenceDef {
                     required: qualifier.required.unwrap_or(true),
                 })
                 .collect(),
+            open_world: open_world.as_ref().map(|arm| OpenWorldInput {
+                system_member: arm.system_member.as_str().to_owned(),
+                values: arm.values.as_str().to_owned(),
+            }),
         }),
 "##;
 

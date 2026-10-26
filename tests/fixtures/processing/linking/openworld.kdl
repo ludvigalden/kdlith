@@ -1,0 +1,70 @@
+// The open-world linking schema the open-world scenarios share:
+// systems declared with a distribution member, concepts composed from a
+// system and a code, and mentions whose reference type declares the
+// open-world arm. A mention of a system whose distribution holds a
+// listed value links as external instead of failing; a mention of any
+// other system still resolves or fails as it does without the arm.
+schema openworld version="1" {
+    types {
+        object SystemDef {
+            field name String
+            field distribution String
+        }
+        object ConceptDef {
+            field system String
+            field code String
+        }
+        object Mentions {
+            field id String
+            field target EndpointRef
+        }
+        codec Endpoint output=String {
+            match #"(?:(?<system>[A-Z][A-Za-z0-9_]*):)?(?<code>\S+)"#
+            capture system String
+            capture code String
+        }
+    }
+    context {
+        slot namespace String duplicates=last-wins
+    }
+    node namespace role=context-control {
+        field value String arg=0
+        effects target=following {
+            set namespace field=value
+        }
+    }
+    node system role=declaration type=SystemDef {
+        field name arg=0
+        field distribution property=distribution
+        identity {
+            domain systems
+            compose qualified-name name
+        }
+    }
+    node concept role=declaration type=ConceptDef {
+        field code arg=0
+        field system context=namespace
+        identity {
+            domain concepts
+            compose qualified-name system code
+        }
+    }
+    node note role=contribution {
+        field target EndpointRef arg=0
+        value codec=fixture-value {
+            against target=target member=code
+        }
+    }
+    node mentions role=record type=Mentions {
+        field id arg=0
+        field target arg=1
+        identity {
+            domain mentions
+            compose qualified-name id
+        }
+    }
+    reference EndpointRef target=ConceptDef codec=Endpoint lookup=concepts qualification=explicit-or-context {
+        qualifier system String required=#false
+        open-world system-member=distribution values="reference-only external"
+    }
+}

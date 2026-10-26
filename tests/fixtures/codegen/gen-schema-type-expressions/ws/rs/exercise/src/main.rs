@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 use expressions_proc::types::{Attr, Keyed, Notes, Rec, RecPick, Tally, TallyV};
 use expressions_proc::{
     CheckScope, DiagnosticRecord, Extensions, Item, ItemVariant, LinkOutcome, Location, Reading,
-    Ref, ResolveError, TypedItem, load, reader,
+    Ref, ResolveError, Resolved, TypedItem, load, reader,
 };
 use kdlith_engine::{LogicalType, Nullable, Shaped, TypeShape};
 
@@ -201,7 +201,9 @@ fn print_linked(document: &Path, reading: &Reading<Item>) {
 
 fn resolved(reading: &Reading<Item>, key: &Ref<Attr>) {
     let answer = match reading.resolve(key) {
-        Ok(attr) => format!("Attr {}", attr.name),
+        Ok(Resolved::Declaration(attr)) => format!("Attr {}", attr.name),
+        Ok(Resolved::External) => "external".to_owned(),
+        Ok(_) => unreachable!("Resolved holds only a declaration or external"),
         Err(ResolveError::Link { outcome: failed, .. }) => {
             format!("error {} {}", failed.code().unwrap_or("none"), outcome(&failed))
         }

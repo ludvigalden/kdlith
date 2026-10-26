@@ -76,6 +76,9 @@ pub(crate) const NODES: &[NodeShape] = &[
     NodeShape::new("qualifier")
         .under(&["reference"])
         .ty("QualifierRule"),
+    NodeShape::new("open-world")
+        .under(&["reference"])
+        .ty("OpenWorldDef"),
     NodeShape::new("resolution")
         .under(&["schema"])
         .declaration()

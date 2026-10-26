@@ -50,9 +50,9 @@ pub use compile::input::{
     Construct, DefaultInput, DefinitionInput, DependentInput, DescendantRuleInput, DocumentInput,
     DocumentRuleInput, EffectGroupInput, EffectInput, FieldBindingInput, FieldInput, FormatInput,
     GroupInput, IdentityInput, ImportInput, Located, LocationsInput, MatchRuleInput, MemberInput,
-    NodeAnnotationInput, NodeInput, ProfileInput, ProviderInput, QualifierInput, ReferenceInput,
-    ResolutionInput, SequenceInput, SlotInput, SourceContextInput, SourceFieldInput, SourceInput,
-    StepInput, TypeInput, ValidatorInput, VariantInput,
+    NodeAnnotationInput, NodeInput, OpenWorldInput, ProfileInput, ProviderInput, QualifierInput,
+    ReferenceInput, ResolutionInput, SequenceInput, SlotInput, SourceContextInput,
+    SourceFieldInput, SourceInput, StepInput, TypeInput, ValidatorInput, VariantInput,
 };
 pub use compile::{DIALECT_VERSION, compile_dialect, compile_dialect_input, compile_schema_input};
 pub use data::{
@@ -120,9 +120,9 @@ pub use syntax::ParsedDocument;
 pub use typed::{
     Decimal, Declarations, Expression, FieldShape, Fields, FromFields, FromValue, Handler,
     ItemVariant, LogicalType, Mismatch, NodeShape, Nullable, OpenError, OrderedMap, Origin,
-    ReadError, ReadFn, Reading, Ref, ResolveError, Shaped, SlotShape, TypeShape, TypedItem,
-    TypedReader, ValueExpr, VariantShape, member_value, object_value, read_fields, reference_value,
-    text_value, variant_value,
+    ReadError, ReadFn, Reading, Ref, ResolveError, Resolved, Shaped, SlotShape, TypeShape,
+    TypedItem, TypedReader, ValueExpr, VariantShape, member_value, object_value, read_fields,
+    reference_value, text_value, variant_value,
 };
 pub use types::{
     AssetBase, AssetDecl, AssetKind, Builtin, CaptureDef, CodecDecl, Constraint, DefaultSpec,

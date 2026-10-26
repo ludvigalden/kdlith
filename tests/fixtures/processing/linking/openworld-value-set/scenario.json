@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "A value-set arm covers several distribution classes: each listed value independently admits external linking, one mention per value, both rendered external in one report",
+  "args": [
+    "inspect",
+    "data",
+    "--view",
+    "references",
+    "--schema",
+    "{fx-suite}/processing/linking/openworld.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

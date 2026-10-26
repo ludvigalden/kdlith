@@ -252,12 +252,24 @@ object_type! {
         "lookup" => lookup: Option<DomainName>,
         "qualification" => qualification: Qualification,
         "qualifiers" => qualifiers: Vec<QualifierRule>,
+        "open-world" => open_world: Option<OpenWorldDef>,
     }
 }
 
 impl ReferenceDef {
     /// The identity domain its declarations register in.
     pub const DOMAIN: &str = "ReferenceDef";
+}
+
+object_type! {
+    /// The open-world arm of a reference type: the member of the
+    /// declaration its outermost identity segment names, and the
+    /// values that mark that declaration defined upstream,
+    /// whitespace-separated in one string.
+    pub struct OpenWorldDef {
+        "system-member" => system_member: FieldName,
+        "values" => values: String,
+    }
 }
 
 enum_type! {
@@ -388,6 +400,7 @@ pub(crate) const TYPES: &[TypeShape] = &[
     ComposeRule::SHAPE,
     ComposeForm::SHAPE,
     ReferenceDef::SHAPE,
+    OpenWorldDef::SHAPE,
     Qualification::SHAPE,
     QualifierRule::SHAPE,
     ResolutionPolicyDef::SHAPE,

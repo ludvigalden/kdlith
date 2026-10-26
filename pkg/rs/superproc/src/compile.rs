@@ -12,10 +12,10 @@ use kdlith_engine::{
     DescendantRuleInput, DocumentInput, DocumentRuleInput, EffectGroupInput, EffectInput,
     Extensions, FieldBindingInput, FieldInput, FormatInput, GroupInput, IdentityInput, ImportInput,
     Located, LocationsInput, MatchRuleInput, MemberInput, NodeAnnotationInput, NodeInput,
-    ParsedDocument, ProfileInput, ProviderInput, QualifierInput, ReadOptions, ReferenceInput,
-    ResolutionInput, SequenceInput, SlotInput, SourceContextInput, SourceFieldInput, SourceInput,
-    StepInput, TypeInput, TypedItem, ValidatorInput, VariantInput, compile_dialect,
-    compile_dialect_input, compile_schema_input,
+    OpenWorldInput, ParsedDocument, ProfileInput, ProviderInput, QualifierInput, ReadOptions,
+    ReferenceInput, ResolutionInput, SequenceInput, SlotInput, SourceContextInput,
+    SourceFieldInput, SourceInput, StepInput, TypeInput, TypedItem, ValidatorInput, VariantInput,
+    compile_dialect, compile_dialect_input, compile_schema_input,
 };
 use kdlith_runtime::Repeated;
 
@@ -598,6 +598,7 @@ fn declaration(value: Item) -> Option<Construct> {
             lookup,
             qualification,
             qualifiers,
+            open_world,
         }) => Construct::Reference(ReferenceInput {
             name: name.as_str().to_owned(),
             target: target.as_str().to_owned(),
@@ -614,6 +615,10 @@ fn declaration(value: Item) -> Option<Construct> {
                     required: qualifier.required.unwrap_or(true),
                 })
                 .collect(),
+            open_world: open_world.as_ref().map(|arm| OpenWorldInput {
+                system_member: arm.system_member.as_str().to_owned(),
+                values: arm.values.as_str().to_owned(),
+            }),
         }),
         Item::ResolutionPolicyDef(ResolutionPolicyDef {
             resolver,

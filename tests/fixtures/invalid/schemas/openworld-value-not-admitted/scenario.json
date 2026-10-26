@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "An open-world arm listing a value the statically known member type does not admit — the member is an enum and one listed value is no member of it — is refused at schema compile",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

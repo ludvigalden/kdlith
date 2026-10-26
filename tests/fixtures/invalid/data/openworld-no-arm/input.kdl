@@ -1,0 +1,2 @@
+system "SNOMED" distribution=external
+mentions "spelled" "SNOMED:1234"

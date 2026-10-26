@@ -12,7 +12,7 @@ mod value;
 
 pub use links::{ItemVariant, Ref, reference_value};
 pub use origin::Origin;
-pub use read::{OpenError, ReadError, Reading, ResolveError, TypedItem, TypedReader};
+pub use read::{OpenError, ReadError, Reading, ResolveError, Resolved, TypedItem, TypedReader};
 pub use shape::{
     Declarations, Expression, FieldShape, Handler, NodeShape, ReadFn, Shaped, SlotShape, TypeShape,
     VariantShape,

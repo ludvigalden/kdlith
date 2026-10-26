@@ -1,0 +1,20 @@
+{
+  "binary": "kdlith",
+  "description": "The same tree under --scope local links and renders exactly as under complete scope — the open-world outcome decides nothing about the exit, only the scope gate does — so the run exits 0 with the same references view",
+  "args": [
+    "inspect",
+    "data",
+    "--view",
+    "references",
+    "--scope",
+    "local",
+    "--schema",
+    "{fx-suite}/processing/linking/openworld.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "An unresolved reference into a system whose distribution member holds an unlisted value still fails: the open-world arm admits only its listed values, so this is REF001 under the default complete scope",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/linking/openworld.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

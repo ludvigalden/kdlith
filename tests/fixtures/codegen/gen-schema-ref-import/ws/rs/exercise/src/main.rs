@@ -10,7 +10,7 @@ use std::path::PathBuf;
 use catalog_proc::types::{Entry, Group};
 use catalog_proc::{
     CheckScope, DiagnosticRecord, Extensions, Item, ItemVariant, LinkOutcome, Location,
-    ResolveError, TypedItem, load, reader,
+    ResolveError, Resolved, TypedItem, load, reader,
 };
 
 fn main() {
@@ -71,7 +71,11 @@ fn main() {
             None => "none".to_owned(),
             // `resolve` takes the reference carrier through `Deref`.
             Some(reference) => match reading.resolve::<Group>(reference) {
-                Ok(group) => format!("{}->{}", reference.written(), group.name),
+                Ok(Resolved::Declaration(group)) => {
+                    format!("{}->{}", reference.written(), group.name)
+                }
+                Ok(Resolved::External) => format!("{} external", reference.written()),
+                Ok(_) => unreachable!("Resolved holds only a declaration or external"),
                 Err(ResolveError::Link { outcome, .. }) => format!(
                     "{} {} {}",
                     reference.written(),

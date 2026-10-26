@@ -1,0 +1,9 @@
+system "SNOMED" distribution=external
+system "ATC" distribution=reference-only
+system "LOCAL" distribution=published
+namespace "LOCAL"
+concept "alpha"
+mentions "resolved" "LOCAL:alpha"
+mentions "spelled" "SNOMED:1234"
+namespace "SNOMED"
+mentions "bare" "66076007"

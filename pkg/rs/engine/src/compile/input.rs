@@ -466,6 +466,18 @@ pub struct ReferenceInput {
     pub lookup: Option<String>,
     pub qualification: String,
     pub qualifiers: Vec<QualifierInput>,
+    pub open_world: Option<OpenWorldInput>,
+}
+
+/// The open-world arm a reference type declares, as written.
+#[derive(Clone, Debug)]
+pub struct OpenWorldInput {
+    /// The member field of the declaration the outermost identity
+    /// segment names whose value marks it defined upstream.
+    pub system_member: String,
+    /// The values that admit external linking, one string as written:
+    /// whitespace-separated in the arm's spelling.
+    pub values: String,
 }
 
 /// One qualifier a reference declares.

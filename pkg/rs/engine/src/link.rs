@@ -12,7 +12,7 @@ use kdlith_model::{
 
 use crate::bindings::{BindingCodec, NodeDecl};
 use crate::decode::{Decoder, found};
-use crate::definition::{Definition, Qualification, ReferenceDecl};
+use crate::definition::{Definition, OpenWorldDecl, Qualification, ReferenceDecl};
 use crate::diag::record;
 use crate::names::Sym;
 use crate::summary;
@@ -385,6 +385,11 @@ pub struct UnmetQualifier {
 pub enum LinkOutcome {
     /// Exactly one candidate, meeting every required qualifier.
     Resolved,
+    /// No candidate, but the reference type's open-world arm admits it:
+    /// the declaration its outermost segment names is defined upstream,
+    /// so the reference cannot resolve in any reading of this tree.
+    /// Not a diagnostic.
+    External,
     /// No candidate (`KDLITH-REF001`).
     Unresolved,
     /// More than one candidate (`KDLITH-REF003`).
@@ -397,7 +402,7 @@ impl LinkOutcome {
     /// The registered code a failed outcome reports.
     pub fn code(&self) -> Option<&'static str> {
         match self {
-            LinkOutcome::Resolved => None,
+            LinkOutcome::Resolved | LinkOutcome::External => None,
             LinkOutcome::Unresolved => Some(UNRESOLVED),
             LinkOutcome::Ambiguous => Some(AMBIGUOUS),
             LinkOutcome::UnmetQualifier(_) => Some(UNMET_QUALIFIER),
@@ -523,6 +528,41 @@ impl LinkReport {
             _ => None,
         }
     }
+}
+
+/// Whether an open-world arm admits one unresolved reference: the
+/// declaration its outermost identity segment names (spelled, first
+/// segment, or from context) is indexed and holds a listed value in
+/// the member the arm names.
+fn external(
+    definition: &Definition,
+    index: &IdentityIndex,
+    bound: &BoundReference,
+    arm: &OpenWorldDecl,
+) -> Option<LinkOutcome> {
+    let names = &definition.names;
+    let reference = &bound.reference;
+    let field = names.resolve(arm.system_field);
+    let value = reference
+        .qualifiers
+        .iter()
+        .find(|(name, _)| name == field)
+        .map(|(_, value)| value.clone())
+        .or_else(|| match reference.name.0.len() {
+            len if len == arm.identity_len => reference.name.0.first().cloned(),
+            len if len + 1 == arm.identity_len => reference.context.as_deref().map(str::to_owned),
+            _ => None,
+        })?;
+    let member = names.resolve(arm.system_member);
+    let marked = |entry: &IndexedDeclaration| {
+        entry.identity.name.0.as_slice() == [value.as_str()]
+            && field_text(&entry.fields, member)
+                .is_some_and(|held| arm.values.iter().any(|value| value == held))
+    };
+    index
+        .domains()
+        .any(|(_, declarations)| declarations.iter().any(marked))
+        .then_some(LinkOutcome::External)
 }
 
 /// The one indexed declaration an unlinked pending reference names,
@@ -712,7 +752,12 @@ pub fn link(
             gated,
         } = lookup;
         let outcome = match candidates.as_slice() {
-            [] => LinkOutcome::Unresolved,
+            [] => bound
+                .declared
+                .open_world
+                .as_ref()
+                .and_then(|arm| external(definition, index, &bound, arm))
+                .unwrap_or(LinkOutcome::Unresolved),
             [target] => {
                 let unmet = unmet_qualifiers(definition, &bound, target);
                 if unmet.is_empty() {
@@ -1076,7 +1121,7 @@ fn link_records(link: &Link, documents: &BTreeMap<SourceId, String>) -> Vec<Diag
     };
     let at = Some(reference.site);
     match &link.outcome {
-        LinkOutcome::Resolved => Vec::new(),
+        LinkOutcome::Resolved | LinkOutcome::External => Vec::new(),
         LinkOutcome::Unresolved => {
             let name = match link.gated.as_slice() {
                 [] => name,

@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "An open-world reference type vets clean under complete scope: a mention spelled with its system qualifier and one whose system fills from context both link external into a system whose distribution member holds a listed value, beside a mention that resolves to a declared concept",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/linking/openworld.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

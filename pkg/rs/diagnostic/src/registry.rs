@@ -722,6 +722,16 @@ pub const CODES: &[CodeDefinition] = &[
         correction: "Type the field as the child's bound type, give the child no role, or select the child's parts through nested sources",
         retired: false,
     },
+    CodeDefinition {
+        code: "KDLITH-SCH021",
+        label: "invalid-open-world-arm",
+        severity: Severity::Error,
+        exit_class: 1,
+        trigger: "a reference type's open-world arm declares no values, its target composes no identity the outermost segment could name through, or the arm names a system-member the statically known member type does not declare or a value that member's type does not admit",
+        message_template: "reference <name>: open-world arm is invalid: <reason>",
+        correction: "Declare at least one value, target a declaration that composes an identity, and name a member the target's outermost identity field reaches whose type admits every value",
+        retired: false,
+    },
     // BND
     CodeDefinition {
         code: "KDLITH-BND001",

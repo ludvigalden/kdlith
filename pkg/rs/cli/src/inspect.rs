@@ -502,6 +502,7 @@ fn reference_lines(linked: &Linked<'_>) -> Vec<serde_json::Value> {
 fn outcome_name(outcome: &LinkOutcome) -> &'static str {
     match outcome {
         LinkOutcome::Resolved => "resolved",
+        LinkOutcome::External => "external",
         LinkOutcome::Unresolved => "unresolved",
         LinkOutcome::Ambiguous => "ambiguous",
         LinkOutcome::UnmetQualifier(_) => "unmet-qualifier",

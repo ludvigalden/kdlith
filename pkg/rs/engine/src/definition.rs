@@ -661,6 +661,32 @@ pub struct ReferenceDecl {
     pub lookup: Option<Sym>,
     pub qualification: Qualification,
     pub qualifiers: Vec<QualifierDecl>,
+    /// The open-world arm, when the reference type declares one.
+    pub open_world: Option<OpenWorldDecl>,
+    pub site: Site,
+}
+
+/// The open-world arm a reference type declares: a reference that
+/// resolves to no declaration links as external when the declaration
+/// its outermost identity segment names holds one of the arm's values
+/// in the member the arm names — the declaration's members are defined
+/// upstream, so the reference cannot resolve in any reading of this
+/// tree.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct OpenWorldDecl {
+    /// The identity field the outermost segment fills; resolved at
+    /// compile from the target's identity composition.
+    pub system_field: Sym,
+    /// How many identity fields the target composes; the outermost
+    /// segment is the reference's first name segment only when the
+    /// reference spells every one.
+    pub identity_len: usize,
+    /// The member field of the named declaration whose value marks it
+    /// defined upstream.
+    pub system_member: Sym,
+    /// The member values that admit external linking.
+    pub values: Vec<String>,
     pub site: Site,
 }
 

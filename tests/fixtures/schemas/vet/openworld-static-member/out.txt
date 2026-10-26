@@ -1,0 +1,1 @@
+ok: schema openworld-bad version 1 scope=complete documents=1 types=5 nodes=2 slots=0 profiles=0 digest=1ad227f3414d8d7f

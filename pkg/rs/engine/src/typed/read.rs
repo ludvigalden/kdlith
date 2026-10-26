@@ -209,6 +209,9 @@ pub enum ResolveError {
         outcome: LinkOutcome,
         gated: Vec<String>,
     },
+    /// The reference resolved external: its declaration is defined
+    /// upstream, so the reading holds no value to read.
+    External,
     /// The one declaration it resolved to is not read as the requested
     /// type, or was not read at all because its typing failed.
     NotOfType,
@@ -225,6 +228,9 @@ impl std::fmt::Display for ResolveError {
                 Some(code) => write!(f, "the reference did not resolve ({code})"),
                 None => f.write_str("the reference did not resolve"),
             },
+            ResolveError::External => {
+                f.write_str("the reference resolved external: no declaration is in the reading")
+            }
             ResolveError::NotOfType => {
                 f.write_str("the declaration is not read as the requested type")
             }
@@ -233,6 +239,32 @@ impl std::fmt::Display for ResolveError {
 }
 
 impl std::error::Error for ResolveError {}
+
+/// The answer a resolved reference yields: the one declaration it
+/// resolved to, read as `D`, or an external outcome — the reference
+/// linked, but its declaration is defined upstream and no reading of
+/// this tree holds it.
+#[derive(Clone, Copy, Debug)]
+#[non_exhaustive]
+pub enum Resolved<'a, D> {
+    Declaration(&'a D),
+    External,
+}
+
+impl<'a, D> Resolved<'a, D> {
+    /// The declaration read as `D`, when the reference resolved to one.
+    pub fn declaration(self) -> Option<&'a D> {
+        match self {
+            Resolved::Declaration(declaration) => Some(declaration),
+            Resolved::External => None,
+        }
+    }
+
+    /// Whether the reference resolved external.
+    pub fn is_external(&self) -> bool {
+        matches!(self, Resolved::External)
+    }
+}
 
 /// Why [`Reading::open`] refused an asset.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -397,17 +429,27 @@ impl<T> Reading<T> {
         self.report.as_ref()?.types.get(kind)?.links.get(at)
     }
 
-    /// The declaration `reference` resolved to, read as its target type.
-    pub fn resolve<D>(&self, reference: &Ref<D>) -> Result<&D, ResolveError>
+    /// The answer for `reference`: the declaration it resolved to,
+    /// read as its target type, or — when its reference type's
+    /// open-world arm admitted it — an external outcome with no
+    /// declaration and no default value.
+    pub fn resolve<D>(&self, reference: &Ref<D>) -> Result<Resolved<'_, D>, ResolveError>
     where
         T: ItemVariant<D>,
     {
-        self.settled::<D, D>(reference)
+        match self.settled::<D, D>(reference) {
+            Ok(declaration) => Ok(Resolved::Declaration(declaration)),
+            // An external reference linked; `settled` has no declaration
+            // to read, which is the answer, not a failure.
+            Err(ResolveError::External) => Ok(Resolved::External),
+            Err(error) => Err(error),
+        }
     }
 
     /// The declaration `reference` resolved to, read as `D`: the link
     /// stage decides the declaration, and the processor's item type
-    /// projects it.
+    /// projects it. An externally resolved reference holds no
+    /// declaration in the reading.
     pub fn settled<D, V>(&self, reference: &Ref<V>) -> Result<&D, ResolveError>
     where
         T: ItemVariant<D>,
@@ -418,6 +460,7 @@ impl<T> Reading<T> {
         let link = self.link_of(reference).ok_or(ResolveError::NotLinkedHere)?;
         let target = match (&link.outcome, link.candidates.as_slice()) {
             (LinkOutcome::Resolved, [target]) => target,
+            (LinkOutcome::External, _) => return Err(ResolveError::External),
             (outcome, _) => {
                 return Err(ResolveError::Link {
                     outcome: outcome.clone(),

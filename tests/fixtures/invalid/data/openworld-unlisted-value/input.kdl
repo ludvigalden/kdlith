@@ -1,0 +1,3 @@
+system "LOCAL" distribution=published
+namespace "LOCAL"
+mentions "missing" "LOCAL:nope"

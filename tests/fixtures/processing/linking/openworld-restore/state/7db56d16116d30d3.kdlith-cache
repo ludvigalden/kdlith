@@ -1,0 +1,4 @@
+kdlith-cache format=3 canonicalization=1
+{"key":"7db56d16116d30d3","identity":{"revision":"fnv1a64:35f4c021bf2b10ad","schema":"fnv1a64:a1a7791abb12a198","context":"fnv1a64:97c312de49340b52","profiles":"fnv1a64:e1b51df36e161fca","resolved":"fnv1a64:7c4cd565807bb610","policy":"reject"},"derivations":[{"entry":"data.kdl","source":"data.kdl","caller":null}],"items":2,"digest":"fnv1a64:06514c90a90324e3"}
+{"item":"record","data":{"node":{"source":0,"index":1},"type_name":"Mentions","fields":[{"name":"id","value":{"kind":"string","value":"external-mention"},"origin":1},{"name":"target","value":{"kind":"reference","value":{"domain":"concepts","name":["1234"],"qualifiers":[["system","SNOMED"]],"written":"SNOMED:1234","site":{"source":0,"span":{"start":{"offset":47,"line":2,"column":29},"end":{"offset":60,"line":2,"column":42}}},"context":"SNOMED"}},"origin":1}],"origin":1,"validation":"provisional"}}
+{"item":"scope-complete","data":{"source":0,"scope":null}}

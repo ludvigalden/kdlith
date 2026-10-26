@@ -72,6 +72,26 @@ published yet.
   binds a Bool, `number` a U64, `text` a String, and `choice` one of
   the declaration's bound choices. A payload outside the selected
   shape, a missing kind, and an unknown kind fail at linking.
+- Open-world reference arms, which change the canonical dialect
+  digest: a reference type may declare `open-world
+system-member=MEMBER values="V1 V2 ..."` (one whitespace-separated
+  value set), and a reference of that type that resolves to no
+  declaration then links with an `external` outcome — no diagnostic,
+  rendered by `inspect data --view references` beside the resolved
+  ones — when the declaration its outermost identity segment names
+  (spelled as the qualifier of that field, as the first name segment
+  when every segment is spelled, or filled from context when exactly
+  the outermost one is missing) is indexed in the reading and holds
+  one of the listed values in the named member. Every other
+  unresolved reference still fails `KDLITH-REF001`, and a schema that
+  declares no arm fails closed exactly as before; an externally
+  resolved reference skips payload validation as an unresolved one
+  does, replays and restores through the bound-result cache, and a
+  typed reading's `resolve` answers `Resolved::External` at the site
+  with no default value. An arm whose target composes no identity, or
+  whose member or a listed value is statically wrong against the type
+  the outermost field's declared qualifier names, is rejected as
+  `KDLITH-SCH021` when the schema is compiled.
 - A dependent value binding whose target field is not a reference
   type, or whose member the referenced type does not declare, is
   rejected when the definition is compiled.

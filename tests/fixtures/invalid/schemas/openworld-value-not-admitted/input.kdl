@@ -1,0 +1,51 @@
+// The open-world arm names a member the statically known member type
+// does not declare: the outermost identity field's qualifier names the
+// SystemRef reference type, whose target holds no member spelled
+// "bogus", so the arm is refused at schema compile.
+schema openworld-bad version="1" {
+    types {
+        enum Distribution {
+            member published
+            member reference-only
+            member external
+        }
+        object SystemDef {
+            field name String
+            field distribution Distribution
+        }
+        object ConceptDef {
+            field system String
+            field code String
+        }
+        codec Endpoint output=String {
+            match #"(?:(?<system>[A-Z][A-Za-z0-9_]*):)?(?<code>\S+)"#
+            capture system String
+            capture code String
+        }
+        codec SystemName output=String {
+            match #"(?<system>[A-Z][A-Za-z0-9_]*)"#
+            capture system String
+        }
+    }
+    node system role=declaration type=SystemDef {
+        field name arg=0
+        field distribution property=distribution
+        identity {
+            domain systems
+            compose qualified-name name
+        }
+    }
+    node concept role=declaration type=ConceptDef {
+        field code arg=0
+        field system property=system
+        identity {
+            domain concepts
+            compose qualified-name system code
+        }
+    }
+    reference SystemRef target=SystemDef codec=SystemName lookup=systems qualification=explicit
+    reference EndpointRef target=ConceptDef codec=Endpoint lookup=concepts qualification=explicit-or-context {
+        qualifier system SystemRef required=#false
+        open-world system-member=distribution values="external nope"
+    }
+}

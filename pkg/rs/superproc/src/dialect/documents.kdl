@@ -253,7 +253,9 @@ dialect kdlith version="0" {
 
         // A named reference type: the target it resolves to, the
         // registered syntax codec that parses its spelling, the lookup
-        // domain, the qualification policy, and the declared qualifiers.
+        // domain, the qualification policy, the declared qualifiers, and
+        // the open-world arm that admits unresolved references into
+        // declarations defined upstream.
         object ReferenceDef {
             field name TypeName
             field target TypeName
@@ -261,6 +263,18 @@ dialect kdlith version="0" {
             field lookup "optional<DomainName>"
             field qualification Qualification
             field qualifiers "list<QualifierRule>"
+            field open-world "optional<OpenWorldDef>"
+        }
+
+        // The open-world arm of a reference type: when a reference the
+        // type fails to resolve names, through its outermost identity
+        // segment, a declaration whose member field holds one of the
+        // listed values, the reference links as external instead of
+        // failing. The values are one whitespace-separated string, so a
+        // single arm covers several member values.
+        object OpenWorldDef {
+            field system-member FieldName
+            field values String
         }
 
         // How a reference qualifies its target: explicitly in its
@@ -578,13 +592,23 @@ dialect kdlith version="0" {
                 children qualifier
             }
         }
+        field open-world child=open-world
         children qualifier
+        children open-world max-occurs=1
     }
 
     node qualifier type=QualifierRule parent=reference {
         field name arg=0
         field type arg=1
         field required property=required
+    }
+
+    // The open-world arm: which member of the declaration the
+    // outermost identity segment names marks it defined upstream, and
+    // which member values admit external linking.
+    node open-world type=OpenWorldDef parent=reference {
+        field system-member property=system-member
+        field values property=values
     }
 
     // Contribution resolution: the resolver the processor registers, and

@@ -1,0 +1,27 @@
+{
+  "binary": "kdlith",
+  "description": "An external reference carried through the bound-result cache restore path resolves external on replay: the seeded state is the real cache refresh of these exact inputs, and the restored record line is byte-identical to the replay twin's (processing/linking/openworld-restore-replay); the state is left byte-identical, the read never writes the store",
+  "args": [
+    "read",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/linking/openworld.kdl",
+    "--entry",
+    "entry.kdl",
+    "data.kdl",
+    "external-mention",
+    "--state",
+    "state"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden",
+    "files": {
+      "state/037349a5aeee7085.kdlith-cache": "state/037349a5aeee7085.kdlith-cache",
+      "state/7db56d16116d30d3.kdlith-cache": "state/7db56d16116d30d3.kdlith-cache",
+      "state/cfda2eff8750de0d.kdlith-snapshot": "state/cfda2eff8750de0d.kdlith-snapshot",
+      "state/f7bdde8eed64b78c.kdlith-snapshot": "state/f7bdde8eed64b78c.kdlith-snapshot"
+    }
+  }
+}

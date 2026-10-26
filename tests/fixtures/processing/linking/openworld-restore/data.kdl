@@ -1,0 +1,2 @@
+namespace "SNOMED"
+mentions "external-mention" "SNOMED:1234"

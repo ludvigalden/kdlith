@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A reference type that declares no open-world arm fails closed exactly as before: a mention of a system marked external is REF001, the default posture for every schema that does not opt in",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}
