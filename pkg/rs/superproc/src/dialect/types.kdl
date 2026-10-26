@@ -1,0 +1,556 @@
+// kdlith dialect definition: the logical type system.
+//
+// The dialect is the language schema definitions are written in. This
+// document contributes the logical types a schema definition may
+// declare (string, enum, object, union, map, codec, and asset types),
+// the compact type-expression grammar used wherever a field names its
+// type, and the declarative constraints an object type may carry.
+// Logical types are kept separate from their KDL bindings: how a field
+// is spelled in a data document is declared in bindings.kdl, not here.
+//
+// The dialect definition is self-describing: every construct used below
+// is itself declared by the dialect definition documents.
+
+dialect kdlith version="0" {
+    types {
+        // Names used throughout the dialect.
+
+        string TypeName {
+            pattern #"^[A-Z][A-Za-z0-9]*$"#
+        }
+
+        string NodeName {
+            pattern #"^[a-z][a-z0-9]*(-[a-z0-9]+)*$"#
+        }
+
+        string FieldName {
+            pattern #"^[A-Za-z][A-Za-z0-9_-]*$"#
+        }
+
+        string MemberName {
+            min-length 1
+        }
+
+        string ValidatorName {
+            format kebab-case
+        }
+
+        // A type expression: a type-description grammar inside a quoted
+        // string, not an expression evaluator. It names a declared type, a
+        // built-in scalar, or one of the constructors in TypeConstructor,
+        // for example "optional<String>" or "map<Locale, String>". Fields
+        // are required unless their type is optional<T>; absence, null,
+        // and an empty list are distinct states.
+        string TypeExpression {
+            validator type-expression version="0"
+        }
+
+        // The built-in scalar types a type expression may name without a
+        // declaration. ValueExpr is any single KDL scalar value; where a
+        // field holds one (a default, a literal context value), the engine
+        // checks it against the type of the field it belongs to.
+        enum BuiltinType {
+            member String
+            member Bool
+            member Integer
+            member Decimal
+            member U64
+            member ValueExpr
+        }
+
+        // The type-expression constructors.
+        enum TypeConstructor {
+            member optional description="The field may be absent"
+            member nullable description="The field may explicitly contain null"
+            member list description="Ordered collection"
+            member map description="Keyed collection with typed keys"
+            member ordered-map description="Keyed collection that retains declaration order"
+            member union description="One of several alternatives, discriminated explicitly"
+            member ref description="Symbolic reference to a declared entity of the target type"
+        }
+
+        // Built-in string formats. Each has a precisely documented grammar;
+        // zero-padded with width=2 is a two-character digit string, not an
+        // integer that loses its leading zeros.
+        enum StringFormat {
+            member kebab-case
+            member camel-case
+            member lower-snake
+            member upper-snake
+            member uuid
+            member zero-padded
+        }
+
+        // The sensitivity a logical field may declare: `secret` marks a
+        // resolved sensitive value, `reference` an identifier that locates
+        // one. A type modeling both keeps two separate fields, each
+        // tagged. Metadata is not enforcement: every serialization and
+        // diagnostic surface applies an explicit output policy (emit,
+        // omit, redact), and a secret is emitted only when the policy
+        // explicitly says emit.
+        enum Sensitivity {
+            member secret
+            member reference
+        }
+
+        // How layered contributions combine a field they share: `union`
+        // appends a refinement's list items, skipping items equal by
+        // declared shape, instead of overwriting the lower layer's list;
+        // on a keyed collection or object it merges key by key.
+        enum MergePolicy {
+            member union
+        }
+
+        // A type declaration, discriminated by the declaring node's name.
+        union TypeDef {
+            variant string StringType
+            variant enum EnumType
+            variant object ObjectType
+            variant union UnionType
+            variant map MapType
+            variant codec CodecType
+            variant asset AssetType
+        }
+
+        // A string type: a pattern validates the whole string; a semantic
+        // format such as a locale tag uses a registered validator rather
+        // than an approximate pattern.
+        object StringType {
+            field name TypeName
+            field parameters "optional<list<TypeName>>"
+            field format "optional<StringFormat>"
+            field width "optional<U64>"
+            field pattern "optional<String>"
+            field validator "optional<ValidatorName>"
+            field validator-version "optional<String>"
+            field min-length "optional<U64>"
+        }
+
+        object EnumType {
+            field name TypeName
+            field parameters "optional<list<TypeName>>"
+            field members "ordered-map<MemberName, EnumMember>"
+        }
+
+        // Member descriptions remain metadata; they are not discarded
+        // during compilation.
+        // The member's name is the key of the enclosing ordered map.
+        object EnumMember {
+            field description "optional<String>"
+        }
+
+        object ObjectType {
+            field name TypeName
+            field parameters "optional<list<TypeName>>"
+            field fields "ordered-map<FieldName, FieldDef>"
+            field constraints "list<Constraint>"
+        }
+
+        // A logical field. documented-default is metadata only and never
+        // materializes an absent value; fallback supplies an absent value
+        // when it is a literal — a computed fallback is a descriptor the
+        // processor never computes. Reading a value from the active
+        // context is a binding concern (bindings.kdl), not part of the
+        // logical field.
+        // The field's name is the key of the enclosing ordered map.
+        object FieldDef {
+            field type TypeExpression
+            field description "optional<String>"
+            field documented-default "optional<ValueExpr>"
+            field fallback "optional<DefaultSpec>"
+            field sensitivity "optional<Sensitivity>"
+            field merge "optional<MergePolicy>"
+        }
+
+        // A union selects one alternative by explicit discrimination: the
+        // variant's discriminator is the node name that selects it, so no
+        // speculative parsing or backtracking is needed. A variant of a
+        // union bound from a scalar value may carry a prefix= that
+        // selects it when the value's text starts with it.
+        object UnionType {
+            field name TypeName
+            field parameters "optional<list<TypeName>>"
+            field variants "ordered-map<NodeName, Variant>"
+        }
+
+        // The variant's discriminator is the key of the enclosing map.
+        object Variant {
+            field type TypeExpression
+            field prefix "optional<String>"
+        }
+
+        object MapType {
+            field name TypeName
+            field parameters "optional<list<TypeName>>"
+            field key-type TypeExpression
+            field value-type TypeExpression
+        }
+
+        // A pattern codec: one regular expression that must match the
+        // whole string, the named captures it types (covering the
+        // match's named groups exactly), and the output type a decoded
+        // value carries. The namespace records, as metadata, the
+        // reference namespace a decoded identity belongs to. A codec
+        // name is usable wherever a type expression names a declared
+        // type; at bind time a matching string decodes through it in the
+        // stream while provenance retains the original spelling.
+        object CodecType {
+            field name TypeName
+            field parameters "optional<list<TypeName>>"
+            field output TypeExpression
+            field match String
+            field captures "ordered-map<MemberName, Capture>"
+            field namespace "optional<MemberName>"
+        }
+
+        // The capture's name is the key of the enclosing ordered map.
+        object Capture {
+            field type TypeExpression
+        }
+
+        // An asset: a location naming a file or directory that is not a
+        // KDL document, resolved like an import location and checked
+        // for existence, kind, and extension, but never read beyond a
+        // content digest. `base` decides where an unprefixed relative
+        // spelling starts: the referring document's directory, or its
+        // source's root. Patterns are admitted only when enabled.
+        object AssetType {
+            field name TypeName
+            field kind "optional<AssetKind>"
+            field extensions "optional<list<String>>"
+            field base "optional<AssetBase>"
+            field patterns "optional<Bool>"
+            field digest "optional<Bool>"
+        }
+
+        enum AssetKind {
+            member file
+            member dir
+        }
+
+        enum AssetBase {
+            member document
+            member source
+        }
+
+        // An include directive among a declaring container's like
+        // members: the named declaration's keyed member group splices in
+        // at that point.
+        object IncludeRef {
+            field target TypeName
+        }
+
+        // Declarative constraints over an object's fields. They are
+        // enforceable policies an author states explicitly, never rules
+        // extracted from descriptions.
+        union Constraint {
+            variant all-or-none AllOrNone
+            variant requires Requires
+            variant bound Bound
+            variant at-most-one AtMostOne
+            variant exactly-one-field ExactlyOneField
+        }
+
+        object AllOrNone {
+            field fields "list<FieldName>"
+        }
+
+        object Requires {
+            field field FieldName
+            field required FieldName
+        }
+
+        // An inclusive range over a numeric field's value; either end
+        // may be absent. A list field is bounded per element.
+        object Bound {
+            field field FieldName
+            field min "optional<U64>"
+            field max "optional<U64>"
+        }
+
+        // Exclusivity over an object's fields, however each binds: at
+        // most one of the listed fields holds a value.
+        object AtMostOne {
+            field fields "list<FieldName>"
+        }
+
+        // Exactly one of the listed fields holds a value.
+        object ExactlyOneField {
+            field fields "list<FieldName>"
+        }
+    }
+
+    // How the type declarations above are spelled in a schema definition.
+    // Inside an `entries` envelope (bindings.kdl), argument 0 of each
+    // entry node is consumed exactly once as the map key; the entry
+    // node's own bindings start at argument 1.
+
+    node string role=declaration type=StringType parent=types {
+        field name arg=0
+        field parameters {
+            from {
+                children parameter
+            }
+        }
+        field format {
+            from {
+                child format {
+                    argument 0
+                }
+            }
+        }
+        field width {
+            from {
+                child format {
+                    property width
+                }
+            }
+        }
+        field pattern child=pattern
+        field validator {
+            from {
+                child validator {
+                    argument 0
+                }
+            }
+        }
+        field validator-version {
+            from {
+                child validator {
+                    property version
+                }
+            }
+        }
+        field min-length child=min-length
+        children format max-occurs=1
+        children pattern max-occurs=1
+        children validator max-occurs=1
+        children min-length max-occurs=1
+        children parameter
+    }
+
+    node enum role=declaration type=EnumType parent=types {
+        field name arg=0
+        field parameters {
+            from {
+                children parameter
+            }
+        }
+        field members {
+            from {
+                entries member key="arg(0)" value=EnumMember
+            }
+            duplicate-keys reject
+        }
+        children member min-occurs=1
+        children include
+        children parameter
+    }
+
+    node member type=EnumMember parent=enum {
+        field description property=description
+    }
+
+    node object role=declaration type=ObjectType parent=types {
+        field name arg=0
+        field parameters {
+            from {
+                children parameter
+            }
+        }
+        field fields {
+            from {
+                entries field key="arg(0)" value=FieldDef
+            }
+            duplicate-keys reject
+        }
+        field constraints {
+            from {
+                child constraints {
+                    children all-or-none
+                    children requires
+                    children bound
+                    children at-most-one
+                    children exactly-one-field
+                }
+            }
+        }
+        children field
+        children constraints max-occurs=1
+        children include
+        children parameter
+    }
+
+    node field type=FieldDef parent=object {
+        field type arg=1
+        field description property=description
+        field documented-default child=documented-default
+        field fallback child=fallback
+        field sensitivity property=sensitivity
+        field merge property=merge
+        children documented-default max-occurs=1
+        children fallback max-occurs=1
+    }
+
+    // A field's fallback: a literal value, or a computed descriptor
+    // discriminated by its `computed` property. A computed default is
+    // never computed by the processor — computation belongs to the
+    // owning domain process — so only the literal alternative supplies
+    // an absent value.
+    node fallback parent=field {
+        field computed "optional<Bool>" property=computed
+        field value "optional<ValueExpr>" arg=0
+        field dependencies "optional<list<String>>" {
+            from {
+                children dependency {
+                    argument 0
+                }
+            }
+        }
+        cases {
+            case property=computed equals=#true type=ComputedDefault
+            otherwise type=LiteralDefault
+        }
+        children dependency
+    }
+
+    node constraints parent=object {
+        children all-or-none
+        children requires
+        children bound
+        children at-most-one
+        children exactly-one-field
+    }
+
+    node all-or-none type=AllOrNone parent=constraints {
+        field fields {
+            from {
+                args
+            }
+        }
+    }
+
+    node requires type=Requires parent=constraints {
+        field field arg=0
+        field required arg=1
+    }
+
+    node bound type=Bound parent=constraints {
+        field field arg=0
+        field min property=min
+        field max property=max
+    }
+
+    node at-most-one type=AtMostOne parent=constraints {
+        field fields {
+            from {
+                args
+            }
+        }
+    }
+
+    node exactly-one-field type=ExactlyOneField parent=constraints {
+        field fields {
+            from {
+                args
+            }
+        }
+    }
+
+    node union role=declaration type=UnionType parent=types {
+        field name arg=0
+        field parameters {
+            from {
+                children parameter
+            }
+        }
+        field variants {
+            from {
+                entries variant key="arg(0)" value=Variant
+            }
+            duplicate-keys reject
+        }
+        children variant min-occurs=1
+        children include
+        children parameter
+    }
+
+    node variant type=Variant parent=union {
+        field type arg=1
+        field prefix property=prefix
+    }
+
+    node map role=declaration type=MapType parent=types {
+        field name arg=0
+        field parameters {
+            from {
+                children parameter
+            }
+        }
+        field key-type child=key-type
+        field value-type child=value-type
+        children key-type min-occurs=1 max-occurs=1
+        children value-type min-occurs=1 max-occurs=1
+        children parameter
+    }
+
+    // A pattern codec declaration. The match child carries one regular
+    // expression as its single value; each capture child names a capture
+    // group and its type.
+    node codec role=declaration type=CodecType parent=types {
+        field name arg=0
+        field output property=output
+        field parameters {
+            from {
+                children parameter
+            }
+        }
+        field match child=match
+        field captures {
+            from {
+                entries capture key="arg(0)" value=Capture
+            }
+            duplicate-keys reject
+        }
+        field namespace child=namespace
+        children match min-occurs=1 max-occurs=1
+        children capture
+        children namespace max-occurs=1
+        children include
+        children parameter
+    }
+
+    node capture type=Capture parent=codec {
+        field type arg=1
+    }
+
+    // An asset declaration: each setting is one child carrying its
+    // value; `extensions` lists its values without their dots.
+    node asset role=declaration type=AssetType parent=types {
+        field name arg=0
+        field kind child=kind
+        field extensions {
+            from {
+                child extensions {
+                    args
+                }
+            }
+        }
+        field base child=base
+        field patterns child=patterns
+        field digest child=digest
+        children kind max-occurs=1
+        children extensions max-occurs=1
+        children base max-occurs=1
+        children patterns max-occurs=1
+        children digest max-occurs=1
+    }
+
+    // The include short form: an `include NAME` child among like members
+    // of a declaring container, splicing the named declaration's keyed
+    // member group at that point.
+    node include type=IncludeRef {
+        parents object enum union codec
+        field target arg=0
+    }
+}

@@ -1,0 +1,627 @@
+// kdlith dialect definition: documents, imports, and structural rules.
+//
+// Dialect definitions, schema definitions, and data documents are all
+// KDL documents; their role, not their file extension, distinguishes
+// them. This document contributes the root nodes of the first two levels
+// (dialect and schema), the containers that hold their declarations, the
+// structural rules a schema definition states about the documents it
+// reads, source imports with their locations rules and namespaces,
+// document profiles, descendant rules, ordered sequences, the symbol
+// catalog's identity and reference declarations, and the contribution,
+// computed-default, and secret-provider descriptors.
+//
+// Several documents may contribute to one dialect or schema: each repeats
+// the same root name and version, and a declaration made twice across
+// them is rejected rather than merged.
+
+dialect kdlith version="0" {
+    types {
+        string DialectName {
+            format kebab-case
+        }
+
+        string SchemaName {
+            format kebab-case
+        }
+
+        string ProfileName {
+            format kebab-case
+        }
+
+        string ScopeName {
+            format kebab-case
+        }
+
+        string DomainName {
+            format kebab-case
+        }
+
+        string ResolverName {
+            format kebab-case
+        }
+
+        string SecretId {
+            min-length 1
+        }
+
+        // The root of a dialect definition. A dialect definition is
+        // written in the dialect it defines; its declarations are read the
+        // same way as a schema definition's.
+        object DialectDef {
+            field name DialectName
+            field version String
+        }
+
+        // The root of a schema definition: the domain types, node
+        // bindings, context slots, and structural rules it contributes.
+        object SchemaDef {
+            field name SchemaName
+            field version "optional<String>"
+        }
+
+        // Rules over the root nodes of the documents a schema definition
+        // reads. "First" is the first active semantic node after comments
+        // and slashdash-suppressed syntax; an import may neither precede
+        // nor supply it.
+        object DocumentRule {
+            field first "optional<FirstRule>"
+            field following "list<NodeName>"
+        }
+
+        // The first root node must be exactly one of the listed nodes.
+        object FirstRule {
+            field exactly-one "list<NodeName>"
+        }
+
+        // Exactly one node out of a group of child names must appear
+        // within the scope that declares the group; checked at scope
+        // completion.
+        object ExactlyOneGroup {
+            field nodes "list<NodeName>"
+        }
+
+        // How a source repeated in one processing session is handled.
+        enum RepeatedImport {
+            member reject description="A second import of the same source is an error"
+            member coalesce description="A second import under equal context reuses the first invocation"
+            member instantiate description="Each import is a separate invocation"
+        }
+
+        // A source import: schedules another source invocation. The path
+        // is a location: relative to the importing document, from its
+        // source's root (a leading /), or from a named source's root
+        // ($name/), never leaving that source and never computed beyond
+        // the patterns the governing locations rule admits. The
+        // imported document receives only the listed projection of the
+        // caller's context, and its context mutations never return to the
+        // caller. Cycles are diagnosed from the active invocation stack,
+        // and import order is the order of the import nodes.
+        object ImportRequest {
+            field path String
+            field project "optional<list<SlotName>>"
+            field repeated RepeatedImport {
+                fallback reject
+            }
+            // A namespace: the imported declarations are reachable
+            // through the namespace and not by their unqualified names;
+            // visibility is exclusive, not additive.
+            field namespace "optional<NamespaceName>"
+        }
+
+        // A document profile: a named selection of root types. A node
+        // declaration may carry profile=NAME so one node name binds
+        // differently per profile. The invocation selects the profile:
+        // an explicit name, else the first declared match rule its
+        // invocation context satisfies, else the schema's default
+        // profile. Selection reads invocation context only, never
+        // document content.
+        object ProfileDef {
+            field name ProfileName
+            // The profile this one extends: its effective roots and match
+            // rules compose with the parent's, and its own locations rule
+            // overrides the inherited one.
+            field extends "optional<ProfileName>"
+            // Marks the schema's default profile, selected when no name
+            // is given and no match rule applies. At most one profile of
+            // a schema is the default.
+            field default "optional<Bool>"
+            field roots "optional<RootsRule>"
+            field locations "optional<LocationsRule>"
+            field match "optional<ProfileMatch>"
+        }
+
+        // The root types a profile admits. A root node the active
+        // profile's roots do not allow is rejected as unbound.
+        object RootsRule {
+            field allow "list<TypeName>"
+        }
+
+        // The match rules that select a profile from invocation context:
+        // the processed document's source path, normalized and relative
+        // to the invocation's match root. Rules are evaluated in
+        // declaration order, and the first rule that matches selects its
+        // profile.
+        object ProfileMatch {
+            field rules "list<MatchRule>"
+        }
+
+        // One match rule, discriminated by its node name.
+        union MatchRule {
+            variant path-suffix PathSuffixMatch
+            variant path-prefix PathPrefixMatch
+            variant file-name FileNameMatch
+        }
+
+        // The text a match rule compares; an empty text would match
+        // every path.
+        string MatchText {
+            min-length 1
+        }
+
+        // Matches when the source path ends with the text.
+        object PathSuffixMatch {
+            field text MatchText
+        }
+
+        // Matches when the source path starts with the text.
+        object PathPrefixMatch {
+            field text MatchText
+        }
+
+        // Matches when the source path's final component, extension
+        // included, equals the text.
+        object FileNameMatch {
+            field text MatchText
+        }
+
+        // An occurrence bound over the declaring node's whole subtree,
+        // not only its immediate children. Checked when the declaring
+        // scope completes; never crosses an import boundary.
+        object DescendantRule {
+            field name NodeName
+            field min-occurs "optional<U64>"
+            field max-occurs "optional<U64>"
+        }
+
+        // An ordered sequence the declaring node's immediate children
+        // must match: steps naming nodes, or alternatives of nodes.
+        // Repetition stays with the step's occurrence bounds; there are
+        // no unbounded-repetition groups.
+        object SequenceRule {
+            field steps "list<SequenceStep>"
+        }
+
+        // One step of an ordered sequence: either a node name or an
+        // alternatives group, with occurrence bounds. Absent bounds mean
+        // exactly once.
+        object SequenceStep {
+            field name "optional<NodeName>"
+            field alternatives "optional<AlternativesRule>"
+            field min-occurs "optional<U64>"
+            field max-occurs "optional<U64>"
+        }
+
+        // The nodes an alternatives step admits, in any order among
+        // themselves.
+        object AlternativesRule {
+            field nodes "list<NodeName>"
+        }
+
+        // A locations rule: the pattern syntax import locations may
+        // use, for a schema's own imports and the data its profiles
+        // read. Matches are ordered by their portable path bytes; no
+        // rule admits environment-variable interpolation.
+        object LocationsRule {
+            field patterns "optional<PatternsRule>"
+            // An explicit allowance for a pattern that matches zero
+            // documents; without it an empty match does not resolve.
+            field allow-empty "optional<Bool>"
+        }
+
+        // The pattern syntax a locations rule admits. Absent means not
+        // admitted; without a rule only literal locations import.
+        object PatternsRule {
+            field star "optional<Bool>"
+            field doublestar "optional<Bool>"
+            field braces "optional<Bool>"
+        }
+
+        // The identity block of a declaration: the domain its qualified
+        // symbol belongs to and how the symbol composes from bound
+        // fields.
+        object IdentityBlock {
+            field domain DomainDecl
+            field compose ComposeRule
+        }
+
+        // The identity domain a declaration registers its symbol in.
+        object DomainDecl {
+            field name DomainName
+        }
+
+        // How a qualified name composes. The only defined form lists the
+        // fields in composition order, such as a namespace slot plus a
+        // local name.
+        object ComposeRule {
+            field form ComposeForm
+            field fields "list<FieldName>"
+        }
+
+        enum ComposeForm {
+            member qualified-name description="Compose a qualified name from the listed fields, in order"
+        }
+
+        // A named reference type: the target it resolves to, the
+        // registered syntax codec that parses its spelling, the lookup
+        // domain, the qualification policy, and the declared qualifiers.
+        object ReferenceDef {
+            field name TypeName
+            field target TypeName
+            field codec "optional<TypeName>"
+            field lookup "optional<DomainName>"
+            field qualification Qualification
+            field qualifiers "list<QualifierRule>"
+        }
+
+        // How a reference qualifies its target: explicitly in its
+        // spelling, explicitly or from context, or from imports or
+        // context.
+        enum Qualification {
+            member explicit description="The reference spells its qualification completely"
+            member explicit-or-context description="The reference may take missing qualifiers from context"
+            member imported-or-context description="The reference may resolve through an import namespace or context"
+        }
+
+        // One required qualifier of a reference: its name, its type, and
+        // whether a reference must carry it. A declared qualifier is
+        // required unless it says otherwise.
+        object QualifierRule {
+            field name FieldName
+            field type TypeExpression
+            field required "optional<Bool>"
+        }
+
+        // The contribution-resolution policy: the registered resolver
+        // that resolves the schema's contributions across layers, and
+        // the descriptors of how it applies them. The engine never
+        // resolves contributions itself.
+        object ResolutionPolicyDef {
+            field resolver ResolverName
+            // Layer names in precedence order, highest first. Absent
+            // means the resolver applies its own layer ordering.
+            field layers "optional<list<String>>"
+            field selection ResolutionSelection {
+                fallback replace
+            }
+            field duplicates DuplicateTreatment {
+                fallback reject
+            }
+            field missing MissingRequirement {
+                fallback reject
+            }
+        }
+
+        // How contributions to one target combine.
+        enum ResolutionSelection {
+            member replace description="The highest-precedence contribution replaces the rest"
+            member union description="Contributions union their values, per the resolver's contract"
+        }
+
+        // How a layer contributing the same target twice is treated.
+        enum DuplicateTreatment {
+            member reject description="A twice-contributed target is a duplicate rejection"
+            member last-wins description="The later contribution wins, per the resolver's contract"
+        }
+
+        // Whether a target no contribution reaches is an error.
+        enum MissingRequirement {
+            member reject description="A target without a contribution is an error"
+            member allow description="A target without a contribution resolves to nothing"
+        }
+
+        // A default may be literal or computed. A computed default is a
+        // descriptor carrying its dependencies as typed references; the
+        // processor never computes it.
+        union DefaultSpec {
+            variant literal LiteralDefault
+            variant computed ComputedDefault
+        }
+
+        object LiteralDefault {
+            field value ValueExpr
+        }
+
+        // A computed default: computation belongs to the owning domain
+        // process, never to the processor.
+        object ComputedDefault {
+            field dependencies "list<String>"
+        }
+
+        // A secret provider: descriptor data only. Its command is a list
+        // of strings that preserves argument boundaries; it is never
+        // executed, never reinterpreted as a shell command string.
+        object SecretProvider {
+            field id SecretId
+            field ttl "optional<U64>"
+            field command "list<String>"
+        }
+    }
+
+    // Root nodes and containers.
+
+    node dialect role=container type=DialectDef {
+        field name arg=0
+        field version property=version
+        children types
+        children node
+        children context max-occurs=1
+        children document max-occurs=1
+        children import
+    }
+
+    node schema role=container type=SchemaDef {
+        field name arg=0
+        field version property=version
+        children types
+        children node
+        children context max-occurs=1
+        children document max-occurs=1
+        children import
+        children profile
+        children locations max-occurs=1
+        children reference
+        children resolution max-occurs=1
+        children provider
+        children annotation
+        children group
+    }
+
+    node types role=container {
+        parents dialect schema
+        children string
+        children enum
+        children object
+        children union
+        children map
+        children codec
+        children asset
+    }
+
+    // Structural rules. A document rule is a record: a validated
+    // statement about the documents a definition reads, with no identity
+    // of its own and never referenced by name.
+
+    node document role=record type=DocumentRule {
+        parents dialect schema
+        field first child=first
+        field following {
+            from {
+                child following {
+                    args
+                }
+            }
+        }
+        children first max-occurs=1
+        children following max-occurs=1
+    }
+
+    node first type=FirstRule parent=document {
+        field exactly-one {
+            from {
+                child exactly-one {
+                    args
+                }
+            }
+        }
+        children exactly-one min-occurs=1 max-occurs=1
+    }
+
+    node exactly-one type=ExactlyOneGroup parent=node {
+        field nodes {
+            from {
+                args
+            }
+        }
+    }
+
+    // Imports.
+
+    node import role=source-import type=ImportRequest {
+        parents dialect schema
+        field path arg=0
+        field project {
+            from {
+                child project {
+                    args
+                }
+            }
+        }
+        field repeated property=repeated
+        field namespace property=as
+        children project max-occurs=1
+    }
+
+    // Document profiles. A schema that declares profiles has exactly
+    // one selected per invocation: named explicitly, else inferred from
+    // the first matching declared rule, else the declared default.
+
+    node profile role=declaration type=ProfileDef parent=schema {
+        field name arg=0
+        field extends property=extends
+        field default property=default
+        field locations child=locations
+        field roots child=roots
+        field match child=match
+        children locations max-occurs=1
+        children roots max-occurs=1
+        children match max-occurs=1
+    }
+
+    node roots type=RootsRule parent=profile {
+        field allow {
+            from {
+                children allow
+            }
+        }
+        children allow
+    }
+
+    node match type=ProfileMatch parent=profile {
+        field rules {
+            from {
+                children path-suffix
+                children path-prefix
+                children file-name
+            }
+        }
+    }
+
+    node path-suffix type=PathSuffixMatch parent=match {
+        field text arg=0
+    }
+
+    node path-prefix type=PathPrefixMatch parent=match {
+        field text arg=0
+    }
+
+    node file-name type=FileNameMatch parent=match {
+        field text arg=0
+    }
+
+    // Descendant rules and ordered sequences, declared inside a node
+    // declaration.
+
+    node descendants type=DescendantRule parent=node {
+        field name arg=0
+        field min-occurs property=min-occurs
+        field max-occurs property=max-occurs
+    }
+
+    node sequence type=SequenceRule parent=node {
+        field steps {
+            from {
+                children step
+            }
+        }
+        children step
+    }
+
+    node step type=SequenceStep parent=sequence {
+        field name arg=0
+        field min-occurs property=min-occurs
+        field max-occurs property=max-occurs
+        field alternatives child=alternatives
+        children alternatives max-occurs=1
+    }
+
+    node alternatives type=AlternativesRule parent=step {
+        field nodes {
+            from {
+                args
+            }
+        }
+    }
+
+    // Locations rules: one on a schema governs its own imports and the
+    // data it reads; one on a profile governs the data that profile
+    // reads.
+
+    node locations role=record type=LocationsRule parent=schema {
+        field patterns child=patterns
+        field allow-empty property=allow-empty
+        children patterns max-occurs=1
+    }
+
+    node locations type=LocationsRule parent=profile {
+        field patterns child=patterns
+        field allow-empty property=allow-empty
+        children patterns max-occurs=1
+    }
+
+    node patterns type=PatternsRule parent=locations {
+        field star property=star
+        field doublestar property=doublestar
+        field braces property=braces
+    }
+
+    // The symbol catalog: identity blocks on declarations and named
+    // reference types.
+
+    node identity type=IdentityBlock parent=node {
+        field domain child=domain
+        field compose child=compose
+        children domain min-occurs=1 max-occurs=1
+        children compose min-occurs=1 max-occurs=1
+    }
+
+    node domain type=DomainDecl parent=identity {
+        field name arg=0
+    }
+
+    node compose type=ComposeRule parent=identity {
+        field form arg=0
+        field fields {
+            from {
+                args
+            }
+        }
+    }
+
+    node reference role=declaration type=ReferenceDef parent=schema {
+        field name arg=0
+        field target property=target
+        field codec property=codec
+        field lookup property=lookup
+        field qualification property=qualification
+        field qualifiers {
+            from {
+                children qualifier
+            }
+        }
+        children qualifier
+    }
+
+    node qualifier type=QualifierRule parent=reference {
+        field name arg=0
+        field type arg=1
+        field required property=required
+    }
+
+    // Contribution resolution: the resolver the processor registers, and
+    // the policy it applies, as descriptors.
+
+    node resolution role=declaration type=ResolutionPolicyDef parent=schema {
+        field resolver property=resolver
+        field layers {
+            from {
+                child layers {
+                    args
+                }
+            }
+        }
+        field selection property=selection
+        field duplicates property=duplicates
+        field missing property=missing
+        children layers max-occurs=1
+    }
+
+    // Secret providers: descriptor data, never executed.
+
+    node provider role=declaration type=SecretProvider parent=schema {
+        field id arg=0
+        field ttl property=ttl
+        field command {
+            from {
+                args
+            }
+        }
+    }
+
+    // Documents of this dialect: a dialect definition has exactly one
+    // dialect root; a schema definition has exactly one schema root.
+    document {
+        first {
+            exactly-one dialect schema
+        }
+    }
+}

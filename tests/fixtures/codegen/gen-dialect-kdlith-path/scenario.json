@@ -1,0 +1,21 @@
+{
+  "binary": "kdlith",
+  "description": "gen dialect --kdlith-path roots the generated manifest's kdlith path dependencies at the flag's value verbatim: the relative value ../pkg/rs is spliced unchanged into each dialect-form dependency line (no canonicalization, no trailing-slash trim, no existence check), [package] keeps the generator's version and carries the registry description, and the written Cargo.toml is pinned byte for byte",
+  "args": [
+    "gen",
+    "dialect",
+    "{fx-suite}/../../pkg/kdl/dialect.kdl",
+    "--crate",
+    "demo",
+    "--out",
+    "out",
+    "--kdlith-path",
+    "../pkg/rs"
+  ],
+  "expect": {
+    "exit": 0,
+    "files": {
+      "out/Cargo.toml": "cargo-toml.golden"
+    }
+  }
+}

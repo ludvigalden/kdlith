@@ -27,26 +27,17 @@ use crate::types::{
     Source, StringType, UnionType,
 };
 
-/// The canonical dialect's contributing documents, embedded so the
-/// seed does not depend on the working tree's files.
+/// The canonical dialect's contributing documents, snapshotted at
+/// generation time so the published crate carries its own seed.
 const CANONICAL: [(&str, &str); 4] = [
-    (
-        "types.kdl",
-        include_str!("../../../kdl/schemas/dialect/types.kdl"),
-    ),
-    (
-        "bindings.kdl",
-        include_str!("../../../kdl/schemas/dialect/bindings.kdl"),
-    ),
-    (
-        "context.kdl",
-        include_str!("../../../kdl/schemas/dialect/context.kdl"),
-    ),
-    (
-        "documents.kdl",
-        include_str!("../../../kdl/schemas/dialect/documents.kdl"),
-    ),
+    ("types.kdl", include_str!("dialect/types.kdl")),
+    ("bindings.kdl", include_str!("dialect/bindings.kdl")),
+    ("context.kdl", include_str!("dialect/context.kdl")),
+    ("documents.kdl", include_str!("dialect/documents.kdl")),
 ];
+
+/// The dialect version the snapshotted documents declare.
+pub const CANONICAL_VERSION: &str = "0";
 
 /// The canonical dialect, compiled from its embedded documents with the
 /// engine's seed bootstrap. This is the only definition the bootstrap

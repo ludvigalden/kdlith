@@ -14,8 +14,7 @@
       "compile": {
         "workspace": "ws",
         "copy": {
-          "crates": ["diagnostic", "engine", "model", "parse", "runtime", "superproc"],
-          "kdl": true
+          "crates": ["diagnostic", "engine", "model", "parse", "runtime", "superproc"]
         },
         "command": ["cargo", "build", "--offline", "--manifest-path", "ws/rs/deps-proc/Cargo.toml"]
       }

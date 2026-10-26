@@ -122,23 +122,6 @@ struct GenFormArgs {
     /// documents
     #[arg(required = true)]
     files: Vec<PathBuf>,
-    /// Name each kdlith dependency `{ workspace = true }` and inherit the
-    /// workspace lints: the consuming workspace's root manifest names the
-    /// kdlith source (see gen workspace)
-    #[arg(long)]
-    kdlith_workspace: bool,
-}
-
-#[derive(Args)]
-struct GenSchemaArgs {
-    #[command(flatten)]
-    form: GenFormArgs,
-    #[command(flatten)]
-    locations: LocationArgs,
-    /// A built-in context handler the schema may name, by name
-    /// (repeatable); generation admits the name and never runs it
-    #[arg(long = "handler", value_name = "NAME", value_parser = handlers::parse_handler)]
-    handlers: Vec<String>,
     /// The directory the generated manifest roots its kdlith path
     /// dependencies at, written verbatim (default: the sibling layout)
     #[arg(
@@ -157,6 +140,23 @@ struct GenSchemaArgs {
         value_parser = handlers::parse_kdlith_version
     )]
     kdlith_version: Option<String>,
+    /// Name each kdlith dependency `{ workspace = true }` and inherit the
+    /// workspace lints: the consuming workspace's root manifest names the
+    /// kdlith source (see gen workspace)
+    #[arg(long)]
+    kdlith_workspace: bool,
+}
+
+#[derive(Args)]
+struct GenSchemaArgs {
+    #[command(flatten)]
+    form: GenFormArgs,
+    #[command(flatten)]
+    locations: LocationArgs,
+    /// A built-in context handler the schema may name, by name
+    /// (repeatable); generation admits the name and never runs it
+    #[arg(long = "handler", value_name = "NAME", value_parser = handlers::parse_handler)]
+    handlers: Vec<String>,
 }
 
 /// `kdlith gen workspace`.

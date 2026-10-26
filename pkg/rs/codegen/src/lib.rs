@@ -98,9 +98,6 @@ pub enum Error {
     /// The rendered types form a cycle with no Rust indirection, so the
     /// emitted crate cannot size them: `KDLITH-GEN005`.
     RecursiveType { types: Vec<String>, edge: String },
-    /// A seed document outside the repository's `pkg/` tree cannot be
-    /// spelled as the pinned layout's relative include path.
-    SeedOutsidePkg { path: String },
     /// The entry documents do not compile; the records say why.
     DefinitionRejected { records: Vec<DiagnosticRecord> },
 }
@@ -177,11 +174,6 @@ impl std::fmt::Display for Error {
             Self::RecursiveType { types, edge } => {
                 f.write_str(&recursive_type(&types.join(" -> "), edge))
             }
-            Self::SeedOutsidePkg { path } => write!(
-                f,
-                "the seed document `{path}` does not sit under the repository's \
-                 `pkg/` tree, so the pinned layout cannot spell its include path"
-            ),
             Self::DefinitionRejected { records } => {
                 write!(
                     f,

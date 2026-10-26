@@ -67,22 +67,35 @@ reads a bare scalar exactly as the binder decodes it; the engine's
 `variant_value` takes the variant table, and the `union_type!` macro
 builds it from `prefix "…"` annotations.
 
-## Manifest and packaging
+## Manifest, packaging, and the embedded seed
 
 A writing run records every owned path in `DIR/kdlith-manifest` and
 refuses unowned overwrites (`KDLITH-GEN001`, nothing written);
 generation never deletes anything. `--dry-run` prints the plan;
 `--check` reports missing, changed, and stale paths, each
 `KDLITH-GEN002`, exiting 1 on any finding; the modes exclude each
-other. The generated `Cargo.toml` is standalone: by default the
-kdlith dependencies are sibling paths, `--kdlith-path PATH` re-roots
-them, and `--kdlith-version VER` writes registry dependencies —
-values verbatim, flags mutually exclusive, empty or non-UTF-8 values
-failing closed. `gen dialect` takes neither flag. `--kdlith-workspace`
+other. The generated `Cargo.toml` is standalone and carries registry
+metadata (name, version, and a `description` naming the definition):
+by default the kdlith dependencies are sibling paths, `--kdlith-path PATH`
+re-roots them, and `--kdlith-version VER` writes registry
+dependencies — both forms, values verbatim, flags mutually exclusive,
+empty or non-UTF-8 values failing closed. `--kdlith-workspace`
 (both forms, exclusive with the other two) writes
 `{ workspace = true }` dependencies and `[lints] workspace = true`, so
 the bytes stay a pure function of the inputs while the source moves to
 the consumer's root manifest.
+
+A dialect crate embeds its seed as a versioned snapshot: every
+contributing document is written under `src/dialect/` (byte-identical
+to the documents generation read), `compile.rs` includes each through
+a crate-relative `include_str!` beside the `CANONICAL_VERSION`
+constant naming the version they declare, and the crate reads no file
+outside itself — a published dialect crate is self-contained wherever
+it is built. The reference processor holds the same snapshot shape
+(its copy under `pkg/rs/superproc/src/dialect/` is refreshed by hand
+when the canonical documents move; the oracle's byte comparison
+catches a stale copy), and the engine's compiled definition carries
+each document's text so generation never re-reads the working tree.
 
 `gen workspace` is the workspace-level half. It reads one named source
 of a sources manifest (an origin at the repository root with a 40-hex

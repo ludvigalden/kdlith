@@ -31,8 +31,7 @@
             "parse",
             "runtime",
             "superproc"
-          ],
-          "kdl": true
+          ]
         },
         "command": [
           "cargo",

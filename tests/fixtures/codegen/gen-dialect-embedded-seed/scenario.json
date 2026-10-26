@@ -1,0 +1,33 @@
+{
+  "binary": "kdlith",
+  "kind": "codegen-oracle",
+  "description": "The dialect crate's embedded seed: gen dialect snapshots the canonical dialect's contributing documents into the crate itself, at src/dialect/, and compile.rs includes each through its own crate-relative include_str! path beside the CANONICAL_VERSION constant naming the version the documents declare — so the published crate is self-contained, reading no file outside itself. The harness requires the snapshot bytes to equal the live canonical documents under pkg/kdl/schemas/dialect (a stale or drifted snapshot fails here), and the generated compile.rs to carry the four crate-relative includes and the version constant",
+  "form": "dialect",
+  "entrypoint": "{fx-suite}/../../pkg/kdl/dialect.kdl",
+  "crate": "demo",
+  "steps": [
+    { "generate": "out" },
+    {
+      "compare": {
+        "generated": "out/src/dialect",
+        "reference": "{fx-repo}/pkg/kdl/schemas/dialect"
+      }
+    },
+    {
+      "exercise": {
+        "command": [
+          "sh",
+          "-c",
+          "grep -o 'include_str!(\"dialect/[a-z]*\\.kdl\")' out/src/compile.rs; grep 'pub const CANONICAL_VERSION' out/src/compile.rs"
+        ],
+        "stdout-contains": [
+          "include_str!(\"dialect/types.kdl\")\n",
+          "include_str!(\"dialect/bindings.kdl\")\n",
+          "include_str!(\"dialect/context.kdl\")\n",
+          "include_str!(\"dialect/documents.kdl\")\n",
+          "pub const CANONICAL_VERSION: &str = \"0\";\n"
+        ]
+      }
+    }
+  ]
+}

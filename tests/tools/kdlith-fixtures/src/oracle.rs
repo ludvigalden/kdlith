@@ -204,9 +204,9 @@ fn determinism(
     Ok(())
 }
 
-/// Require the generated tree's `**/*.rs` files to match the reference
-/// tree byte for byte, excluding exactly the generated marker header
-/// line — the marker, its newline, and the blank separator.
+/// Require the generated tree's files to match the reference tree byte
+/// for byte: each `**/*.rs` file excluding exactly the generated marker
+/// header line, and every other file (the dialect snapshot) raw.
 fn compare(
     generated: &str,
     reference: &str,
@@ -216,8 +216,9 @@ fn compare(
 ) -> Result<(), String> {
     let gen_dir = cwd.join(expansion.string(generated, env));
     let reference_dir = expansion.string(reference, env);
-    let generated_files = rust_files(&gen_dir, generated)?;
-    let reference_files = rust_files(Path::new(&reference_dir), reference)?;
+    let generated_files = tree_files(&gen_dir).map_err(|e| format!("{generated}: {e}"))?;
+    let reference_files =
+        tree_files(Path::new(&reference_dir)).map_err(|e| format!("{reference}: {e}"))?;
     if let Some(path) = reference_files
         .keys()
         .find(|p| !generated_files.contains_key(*p))
@@ -236,9 +237,13 @@ fn compare(
     }
     let marker = format!("{RUST_MARKER}\n\n");
     for (path, bytes) in &generated_files {
-        let body = bytes
-            .strip_prefix(marker.as_bytes())
-            .ok_or_else(|| format!("{path} does not start with the generated marker line"))?;
+        let body = if path.ends_with(".rs") {
+            bytes
+                .strip_prefix(marker.as_bytes())
+                .ok_or_else(|| format!("{path} does not start with the generated marker line"))?
+        } else {
+            bytes.as_slice()
+        };
         let oracle = &reference_files[path];
         if body != oracle.as_slice() {
             return Err(format!(
@@ -292,26 +297,6 @@ fn compile(
             .map_err(|e| format!("cannot create {}: {e}", target.display()))?;
         scratch::copy_tree(&source, &target)
             .map_err(|e| format!("cannot copy crate {name} into the workspace: {e}"))?;
-    }
-    if copy.kdl {
-        let source = expansion.repo.join("pkg").join("kdl");
-        if !source.is_dir() {
-            return Err(format!(
-                "repository schema tree is missing at {}",
-                source.display()
-            ));
-        }
-        let target = ws.join("kdl");
-        if target.symlink_metadata().is_ok() {
-            return Err(format!(
-                "{} already exists in the workspace; the template must not carry the schema tree",
-                target.display()
-            ));
-        }
-        std::fs::create_dir(&target)
-            .map_err(|e| format!("cannot create {}: {e}", target.display()))?;
-        scratch::copy_tree(&source, &target)
-            .map_err(|e| format!("cannot copy the schema tree into the workspace: {e}"))?;
     }
     let program = PathBuf::from(&command[0]);
     let output = spawn(&program, &command[1..], cwd, env, expansion)
@@ -451,23 +436,6 @@ fn collect_files(
         }
     }
     Ok(())
-}
-
-/// The Rust source files of a tree, keyed like [`tree_files`]. Any
-/// non-Rust file the tree holds is ignored, so the comparison covers
-/// exactly `src/**/*.rs`.
-fn rust_files(dir: &Path, what: &str) -> Result<BTreeMap<String, Vec<u8>>, String> {
-    let all = tree_files(dir).map_err(|e| format!("{what}: {e}"))?;
-    if all.is_empty() {
-        return Err(format!(
-            "{what}: no files to compare under {}",
-            dir.display()
-        ));
-    }
-    Ok(all
-        .into_iter()
-        .filter(|(path, _)| path.ends_with(".rs"))
-        .collect())
 }
 
 /// The first byte position two slices disagree at.

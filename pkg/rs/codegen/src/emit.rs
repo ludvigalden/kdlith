@@ -147,6 +147,14 @@ impl Emission<'_> {
                 self.processors_doc_rs(doc),
             ));
         }
+        // The dialect form embeds its seed as a snapshot beside the
+        // sources: the published crate carries the documents it was
+        // generated from and reads nothing outside itself.
+        if self.kind == DefinitionKind::Dialect {
+            for (file_name, text) in self.seed_documents() {
+                files.push((format!("src/dialect/{file_name}"), text.clone()));
+            }
+        }
         files.push((
             MANIFEST_NAME.to_owned(),
             manifest_text(files.iter().map(|(path, _)| path.as_str())),
@@ -169,6 +177,16 @@ impl Emission<'_> {
         out.line("[package]");
         out.line(&format!("name = \"{}\"", self.crate_name));
         out.line(&format!("version = \"{}\"", env!("CARGO_PKG_VERSION")));
+        // Registry metadata: name, version, and description are what a
+        // crates.io-style publication requires of the manifest.
+        let form = match self.kind {
+            DefinitionKind::Dialect => "dialect",
+            _ => "schema",
+        };
+        out.line(&format!(
+            "description = \"Generated kdlith processor for the {} {}.\"",
+            self.name, form
+        ));
         out.line("edition = \"2024\"");
         out.line("rust-version = \"1.85\"");
         out.line("autotests = false");

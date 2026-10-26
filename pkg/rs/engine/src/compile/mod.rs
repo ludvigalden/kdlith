@@ -249,6 +249,7 @@ fn finish<'d>(
         name: cx.name.clone().unwrap_or_default(),
         version: cx.version.clone(),
         documents: documents.iter().map(|d| d.path().to_owned()).collect(),
+        texts: documents.iter().map(|d| d.text().to_owned()).collect(),
         names: cx.names,
         types: cx.types,
         bindings,

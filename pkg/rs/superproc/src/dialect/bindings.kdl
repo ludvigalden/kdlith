@@ -1,0 +1,672 @@
+// kdlith dialect definition: node bindings, roles, and cardinality.
+//
+// A binding maps KDL syntax into a logical field. A logical field is not
+// inherently "argument 0" or "a child named name"; those are its
+// representations in a data document. This document contributes the
+// node declaration with its description and annotation metadata, the
+// roles vocabulary, the binding sources (arguments, properties,
+// children, and entries envelopes), the collision and duplicate-key
+// policies, and per-child cardinality.
+//
+// Dispatch is by parent binding, node name, and explicit discriminators,
+// never by trying every schema until one accepts. Bindings are compiled
+// into a plan; the schema's own KDL is not reinterpreted per record.
+
+dialect kdlith version="0" {
+    types {
+        // What the processing session does with a node's bound result.
+        // Structure (bindings) and role (processing) are separate: the
+        // same spelling may carry different roles under different parents.
+        enum Role {
+            member record description="Emit a validated record"
+            member declaration description="Register an identity and expose typed metadata"
+            member contribution description="Preserve an assignment or overlay for later resolution"
+            member context-control description="Apply a declared context transition"
+            member source-import description="Schedule another source invocation"
+            member container description="Process children under structural and scope rules"
+        }
+
+        // A node declaration. parent names the one node it may appear
+        // under; parents lists several. A declaration gives at most one of
+        // the two, and a node with neither is a root node; root=#true
+        // admits a placed node at the root as well. The parents
+        // child may also name a node group, placing the node under every
+        // member of the group as well. With type=, its
+        // field bindings bind the fields of that logical object type;
+        // without it, each field binding declares its field inline with a
+        // type expression. A node without role= is bound as part of its
+        // parent (a field value or an envelope entry) and is not a
+        // processing item of its own.
+        object NodeDef {
+            field name NodeName
+            field role "optional<Role>"
+            field type "optional<TypeName>"
+            field parent "optional<NodeName>"
+            field parents "optional<list<NodeName>>"
+            field parent-group "optional<NodeGroupName>"
+            field root "optional<Bool>"
+            field profile "optional<ProfileName>"
+            field fields "ordered-map<FieldName, FieldBinding>"
+            field children "ordered-map<NodeName, ChildRule>"
+            field children-groups "ordered-map<NodeGroupName, ChildRule>"
+            field effects "list<EffectGroup>"
+            field groups "list<ExactlyOneGroup>"
+            field descendants "list<DescendantRule>"
+            field sequence "optional<SequenceRule>"
+            field value "optional<DependentBinding>"
+            field cases "optional<CaseDispatch>"
+            field identity "optional<IdentityBlock>"
+            field description "optional<String>"
+            field annotations "optional<list<NodeAnnotation>>"
+        }
+
+        // The name of a schema-declared annotation. Kebab-case, so a
+        // name maps onto one Rust constant spelling.
+        string AnnotationName {
+            format kebab-case
+        }
+
+        // Whether an annotation is required, spelled as the literal
+        // third argument of its declaration. Absent is the default and
+        // means optional.
+        enum AnnotationRequirement {
+            member required description="Every node declaration carries the annotation"
+        }
+
+        // One annotation fact on a node declaration: the name of a
+        // schema-declared annotation and its value. The name and the
+        // value's type are checked when the schema is compiled; until
+        // then the value is any single KDL scalar.
+        object NodeAnnotation {
+            field name AnnotationName
+            field value ValueExpr
+        }
+
+        // A schema-level annotation: the name nodes may attach, the
+        // scalar type every value is checked against, and whether every
+        // node declaration must carry it.
+        object AnnotationDef {
+            field name AnnotationName
+            field type TypeExpression
+            field required "optional<AnnotationRequirement>"
+        }
+
+        // A dependent payload binding: how a node's remaining payload
+        // binds against the declaration a field of the same node
+        // references. When the target declaration is compiled the payload
+        // binds immediately; otherwise the binder preserves the payload
+        // syntax and its source locator and emits a pending typed-binding
+        // item that linking validates on demand.
+        object DependentBinding {
+            field against DependentTarget
+            field codec BindingCodec
+        }
+
+        // The field of the same node holding the reference, and the
+        // field of the referenced declaration's type holding the
+        // expected payload type.
+        object DependentTarget {
+            field target FieldName
+            field member FieldName
+        }
+
+        // The registered binding codecs a dependent value may name. An
+        // unknown codec fails closed; a known codec the reading processor
+        // does not install compiles, and the binder emits a pending
+        // typed-binding item.
+        enum BindingCodec {
+            member argument-tail description="The remaining arguments, typed per expected type, no scalar-to-list promotion"
+            member fixture-value description="The type-directed recursive form"
+            member from-kind description="The payload shape is selected by the value the resolved declaration holds in its member field: flag binds Bool, number U64, choice the declaration's choices, text String"
+        }
+
+        // A case dispatch: the logical type a node binds as, selected by
+        // property value, evaluated top-down with first match winning and
+        // an optional otherwise fallback.
+        object CaseDispatch {
+            field cases "list<CaseRule>"
+            field otherwise "optional<Otherwise>"
+        }
+
+        // One case: when the named property is present and scalar-equal
+        // to equals, the node binds as type. Present but unequal falls
+        // through.
+        object CaseRule {
+            field property FieldName
+            field equals ValueExpr
+            field type TypeExpression
+        }
+
+        // The fallback of a case dispatch: the type a node binds as when
+        // no case matches.
+        object Otherwise {
+            field type TypeExpression
+        }
+
+        // One logical field and the sources that populate it. The
+        // shorthand fields abbreviate the common single-source cases and
+        // compile to the same sources as the explicit from block.
+        object FieldBinding {
+            field type "optional<TypeExpression>"
+            field arg "optional<U64>"
+            field property "optional<FieldName>"
+            field child "optional<NodeName>"
+            field context "optional<SlotName>"
+            field sources "list<Source>"
+            field collision "optional<Collision>"
+            field duplicate-keys "optional<DuplicateKeys>"
+        }
+
+        // Where a field's value comes from. Several sources may populate
+        // the same field (alternative spellings); collision decides what
+        // supplying more than one means.
+        union Source {
+            variant argument ArgumentSource
+            variant args ArgsSource
+            variant property PropertySource
+            variant child ChildSource
+            variant children ChildrenSource
+            variant children-group ChildrenGroupSource
+            variant entries EntriesSource
+            variant expand ExpandSource
+            variant context ContextSource
+        }
+
+        // One positional argument, by index.
+        object ArgumentSource {
+            field index U64
+        }
+
+        // All remaining positional arguments, in order, as a list.
+        object ArgsSource {
+        }
+
+        object PropertySource {
+            field name FieldName
+        }
+
+        // One child node by name. Without a body, the child binds through
+        // the node declared under this parent with that name when one
+        // exists, and otherwise must carry exactly one positional value.
+        // With a body, the nested sources select from that child's own
+        // entries and children. With compact=#true the child may also be
+        // spelled as a property of the node the source selects from:
+        // NAME=VALUE binds exactly as a NAME child carrying VALUE as its
+        // one argument, at the property's position. Only a child whose
+        // fields all bind from its argument 0 admits the spelling.
+        object ChildSource {
+            field name NodeName
+            field sources "list<Source>"
+            field compact "optional<Bool>"
+        }
+
+        // Repeated children by name, collected as a list in order. Each
+        // child binds as described for a child source, the compact
+        // spelling included.
+        object ChildrenSource {
+            field name NodeName
+            field sources "list<Source>"
+            field compact "optional<Bool>"
+        }
+
+        // A pending children-group reference in a from block: one
+        // children source per member of the named group splices in at
+        // this source's position when the schema is compiled, exactly as
+        // the repeated hand-written form spells them.
+        object ChildrenGroupSource {
+            field name NodeGroupName
+        }
+
+        // An envelope binding for keyed collections: the selected argument
+        // of each entry node supplies the map key and is consumed exactly
+        // once; the remaining node contents bind as the value type.
+        object EntriesSource {
+            field node NodeName
+            field key String
+            field value TypeName
+        }
+
+        // Declaration-group expansion: the entries of the named keyed
+        // member of the named declaration splice into the collection
+        // being bound, at the expansion point, in declaration order.
+        object ExpandSource {
+            field target TypeName
+            field member MemberName
+        }
+
+        // The field reads its value from the active context slot; the
+        // policy (context.kdl) relates it to an explicit value.
+        object ContextSource {
+            field slot SlotName
+            field policy "optional<ContextPolicy>"
+        }
+
+        // Supplying more than one source for a field is an error, even
+        // when the values are equal. No implicit precedence exists.
+        enum Collision {
+            member reject
+        }
+
+        enum DuplicateKeys {
+            member reject
+        }
+
+        // How many children of one name may appear under this node.
+        // A child is permitted when a field binding consumes it or a
+        // children rule names it; any other child is rejected. A children
+        // rule adds occurrence bounds; absent bounds mean zero and
+        // unbounded. Minimum counts are checked at scope completion. These are schema
+        // occurrence rules, never reinterpretations of authored data that
+        // happens to use a property named min-occurs or max-count. A rule
+        // may carry when branches: each gates bounds of its own on the
+        // node's bound property values, and the rule's own bounds apply
+        // when no branch matches.
+        object ChildRule {
+            field min-occurs "optional<U64>"
+            field max-occurs "optional<U64>"
+            field branches "optional<list<Condition>>"
+        }
+
+        // A condition over the node's own bound property values: a when
+        // leaf compares one property for scalar equality, when-all holds
+        // when every member does, and when-any when at least one does.
+        // Directly under a children rule a condition is a branch and may
+        // carry occurrence bounds, which replace the rule's own for the
+        // instances it matches; as a member it is a bare predicate.
+        union Condition {
+            variant when PropertyCondition
+            variant when-all ConditionGroup
+            variant when-any ConditionGroup
+        }
+
+        object PropertyCondition {
+            field property FieldName
+            field equals ValueExpr
+            field min-occurs "optional<U64>"
+            field max-occurs "optional<U64>"
+        }
+
+        object ConditionGroup {
+            field members "list<Condition>"
+            field min-occurs "optional<U64>"
+            field max-occurs "optional<U64>"
+        }
+
+        // The name of a schema-declared node group.
+        string NodeGroupName {
+            format kebab-case
+        }
+
+        // A named group of node names. A children-group rule or a
+        // parents group= reference expands, when the schema is compiled,
+        // to one rule or placement per member, so dispatch stays by name.
+        object NodeGroupDef {
+            field name NodeGroupName
+            field nodes "list<NodeName>"
+        }
+    }
+
+    // Node declarations in a schema definition.
+
+    node node role=declaration type=NodeDef {
+        parents schema dialect
+        field name arg=0
+        field role property=role
+        field type property=type
+        field parent property=parent
+        field root property=root
+        field profile property=profile
+        field parents {
+            from {
+                child parents {
+                    args
+                }
+            }
+        }
+        field parent-group {
+            from {
+                child parents {
+                    property group
+                }
+            }
+        }
+        field fields {
+            from {
+                entries field key="arg(0)" value=FieldBinding
+            }
+            duplicate-keys reject
+        }
+        field children {
+            from {
+                entries children key="arg(0)" value=ChildRule
+            }
+            duplicate-keys reject
+        }
+        field children-groups {
+            from {
+                entries children-group key="arg(0)" value=ChildRule
+            }
+            duplicate-keys reject
+        }
+        field effects {
+            from {
+                children effects
+            }
+        }
+        field groups {
+            from {
+                children exactly-one
+            }
+        }
+        field value child=value
+        field cases child=cases
+        field identity child=identity
+        field sequence child=sequence
+        field descendants {
+            from {
+                children descendants
+            }
+        }
+        field description property=description
+        field annotations {
+            from {
+                children annotation
+            }
+        }
+        children parents max-occurs=1
+        children effects max-occurs=2
+        children value max-occurs=1
+        children cases max-occurs=1
+        children identity max-occurs=1
+        children sequence max-occurs=1
+        children descendants
+        children annotation
+        children children-group
+    }
+
+    // A schema-level annotation declaration: `annotation NAME TYPE`,
+    // optionally followed by `required`. The type names the scalar type
+    // every value is checked against when the schema is compiled; a
+    // required annotation is total, and a node declaration missing it is
+    // rejected.
+    node annotation role=declaration type=AnnotationDef parent=schema {
+        field name arg=0
+        field type arg=1
+        field required arg=2
+    }
+
+    // A node group: `group NAME MEMBER...`. Members are node names, never
+    // node declarations; every member must be declared, and a group
+    // names at least one.
+    node group role=declaration type=NodeGroupDef parent=schema {
+        field name arg=0
+        field nodes {
+            from {
+                args
+            }
+        }
+    }
+
+    // A field binding. Shorthands abbreviate the common single-source
+    // cases: arg=N is one positional argument, property=NAME one property,
+    // child=NAME one child (bound as described for a child source), and
+    // context=SLOT one context slot. The from block lists explicit sources
+    // for everything else. Shorthands and from blocks compile to the same
+    // representation; the compiler rejects overlapping bindings,
+    // unconsumed arguments, and contradictory ownership of children.
+    node field type=FieldBinding parent=node {
+        field type arg=1
+        field arg property=arg
+        field property property=property
+        field child property=child
+        field context property=context
+        field sources {
+            from {
+                child from {
+                    children argument
+                    children args
+                    children property
+                    children child
+                    children children
+                    children children-group
+                    children entries
+                    children expand
+                    children context
+                }
+            }
+        }
+        field collision child=collision
+        field duplicate-keys child=duplicate-keys
+        children from max-occurs=1
+        children collision max-occurs=1
+        children duplicate-keys max-occurs=1
+    }
+
+    // Source nodes appear in a from block and, nested, inside child and
+    // children sources.
+
+    node argument type=ArgumentSource {
+        parents from child children
+        field index arg=0
+    }
+
+    node args type=ArgsSource {
+        parents from child children
+    }
+
+    node property type=PropertySource {
+        parents from child children
+        field name arg=0
+    }
+
+    node child type=ChildSource {
+        parents from child children
+        field name arg=0
+        field compact property=compact
+        field sources {
+            from {
+                children argument
+                children args
+                children property
+                children child
+                children children
+            }
+        }
+    }
+
+    node children type=ChildrenSource {
+        parents from child children
+        field name arg=0
+        field compact property=compact
+        field sources {
+            from {
+                children argument
+                children args
+                children property
+                children child
+                children children
+            }
+        }
+    }
+
+    node entries type=EntriesSource parent=from {
+        field node arg=0
+        field key property=key
+        field value property=value
+    }
+
+    // Declaration-group expansion, in a from block: the entries of the
+    // named keyed member of the named declaration splice into the
+    // collection being bound.
+    node expand type=ExpandSource parent=from {
+        field target property=target
+        field member property=member
+    }
+
+    node context type=ContextSource parent=from {
+        field slot arg=0
+        field policy property=policy
+    }
+
+    // A children-group reference in a from block: one children source
+    // per member of the named group splices in at the reference's
+    // position when the schema is compiled.
+    node children-group type=ChildrenGroupSource parent=from {
+        field name arg=0
+    }
+
+    node children type=ChildRule parent=node {
+        field min-occurs property=min-occurs
+        field max-occurs property=max-occurs
+        field branches {
+            from {
+                children when
+                children when-all
+                children when-any
+            }
+        }
+        children when
+        children when-all
+        children when-any
+    }
+
+    // A children rule over a node group: one rule per member, each with
+    // these occurrence bounds and when branches.
+    node children-group type=ChildRule parent=node {
+        field min-occurs property=min-occurs
+        field max-occurs property=max-occurs
+        field branches {
+            from {
+                children when
+                children when-all
+                children when-any
+            }
+        }
+        children when
+        children when-all
+        children when-any
+    }
+
+    // A when branch of a children rule: one condition and the bounds
+    // that apply to the instances it matches.
+    node when type=PropertyCondition {
+        parents children children-group
+        field property property=property
+        field equals property=equals
+        field min-occurs property=min-occurs
+        field max-occurs property=max-occurs
+    }
+
+    node when-all type=ConditionGroup {
+        parents children children-group
+        field members {
+            from {
+                children when
+                children when-all
+                children when-any
+            }
+        }
+        field min-occurs property=min-occurs
+        field max-occurs property=max-occurs
+        children when
+        children when-all
+        children when-any
+    }
+
+    node when-any type=ConditionGroup {
+        parents children children-group
+        field members {
+            from {
+                children when
+                children when-all
+                children when-any
+            }
+        }
+        field min-occurs property=min-occurs
+        field max-occurs property=max-occurs
+        children when
+        children when-all
+        children when-any
+    }
+
+    // Condition members compose without bounds of their own.
+    node when type=PropertyCondition {
+        parents when-all when-any
+        field property property=property
+        field equals property=equals
+    }
+
+    node when-all type=ConditionGroup {
+        parents when-all when-any
+        field members {
+            from {
+                children when
+                children when-all
+                children when-any
+            }
+        }
+        children when
+        children when-all
+        children when-any
+    }
+
+    node when-any type=ConditionGroup {
+        parents when-all when-any
+        field members {
+            from {
+                children when
+                children when-all
+                children when-any
+            }
+        }
+        children when
+        children when-all
+        children when-any
+    }
+
+    // A dependent payload binding: how a node's remaining payload binds
+    // against the declaration its against-target field references.
+    node value type=DependentBinding parent=node {
+        field codec property=codec
+        field against child=against
+        children against min-occurs=1 max-occurs=1
+    }
+
+    node against type=DependentTarget parent=value {
+        field target property=target
+        field member property=member
+    }
+
+    // A case dispatch: cases evaluate top-down on the node's
+    // properties; the first match selects the logical type the whole
+    // node binds as, and otherwise is the fallback.
+    node cases type=CaseDispatch parent=node {
+        field cases {
+            from {
+                children case
+            }
+        }
+        field otherwise child=otherwise
+        children case
+        children otherwise max-occurs=1
+    }
+
+    node case type=CaseRule parent=cases {
+        field property property=property
+        field equals property=equals
+        field type property=type
+    }
+
+    node otherwise type=Otherwise parent=cases {
+        field type property=type
+    }
+
+    // One annotation fact on a node declaration: the name of a
+    // schema-declared annotation and its value. The compiler checks the
+    // name against the schema's `annotation` declarations and the value
+    // against the declared type; it never changes binding.
+    node annotation type=NodeAnnotation parent=node {
+        field name arg=0
+        field value arg=1
+    }
+}

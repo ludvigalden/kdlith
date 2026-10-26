@@ -20,15 +20,28 @@ generation never deletes anything.
 - the two modes exclude each other (`KDLITH-CLI002`)
 
 `gen schema` also takes `--root DIR` and `--source NAME=DIR` for the
-schema's own import locations, `--handler NAME` to admit a built-in
-context handler the schema names, and the packaging flags:
-`--kdlith-path PATH` roots the crate's kdlith path dependencies at
-PATH, `--kdlith-version VER` writes them as registry dependencies,
-and `--kdlith-workspace` writes each as `{ workspace = true }` and
-replaces the crate's own `[lints.clippy]` table with
-`[lints] workspace = true`. Values are written verbatim; the three
-flags are mutually exclusive. Without any, the manifest keeps sibling
-paths. `gen dialect` takes `--kdlith-workspace` too.
+schema's own import locations and `--handler NAME` to admit a built-in
+context handler the schema names. Both forms take the packaging
+flags: `--kdlith-path PATH` roots the crate's kdlith path
+dependencies at PATH, `--kdlith-version VER` writes them as registry
+dependencies, and `--kdlith-workspace` writes each as
+`{ workspace = true }` and replaces the crate's own `[lints.clippy]`
+table with `[lints] workspace = true`. Values are written verbatim;
+the three flags are mutually exclusive. Without any, the manifest
+keeps sibling paths.
+
+Every generated manifest carries registry metadata — the package
+name, a version, and a `description` naming the definition the crate
+was generated from — which is what a crates.io-style publication
+requires.
+
+A dialect crate embeds its seed as a versioned snapshot: the
+dialect's contributing documents are written under `src/dialect/`,
+`compile.rs` includes each through a crate-relative `include_str!`
+beside the `CANONICAL_VERSION` constant naming the version the
+documents declare, and the crate reads no file outside itself, so a
+generated dialect crate is publishable and self-contained wherever it
+is built.
 
 ## Workspace dependencies
 
@@ -113,4 +126,5 @@ pub enum Item {
 
 `gen dialect` regenerates a reference-processor-shaped crate;
 `gen schema` generates a domain crate. The dialect form takes none
-of the schema-only flags; `--kdlith-workspace` is shared.
+of the schema-only flags (`--root`, `--source`, `--handler`); the
+packaging flags and `--kdlith-workspace` are shared.

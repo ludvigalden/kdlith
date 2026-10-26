@@ -385,15 +385,8 @@ pub fn normalize_path(path: &str) -> String {
 }
 
 /// The include path a seed document takes from the generated crate's
-/// `src/` directory, under the pinned layout: the crate sits at
-/// `pkg/rs/<name>`, so every seed document must sit somewhere under the
-/// repository's `pkg/` tree.
-pub fn include_path(path: &str) -> Result<String, Error> {
-    let normalized = normalize_path(path);
-    let segments: Vec<&str> = normalized.split('/').collect();
-    let Some(at) = segments.iter().position(|segment| *segment == "pkg") else {
-        return Err(Error::SeedOutsidePkg { path: normalized });
-    };
-    let under_pkg = segments[at + 1..].join("/");
-    Ok(format!("../../../{under_pkg}"))
+/// `src/compile.rs`: the snapshot directory beside it, `src/dialect/`,
+/// so the crate carries its own seed wherever it is published.
+pub fn include_path(file_name: &str) -> String {
+    format!("dialect/{file_name}")
 }

@@ -75,9 +75,9 @@ impl Emission<'_> {
         types.sort();
 
         let mut seed: Vec<(String, String)> = Vec::new();
-        for entry in self.seed_documents() {
-            let (file_name, include) = entry?;
-            seed.push((file_name, include));
+        for (file_name, _) in self.seed_documents() {
+            let include = crate::render::include_path(file_name);
+            seed.push((file_name.clone(), include));
         }
 
         let mut out = String::new();
@@ -101,23 +101,37 @@ use crate::processors::{Item, reader};
         );
         out.push_str(&use_statement("crate::types", &types));
 
-        // The seed: every contributing document, embedded through the
-        // pinned layout's relative include.
+        // The seed: a versioned snapshot of every contributing document,
+        // embedded through the crate's own `src/dialect/` directory so
+        // the published crate carries its seed with it.
         let _ = writeln!(
             out,
             "
-/// The canonical dialect's contributing documents, embedded so the
-/// seed does not depend on the working tree's files.
+/// The canonical dialect's contributing documents, snapshotted at
+/// generation time so the published crate carries its own seed.
 const CANONICAL: [(&str, &str); {}] = [",
             seed.len()
         );
         for (file_name, include) in &seed {
-            let _ = write!(
-                out,
-                "    (\n        \"{file_name}\",\n        include_str!(\"{include}\"),\n    ),\n"
-            );
+            let inline = format!("    (\"{file_name}\", include_str!(\"{include}\")),");
+            if inline.chars().count() <= 100 {
+                out.push_str(&inline);
+                out.push('\n');
+            } else {
+                let _ = write!(
+                    out,
+                    "    (\n        \"{file_name}\",\n        include_str!(\"{include}\"),\n    ),\n"
+                );
+            }
         }
         let _ = writeln!(out, "];");
+        let _ = writeln!(
+            out,
+            "
+/// The dialect version the snapshotted documents declare.
+pub const CANONICAL_VERSION: &str = {:?};",
+            self.version
+        );
 
         out.push_str(SEED);
         out.push_str(LOAD_DIALECT);

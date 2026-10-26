@@ -72,6 +72,11 @@ pub struct Definition {
     pub version: Option<String>,
     /// The contributing documents' paths, indexed by [`Site::document`].
     pub documents: Vec<String>,
+    /// The contributing documents' texts, in the same order as
+    /// [`Definition::documents`]: the bytes each document compiled from,
+    /// so a consumer (generation) can snapshot them without re-reading
+    /// the working tree.
+    pub texts: Vec<String>,
     pub names: Names,
     pub types: TypeCatalog,
     pub bindings: BindingCatalog,

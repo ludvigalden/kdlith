@@ -107,9 +107,10 @@ pub(crate) enum OracleStep {
     /// Require every named tree (relative to the materialized copy) to
     /// hold exactly the same files with exactly the same bytes.
     Determinism { trees: Vec<String> },
-    /// Require the generated tree's `**/*.rs` files to match the
-    /// reference tree byte for byte, excluding exactly the generated
-    /// marker header line.
+    /// Require the generated tree's files to match the reference tree
+    /// byte for byte — every `**/*.rs` file excluding exactly the
+    /// generated marker header line, every other file (the dialect
+    /// snapshot) raw.
     Compare {
         generated: String,
         reference: String,
@@ -134,15 +135,13 @@ pub(crate) enum OracleStep {
 
 /// What a compile step copies from the repository into the scratch
 /// workspace, at the pinned layout positions the generated crate's own
-/// manifest and seed includes demand.
+/// manifest demands. The generated crate's seed is its embedded
+/// snapshot, so no working-tree dialect documents are ever copied.
 #[derive(Debug)]
 pub(crate) struct RepoCopy {
     /// Crate directory names under `pkg/rs`, copied to `<ws>/rs/<name>`
     /// so the generated crate's `../<name>` path dependencies resolve.
     pub(crate) crates: Vec<String>,
-    /// Copy `pkg/kdl` to `<ws>/kdl`, where the generated crate's seed
-    /// includes point.
-    pub(crate) kdl: bool,
 }
 
 impl OracleStep {
@@ -517,7 +516,7 @@ fn oracle_step(index: usize, value: &Value) -> Result<OracleStep, String> {
                 .ok_or_else(|| mismatch("compile copy", "an object"))?,
             None => return Err(format!("{MANIFEST}: {what} compile is missing \"copy\"")),
         };
-        check_keys(copy, &["crates", "kdl"], &format!("{what} compile copy"))?;
+        check_keys(copy, &["crates"], &format!("{what} compile copy"))?;
         let crates_value = match copy.get("crates") {
             Some(v) => v
                 .as_array()
@@ -550,19 +549,10 @@ fn oracle_step(index: usize, value: &Value) -> Result<OracleStep, String> {
             }
             crates.push(name.to_owned());
         }
-        let kdl = match copy.get("kdl") {
-            None => false,
-            Some(Value::Bool(b)) => *b,
-            Some(_) => {
-                return Err(format!(
-                    "{MANIFEST}: {what} compile copy kdl must be a boolean"
-                ));
-            }
-        };
         let command = required_command(obj, &format!("{what} compile"))?;
         return Ok(OracleStep::Compile {
             workspace,
-            copy: RepoCopy { crates, kdl },
+            copy: RepoCopy { crates },
             command,
         });
     }

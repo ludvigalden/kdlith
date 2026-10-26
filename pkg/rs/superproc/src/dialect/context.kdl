@@ -1,0 +1,316 @@
+// kdlith dialect definition: context slots and context effects.
+//
+// Context is information a node establishes for the nodes that follow it
+// or for its children. The engine manages context; it does not hardcode
+// what any context-producing node means. A schema definition declares
+// typed context slots and, on its context-control nodes, the generic
+// effects that set, remove, or clear those slots. Names such as package,
+// defaults, or clear-defaults gain meaning only through a schema
+// definition, never through the engine.
+//
+// Execution: a node is bound and validated against its incoming context;
+// its effects are then computed from its bound fields. Children effects
+// apply when entering the node's children, so they must be computable
+// from the node's header (its arguments and properties); a children
+// effect that depends on a child field is rejected as incompatible with
+// streaming. Following effects apply only after the node completes
+// successfully. Leaving a boundary restores the caller's context. Removal
+// is distinct from setting null, and a late effect never retroactively
+// changes nodes that were already bound.
+
+dialect kdlith version="0" {
+    types {
+        string SlotName {
+            format kebab-case
+        }
+
+        string NamespaceName {
+            format kebab-case
+        }
+
+        string HandlerName {
+            format kebab-case
+        }
+
+        string LayerName {
+            format kebab-case
+        }
+
+        // A typed context slot. Values set into a slot are validated
+        // against its type; a slot may belong to a namespace that a clear
+        // effect empties at once.
+        object SlotDef {
+            field name SlotName
+            field type TypeExpression
+            field namespace "optional<NamespaceName>"
+            field description "optional<String>"
+            // The slot's accumulation policy: how an accumulating effect
+            // combines with the value already held.
+            field accumulate "optional<AccumulationPolicy>"
+            // How a second value reaching a slot that already holds one
+            // is treated when the slot does not accumulate. The default
+            // rejects: a slot is replaced only under a declared policy.
+            field duplicates SlotDuplicates {
+                fallback reject
+            }
+            // The layer order of a layered slot, highest precedence
+            // first. Required by duplicates=layered and allowed with it
+            // only.
+            field layers "optional<list<LayerName>>"
+        }
+
+        // How a set effect reaching an occupied slot is treated. The
+        // held value is the one in the slot's incoming context, inherited
+        // or set in the same scope; remove and clear unset a slot, so a
+        // later set after either is a first value again.
+        enum SlotDuplicates {
+            member reject description="A second value reaching an occupied slot is rejected"
+            member last-wins description="The later value replaces the held one"
+            member layered description="A higher layer's value replaces a lower layer's; a lower layer's later value leaves the held value in place; a second value within one layer is rejected"
+        }
+
+        // How an accumulating effect combines with the slot's incoming
+        // value: append concatenates lists in effect order; merge combines
+        // maps key-wise under its declared duplicate treatment, which by
+        // default rejects a key contributed twice.
+        object AccumulationPolicy {
+            field op AccumulateOp
+            // How merge treats a key contributed twice. Declared for
+            // merge only; append has no keys.
+            field duplicates MergeDuplicates {
+                fallback reject
+            }
+        }
+
+        enum AccumulateOp {
+            member append description="Concatenate the incoming list in effect order; for list-typed slots"
+            member merge description="Combine key-wise under the declared duplicate treatment; for map-typed slots"
+        }
+
+        // How merge treats a key the held map already carries.
+        enum MergeDuplicates {
+            member reject description="A key contributed twice is a duplicate-key rejection, never a silent overwrite"
+            member last-wins description="The later entry replaces the held entry's value, keeping the key's first position"
+        }
+
+        // Where a group of effects takes effect. A node affecting both its
+        // children and its following siblings declares two effect groups.
+        enum EffectTarget {
+            member following description="Following siblings, after the node completes"
+            member children description="The node's children, before they are consumed"
+        }
+
+        object EffectGroup {
+            field target EffectTarget
+            field effects "list<Effect>"
+        }
+
+        union Effect {
+            variant set SetEffect
+            variant remove RemoveEffect
+            variant clear ClearEffect
+            variant handler HandlerEffect
+        }
+
+        // Set a slot from a bound field of the node, or to a literal value
+        // checked against the slot's type. Exactly one of field and value.
+        // A set on a layered slot names one of the slot's layers; a set on
+        // any other slot names none.
+        object SetEffect {
+            field slot SlotName
+            field field "optional<FieldName>"
+            field value "optional<ValueExpr>"
+            field layer "optional<LayerName>"
+        }
+
+        // Remove a slot's value; the slot becomes unset, not null.
+        object RemoveEffect {
+            field slot SlotName
+        }
+
+        // Remove every slot in a namespace.
+        object ClearEffect {
+            field namespace NamespaceName
+        }
+
+        // A registered effect: domain-specific computation implemented by
+        // the processor that installs it. A schema naming a handler that
+        // is not installed fails clearly; its behavior is never silently
+        // omitted.
+        object HandlerEffect {
+            field name HandlerName
+        }
+
+        // How a field bound from context (a context source in
+        // bindings.kdl) relates to an explicit value for the same field.
+        enum ContextPolicy {
+            member fallback description="The context value supplies the field only when no explicit value is present"
+            member fixed description="An explicit value must agree with the context value"
+        }
+
+        // Source context: fields derived from source metadata before the
+        // document's first semantic node. The block declares its mode
+        // explicitly; there is no default, so an undeclared mode is a
+        // missing required field, never a silent fallback.
+        object SourceContextDef {
+            field mode SourceContextMode
+            field fields "ordered-map<FieldName, SourceFieldDef>"
+        }
+
+        enum SourceContextMode {
+            member initial description="The derived values apply before any control"
+            member fallback description="The derived values supply fields only where no explicit value is present"
+            member fixed description="An explicit value must agree with the derived value"
+        }
+
+        // One source-context field: its type and the registered
+        // source-metadata providers it derives from. A provider the
+        // processor does not install fails closed. The path-stem
+        // provider is the one this version defines.
+        object SourceFieldDef {
+            field type TypeExpression
+            field sources "list<PathStemSource>"
+        }
+
+        // The path-stem source-metadata provider: the importing file
+        // name's stem, without extension.
+        object PathStemSource {
+        }
+
+        // One entry of the index the engine writes while scanning, so a
+        // record can be resolved later by restoring its context snapshot
+        // and binding its recorded span. A restore whose schema
+        // fingerprint or invocation lineage does not match the requesting
+        // context is rejected.
+        object SnapshotIndexEntry {
+            field identity String
+            field type TypeName
+            field digest String
+            field span String
+            field schema-fingerprint String
+            field snapshot String
+            field invocation String
+            field validation ValidationStatus
+        }
+
+        enum ValidationStatus {
+            member validated description="The record was bound and validated"
+            member pending description="The record holds a pending binding awaiting its declaration"
+            member failed description="The record failed validation"
+        }
+    }
+
+    // Context declarations in a schema definition.
+
+    node context role=container {
+        parents schema dialect
+        children slot
+        children source-context max-occurs=1
+    }
+
+    // A context-control node declares its effects in effect groups; its
+    // role is context-control, for example:
+    //
+    //     node locale role=context-control {
+    //         field value Locale arg=0
+    //         effects target=following {
+    //             set locale field=value
+    //         }
+    //     }
+
+    // A slot declaration. Its duplicate policy is a property; a layered
+    // slot lists its layer order in a layers child, for example:
+    //
+    //     slot locale Locale duplicates=layered {
+    //         layers override base
+    //     }
+
+    node slot role=declaration type=SlotDef parent=context {
+        field name arg=0
+        field type arg=1
+        field namespace property=namespace
+        field description property=description
+        field accumulate child=accumulate
+        field duplicates property=duplicates
+        field layers {
+            from {
+                child layers {
+                    args
+                }
+            }
+        }
+        children accumulate max-occurs=1
+        children layers max-occurs=1
+    }
+
+    // The slot's accumulation policy.
+
+    node accumulate type=AccumulationPolicy parent=slot {
+        field op arg=0
+        field duplicates property=duplicates
+    }
+
+    // Source context: fields derived from source metadata, applied under
+    // the declared mode before the document's first semantic node, with
+    // the derived value's origin recorded in provenance. A record: a
+    // validated statement about the documents a definition reads, never
+    // referenced by name.
+
+    node source-context role=record type=SourceContextDef parent=context {
+        field mode property=mode
+        field fields {
+            from {
+                entries field key="arg(0)" value=SourceFieldDef
+            }
+            duplicate-keys reject
+        }
+    }
+
+    node field type=SourceFieldDef parent=source-context {
+        field type arg=1
+        field sources {
+            from {
+                child from {
+                    children path-stem
+                }
+            }
+        }
+        children from max-occurs=1
+    }
+
+    node path-stem type=PathStemSource parent=from {
+    }
+
+    // The effects of a context-control node, declared inside its node
+    // declaration.
+    node effects type=EffectGroup parent=node {
+        field target property=target
+        field effects {
+            from {
+                children set
+                children remove
+                children clear
+                children handler
+            }
+        }
+    }
+
+    node set type=SetEffect parent=effects {
+        field slot arg=0
+        field field property=field
+        field value property=value
+        field layer property=layer
+    }
+
+    node remove type=RemoveEffect parent=effects {
+        field slot arg=0
+    }
+
+    node clear type=ClearEffect parent=effects {
+        field namespace arg=0
+    }
+
+    node handler type=HandlerEffect parent=effects {
+        field name arg=0
+    }
+}

@@ -11,8 +11,8 @@ use kdlith_engine::{
 
 use crate::emit::{declaration_expressions, placement_parents};
 use crate::render::{
-    Spelling, field_name, include_path, inline_union_name, is_identifier, mangle, normalize_path,
-    pascal, rust_type, subexpressions, variant_name,
+    Spelling, field_name, inline_union_name, is_identifier, mangle, normalize_path, pascal,
+    rust_type, subexpressions, variant_name,
 };
 use crate::{Error, Packaging};
 
@@ -23,6 +23,9 @@ pub(crate) struct Document<'d> {
     pub path: String,
     /// The document's file name, e.g. `types.kdl`.
     pub file_name: String,
+    /// The document's text, as the definition compiled it: the bytes a
+    /// dialect crate's seed snapshot embeds.
+    pub text: String,
     /// The module the document's per-document files take.
     pub module: String,
     /// The document's declared types, in contribution order.
@@ -257,6 +260,9 @@ impl<'d> Emission<'d> {
             }
             let path = normalize_path(path);
             let file_name = path.rsplit('/').next().unwrap_or(&path).to_owned();
+            // The engine fills `texts` in lockstep with `documents`, and
+            // no other constructor exists, so the index always holds.
+            let text = definition.texts[at].clone();
             let stem = file_name.strip_suffix(".kdl").unwrap_or(&file_name);
             let module = format!("{}_kdl", stem);
             if let Some(first) = modules.get(&module) {
@@ -270,6 +276,7 @@ impl<'d> Emission<'d> {
             documents.push(Document {
                 path,
                 file_name,
+                text,
                 module,
                 types: type_groups.remove(&at).unwrap_or_default(),
                 references: reference_groups.remove(&at).unwrap_or_default(),
@@ -659,14 +666,13 @@ impl<'d> Emission<'d> {
             .filter(|doc| doc.nodes.iter().any(|node| reading_role(node.role)))
     }
 
-    /// The documents the seed embeds: every contributing document, whose
-    /// include paths the pinned layout spells.
-    pub(crate) fn seed_documents(
-        &self,
-    ) -> impl Iterator<Item = Result<(String, String), Error>> + '_ {
-        self.documents
-            .iter()
-            .map(|doc| Ok((doc.file_name.clone(), include_path(&doc.path)?)))
+    /// The documents the seed embeds as a versioned snapshot: every
+    /// contributing document's file name and text, in contribution
+    /// order. The snapshot lives inside the crate (`src/dialect/`), so
+    /// the published crate carries its own seed and never reads the
+    /// working tree.
+    pub(crate) fn seed_documents(&self) -> impl Iterator<Item = (&String, &String)> + '_ {
+        self.documents.iter().map(|doc| (&doc.file_name, &doc.text))
     }
 }
 

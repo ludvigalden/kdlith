@@ -25,11 +25,7 @@ pub(crate) fn run(command: GenCommand) -> ExitStatus {
             mode_of(args.dry_run, args.check),
             ReadOptions::new(),
             &definition_extensions(),
-            if args.kdlith_workspace {
-                Packaging::Workspace
-            } else {
-                Packaging::Sibling
-            },
+            packaging_of(args.kdlith_path, args.kdlith_version, args.kdlith_workspace),
         ),
         GenCommand::Workspace(args) => workspace(&args),
         // Generation admits the named handlers' names and never runs
@@ -44,8 +40,8 @@ pub(crate) fn run(command: GenCommand) -> ExitStatus {
                 args.locations.read_options(),
                 &definition_extensions().with_installed_handlers(&registry(&args.handlers)),
                 packaging_of(
-                    args.kdlith_path,
-                    args.kdlith_version,
+                    args.form.kdlith_path,
+                    args.form.kdlith_version,
                     args.form.kdlith_workspace,
                 ),
             )

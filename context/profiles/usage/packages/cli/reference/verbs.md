@@ -54,10 +54,11 @@ the tree's `digest`. `sources list` prints every source with its
 plan and writes nothing; `--check` compares the generated tree
 against `--out` and reports drift (`KDLITH-GEN002`) without writing;
 the two modes exclude each other. A write over a path the run's
-manifest does not own is refused (`KDLITH-GEN001`). `gen schema`
-additionally takes `--root`, `--source`, `--handler`, and the
-packaging flags `--kdlith-path` / `--kdlith-version`; both forms take
-`--kdlith-workspace`, which excludes the other two.
+manifest does not own is refused (`KDLITH-GEN001`). Both forms take
+the packaging flags `--kdlith-path PATH` / `--kdlith-version VER`
+(mutually exclusive) and `--kdlith-workspace`, which excludes the
+other two. `gen schema` additionally takes `--root`, `--source`, and
+`--handler`.
 
 `gen workspace --sources FILE [--root DIR] [--kdlith-source NAME]`
 checks a consuming cargo workspace against the kdlith source the
