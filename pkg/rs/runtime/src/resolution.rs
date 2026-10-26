@@ -138,7 +138,10 @@ pub const LAYERED: &str = "layered";
 /// or `allow` for referenced targets no record contributes. Records
 /// partition by target and application scope, and layer precedence
 /// applies within each partition, so a target contributed under two
-/// scopes resolves once per scope. Under `union`, values merge deeply:
+/// scopes resolves once per scope. Under `reject`, a requirement is
+/// satisfied only within the referencing record's own scope: a target
+/// contributed under another scope is missing, and the resolver
+/// refuses the records for it. Under `union`, values merge deeply:
 /// an object merges field by field and a keyed collection key by key,
 /// so no lower layer's key is dropped, while a scalar, a list, or a
 /// union value is replaced by the highest layer holding it. A list
@@ -170,6 +173,13 @@ fn in_layer(layer: Option<&str>) -> String {
     match layer {
         Some(layer) => format!("layer {layer}"),
         None => "no layer".to_owned(),
+    }
+}
+
+fn in_scope(scope: Option<&str>) -> &str {
+    match scope {
+        Some(scope) => scope,
+        None => "no scope",
     }
 }
 
@@ -436,18 +446,25 @@ impl ContributionResolver for Layered {
         if policy.missing == MissingRequirement::Reject {
             // A target is a contributed domain's member; a reference into
             // a domain no record contributes to is a link, not a target.
+            // Satisfaction is scope-local: a target contributed
+            // under another scope is missing, like an uncontributed one.
             for record in records {
                 let mut held = Vec::new();
                 references(&record.value, &mut held);
                 for reference in held {
                     let target = key_of(reference);
                     let contributed = groups.keys().any(|(key, _)| key.0 == reference.domain);
-                    if contributed && !groups.keys().any(|(key, _)| *key == target) {
+                    if contributed
+                        && !groups
+                            .keys()
+                            .any(|(key, scope)| *key == target && scope == &record.scope)
+                    {
                         return Err(format!(
-                            "{} is referenced by a contribution to {} in {}, but no record contributes it",
+                            "{} is referenced by a contribution to {} in {}, but no record contributes it under {}",
                             shown(reference),
                             shown(&record.target),
                             in_layer(record.layer.as_deref()),
+                            in_scope(record.scope.as_deref()),
                         ));
                     }
                 }

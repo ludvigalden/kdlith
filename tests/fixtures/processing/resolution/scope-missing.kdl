@@ -1,0 +1,43 @@
+// A scoped setting contribution whose optional `follows` field
+// references another option: under the default `missing reject` arm a
+// requirement is satisfied only within the referencing record's own
+// scope, so the `follows` target must be contributed under the same
+// declared scope as the record holding it.
+schema settings version="1" {
+    types {
+        object ScopeDef {
+            field name String
+        }
+        object Option {
+            field name String
+        }
+        object Setting {
+            field target "ref<Option>"
+            field value String
+            field scope "optional<ScopeTerm>"
+            field follows "optional<ref<Option>>"
+            field layer "optional<String>"
+        }
+        codec ScopeSpelling output=String {
+            match #"(?<name>[a-z][a-z0-9-]*)"#
+            capture name String
+        }
+    }
+    node scope role=declaration type=ScopeDef {
+        field name arg=0
+    }
+    node option role=declaration type=Option {
+        field name arg=0
+    }
+    reference ScopeTerm target=ScopeDef codec=ScopeSpelling qualification=explicit
+    node setting role=contribution type=Setting {
+        field target arg=0
+        field value arg=1
+        field scope property=scope
+        field follows property=follows
+        field layer property=layer
+    }
+    resolution resolver=layered {
+        layers user base
+    }
+}

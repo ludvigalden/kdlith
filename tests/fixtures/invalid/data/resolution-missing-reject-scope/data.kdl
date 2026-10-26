@@ -1,0 +1,6 @@
+scope dev
+scope staging
+option mode
+option font
+setting mode dark scope=dev layer=user follows=font
+setting font serif scope=staging layer=base

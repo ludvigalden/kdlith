@@ -1,0 +1,5 @@
+scope dev
+option mode
+option font
+setting mode dark layer=user follows=font
+setting font serif scope=dev layer=base

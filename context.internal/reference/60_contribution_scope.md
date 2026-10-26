@@ -56,8 +56,12 @@ crosses a partition, and scope never overrides layer inside one. A
 target contributed under two scopes resolves twice, one `resolution`
 item per scope, and two records for one target in one layer under
 different scopes are not duplicates. `missing reject` checks a
-reference-valued field against the targets contributed under any
-scope. With `layers user base` under `replace`, the data document
+reference-valued field against the targets contributed under the
+referencing record's own scope only: a target contributed under
+another scope does not satisfy the requirement, and the resolver
+refuses the records for it as it refuses an uncontributed target
+(`invalid/data/resolution-missing-reject-scope`). With `layers user
+base` under `replace`, the data document
 
 ```kdl
 scope dev

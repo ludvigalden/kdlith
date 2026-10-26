@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "Missing reject satisfaction is scope-local: the dev-scoped record's follows field references the option font, which is contributed under the same dev scope, so the requirement is satisfied and the reading resolves both targets in their dev partitions; the staging declaration contributes nothing",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/resolution/scope-missing.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}
