@@ -1,4 +1,5 @@
 {
+  "heavy": true,
   "binary": "kdlith",
   "kind": "codegen-oracle",
   "description": "Typed-reader parity for unions bound from a bare scalar: gen schema generates a schema whose unions mix prefixed and un-prefixed variants twice into two scratch trees the harness requires byte-identical, the generated crate compiles inside a scratch workspace materialized from this scenario's committed template, and the compiled processor reads a committed data document through its own typed reader, decoding each scalar as the variant binding selected: a prefix selects its variant, a number falls to the first un-prefixed variant whose type accepts it, and an un-prefixed string beside a prefixed variant reads as the un-prefixed one. A committed document whose boolean no variant accepts is rejected with the binding's value-type code",

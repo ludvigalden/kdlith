@@ -1,4 +1,5 @@
 {
+  "heavy": true,
   "binary": "kdlith",
   "kind": "codegen-oracle",
   "description": "Provenance refused on an unprofiled schema: gen schema generates a schema declaring no profiles twice into two scratch trees the harness requires byte-identical, and the generated crate compiles inside a scratch workspace materialized from this scenario's committed template. The compiled processor reads its committed data plainly, then asks its typed reader for provenance: the reading fails before any document is read, because no document can declare a profile a schema declaring none never selects",

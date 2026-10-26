@@ -1,4 +1,5 @@
 {
+  "heavy": true,
   "binary": "kdlith",
   "kind": "codegen-oracle",
   "description": "The two-instance generic generation fixture: gen schema generates a committed schema instantiating one generic object Pair (parameters T and U) with two argument sets, Pair<String, Mode> and Pair<Slug, Mode>, each selected by its own record node's case dispatch, twice into two scratch trees the harness requires byte-identical, and the generated crate compiles inside a scratch workspace materialized from this scenario's committed template: the two instances of one head coexist as two distinct mangled Rust types, PairStringMode and PairSlugMode, each with its own shape whose name and expression spell its instantiation as inspect schema and vet data name it and whose fields carry its own substituted body. The compiled processor loads the schema with the digest the reference CLI reports, its reader conforms (each instance's handler satisfies the node whose case selects it), and it reads a committed data document interleaving both nodes' records, each as its own instance type, each value as vet data binds it",

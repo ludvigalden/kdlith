@@ -1,4 +1,5 @@
 {
+  "heavy": true,
   "binary": "kdlith",
   "kind": "codegen-oracle",
   "description": "The annotation-constant generation fixture: gen schema generates the processor of a schema whose node declarations carry annotations twice into two scratch trees the harness requires byte-identical, the generated crate compiles inside a scratch workspace materialized from this scenario's committed template with the repository's engine and reference-processor crates copied in at the pinned layout positions, and the compiled consumer — depending on nothing but the generated crate — names the per-node constants EVAL_CLASS, EVAL_TIER, and WAIT_CLASS from the generated bindings module, typed by each annotation's declared type (the generated BrowserClass enum for class, u64 for tier, so a mistyped constant fails the compile step), prints their values, loads the schema with the digest vet schema reports, and reads the committed data document's annotated nodes as records through the generated typed reader",

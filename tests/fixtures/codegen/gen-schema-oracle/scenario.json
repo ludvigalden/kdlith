@@ -1,4 +1,5 @@
 {
+  "heavy": true,
   "binary": "kdlith",
   "kind": "codegen-oracle",
   "description": "The schema-form generation fixture: gen schema generates this committed schema's data-reader crate twice into two scratch trees the harness requires byte-identical (the in-suite determinism pin for the schema form), the generated crate compiles inside a scratch workspace materialized from this scenario's committed template with the repository's engine and reference-processor crates copied in at the pinned layout positions, and the compiled processor loads its own schema with the same digest the reference CLI reports, then reads a committed data document through its own typed reader — records, declarations, and a field a context effect supplied — and rejects a committed document whose value names no member of its field's enum type, reporting the unknown-member code",

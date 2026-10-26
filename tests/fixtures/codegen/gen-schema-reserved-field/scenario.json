@@ -1,4 +1,5 @@
 {
+  "heavy": true,
   "binary": "kdlith",
   "kind": "codegen-oracle",
   "description": "gen schema spells field names that are Rust keywords as identifiers the generated crate compiles under: a committed schema whose object type has a field named gen (reserved in the 2024 edition) and one named type generates twice into scratch trees the harness requires byte-identical, and the generated crate compiles inside a scratch workspace materialized from this scenario's committed template",

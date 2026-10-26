@@ -37,7 +37,11 @@ the census is ever automated, its tokenizer must tell such paths from
 scenario names.
 
 Suite state at the time of writing: 1200 scenarios — 243 `parse/kdl-spec`,
-956 others — all green.
+956 others — all green. 39 of them are heavy (the codegen scenarios whose
+steps compile a scratch workspace, marked `"heavy": true` in their
+manifests): a default harness run excludes them and prints the count it
+skipped, and they run deliberately through `--fx-heavy` or an explicit
+`--fx-filter`; `--fx-list` still lists every scenario.
 
 ## Construct census
 
@@ -443,7 +447,8 @@ The acceptance criteria this suite answers to, with their gate commands:
 - [ ] `cargo build --workspace` exits 0 (run unpiped; record the literal exit code)
 - [ ] The repository's lint gate exits 0 (run unpiped; record the literal exit code)
 - [ ] `/usr/bin/rg --no-ignore --hidden -n 'cfg\(test\)|#\[test\]' pkg tools tests --glob '*.rs'` returns zero matches
-- [ ] `target/debug/kdlith-fixtures --fx-suite tests/fixtures --fx-kdlith target/debug/kdlith` exits 0 unpiped, with all counts recorded
+- [ ] `target/debug/kdlith-fixtures --fx-suite tests/fixtures --fx-kdlith target/debug/kdlith` exits 0 unpiped, with all counts recorded (the default run skips the heavy scenarios and prints how many)
+- [ ] `target/debug/kdlith-fixtures --fx-suite tests/fixtures --fx-kdlith target/debug/kdlith --fx-heavy` exits 0 unpiped, with all counts recorded (every scenario, heavy ones included)
 - [ ] Each commit subject is conventional, lowercase, at most 72 characters, with no body (`git log --format=%s%n%b`)
-- [ ] The codegen-oracle scenario kind runs the full generate → compare → compile → exercise chain over `pkg/kdl/dialect.kdl` (`codegen/gen-dialect-oracle`); no declared elision names the codegen surface
+- [ ] The codegen-oracle scenario kind runs the full generate → compare → compile → exercise chain over `pkg/kdl/dialect.kdl` (`codegen/gen-dialect-oracle`, a heavy scenario: it runs under `--fx-heavy` or an explicit `--fx-filter`, and a gate that does not run it says so); no other declared elision names the codegen surface
 - [ ] Every `tests/fixtures/invalid/` scenario carries an `expect-invalid` code line, except a gen refusal, whose one line prints no registered code (see the GEN004 row): those pin the refusal line itself with exit 1 (`invalid/schemas/no-reading-nodes`, `invalid/codegen/recursive-type/*`)

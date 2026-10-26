@@ -32,6 +32,18 @@ pub(crate) enum Scenario {
     Oracle(CodegenOracle),
 }
 
+impl Scenario {
+    /// Whether the manifest declares the scenario heavy: excluded from
+    /// a default run and run only through `--fx-heavy` or an explicit
+    /// `--fx-filter`.
+    pub(crate) fn heavy(&self) -> bool {
+        match self {
+            Scenario::Invoke(invocation) => invocation.heavy,
+            Scenario::Oracle(oracle) => oracle.heavy,
+        }
+    }
+}
+
 /// The single-invocation shape.
 #[derive(Debug)]
 pub(crate) struct Invocation {
@@ -44,6 +56,8 @@ pub(crate) struct Invocation {
     /// A declared scratch check: violations the harness itself must
     /// plant and then classify in the materialized copy.
     pub(crate) scratch_check: Option<ScratchCheck>,
+    /// The optional `heavy` declaration.
+    pub(crate) heavy: bool,
 }
 
 /// The codegen-oracle scenario: the entrypoint, the crate name, and the
@@ -61,6 +75,8 @@ pub(crate) struct CodegenOracle {
     pub(crate) sources: Vec<String>,
     /// The ordered steps; never empty.
     pub(crate) steps: Vec<OracleStep>,
+    /// The optional `heavy` declaration.
+    pub(crate) heavy: bool,
 }
 
 /// The `gen` form a codegen-oracle scenario drives.
@@ -220,9 +236,9 @@ pub(crate) struct GoldenFile {
 /// Load and validate a scenario from its source directory with
 /// `serde_json`. Required: `binary` (`"kdlith"` only), `args`, and
 /// exactly one of `expect` / `expect-invalid`; unknown keys are load
-/// errors; `description` is optional. A `"kind": "codegen-oracle"`
-/// manifest instead selects the multi-step oracle shape with its own
-/// strict key set.
+/// errors; `description` and the heavy declaration `heavy: true` are
+/// optional. A `"kind": "codegen-oracle"` manifest instead selects the
+/// multi-step oracle shape with its own strict key set.
 pub(crate) fn load(dir: &Path) -> Result<Scenario, String> {
     let path = dir.join(MANIFEST);
     let text = std::fs::read_to_string(&path)
@@ -248,6 +264,7 @@ fn invoke(dir: &Path, root: &Map<String, Value>) -> Result<Scenario, String> {
         &[
             "binary",
             "description",
+            "heavy",
             "args",
             "source-embedded",
             "expect",
@@ -256,6 +273,7 @@ fn invoke(dir: &Path, root: &Map<String, Value>) -> Result<Scenario, String> {
         MANIFEST,
     )?;
     require_kdlith_binary(root)?;
+    let heavy = heavy_flag(root)?;
 
     let args = match root.get("args") {
         None => return Err(format!("{MANIFEST}: missing required key \"args\"")),
@@ -286,6 +304,7 @@ fn invoke(dir: &Path, root: &Map<String, Value>) -> Result<Scenario, String> {
         embedded,
         expectation,
         scratch_check,
+        heavy,
     }))
 }
 
@@ -296,6 +315,7 @@ fn oracle(root: &Map<String, Value>) -> Result<Scenario, String> {
         &[
             "binary",
             "description",
+            "heavy",
             "kind",
             "form",
             "entrypoint",
@@ -306,6 +326,7 @@ fn oracle(root: &Map<String, Value>) -> Result<Scenario, String> {
         MANIFEST,
     )?;
     require_kdlith_binary(root)?;
+    let heavy = heavy_flag(root)?;
     if let Some(d) = root.get("description")
         && !d.is_string()
     {
@@ -369,7 +390,20 @@ fn oracle(root: &Map<String, Value>) -> Result<Scenario, String> {
         crate_name,
         sources,
         steps,
+        heavy,
     }))
+}
+
+/// The optional `heavy` declaration: absent or `false` keeps the
+/// scenario in a default run, `true` marks it heavy.
+fn heavy_flag(root: &Map<String, Value>) -> Result<bool, String> {
+    match root.get("heavy") {
+        None => Ok(false),
+        Some(Value::Bool(b)) => Ok(*b),
+        Some(other) => Err(format!(
+            "{MANIFEST}: \"heavy\" must be a boolean, got {other}"
+        )),
+    }
 }
 
 /// The step kinds a codegen-oracle manifest may declare.

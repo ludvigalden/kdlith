@@ -1,4 +1,5 @@
 {
+  "heavy": true,
   "binary": "kdlith",
   "kind": "codegen-oracle",
   "description": "gen schema generates a schema whose record and declaration share the node name host and read as one item variant through their own types: a root host record of type Host, and a host declaration of type Kind inside a profile beside a zone declaration binding Kind too. Each clashing item keys its own variant by node, suffixed with its role (HostRecord, HostDeclaration), deterministically and independent of declaration order, while zone keeps its node-keyed variant; the crate generates twice into byte-identical trees, the item enum and each role's node handler are pinned by text, the crate compiles inside a scratch workspace materialized from this scenario's committed template, and the compiled consumer reads the committed data document through the generated reader, matching every role-keyed variant exhaustively and naming each declaration through the generated name accessor",

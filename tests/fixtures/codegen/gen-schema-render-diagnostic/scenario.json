@@ -1,4 +1,5 @@
 {
+  "heavy": true,
   "binary": "kdlith",
   "kind": "codegen-oracle",
   "description": "Diagnostic presentation through a generated crate: gen schema generates a committed self-contained schema with one record node twice into scratch trees the harness requires byte-identical; the generated crate compiles inside a scratch workspace materialized from this scenario's committed template. The compiled exercise reads a committed data document carrying a property the node does not bind through the generated reader linked under complete scope, so exactly one binding diagnostic KDLITH-BND005 reaches the reading; naming every kdlith type it spells through the generated crate alone, it prints each record as DiagnosticRecord::render renders it — the shared presentation the re-exported type owns — then runs the CLI's vet data on the same schema and document and prints the stderr the CLI writes, requiring the two renderings to be the same bytes before it exits 0",

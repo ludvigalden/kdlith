@@ -1,4 +1,5 @@
 {
+  "heavy": true,
   "binary": "kdlith",
   "kind": "codegen-oracle",
   "description": "The qualified reference-field generation fixture: gen schema generates the committed processing/bind/reference-field schema itself, whose record field is typed by a reference type with an explicit scope qualifier decoded through a pattern codec, twice into two scratch trees the harness requires byte-identical; the generated crate compiles inside a scratch workspace materialized from this scenario's committed template, and the compiled processor loads the schema with the digest the reference CLI reports and binds the committed data document alone, as the binding scenario does, printing the record's reference with its lookup domain, its qualifier-named capture as that qualifier, the remaining capture as the name, and the spelling preserved",

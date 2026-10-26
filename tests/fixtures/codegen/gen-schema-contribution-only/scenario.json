@@ -1,4 +1,5 @@
 {
+  "heavy": true,
   "binary": "kdlith",
   "kind": "codegen-oracle",
   "description": "A contribution-only schema through a generated crate: gen schema generates a committed self-contained schema whose only nodes carry the contribution role — one typed by a declared object type, one untyped — twice into scratch trees the harness requires byte-identical; the generated crate compiles inside a scratch workspace materialized from this scenario's committed template beside a consumer crate that depends on the generated crate alone. The exercise pins that the schema loads under the standard extensions, that the generated reader's reading succeeds with the contributions as its meaningful items (the reading Item enum is empty and matches exhaustively with no wildcard arm, as does the generated Contribution enum), that the typed setting projects through the generated Contribution enum's variant, and that the untyped note's payload fails closed at the accessor with the named mismatch while the reading still succeeds",

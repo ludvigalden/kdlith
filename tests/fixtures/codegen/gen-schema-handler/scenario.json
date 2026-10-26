@@ -1,4 +1,5 @@
 {
+  "heavy": true,
   "binary": "kdlith",
   "kind": "codegen-oracle",
   "description": "gen schema --handler admits a built-in context handler a schema names: the committed processing/bind/handler-effect schema, read by suite path, names copy-fields in its context control's following effects. Without the flag generation fails closed with KDLITH-DLC006 and writes nothing; gen schema --help lists the flag; with --handler copy-fields the schema generates twice into two scratch trees the harness requires byte-identical, both runs the harness's generate step with the flag carried through its declarative args field. The generated crate compiles inside a scratch workspace materialized from this scenario's committed template. The compiled consumer supplies the handler's implementation itself: loading without admitting the name is rejected with KDLITH-DLC006, loading with the name admitted through the installed handlers succeeds, and the generated typed reader with those handlers installed reads the committed data document's stamp record with at=sv-se, the locale the handler copied into context, as vet data --handler copy-fields binds it",

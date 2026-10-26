@@ -1,4 +1,5 @@
 {
+  "heavy": true,
   "binary": "kdlith",
   "kind": "codegen-oracle",
   "description": "The asset generation fixture: gen schema generates a schema declaring two asset types (a yaml file under base source, a directory recording a digest) twice into two scratch trees the harness requires byte-identical, and the generated crate, which declares each asset type as an asset newtype over the re-exported Asset, compiles inside a scratch workspace materialized from this scenario's committed template. The exercise crate depends on the generated crate alone. It reads one data document whose records hold $lib/ assets, once with lib embedded and once with lib a directory: each reading yields the same resolved locations and the directory digest the documented sha256sum recipe computes, and each opens the file asset's bytes through its own sources and refuses the directory asset. An asset the directory reading resolved is refused by a third reading over a different lib directory, which fails closed rather than reading the other tree's file",

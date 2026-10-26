@@ -1,4 +1,5 @@
 {
+  "heavy": true,
   "binary": "kdlith",
   "kind": "codegen-oracle",
   "description": "The bare-codec generation fixture: gen schema generates the committed processing/bind/codecs schema itself, whose only declaration is a pattern codec Stamp with output U64 and whose typeless event node holds a field typed by it, twice into two scratch trees the harness requires byte-identical; the generated crate declares the codec as a newtype over its output type, spelled as the codec, which the node-local field type holds, and compiles inside a scratch workspace materialized from this scenario's committed template. The compiled processor loads the schema with the digest the reference CLI reports and reads the committed data document through its own typed reader, printing the decoded number the codec yields for the spelling 12s, not the spelling",

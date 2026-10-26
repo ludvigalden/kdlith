@@ -1,4 +1,5 @@
 {
+  "heavy": true,
   "binary": "kdlith",
   "kind": "codegen-oracle",
   "description": "gen schema generates a schema whose root document declares types named after the traits the declaration macros derive (a string Hash, an enum Clone, objects Debug and Default, a union PartialEq, a map Eq) while two imported documents declare their own string, enum, and object types that reference them, so each sibling module imports every derive-named type by name beside the derives the macros expand. Every derive, macro, and trait path a declaration macro spells is fully qualified, so no imported name shadows one: the crate generates twice into byte-identical trees, the sibling import is pinned by text, the crate compiles inside a scratch workspace materialized from this scenario's committed template, and the compiled consumer reads the committed data document through the generated reader, comparing the derive-named enum, matching the derive-named union, and hashing the derive-named string type",

@@ -1,4 +1,5 @@
 {
+  "heavy": true,
   "binary": "kdlith",
   "kind": "codegen-oracle",
   "description": "The value-resolution hook fixture: gen schema generates a committed schema whose required fields fall back to computed defaults, one naming a declared secret provider, twice into scratch trees the harness requires byte-identical; the generated crate compiles inside a scratch workspace materialized from this scenario's committed template beside a consumer crate whose resolver, a static trait impl reading a committed key-value file, it registers through the generated reader_with_resolver. The exercise pins that resolved values land in typed records, that each call carries its source, site, node, field, type, sensitivity, incoming context slot, and dependency list, that the provider's command list arrives as argument-boundary-preserving data nothing executes, and that a value the file cannot supply fails the reading loudly with the unresolved-value code",

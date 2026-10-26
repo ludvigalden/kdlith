@@ -78,6 +78,11 @@ run by the `kdlith-fixtures` harness against the built `kdlith` binary:
 target/debug/kdlith-fixtures --fx-suite tests/fixtures --fx-kdlith target/debug/kdlith
 ```
 
+Heavy scenarios — the codegen family's scratch-workspace compiles, marked
+`heavy` in their manifests — are excluded from that default run; pass
+`--fx-heavy` (or name them with an explicit `--fx-filter`) to run them
+deliberately.
+
 The suite holds 1151 scenarios: the 243 positive cases of the official KDL v2
 test suite and 908 kdlith scenarios. There are no unit tests.
 [`tests/fixtures/COVERAGE.md`](tests/fixtures/COVERAGE.md) maps every

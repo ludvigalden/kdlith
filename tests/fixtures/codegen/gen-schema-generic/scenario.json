@@ -1,4 +1,5 @@
 {
+  "heavy": true,
   "binary": "kdlith",
   "kind": "codegen-oracle",
   "description": "The generic-instance generation fixture: gen schema generates a committed schema whose generic object Pair (parameters T and U) is instantiated as Pair<String, Mode> by a record node's case dispatch twice into two scratch trees the harness requires byte-identical, and the generated crate compiles inside a scratch workspace materialized from this scenario's committed template: the monomorphized instance reads under its mangled Rust name PairStringMode while its shape and expression spell the instantiation as inspect schema and vet data name it, so optional<PairStringMode> spells optional<Pair<String, Mode>>, the shape's fields carry the substituted body, and the generic declaration itself is never spelled. The compiled processor loads the schema with the digest the reference CLI reports, its reader conforms (the handler for the case-selected type satisfies the node whose cases select it), and it reads a committed data document's case-dispatched records as the instance type, each value as vet data binds it",

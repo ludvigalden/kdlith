@@ -1,4 +1,5 @@
 {
+  "heavy": true,
   "binary": "kdlith",
   "kind": "codegen-oracle",
   "description": "gen schema generates a schema declaring a type named Option beside an optional<String> field, which a schema crate spells by path as ::core::option::Option: the schema vets green and gen schema generates it twice into two scratch trees the harness requires byte-identical; the generated type module declares the local Option and spells the field's option and the shape table's engine items by path, so neither shadows the other, and the generated crate compiles inside a scratch workspace materialized from this scenario's committed template. The compiled processor loads the schema with the digest the reference CLI reports and reads a committed data document, each value as vet data binds it: the Option declaration, an entry whose optional pick is set, and one whose pick is absent",

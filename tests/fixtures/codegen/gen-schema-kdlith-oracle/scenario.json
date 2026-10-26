@@ -1,4 +1,5 @@
 {
+  "heavy": true,
   "binary": "kdlith",
   "kind": "codegen-oracle",
   "description": "gen schema --kdlith-path ../ws/rs generates a schema crate whose manifest roots its kdlith path dependencies at the scenario's copied crates, outside the sibling layout the default assumes: the crate generates twice into two scratch trees the harness requires byte-identical, both runs the harness's generate step with --kdlith-path ../ws/rs carried through its declarative args field, compiles inside a scratch workspace materialized from this scenario's committed template with the repository's engine and reference-processor crates copied in at the pinned layout positions, and the compiled consumer — depending on nothing but the generated crate — loads the schema and reads the committed data document's records through the generated typed reader. Both misuse modes are pinned as declared commands: the two packaging flags together fail closed with the clap conflict usage error and write nothing, and an empty --kdlith-path value fails closed with the value parser's error and writes nothing",

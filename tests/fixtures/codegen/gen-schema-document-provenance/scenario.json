@@ -1,4 +1,5 @@
 {
+  "heavy": true,
   "binary": "kdlith",
   "kind": "codegen-oracle",
   "description": "Provenance on typed documents through a generated crate: gen schema generates a schema declaring two match-ruled profiles twice into two scratch trees the harness requires byte-identical, and the generated crate compiles inside a scratch workspace materialized from this scenario's committed template. The compiled processor reads committed data through its typed reader four ways: unarmed, each document item carries no profiles; asked for provenance under a named profile, each document — the entry and the one its import reaches — carries that profile; asked with no name, each carries the profile the entry's source path match-selected; and asked under a listed set the entry's path satisfies twice, each carries both members in listed order. A reader asked for provenance whose options name a profile the schema does not declare fails before any document is read",

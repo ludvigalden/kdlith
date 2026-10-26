@@ -22,8 +22,8 @@ pub(crate) const EXIT_FAIL: u8 = 1;
 pub(crate) const EXIT_USAGE: u8 = 2;
 
 const USAGE: &str = "usage: kdlith-fixtures --fx-suite <dir> --fx-kdlith <path> \
-[--fx-scratch-root <dir>] [--fx-filter <substr>] [--fx-list] [--fx-keep-failed] \
-[libtest-mimic options]";
+[--fx-scratch-root <dir>] [--fx-filter <substr>] [--fx-heavy] [--fx-list] \
+[--fx-keep-failed] [libtest-mimic options]";
 
 /// Run the harness CLI over argv and return the process exit code.
 pub(crate) fn run(argv: &[String]) -> u8 {
@@ -47,22 +47,24 @@ pub(crate) fn run(argv: &[String]) -> u8 {
     };
 
     let selected = match select(&suite_root, &opts) {
-        Ok(entries) => entries,
+        Ok(selection) => selection,
         Err(msg) => {
             eprintln!("kdlith-fixtures: FAIL: {msg}");
             return EXIT_FAIL;
         }
     };
 
+    // Listing is the census, not a run: it reports every scenario the
+    // filter names, heavy ones included.
     if opts.list {
-        for entry in &selected {
+        for entry in &selected.listed {
             println!("{}", entry.name);
         }
-        println!("{} scenario(s)", selected.len());
+        println!("{} scenario(s)", selected.listed.len());
         return EXIT_OK;
     }
 
-    run_trials(&opts, rest, &suite_root, &kdlith, selected)
+    run_trials(&opts, rest, &suite_root, &kdlith, selected.runnable)
 }
 
 /// Canonicalize a required path argument and check its kind, reporting
@@ -84,10 +86,20 @@ fn resolve(path: &Path, what: &str, kind_ok: fn(&Path) -> bool) -> Option<PathBu
     }
 }
 
-/// Discover the suite and apply `--fx-filter`. A suite with zero
-/// scenarios, or a filter that selects none, is an error: an empty
-/// selection never passes.
-fn select(suite_root: &Path, opts: &FxOptions) -> Result<Vec<Entry>, String> {
+/// The scenarios a run selects: `listed` is everything the filter names
+/// (the census view), `runnable` is what a run executes — a scenario
+/// marked heavy runs only when the operator asks for it deliberately,
+/// through `--fx-heavy` or an explicit `--fx-filter`.
+pub(crate) struct Selection {
+    pub(crate) listed: Vec<Entry>,
+    pub(crate) runnable: Vec<Entry>,
+}
+
+/// Discover the suite and select the scenarios to run. A suite with
+/// zero scenarios, a filter that selects none, or a default run whose
+/// every scenario is heavy, is an error: an empty selection never
+/// passes.
+fn select(suite_root: &Path, opts: &FxOptions) -> Result<Selection, String> {
     let found = suite::discover(suite_root)?;
     for name in &found.skipped {
         eprintln!(
@@ -102,7 +114,7 @@ fn select(suite_root: &Path, opts: &FxOptions) -> Result<Vec<Entry>, String> {
         ));
     }
     let total = found.entries.len();
-    let selected: Vec<Entry> = match &opts.filter {
+    let listed: Vec<Entry> = match &opts.filter {
         None => found.entries,
         Some(f) => found
             .entries
@@ -110,13 +122,43 @@ fn select(suite_root: &Path, opts: &FxOptions) -> Result<Vec<Entry>, String> {
             .filter(|e| e.name.contains(f.as_str()))
             .collect(),
     };
-    if selected.is_empty() {
+    if listed.is_empty() {
         return Err(format!(
             "--fx-filter {:?} selects zero of {total} scenario(s); an empty selection never passes",
             opts.filter.as_deref().unwrap_or_default()
         ));
     }
-    Ok(selected)
+    let runnable = if opts.heavy || opts.filter.is_some() {
+        listed.clone()
+    } else {
+        let (light, heavy): (Vec<Entry>, Vec<Entry>) = listed
+            .clone()
+            .into_iter()
+            .partition(|e| !manifest_heavy(&e.dir));
+        if light.is_empty() {
+            return Err(format!(
+                "every scenario in {} is heavy; pass --fx-heavy (or an explicit \
+--fx-filter) to run them; an empty selection never passes",
+                suite_root.display()
+            ));
+        }
+        eprintln!(
+            "kdlith-fixtures: note: {} of {total} scenario(s) are heavy; run them \
+deliberately with --fx-heavy or an explicit --fx-filter",
+            heavy.len()
+        );
+        light
+    };
+    Ok(Selection { listed, runnable })
+}
+
+/// Whether a scenario's manifest declares it heavy. A manifest that
+/// fails to load is not heavy here: the trial itself loads it again and
+/// fails loudly, so selection never masks a broken manifest.
+fn manifest_heavy(dir: &Path) -> bool {
+    crate::scenario::load(dir)
+        .map(|scenario| scenario.heavy())
+        .unwrap_or(false)
 }
 
 /// Build one trial per selected scenario, run them, and clean up.

@@ -13,6 +13,7 @@ pub(crate) struct FxOptions {
     pub(crate) kdlith: Option<PathBuf>,
     pub(crate) scratch_root: Option<PathBuf>,
     pub(crate) filter: Option<String>,
+    pub(crate) heavy: bool,
     pub(crate) list: bool,
     pub(crate) keep_failed: bool,
 }
@@ -37,14 +38,16 @@ pub(crate) fn parse(argv: &[String]) -> Result<(FxOptions, Vec<String>), String>
             None => (arg.as_str(), None),
         };
         match name {
-            "--fx-list" | "--fx-keep-failed" => {
+            "--fx-list" | "--fx-keep-failed" | "--fx-heavy" => {
                 if inline.is_some() {
                     return Err(format!("{name} takes no value"));
                 }
                 if name == "--fx-list" {
                     opts.list = true;
-                } else {
+                } else if name == "--fx-keep-failed" {
                     opts.keep_failed = true;
+                } else {
+                    opts.heavy = true;
                 }
             }
             "--fx-suite" | "--fx-kdlith" | "--fx-scratch-root" | "--fx-filter" => {
