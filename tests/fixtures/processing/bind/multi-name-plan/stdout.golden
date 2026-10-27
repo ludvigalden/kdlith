@@ -1,0 +1,9 @@
+{"item":"plan-context","data":{"slots":[],"namespaces":[]}}
+{"item":"plan-node","data":{"name":"heading","role":"record","scope":0,"children-effects":[],"following-effects":[],"context-reads":[],"deferred":[],"dependent":null,"value-from-path":null,"declaration":false,"requires":[]}}
+{"item":"plan-node","data":{"name":"label","role":"record","scope":1,"children-effects":[],"following-effects":[],"context-reads":[],"deferred":[],"dependent":null,"value-from-path":null,"declaration":false,"requires":[]}}
+{"item":"plan-node","data":{"name":"term","role":"record","scope":2,"children-effects":[],"following-effects":[],"context-reads":[],"deferred":[],"dependent":null,"value-from-path":null,"declaration":false,"requires":[]}}
+{"item":"plan-node","data":{"name":"alias","role":"record","scope":3,"children-effects":[],"following-effects":[],"context-reads":[],"deferred":[],"dependent":null,"value-from-path":null,"declaration":false,"requires":[]}}
+{"item":"plan-node","data":{"name":"title","role":"record","scope":4,"children-effects":[],"following-effects":[],"context-reads":[],"deferred":[],"dependent":null,"value-from-path":null,"declaration":false,"requires":[]}}
+{"item":"plan-node","data":{"name":"name","role":"record","scope":5,"children-effects":[],"following-effects":[],"context-reads":[],"deferred":[],"dependent":null,"value-from-path":null,"declaration":false,"requires":[]}}
+{"item":"plan-node","data":{"name":"alpha","role":"container","scope":6,"children-effects":[],"following-effects":[],"context-reads":[],"deferred":[],"dependent":null,"value-from-path":null,"declaration":false,"requires":[]}}
+{"item":"plan-node","data":{"name":"beta","role":"container","scope":7,"children-effects":[],"following-effects":[],"context-reads":[],"deferred":[],"dependent":null,"value-from-path":null,"declaration":false,"requires":[]}}

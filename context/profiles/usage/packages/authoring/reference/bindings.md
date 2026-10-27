@@ -23,6 +23,29 @@ enforces. `parents group=NAME` places the node under every member of
 a declared group; `group NAME MEMBER...` under `schema` names the set
 once.
 
+## Multi-name declarations
+
+```kdl
+node name synonym definition description type=Designation parent=concept {
+    field value arg=0
+}
+```
+
+A declaration may spell several names: `node A B C ...` binds the one
+body under every spelling, exactly as the same declaration repeated
+once per name does. Each spelling is its own field-source node, so
+bound items, the `bound` and `plan` views, and the generated `Item`
+variants distinguish the spellings; a generated crate carries one
+variant per spelling beside the one `ItemVariant<T>` matching them
+all. Name admission is per spelling and fail closed: a spelling that
+collides with another declaration under the same placement is
+`KDLITH-SCH004` at compile, a non-kebab spelling `KDLITH-BND003` at
+bind, and any failing spelling fails the whole declaration.
+Placement (`parent=`, `parents`, `parents group=`, `root=#true`),
+profiles, compact sources, and `include` splice treat the declaration
+as one node with several admitted names; effects apply per spelling
+as the separate declarations would.
+
 ## Field sources
 
 Shorthands on a `field` binding: `arg=N`, `property=NAME`,

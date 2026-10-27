@@ -709,6 +709,12 @@ fn node_input(node: NodeDef) -> NodeInput {
     };
     NodeInput {
         name: node.name.as_str().to_owned(),
+        aliases: node
+            .aliases
+            .iter()
+            .flatten()
+            .map(|name| name.as_str().to_owned())
+            .collect(),
         role: node.role.as_ref().map(|role| role.member().to_owned()),
         ty: node.ty.as_ref().map(|ty| ty.as_str().to_owned()),
         parent: node

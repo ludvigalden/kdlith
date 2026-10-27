@@ -1,0 +1,8 @@
+schema multiname-no-names version="1" {
+    types {
+        object Label { field v String }
+    }
+    node role=record type=Label root=#true {
+        field v arg=0
+    }
+}

@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "inspect --view plan pins each spelling as its own plan node: the multi-name declaration compiles to one plan node per name, heading label term alias beside the group-placed title and name and their hosts",
+  "args": [
+    "inspect",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/multiname.kdl",
+    "--view",
+    "plan",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden"
+  }
+}

@@ -1,0 +1,45 @@
+// The separate-declarations twin of multiname.kdl: the same binding
+// spelled as one declaration per name, every body identical. A data
+// document binds the same items under either schema, and the
+// multi-name-spellings and multi-name-separate goldens are
+// byte-identical.
+schema multiname-separate version="1" {
+    types {
+        object Designation {
+            field value String
+            field weight "optional<U64>"
+        }
+    }
+    group hosts alpha beta
+    group designations title name
+    node heading role=record type=Designation root=#true {
+        field value arg=0
+        field weight property=weight
+    }
+    node label role=record type=Designation root=#true {
+        field value arg=0
+        field weight property=weight
+    }
+    node term role=record type=Designation root=#true {
+        field value arg=0
+        field weight property=weight
+    }
+    node alias role=record type=Designation root=#true {
+        field value arg=0
+        field weight property=weight
+    }
+    node title role=record type=Designation {
+        parents group=hosts
+        field value arg=0
+    }
+    node name role=record type=Designation {
+        parents group=hosts
+        field value arg=0
+    }
+    node alpha role=container root=#true {
+        children-group designations
+    }
+    node beta role=container root=#true {
+        children-group designations
+    }
+}

@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "A parents group= placement admits each spelling of a multi-name declaration at the same positions: title and name both bind under alpha and under beta, vet data --scope complete exits 0",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "{fx-suite}/processing/bind/multiname.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden"
+  }
+}

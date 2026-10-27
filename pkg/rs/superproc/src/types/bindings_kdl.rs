@@ -26,6 +26,7 @@ enum_type! {
 object_type! {
     pub struct NodeDef {
         "name" => name: NodeName,
+        "aliases" => aliases: Option<Vec<NodeName>>,
         "role" => role: Option<Role>,
         "type" => ty: Option<TypeName>,
         "parent" => parent: Option<NodeName>,

@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "One multi-name declaration binds its body under every spelling: a data document using heading, label, term, and alias at the root binds four Designation records, vet data exits 0, and the reading is byte-identical to the same data under the separate-declarations twin schema",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/multiname.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden"
+  }
+}

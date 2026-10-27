@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A spelling of a multi-name declaration that violates the kebab naming rule fails the whole declaration at bind: Bad_Name does not decode as NodeName, KDLITH-BND003",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

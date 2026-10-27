@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A schema whose node declaration names several spellings compiles clean: heading label term alias binds Designation under four names, each spelling its own field-source node, and title name places a second multi-name declaration under a node group",
+  "args": [
+    "vet",
+    "schema",
+    "{fx-suite}/processing/bind/multiname.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

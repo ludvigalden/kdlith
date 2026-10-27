@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "gen schema still guards true cross-declaration variant collisions now that one declaration may name several spellings: two separate tag declarations spell the one variant Tag for different items, the type-keyed record under alpha and the node-local record under beta, and generation exits 1 naming both nodes before anything is emitted, while a multi-name declaration alone cannot trigger it (its spellings share one type by construction)",
+  "args": ["gen", "schema", "schema.kdl", "--crate", "collide-proc", "--out", "out"],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": [
+      "kdlith: gen schema: the nodes tag and tag both read as the item variant Tag\n"
+    ],
+    "scratch-check": {
+      "plant": [{ "path": "planted-foreign.txt", "kind": "file" }]
+    }
+  }
+}

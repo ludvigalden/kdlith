@@ -23,7 +23,8 @@ const MAX_SOURCE_DEPTH: usize = 16;
 pub(crate) fn declaration(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) {
     let site = Site::new(doc, node.span);
     let mut construct = Construct::new(cx, doc, node);
-    let name = construct.string_arg(cx, 0, "name");
+    let name = construct.string_arg(cx, 0, "node name");
+    let aliases = construct.rest_strings(cx, 1, "node alias");
     let role = construct.string_prop(cx, "role");
     let ty = construct.string_prop(cx, "type");
     let parent = construct.string_prop(cx, "parent");
@@ -31,9 +32,18 @@ pub(crate) fn declaration(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) {
     let description = construct.string_prop(cx, "description");
     construct.finish(cx);
     let Some(name) = name else { return };
+    // The declaration's spellings: the first name, then every alias
+    // argument after it. Any spelling failing admission fails the whole
+    // declaration.
+    let spellings: Vec<&str> = std::iter::once(name.as_str())
+        .chain(aliases.iter().map(String::as_str))
+        .collect();
+    let name = spellings.join(" ");
     let label = format!("node {name}");
-    if !cx.kebab(site, &label, &name, "node name") {
-        return;
+    for spelled in &spellings {
+        if !cx.kebab(site, &label, spelled, "node name") {
+            return;
+        }
     }
     let role = role.and_then(|role| match Role::from_name(&role) {
         Some(parsed) => Some(parsed),
@@ -226,33 +236,38 @@ pub(crate) fn declaration(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) {
         // reported as untyped.
         return;
     }
-    cx.nodes.push(NodeDecl {
-        name: cx.names.intern(&name),
-        role,
-        ty,
-        placement: match (under.is_empty(), root) {
-            (true, _) => Placement::Root,
-            (false, false) => Placement::Under(under),
-            (false, true) => Placement::RootAndUnder(under),
-        },
-        parent_group: None,
-        profile: None,
-        fields,
-        children,
-        children_groups: Vec::new(),
-        effects,
-        groups,
-        descendants: Vec::new(),
-        sequence: None,
-        value,
-        path_value,
-        cases,
-        otherwise,
-        identity: None,
-        description,
-        annotations,
-        site,
-    });
+    // Every spelling holds the one body: one declaration per spelling, in
+    // the order the declaration spells them.
+    let placement = match (under.is_empty(), root) {
+        (true, _) => Placement::Root,
+        (false, false) => Placement::Under(under),
+        (false, true) => Placement::RootAndUnder(under),
+    };
+    for spelled in &spellings {
+        cx.nodes.push(NodeDecl {
+            name: cx.names.intern(spelled),
+            role,
+            ty,
+            placement: placement.clone(),
+            parent_group: None,
+            profile: None,
+            fields: fields.clone(),
+            children: children.clone(),
+            children_groups: Vec::new(),
+            effects: effects.clone(),
+            groups: groups.clone(),
+            descendants: Vec::new(),
+            sequence: None,
+            value: value.clone(),
+            path_value: path_value.clone(),
+            cases: cases.clone(),
+            otherwise: otherwise.clone(),
+            identity: None,
+            description: description.clone(),
+            annotations: annotations.clone(),
+            site,
+        });
+    }
 }
 
 fn field_binding(

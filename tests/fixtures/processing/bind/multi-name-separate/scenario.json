@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "The separate-declarations twin keeps today's behavior: the same data document under four identical one-name declarations binds the same items, and this golden is byte-identical to multi-name-spellings' golden over the multi-name schema",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/multiname-separate.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden"
+  }
+}

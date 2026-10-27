@@ -1,0 +1,72 @@
+{
+  "heavy": true,
+  "binary": "kdlith",
+  "kind": "codegen-oracle",
+  "description": "The multi-name declaration generation fixture: gen schema generates the committed multi-name schema, whose one node declaration binds Designation under the four spellings heading label term alias beside a group-placed title name pair, twice into two scratch trees the harness requires byte-identical; the generated crate compiles inside a scratch workspace materialized from this scenario's committed template, and the compiled processor loads the committed schema through its own loader and reads a committed data document using every spelling as a linked reading through its own typed reader, reporting the one variant all spellings read as and the spelling each item bound under",
+  "form": "schema",
+  "entrypoint": "{fx-suite}/processing/bind/multiname.kdl",
+  "crate": "multiname-proc",
+  "steps": [
+    {
+      "generate": "ws/rs/multiname-proc"
+    },
+    {
+      "generate": "gen-again"
+    },
+    {
+      "determinism": [
+        "ws/rs/multiname-proc",
+        "gen-again"
+      ]
+    },
+    {
+      "compile": {
+        "workspace": "ws",
+        "copy": {
+          "crates": [
+            "diagnostic",
+            "engine",
+            "model",
+            "parse",
+            "runtime",
+            "superproc"
+          ]
+        },
+        "command": [
+          "cargo",
+          "build",
+          "--offline",
+          "--manifest-path",
+          "ws/rs/multiname-proc/Cargo.toml"
+        ]
+      }
+    },
+    {
+      "exercise": {
+        "command": [
+          "cargo",
+          "run",
+          "--offline",
+          "--quiet",
+          "--manifest-path",
+          "ws/rs/exercise/Cargo.toml",
+          "--",
+          "processing/bind/multiname.kdl",
+          "inputs/data.kdl"
+        ],
+        "stdout-contains": [
+          "schema ok digest=",
+          "read ok designations=7\n",
+          "linked failed=false\n",
+          "designation heading value=primary weight=-\n",
+          "designation label value=secondary weight=2\n",
+          "designation term value=tertiary weight=-\n",
+          "designation alias value=quaternary weight=4\n",
+          "designation title value=alpha-title weight=-\n",
+          "designation name value=alpha-name weight=-\n",
+          "designation title value=beta-title weight=-\n"
+        ]
+      }
+    }
+  ]
+}

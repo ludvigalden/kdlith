@@ -26,7 +26,11 @@ dialect kdlith version="0" {
             member container description="Process children under structural and scope rules"
         }
 
-        // A node declaration. parent names the one node it may appear
+        // A node declaration. name is the declaration's first spelling;
+        // aliases lists further spellings after it, and every spelling
+        // binds the same body under its own name, exactly as the same
+        // declaration repeated once per spelling does. parent names the
+        // one node it may appear
         // under; parents lists several. A declaration gives at most one of
         // the two, and a node with neither is a root node; root=#true
         // admits a placed node at the root as well. The parents
@@ -39,6 +43,7 @@ dialect kdlith version="0" {
         // processing item of its own.
         object NodeDef {
             field name NodeName
+            field aliases "optional<list<NodeName>>"
             field role "optional<Role>"
             field type "optional<TypeName>"
             field parent "optional<NodeName>"
@@ -330,6 +335,11 @@ dialect kdlith version="0" {
     node node role=declaration type=NodeDef {
         parents schema dialect
         field name arg=0
+        field aliases {
+            from {
+                args
+            }
+        }
         field role property=role
         field type property=type
         field parent property=parent

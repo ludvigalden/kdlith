@@ -496,7 +496,16 @@ fn constraint(cx: &mut Cx<'_>, constraint: &ConstraintInput) -> Constraint {
 }
 
 fn node(cx: &mut Cx<'_>, site: Site, input: &NodeInput) {
-    let name = input.name.clone();
+    if input.name.is_empty() {
+        cx.missing(site, "node", "name");
+        return;
+    }
+    // Every spelling of the one declaration: labels and diagnostics name
+    // them all; the declaration lands once per spelling below.
+    let spellings: Vec<&str> = std::iter::once(input.name.as_str())
+        .chain(input.aliases.iter().map(String::as_str))
+        .collect();
+    let name = spellings.join(" ");
     let label = format!("node {name}");
     let role = input.role.as_deref().and_then(Role::from_name);
     let typed = input.ty.is_some();
@@ -561,7 +570,7 @@ fn node(cx: &mut Cx<'_>, site: Site, input: &NodeInput) {
         }
         groups.push(members);
     }
-    let descendants = input
+    let descendants: Vec<DescendantRule> = input
         .descendants
         .iter()
         .filter_map(|rule| descendant_rule(cx, site, rule, &name))
@@ -674,7 +683,7 @@ fn node(cx: &mut Cx<'_>, site: Site, input: &NodeInput) {
         .otherwise
         .as_deref()
         .and_then(|ty| cx.type_expr(site, ty));
-    let annotations = input
+    let annotations: Vec<NodeAnnotation> = input
         .annotations
         .iter()
         .map(|fact| NodeAnnotation {
@@ -745,29 +754,33 @@ fn node(cx: &mut Cx<'_>, site: Site, input: &NodeInput) {
         // node's scope is built, beside the case bindings that consume
         // children — one check for the whole child namespace.
     }
-    cx.nodes.push(NodeDecl {
-        name: cx.names.intern(&name),
-        role,
-        ty,
-        placement,
-        parent_group,
-        profile,
-        fields,
-        children,
-        children_groups,
-        effects,
-        groups,
-        descendants,
-        sequence,
-        value,
-        path_value,
-        cases,
-        otherwise,
-        identity,
-        description,
-        annotations,
-        site,
-    });
+    // Every spelling holds the one body: one declaration per spelling, in
+    // the order the declaration spells them.
+    for spelled in &spellings {
+        cx.nodes.push(NodeDecl {
+            name: cx.names.intern(spelled),
+            role,
+            ty,
+            placement: placement.clone(),
+            parent_group,
+            profile,
+            fields: fields.clone(),
+            children: children.clone(),
+            children_groups: children_groups.clone(),
+            effects: effects.clone(),
+            groups: groups.clone(),
+            descendants: descendants.clone(),
+            sequence: sequence.clone(),
+            value: value.clone(),
+            path_value: path_value.clone(),
+            cases: cases.clone(),
+            otherwise: otherwise.clone(),
+            identity: identity.clone(),
+            description: description.clone(),
+            annotations: annotations.clone(),
+            site,
+        });
+    }
 }
 
 /// A schema-level `annotation NAME TYPE [required]` declaration: the

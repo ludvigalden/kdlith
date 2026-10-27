@@ -1,0 +1,11 @@
+schema multiname-collides version="1" {
+    types {
+        object Label { field v String }
+    }
+    node dup existing role=record type=Label root=#true {
+        field v arg=0
+    }
+    node other dup role=record type=Label root=#true {
+        field v arg=0
+    }
+}

@@ -1,0 +1,4 @@
+heading "primary"
+label "secondary" weight=2
+term "tertiary"
+alias "quaternary" weight=4

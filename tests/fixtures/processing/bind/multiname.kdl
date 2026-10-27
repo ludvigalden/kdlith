@@ -1,0 +1,30 @@
+// The multi-name declaration schema the multi-name scenarios share:
+// one node declaration binding the Designation record under four
+// spellings, each spelling its own field-source node exactly as four
+// separate declarations would be, and a second multi-name declaration
+// placed under a node group, so every spelling is admitted at the same
+// positions under every host.
+schema multiname version="1" {
+    types {
+        object Designation {
+            field value String
+            field weight "optional<U64>"
+        }
+    }
+    group hosts alpha beta
+    group designations title name
+    node heading label term alias role=record type=Designation root=#true {
+        field value arg=0
+        field weight property=weight
+    }
+    node title name role=record type=Designation {
+        parents group=hosts
+        field value arg=0
+    }
+    node alpha role=container root=#true {
+        children-group designations
+    }
+    node beta role=container root=#true {
+        children-group designations
+    }
+}

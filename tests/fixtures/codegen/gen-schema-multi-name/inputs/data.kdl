@@ -1,0 +1,11 @@
+heading "primary"
+label "secondary" weight=2
+term "tertiary"
+alias "quaternary" weight=4
+alpha {
+    title "alpha-title"
+    name "alpha-name"
+}
+beta {
+    title "beta-title"
+}

@@ -245,13 +245,16 @@ pub enum ConstraintInput {
     },
 }
 
-/// A node declaration: role, type, placement, profile, field bindings,
-/// child rules, effect groups, exactly-one groups, descendant rules, the
-/// ordered sequence, and the identity, dependent-value, path-value, and
-/// case-dispatch blocks it declares.
+/// A node declaration: its first name and the alias spellings after it
+/// (every spelling binds the same body), role, type, placement, profile,
+/// field bindings, child rules, effect groups, exactly-one groups,
+/// descendant rules, the ordered sequence, and the identity,
+/// dependent-value, path-value, and case-dispatch blocks it declares.
 #[derive(Clone, Debug, Default)]
 pub struct NodeInput {
     pub name: String,
+    /// The further spellings after `name`, in written order.
+    pub aliases: Vec<String>,
     pub role: Option<String>,
     pub ty: Option<String>,
     pub parent: Option<String>,

@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A multi-name declaration whose second spelling collides with a separately declared node under the same placement fails closed: dup is declared by the multi-name declaration and by its own declaration, KDLITH-SCH004, and no spelling of the colliding declaration binds",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

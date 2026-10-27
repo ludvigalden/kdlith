@@ -1,0 +1,8 @@
+schema multiname-not-kebab version="1" {
+    types {
+        object Label { field v String }
+    }
+    node good Bad_Name role=record type=Label root=#true {
+        field v arg=0
+    }
+}

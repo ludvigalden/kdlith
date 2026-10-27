@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A node declaration naming no spelling fails closed: the names list binds no name, KDLITH-BND004, the multi-name arm of the missing-name boundary",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

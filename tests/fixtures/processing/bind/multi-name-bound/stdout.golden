@@ -1,0 +1,4 @@
+{"item":"record","data":{"node":{"source":0,"index":0},"type_name":"Designation","fields":[{"name":"value","value":{"kind":"string","value":"primary"},"origin":0}],"origin":0,"validation":"valid"}}
+{"item":"record","data":{"node":{"source":0,"index":1},"type_name":"Designation","fields":[{"name":"value","value":{"kind":"string","value":"secondary"},"origin":1},{"name":"weight","value":{"kind":"number","value":"2"},"origin":1}],"origin":1,"validation":"valid"}}
+{"item":"record","data":{"node":{"source":0,"index":2},"type_name":"Designation","fields":[{"name":"value","value":{"kind":"string","value":"tertiary"},"origin":2}],"origin":2,"validation":"valid"}}
+{"item":"record","data":{"node":{"source":0,"index":3},"type_name":"Designation","fields":[{"name":"value","value":{"kind":"string","value":"quaternary"},"origin":3},{"name":"weight","value":{"kind":"number","value":"4"},"origin":3}],"origin":3,"validation":"valid"}}

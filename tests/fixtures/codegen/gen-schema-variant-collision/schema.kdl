@@ -1,0 +1,23 @@
+// Two separate tag declarations spelling one variant for different
+// items: the type-keyed record under alpha (its Label shared with mark,
+// so the variant keys by node) and the node-local record under beta.
+// Generation refuses the pair; a multi-name declaration cannot spell
+// this shape, its spellings sharing one type by construction.
+schema collide version="1" {
+    types {
+        object Label { field v String }
+    }
+    node alpha role=container root=#true {
+    }
+    node beta role=container root=#true {
+    }
+    node tag parent=alpha type=Label role=record {
+        field v arg=0
+    }
+    node mark parent=alpha type=Label role=record {
+        field v arg=0
+    }
+    node tag parent=beta role=record {
+        field v String arg=0
+    }
+}

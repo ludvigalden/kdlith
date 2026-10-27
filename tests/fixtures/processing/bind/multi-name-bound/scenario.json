@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "inspect --view bound shows each item of a multi-name declaration under its own spelling: four bound records, one per root spelling, all typed Designation with the fields the one body binds",
+  "args": [
+    "inspect",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/multiname.kdl",
+    "--view",
+    "bound",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden"
+  }
+}
