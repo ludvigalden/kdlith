@@ -28,6 +28,14 @@ dialect kdlith version="0" {
             format kebab-case
         }
 
+        // A projection token on an import: a declared context slot by
+        // its name, or a declared namespace, which projects every slot
+        // in it at the import site. A token matching neither fails
+        // closed; the resolved slot set is deduplicated.
+        string ProjectionName {
+            format kebab-case
+        }
+
         string HandlerName {
             format kebab-case
         }

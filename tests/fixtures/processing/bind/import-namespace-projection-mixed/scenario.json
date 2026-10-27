@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "A mixed projection names a namespace and an individual slot in one list: project defaults format carries every defaults slot plus the format slot outside the namespace, so the fragment's stamp reads all four caller values, with no slot projected twice",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/projection.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"project\":[\"defaults\",\"format\"]",
+      "{\"item\":\"document\",\"data\":{\"source\":1,\"path\":\"part-all.kdl\"}}\n{\"item\":\"record\",\"data\":{\"node\":{\"source\":1,\"index\":0},\"type_name\":\"Stamp\",\"fields\":[{\"name\":\"locale\",\"value\":{\"kind\":\"string\",\"value\":\"en-gb\"},\"origin\":0},{\"name\":\"system\",\"value\":{\"kind\":\"string\",\"value\":\"metric\"},\"origin\":0},{\"name\":\"units\",\"value\":{\"kind\":\"string\",\"value\":\"si\"},\"origin\":0},{\"name\":\"format\",\"value\":{\"kind\":\"string\",\"value\":\"iso\"},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n",
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":6},\"type_name\":\"Stamp\",\"fields\":[{\"name\":\"locale\",\"value\":{\"kind\":\"string\",\"value\":\"en-gb\"},\"origin\":6},{\"name\":\"system\",\"value\":{\"kind\":\"string\",\"value\":\"metric\"},\"origin\":6},{\"name\":\"units\",\"value\":{\"kind\":\"string\",\"value\":\"si\"},\"origin\":6},{\"name\":\"format\",\"value\":{\"kind\":\"string\",\"value\":\"iso\"},\"origin\":6}],\"origin\":6,\"validation\":\"valid\"}}\n"
+    ]
+  }
+}

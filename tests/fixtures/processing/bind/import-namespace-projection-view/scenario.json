@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "The bound view of the namespace-projected reading: the fragment's stamp and the entry's stamp only, the import item filtered out by the view, so this golden is byte-identical to import-namespace-projection-per-slot-view's — the per-slot spelling project locale system units projects the same slot set the namespace token does",
+  "args": [
+    "inspect",
+    "data",
+    "--view",
+    "bound",
+    "--schema",
+    "{fx-suite}/processing/bind/projection.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "bound.golden"
+  }
+}

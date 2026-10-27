@@ -92,13 +92,15 @@ dialect kdlith version="0" {
         // source's root (a leading /), or from a named source's root
         // ($name/), never leaving that source and never computed beyond
         // the patterns the governing locations rule admits. The
-        // imported document receives only the listed projection of the
-        // caller's context, and its context mutations never return to the
-        // caller. Cycles are diagnosed from the active invocation stack,
-        // and import order is the order of the import nodes.
+        // imported document receives only the projected selection of
+        // the caller's context — every project token names a declared
+        // slot, or a declared namespace whose every slot is projected —
+        // and its context mutations never return to the caller. Cycles
+        // are diagnosed from the active invocation stack, and import
+        // order is the order of the import nodes.
         object ImportRequest {
             field path String
-            field project "optional<list<SlotName>>"
+            field project "optional<list<ProjectionName>>"
             field repeated RepeatedImport {
                 fallback reject
             }

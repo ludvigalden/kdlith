@@ -7,7 +7,9 @@ use kdlith_engine::{
     Shaped, TypeShape, ValueExpr, enum_type, object_type, string_type, union_type,
 };
 
-use super::{FieldName, NamespaceName, NodeName, SlotName, TypeExpression, TypeName};
+use super::{
+    FieldName, NamespaceName, NodeName, ProjectionName, SlotName, TypeExpression, TypeName,
+};
 
 string_type! {
     pub struct DialectName;
@@ -81,7 +83,7 @@ enum_type! {
 object_type! {
     pub struct ImportRequest {
         "path" => path: String,
-        "project" => project: Option<Vec<SlotName>>,
+        "project" => project: Option<Vec<ProjectionName>>,
         "repeated" => repeated: RepeatedImport,
         // The imported declarations are reachable through the namespace
         // and not by their unqualified names.

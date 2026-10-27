@@ -1368,6 +1368,9 @@ impl Reading<'_, '_> {
     }
 
     /// The import site's context, holding only the slots it projects.
+    /// A project token names a declared slot, or a declared namespace,
+    /// whose every slot is projected; a token naming neither fails
+    /// closed. The resolved slot set is deduplicated.
     fn projection(
         &mut self,
         session: &BindingSession<'_, '_>,
@@ -1377,12 +1380,23 @@ impl Reading<'_, '_> {
         let def = self.reader.def;
         let mut slots = Vec::with_capacity(request.project.len());
         for name in &request.project {
-            match def
-                .names
-                .get(name)
-                .and_then(|sym| def.plan.context.slot(sym))
-            {
-                Some(slot) => slots.push(slot),
+            // A name used by neither a slot nor a namespace is not in
+            // the symbol table, so one lookup resolves both forms: the
+            // slot, else the namespace's members.
+            let found = def.names.get(name).and_then(|sym| {
+                def.plan
+                    .context
+                    .slot(sym)
+                    .map(|slot| vec![slot])
+                    .or_else(|| {
+                        def.plan
+                            .context
+                            .namespace(sym)
+                            .map(|namespace| def.plan.context.layout.members(namespace).to_vec())
+                    })
+            });
+            match found {
+                Some(found) => slots.extend(found),
                 None => {
                     // The code the definition loader reports for the same
                     // projection: by the kind of the importing document,
@@ -1401,6 +1415,8 @@ impl Reading<'_, '_> {
                 }
             }
         }
+        slots.sort_unstable();
+        slots.dedup();
         session.context().project(&slots).ok()
     }
 

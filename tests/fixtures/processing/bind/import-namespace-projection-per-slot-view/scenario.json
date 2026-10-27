@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "The per-slot regression twin: the same entry with project locale system units, spelling every slot of the defaults namespace individually, renders a bound view byte-identical to import-namespace-projection-view's golden — per-slot-only projection behaves exactly as before beside the namespace form",
+  "args": [
+    "inspect",
+    "data",
+    "--view",
+    "bound",
+    "--schema",
+    "{fx-suite}/processing/bind/projection.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "bound.golden"
+  }
+}

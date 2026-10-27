@@ -1,0 +1,87 @@
+// The pre-growth twin of projection.kdl: units sits in a different
+// namespace, so projecting defaults does not reach it — the posture a
+// per-slot project list goes stale under when the schema grows a slot.
+// Every slot keeps the reject duplicate default: a value the projection
+// did not carry reads as unset, so a control inside an imported
+// fragment is a first value exactly when the projection excluded that
+// slot.
+schema projection version="1" {
+    types {
+        string Locale {
+            format kebab-case
+        }
+        string System {
+            format kebab-case
+        }
+        string Units {
+            format kebab-case
+        }
+        string Format {
+            format kebab-case
+        }
+        object Part {
+            field id String
+        }
+        object Stamp {
+            field locale Locale
+            field system System
+            field units Units
+            field format Format
+        }
+    }
+    context {
+        slot locale Locale namespace=defaults
+        slot system System namespace=defaults
+        slot units Units namespace=tuning
+        slot format Format
+    }
+    node part role=record type=Part {
+        field id arg=0
+    }
+    node stamp role=record type=Stamp {
+        field locale context=locale
+        field system context=system
+        field units context=units
+        field format context=format
+    }
+    node locale role=context-control {
+        field value Locale arg=0
+        effects target=following {
+            set locale field=value
+        }
+    }
+    node system role=context-control {
+        field value System arg=0
+        effects target=following {
+            set system field=value
+        }
+    }
+    node units role=context-control {
+        field value Units arg=0
+        effects target=following {
+            set units field=value
+        }
+    }
+    node format role=context-control {
+        field value Format arg=0
+        effects target=following {
+            set format field=value
+        }
+    }
+    node use role=source-import {
+        field path String arg=0
+        field repeated "optional<String>" property=repeated
+        field namespace "optional<String>" property=as
+        field project "optional<list<String>>" {
+            from {
+                child project {
+                    args
+                }
+            }
+        }
+        children project max-occurs=1
+    }
+    document {
+        following locale system units format part stamp use
+    }
+}

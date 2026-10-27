@@ -17,6 +17,10 @@ string_type! {
 }
 
 string_type! {
+    pub struct ProjectionName;
+}
+
+string_type! {
     pub struct HandlerName;
 }
 
@@ -201,6 +205,7 @@ enum_type! {
 pub(crate) const TYPES: &[TypeShape] = &[
     SlotName::SHAPE,
     NamespaceName::SHAPE,
+    ProjectionName::SHAPE,
     HandlerName::SHAPE,
     LayerName::SHAPE,
     SlotDef::SHAPE,

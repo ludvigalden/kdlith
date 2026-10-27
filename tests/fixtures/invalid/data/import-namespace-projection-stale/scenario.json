@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "The pre-growth twin: under projection-stale.kdl, whose units slot sits in a different namespace, the very same import — project defaults, untouched — leaves units invisible to the fragment, and its stamp fails KDLITH-CTX001 reading context units; projection.kdl grows units into defaults and the identical entry goes green (processing/bind/import-namespace-projection), the staleness a per-slot list cannot survive without editing the import",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/projection-stale.kdl",
+    "data.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

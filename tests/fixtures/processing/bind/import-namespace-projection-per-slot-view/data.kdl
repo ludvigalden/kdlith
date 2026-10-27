@@ -1,0 +1,8 @@
+locale en-gb
+system metric
+units si
+format iso
+use "part.kdl" {
+    project locale system units
+}
+stamp

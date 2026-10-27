@@ -88,6 +88,7 @@
 {"item":"effective","data":{"section":"type","entry":{"name":"ProfileDef","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"ProfileMatch","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"ProfileName","parameters":[],"kind":"string"}}}
+{"item":"effective","data":{"section":"type","entry":{"name":"ProjectionName","parameters":[],"kind":"string"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"PropertyCondition","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"PropertySource","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"Qualification","parameters":[],"kind":"enum"}}}

@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "An import projecting the whole defaults namespace with one token gives the imported invocation every slot in it: the fragment's stamp reads locale en-gb, system metric, and units si — values reachable only through the projection — while its own format other binds as a first value under the reject default, proving the format slot outside the namespace was not projected; the entry's later stamp still reads format iso, and the import item carries project [defaults]. projection-stale.kdl is the pre-growth twin where the same import leaves units unset (invalid/data/import-namespace-projection-stale)",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/projection.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"project\":[\"defaults\"]",
+      "{\"item\":\"document\",\"data\":{\"source\":1,\"path\":\"part.kdl\"}}\n{\"item\":\"record\",\"data\":{\"node\":{\"source\":1,\"index\":1},\"type_name\":\"Stamp\",\"fields\":[{\"name\":\"locale\",\"value\":{\"kind\":\"string\",\"value\":\"en-gb\"},\"origin\":1},{\"name\":\"system\",\"value\":{\"kind\":\"string\",\"value\":\"metric\"},\"origin\":1},{\"name\":\"units\",\"value\":{\"kind\":\"string\",\"value\":\"si\"},\"origin\":1},{\"name\":\"format\",\"value\":{\"kind\":\"string\",\"value\":\"other\"},\"origin\":1}],\"origin\":1,\"validation\":\"valid\"}}\n",
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":6},\"type_name\":\"Stamp\",\"fields\":[{\"name\":\"locale\",\"value\":{\"kind\":\"string\",\"value\":\"en-gb\"},\"origin\":6},{\"name\":\"system\",\"value\":{\"kind\":\"string\",\"value\":\"metric\"},\"origin\":6},{\"name\":\"units\",\"value\":{\"kind\":\"string\",\"value\":\"si\"},\"origin\":6},{\"name\":\"format\",\"value\":{\"kind\":\"string\",\"value\":\"iso\"},\"origin\":6}],\"origin\":6,\"validation\":\"valid\"}}\n"
+    ]
+  }
+}

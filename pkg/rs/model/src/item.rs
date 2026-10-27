@@ -144,7 +144,9 @@ pub struct ImportRequest {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub targets: Vec<String>,
     pub namespace: Option<String>,
-    /// The caller's context slots the imported source receives, by name.
+    /// The projection tokens the imported source receives, by name as
+    /// written: each names a declared context slot, or a declared
+    /// namespace standing for every slot in it.
     pub project: Vec<String>,
     pub repeated: Repeated,
     pub site: Location,

@@ -427,6 +427,8 @@ impl AccumulateOp {
 #[non_exhaustive]
 pub struct ImportDecl {
     pub path: String,
+    /// The projection tokens, as written: each names a declared slot,
+    /// or a declared namespace standing for every slot in it.
     pub project: Vec<Sym>,
     pub repeated: Repeated,
     /// The namespace an `as=NAME` import carries, if any: the imported

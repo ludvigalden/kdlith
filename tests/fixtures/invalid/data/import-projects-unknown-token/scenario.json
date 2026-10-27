@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A project token naming neither a declared slot nor a declared namespace fails closed as the unresolved reference the projection family reports — a misspelled namespace never silently projects nothing",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/projection.kdl",
+    "data.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}
