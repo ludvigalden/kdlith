@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A child one case's bindings admit is refused under another case's kind: a segment child under a funnel-kind figure binds through no plan in effect and the run fails with the unknown-node code beside the funnel case's unmet section minimum",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

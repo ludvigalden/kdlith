@@ -12,7 +12,7 @@ use crate::compile::Cx;
 use crate::compile::reader::Construct;
 use crate::compile::types::field_name;
 use crate::decode::found;
-use crate::diag::{INVALID_BINDING, NOT_INSTALLED, Site, duplicate_key};
+use crate::diag::{CASE_SHADOWS_COMMON, INVALID_BINDING, NOT_INSTALLED, Site, duplicate_key};
 use crate::names::Sym;
 use crate::syntax::{SyntaxNode, parse_u64};
 use crate::types::TypeExpr;
@@ -91,7 +91,7 @@ pub(crate) fn declaration(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) {
             }
             "cases" => {
                 if cx.only_once(&mut cases_site, child_site, &label, "cases") {
-                    cases_block(cx, doc, child, &name, &mut cases, &mut otherwise);
+                    cases_block(cx, doc, child, &name, typed, &mut cases, &mut otherwise);
                 }
             }
             "field" => {
@@ -162,6 +162,28 @@ pub(crate) fn declaration(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) {
             }
             _ => cx.unknown(doc, child, "node"),
         }
+    }
+    // A case binding naming what the node binds in common is ambiguous:
+    // fail closed before any binding decides between them.
+    for case in &cases {
+        let label = format!(
+            "case {}={:?} of node {name}",
+            cx.names.resolve(case.property),
+            case.equals
+        );
+        for field in &case.fields {
+            if fields.iter().any(|f| f.name == field.name) {
+                let spelled = cx.names.resolve(field.name).to_owned();
+                cx.diags.error(
+                    CASE_SHADOWS_COMMON,
+                    field.site,
+                    &[&spelled, &label, "names a field the node binds in common"],
+                );
+            }
+        }
+        // A case children rule naming a common one is refused where the
+        // node's scope is built, beside the case bindings that consume
+        // children — one check for the whole child namespace.
     }
     if !effects.is_empty() && role != Some(Role::ContextControl) {
         cx.diags.error(
@@ -694,12 +716,16 @@ fn value_from_path_block(
 }
 
 /// A `cases` block: the property-value dispatch that selects the type a
-/// node binds as, top-down, first match winning.
+/// node binds as, top-down, first match winning. A case body may carry
+/// `field` and `children` binding declarations that add to the node's
+/// common ones exactly while that case matches; one naming what a common
+/// binding of the same node names is rejected here.
 fn cases_block(
     cx: &mut Cx<'_>,
     doc: usize,
     node: &SyntaxNode,
     owner: &str,
+    typed: bool,
     cases: &mut Vec<CaseRule>,
     otherwise: &mut Option<TypeExpr>,
 ) {
@@ -714,7 +740,7 @@ fn cases_block(
                 let property = part.string_prop(cx, "property");
                 let equals = part.value_prop("equals");
                 let ty = part.string_prop(cx, "type");
-                part.finish_leaf(cx);
+                part.finish(cx);
                 if property.is_none() {
                     cx.missing(child_site, "case", "property");
                     continue;
@@ -740,10 +766,45 @@ fn cases_block(
                 let Some(ty) = cx.type_expr(child_site, &ty) else {
                     continue;
                 };
+                let label = format!("case {property}={equals:?} of {owner}");
+                let mut fields: Vec<FieldBinding> = Vec::new();
+                let mut children: Vec<ChildRule> = Vec::new();
+                for body in &child.children {
+                    let body_site = Site::new(doc, body.span);
+                    match body.name.as_str() {
+                        "field" => {
+                            let Some(field) = field_binding(cx, doc, body, &label, typed) else {
+                                continue;
+                            };
+                            if let Some(earlier) = fields.iter().find(|f| f.name == field.name) {
+                                let spelled = cx.names.resolve(field.name).to_owned();
+                                let sites = (body_site, earlier.site);
+                                duplicate_key(&mut cx.diags, sites, &spelled, "case.fields");
+                                continue;
+                            }
+                            fields.push(field);
+                        }
+                        "children" => {
+                            let Some(rule) = child_rule(cx, doc, body, &label) else {
+                                continue;
+                            };
+                            if let Some(earlier) = children.iter().find(|r| r.name == rule.name) {
+                                let spelled = cx.names.resolve(rule.name).to_owned();
+                                let sites = (body_site, earlier.site);
+                                duplicate_key(&mut cx.diags, sites, &spelled, "case.children");
+                                continue;
+                            }
+                            children.push(rule);
+                        }
+                        _ => cx.unknown(doc, body, "case"),
+                    }
+                }
                 cases.push(CaseRule {
                     property: cx.names.intern(&property),
                     equals,
                     ty,
+                    fields,
+                    children,
                     site: child_site,
                 });
             }

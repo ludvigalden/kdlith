@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "A matched case's bindings add to the node's common ones: a funnel-kind figure binds the common id, kind, and title beside the case's depth property and keyed sections, and vet data exits 0 with the record carrying the case surface alone",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/caseshared.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"type_name\":\"Figure\""
+    ]
+  }
+}

@@ -140,12 +140,16 @@ dialect kdlith version="0" {
         }
 
         // One case: when the named property is present and scalar-equal
-        // to equals, the node binds as type. Present but unequal falls
-        // through.
+        // to equals, the node binds as type, and the case's own field
+        // and children bindings add to the node's common ones for that
+        // instance. A case-level binding naming what a common binding of
+        // the same node names is rejected when the definition compiles.
         object CaseRule {
             field property FieldName
             field equals ValueExpr
             field type TypeExpression
+            field fields "ordered-map<FieldName, FieldBinding>"
+            field children "ordered-map<NodeName, ChildRule>"
         }
 
         // The fallback of a case dispatch: the type a node binds as when
@@ -433,7 +437,10 @@ dialect kdlith version="0" {
     // unconsumed arguments, and contradictory ownership of children. A
     // qualify-from=SLOT names the context slot this field's unqualified
     // references qualify from, overriding the field's reference type.
-    node field type=FieldBinding parent=node {
+    // Under a case, the binding adds to the node's common ones exactly
+    // while that case matches.
+    node field type=FieldBinding {
+        parents node case
         field type arg=1
         field arg property=arg
         field property property=property
@@ -535,7 +542,8 @@ dialect kdlith version="0" {
         field name arg=0
     }
 
-    node children type=ChildRule parent=node {
+    node children type=ChildRule {
+        parents node case
         field min-occurs property=min-occurs
         field max-occurs property=max-occurs
         field branches {
@@ -666,7 +674,9 @@ dialect kdlith version="0" {
 
     // A case dispatch: cases evaluate top-down on the node's
     // properties; the first match selects the logical type the whole
-    // node binds as, and otherwise is the fallback.
+    // node binds as, and otherwise is the fallback. A matched case's own
+    // field and children bindings add to the node's common ones; a case
+    // that does not match contributes nothing.
     node cases type=CaseDispatch parent=node {
         field cases {
             from {
@@ -682,6 +692,20 @@ dialect kdlith version="0" {
         field property property=property
         field equals property=equals
         field type property=type
+        field fields {
+            from {
+                entries field key="arg(0)" value=FieldBinding
+            }
+            duplicate-keys reject
+        }
+        field children {
+            from {
+                entries children key="arg(0)" value=ChildRule
+            }
+            duplicate-keys reject
+        }
+        children field
+        children children
     }
 
     node otherwise type=Otherwise parent=cases {

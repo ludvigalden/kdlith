@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A matched case's children rule enforces its bounds: a funnel-kind figure with no section child fails the case's min-occurs 1 under the cardinality code",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

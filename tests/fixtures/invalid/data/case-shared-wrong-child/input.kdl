@@ -1,0 +1,3 @@
+figure "w1" kind=funnel title="Wrong surface" {
+    segment "Nope" share=1
+}

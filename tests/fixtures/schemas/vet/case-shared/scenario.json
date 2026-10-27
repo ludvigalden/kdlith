@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A schema whose node carries common bindings plus two cases that each add their own field and children bindings compiles clean: the funnel case adds a depth property and keyed sections, the bar case a note property and a segments list, and otherwise binds the common surface alone",
+  "args": [
+    "vet",
+    "schema",
+    "{fx-suite}/processing/bind/caseshared.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

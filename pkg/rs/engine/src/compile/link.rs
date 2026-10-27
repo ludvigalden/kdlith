@@ -352,6 +352,12 @@ fn node_refs(cx: &mut Cx<'_>, bindings: &BindingCatalog, symbols: &SymbolCatalog
     if let Some(binding) = &node.path_value {
         path_value(cx, symbols, node, &label, binding);
     }
+    let carries = node
+        .cases
+        .iter()
+        .any(|case| !case.fields.is_empty() || !case.children.is_empty());
+    // Each selector property reports the guard at most once.
+    let mut guarded: Vec<Sym> = Vec::new();
     for case in &node.cases {
         let Some(binding) = node.fields.iter().find(|f| f.name == case.property) else {
             let spelled = format!("{} of node {label}", cx.names.resolve(case.property));
@@ -369,6 +375,56 @@ fn node_refs(cx: &mut Cx<'_>, bindings: &BindingCatalog, symbols: &SymbolCatalog
                 &label,
                 &format!("case property {spelled} is not bound from a property"),
             );
+        }
+        // A case that declares bindings makes its property the admission
+        // authority for children while the node is still open, so the
+        // value must be final in the header: no context fill, no
+        // declared default.
+        if carries && !guarded.contains(&case.property) {
+            guarded.push(case.property);
+            let spelled = cx.names.resolve(case.property).to_owned();
+            if binding
+                .sources
+                .iter()
+                .any(|s| matches!(s, Source::Context { .. }))
+            {
+                cx.malformed(
+                    case.site,
+                    &label,
+                    &format!(
+                        "case property {spelled} reads a context slot, but a case of this node declares bindings"
+                    ),
+                );
+            }
+            if let Some(ty) = node.ty
+                && object_field_defaults(cx, ty, case.property)
+            {
+                cx.malformed(
+                    case.site,
+                    &label,
+                    &format!(
+                        "case property {spelled} defaults through type {}, but a case of this node declares bindings",
+                        cx.names.resolve(ty)
+                    ),
+                );
+            }
+        }
+        for field in &case.fields {
+            if let Some(fields) = &object
+                && !fields.contains(&field.name)
+            {
+                let ty = node.ty.map_or("", |ty| cx.names.resolve(ty));
+                let spelled = format!("{} of type {ty}", cx.names.resolve(field.name));
+                unresolved(cx, field.site, "field", &spelled);
+            }
+            if let Some(ty) = &field.ty {
+                expr(cx, symbols, field.site, ty, &[]);
+            }
+            for source in &field.sources {
+                if let Source::Context { slot, .. } = source {
+                    slot_ref(cx, field.site, *slot);
+                }
+            }
         }
         expr(cx, symbols, case.site, &case.ty, &[]);
     }
@@ -500,6 +556,24 @@ pub(crate) fn admits_only_strings(
 }
 
 /// The field names of a node's `type=`, which must be a declared object.
+/// Whether the object type's field named `name` declares a fallback
+/// default, so a node holding none still finishes with a value.
+fn object_field_defaults(cx: &Cx<'_>, ty: Sym, name: Sym) -> bool {
+    cx.types
+        .lookup(ty)
+        .and_then(|id| cx.types.get(id))
+        .and_then(|decl| match &decl.kind {
+            TypeKind::Object(object) => Some(
+                object
+                    .fields
+                    .iter()
+                    .any(|field| field.name == name && field.fallback.is_some()),
+            ),
+            _ => None,
+        })
+        .unwrap_or(false)
+}
+
 fn object_fields(cx: &mut Cx<'_>, site: Site, label: &str, ty: Sym) -> Option<Vec<Sym>> {
     let decl = cx.types.lookup(ty).and_then(|id| cx.types.get(id));
     if let Some(TypeKind::Object(object)) = decl.map(|decl| &decl.kind) {

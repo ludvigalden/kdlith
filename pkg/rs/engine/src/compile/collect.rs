@@ -31,9 +31,9 @@ use crate::definition::{
     SourceContextMode, SourceFieldDecl,
 };
 use crate::diag::{
-    EMPTY_WHEN_COMPOSITION, FALLBACK_LESS_WHEN_RULE, INVALID_BINDING, INVALID_OPEN_WORLD_ARM,
-    INVALID_QUALIFY_FROM, LOCATION_NOT_ADMITTED, NOT_INSTALLED, OVERLAPPING_WHEN_BRANCHES,
-    SECOND_DEFAULT, Site, duplicate, duplicate_key,
+    CASE_SHADOWS_COMMON, EMPTY_WHEN_COMPOSITION, FALLBACK_LESS_WHEN_RULE, INVALID_BINDING,
+    INVALID_OPEN_WORLD_ARM, INVALID_QUALIFY_FROM, LOCATION_NOT_ADMITTED, NOT_INSTALLED,
+    OVERLAPPING_WHEN_BRANCHES, SECOND_DEFAULT, Site, duplicate, duplicate_key,
 };
 use crate::names::Sym;
 use crate::symbols::SymbolCatalog;
@@ -619,10 +619,54 @@ fn node(cx: &mut Cx<'_>, site: Site, input: &NodeInput) {
         let Some(ty) = cx.type_expr(site, &case.ty) else {
             continue;
         };
+        let label = format!("case {}={:?} of node {name}", case.property, case.equals);
+        let mut case_fields = Vec::new();
+        for field in &case.fields {
+            let Some(field) = field_binding(cx, site, field, &label, typed) else {
+                continue;
+            };
+            if case_fields
+                .iter()
+                .any(|held: &FieldBinding| held.name == field.name)
+            {
+                let spelled = cx.names.resolve(field.name).to_owned();
+                cx.diags.error(
+                    INVALID_BINDING,
+                    site,
+                    &[&label, &format!("field {spelled} binds twice in one case")],
+                );
+                continue;
+            }
+            case_fields.push(field);
+        }
+        let mut case_children = Vec::new();
+        for rule in &case.children {
+            let Some(rule) = child_rule(cx, site, rule, &label) else {
+                continue;
+            };
+            if case_children
+                .iter()
+                .any(|held: &ChildRule| held.name == rule.name)
+            {
+                let spelled = cx.names.resolve(rule.name).to_owned();
+                cx.diags.error(
+                    INVALID_BINDING,
+                    site,
+                    &[
+                        &label,
+                        &format!("children {spelled} is ruled twice in one case"),
+                    ],
+                );
+                continue;
+            }
+            case_children.push(rule);
+        }
         cases.push(CaseRule {
             property: cx.names.intern(&case.property),
             equals: case.equals.clone(),
             ty,
+            fields: case_fields,
+            children: case_children,
             site,
         });
     }
@@ -679,6 +723,28 @@ fn node(cx: &mut Cx<'_>, site: Site, input: &NodeInput) {
         (Some(true), false) => Placement::RootAndUnder(under),
         (_, false) => Placement::Under(under),
     };
+    // A case binding naming what the node binds in common is ambiguous:
+    // fail closed before any binding decides between them.
+    for case in &cases {
+        let label = format!(
+            "case {}={:?} of node {name}",
+            cx.names.resolve(case.property),
+            case.equals
+        );
+        for field in &case.fields {
+            if fields.iter().any(|f| f.name == field.name) {
+                let spelled = cx.names.resolve(field.name).to_owned();
+                cx.diags.error(
+                    CASE_SHADOWS_COMMON,
+                    field.site,
+                    &[&spelled, &label, "names a field the node binds in common"],
+                );
+            }
+        }
+        // A case children rule naming a common one is refused where the
+        // node's scope is built, beside the case bindings that consume
+        // children — one check for the whole child namespace.
+    }
     cx.nodes.push(NodeDecl {
         name: cx.names.intern(&name),
         role,
@@ -706,8 +772,8 @@ fn node(cx: &mut Cx<'_>, site: Site, input: &NodeInput) {
 
 /// A schema-level `annotation NAME TYPE [required]` declaration: the
 /// name node declarations may attach, the type every value is checked
-/// against when the definition compiles, and whether the annotation is
-/// total. A name declared twice is a duplicate declaration.
+/// against at compile, and whether the annotation is total. A name
+/// declared twice is a duplicate.
 fn annotation_decl(cx: &mut Cx<'_>, site: Site, input: &AnnotationInput) {
     let name = cx.names.intern(&input.name);
     if let Some(first) = cx

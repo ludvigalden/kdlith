@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "The other case's bindings add the other surface: a bar-kind figure binds the common id, kind, and title beside the case's note property and segments list, and vet data exits 0",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/caseshared.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"type_name\":\"Figure\""
+    ]
+  }
+}

@@ -136,12 +136,16 @@ pub struct PathValueInput {
     pub field: String,
 }
 
-/// One case of a case dispatch, as declared.
+/// One case of a case dispatch, as declared: the property value that
+/// selects it, the type the node binds as, and the field and children
+/// bindings that add to the node's common ones while it matches.
 #[derive(Clone, Debug)]
 pub struct CaseInput {
     pub property: String,
     pub equals: Value,
     pub ty: String,
+    pub fields: Vec<FieldBindingInput>,
+    pub children: Vec<ChildRuleInput>,
 }
 
 /// A built-in string format and its width, as declared.

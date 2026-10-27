@@ -38,6 +38,7 @@ pub(crate) const FALLBACK_LESS_WHEN_RULE: &str = "KDLITH-SCH019";
 pub(crate) const INVALID_FIELD_CHILD_BINDING: &str = "KDLITH-SCH020";
 pub(crate) const INVALID_OPEN_WORLD_ARM: &str = "KDLITH-SCH021";
 pub(crate) const INVALID_QUALIFY_FROM: &str = "KDLITH-SCH022";
+pub(crate) const CASE_SHADOWS_COMMON: &str = "KDLITH-SCH023";
 pub(crate) const IMPORT_CYCLE: &str = "KDLITH-IMP002";
 pub(crate) const IMPORT_REPEATED: &str = "KDLITH-IMP003";
 pub(crate) const LOCATION_UNRESOLVED: &str = "KDLITH-LOC001";

@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A property one case's binding admits is refused under another case's kind: the bar case's note under a funnel-kind figure resolves to no binding in effect and the run fails with the unbound-entry code",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

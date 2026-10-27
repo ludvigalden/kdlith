@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "A document matching no case behaves as before the case bindings existed: a scatter-kind figure falls to otherwise and binds the common surface alone, with no case field or child admitted, and vet data exits 0",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/caseshared.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"type_name\":\"Figure\""
+    ]
+  }
+}

@@ -839,8 +839,22 @@ impl<'d, 's> Binder<'d, 's> {
         let mut values = Vec::with_capacity(count);
         let mut traces = Vec::with_capacity(count);
         let site = self.location(frame.span);
+        // A case-level field resolves only while its case matches. The
+        // dispatch is read once, from the common values that precede
+        // every case field, and the supplies parked against gated fields
+        // resolve with it before any gated field finalizes.
+        let mut matched: Option<Option<usize>> = None;
         for at in 0..count {
             let info = self.tables.decls[owner.index()].fields[at].clone();
+            if info.case.is_some() && matched.is_none() {
+                matched = Some(self.case_index(frame, &values));
+                self.resolve_parked(cx, frame, matched.flatten());
+            }
+            if info.case.is_some() && matched != Some(info.case) {
+                values.push(None);
+                traces.push(Trace::default());
+                continue;
+            }
             let explicit = frame.fields[at].take();
             let held = info
                 .context
@@ -1172,6 +1186,81 @@ impl<'d, 's> Binder<'d, 's> {
                     .collect(),
             ),
             _ => None,
+        }
+    }
+
+    /// The case a node's dispatch selects, read from the values it
+    /// holds: what per-case child admission consults as children arrive.
+    /// Compile keeps it equal to the closing `select_case` wherever a
+    /// case declares bindings.
+    fn case_index(&self, frame: &BindFrame, values: &[Option<Value>]) -> Option<usize> {
+        let info = &self.tables.decls[frame.owner.index()];
+        for (at, case) in info.cases.iter().enumerate() {
+            let held = info
+                .fields
+                .iter()
+                .position(|field| field.name == case.property)
+                .and_then(|at| values.get(at))
+                .is_some_and(|value| value.as_ref() == Some(&case.equals));
+            if held {
+                return Some(at);
+            }
+        }
+        None
+    }
+
+    /// The case a node's header supplies select so far: the explicit
+    /// values its fields hold, final wherever a case carries bindings.
+    fn frame_case(&self, frame: &BindFrame) -> Option<usize> {
+        let info = &self.tables.decls[frame.owner.index()];
+        for (at, case) in info.cases.iter().enumerate() {
+            let held = info
+                .fields
+                .iter()
+                .position(|field| field.name == case.property)
+                .and_then(|at| frame.fields.get(at))
+                .is_some_and(|supplied| {
+                    supplied
+                        .as_ref()
+                        .is_some_and(|supplied| supplied.value == case.equals)
+                });
+            if held {
+                return Some(at);
+            }
+        }
+        None
+    }
+
+    /// Whether a field's binding is case-gated, and which case admits it.
+    fn gated(&self, frame: &BindFrame, bind: Bind) -> Option<usize> {
+        self.tables.decls[frame.owner.index()].fields[bind.field].case
+    }
+
+    /// Whether the parent's dispatch admits a gated child bind: a field a
+    /// case declares consumes the child only while that case matches.
+    fn admits_case(&self, parent: &BindFrame, bind: Bind) -> bool {
+        self.tables.decls[parent.owner.index()]
+            .fields
+            .get(bind.field)
+            .and_then(|info| info.case)
+            .is_none_or(|case| self.frame_case(parent) == Some(case))
+    }
+
+    /// Resolve the supplies parked against a node's case-gated fields:
+    /// those of the matched case bind through the ordinary take path; the
+    /// rest name no binding that is in effect, exactly as a supply no
+    /// binding admits at all.
+    fn resolve_parked(&mut self, cx: &mut Cx<'_>, frame: &mut BindFrame, matched: Option<usize>) {
+        for (bind, value, span, what) in std::mem::take(&mut frame.parked) {
+            if self
+                .gated(frame, bind)
+                .is_some_and(|case| Some(case) == matched)
+            {
+                self.take(cx, frame, bind, value, span);
+            } else {
+                let node = self.name(frame.name);
+                self.diagnose(cx, UNBOUND_ENTRY, span, &[&what, node]);
+            }
         }
     }
 
@@ -2781,7 +2870,11 @@ impl<'d, 's> Binder<'d, 's> {
         let Some(parent) = parent else {
             return;
         };
-        let Some(bind) = parent.table(&self.tables).and_then(|t| t.child(frame.name)) else {
+        let bind = parent
+            .table(&self.tables)
+            .and_then(|t| t.child(frame.name))
+            .filter(|bind| self.admits_case(parent, *bind));
+        let Some(bind) = bind else {
             if !self.expansion_point(cx, parent, frame, &values) {
                 self.reject_unconsumed(cx, parent, frame);
             }
@@ -3081,7 +3174,11 @@ impl<'d, 's> Binder<'d, 's> {
         let Some(parent) = parent else {
             return;
         };
-        let Some(bind) = parent.table(&self.tables).and_then(|t| t.child(frame.name)) else {
+        let bind = parent
+            .table(&self.tables)
+            .and_then(|t| t.child(frame.name))
+            .filter(|bind| self.admits_case(parent, *bind));
+        let Some(bind) = bind else {
             return;
         };
         match frame.scalar.take() {
@@ -3207,7 +3304,16 @@ impl<'s> Processor for Binder<'_, 's> {
             return Disposition::Skip;
         }
         let parent_owner = parent.as_ref().map(|p| p.owner);
-        let (kind, owner, inner) = match (scope.child(sym), parent_owner) {
+        // A child no common binding admits may be one a case of the
+        // parent declares: the header's dispatch has resolved by the time
+        // children arrive, and only the matched case's plan admits it.
+        let case_plan = match (scope.child(sym), parent.as_deref()) {
+            (None, Some(frame)) => self
+                .frame_case(frame)
+                .and_then(|at| scope.case_child(sym, at)),
+            _ => None,
+        };
+        let (kind, owner, inner) = match (scope.child(sym).or(case_plan), parent_owner) {
             (Some(ChildPlan::Declared { decl, key }), _) => (
                 Kind::Declared { decl, key },
                 decl,
@@ -3317,7 +3423,14 @@ impl<'s> Processor for Binder<'_, 's> {
                 return;
             }
             match frame.table(&self.tables).and_then(|table| table.arg(at)) {
-                Some(bind) => self.take(cx, frame, bind, entry.value, span),
+                Some(bind) => {
+                    if self.gated(frame, bind).is_some() {
+                        let what = format!("argument {at}");
+                        frame.parked.push((bind, entry.value, span, what));
+                        return;
+                    }
+                    self.take(cx, frame, bind, entry.value, span);
+                }
                 None => {
                     // A node with a dependent or path-typed value binding
                     // keeps its remaining arguments as its payload.
@@ -3356,6 +3469,11 @@ impl<'s> Processor for Binder<'_, 's> {
         match (sym, bind) {
             (Some(sym), Some(bind)) => {
                 frame.props.push(sym);
+                if self.gated(frame, bind).is_some() {
+                    let what = format!("property {name}");
+                    frame.parked.push((bind, entry.value, span, what));
+                    return;
+                }
                 self.take(cx, frame, bind, entry.value, span);
             }
             (Some(sym), None) if self.admits_compact(frame, sym) => {

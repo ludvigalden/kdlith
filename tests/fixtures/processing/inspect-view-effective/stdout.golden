@@ -146,8 +146,8 @@
 {"item":"effective","data":{"section":"node","entry":{"name":"case","parents":["cases"],"role":null,"type":"CaseRule","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"cases","parents":["node"],"role":null,"type":"CaseDispatch","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"child","parents":["child","children","from"],"role":null,"type":"ChildSource","profile":null}}}
+{"item":"effective","data":{"section":"node","entry":{"name":"children","parents":["case","node"],"role":null,"type":"ChildRule","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"children","parents":["child","children","from"],"role":null,"type":"ChildrenSource","profile":null}}}
-{"item":"effective","data":{"section":"node","entry":{"name":"children","parents":["node"],"role":null,"type":"ChildRule","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"children-group","parents":["from"],"role":null,"type":"ChildrenGroupSource","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"children-group","parents":["node"],"role":null,"type":"ChildRule","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"clear","parents":["effects"],"role":null,"type":"ClearEffect","profile":null}}}
@@ -167,7 +167,7 @@
 {"item":"effective","data":{"section":"node","entry":{"name":"exactly-one-field","parents":["constraints"],"role":null,"type":"ExactlyOneField","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"expand","parents":["from"],"role":null,"type":"ExpandSource","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"fallback","parents":["field"],"role":null,"type":null,"profile":null}}}
-{"item":"effective","data":{"section":"node","entry":{"name":"field","parents":["node"],"role":null,"type":"FieldBinding","profile":null}}}
+{"item":"effective","data":{"section":"node","entry":{"name":"field","parents":["case","node"],"role":null,"type":"FieldBinding","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"field","parents":["object"],"role":null,"type":"FieldDef","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"field","parents":["source-context"],"role":null,"type":"SourceFieldDef","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"file-name","parents":["match"],"role":null,"type":"FileNameMatch","profile":null}}}

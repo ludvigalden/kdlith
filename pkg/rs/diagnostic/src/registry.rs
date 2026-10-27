@@ -742,6 +742,16 @@ pub const CODES: &[CodeDefinition] = &[
         correction: "Name a declared context slot whose type admits only strings",
         retired: false,
     },
+    CodeDefinition {
+        code: "KDLITH-SCH023",
+        label: "case-binding-shadows-common",
+        severity: Severity::Error,
+        exit_class: 1,
+        trigger: "a case of a node's cases block declares a field or children binding naming what the node binds in common, so which binding wins would be ambiguous",
+        message_template: "<name> of <case>: <reason>",
+        correction: "Bind the name once in common, or give the case binding a name no common binding takes",
+        retired: false,
+    },
     // BND
     CodeDefinition {
         code: "KDLITH-BND001",

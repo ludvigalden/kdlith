@@ -1,0 +1,4 @@
+figure "f1" kind=funnel title="Coverage" depth=3 {
+    section "alpha" name="Top" weight=40
+    section "beta" name="Middle" weight=60
+}

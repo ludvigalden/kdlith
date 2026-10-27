@@ -132,12 +132,17 @@ object_type! {
 }
 
 object_type! {
-    /// One case: when the named property is present and scalar-equal to
-    /// equals, the node binds as the type.
+    /// One case: when the named property is present and scalar-equal
+    /// to equals, the node binds as type, and the case's own field
+    /// and children bindings add to the node's common ones for that
+    /// instance. A case-level binding naming what a common binding of
+    /// the same node names is rejected when the definition compiles.
     pub struct CaseRule {
         "property" => property: FieldName,
         "equals" => equals: ValueExpr,
         "type" => ty: TypeExpression,
+        "fields" => fields: OrderedMap<FieldName, FieldBinding>,
+        "children" => children: OrderedMap<NodeName, ChildRule>,
     }
 }
 

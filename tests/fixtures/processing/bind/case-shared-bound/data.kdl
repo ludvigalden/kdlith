@@ -1,0 +1,7 @@
+figure "f1" kind=funnel title="Coverage" depth=3 {
+    section "alpha" name="Top" weight=40
+}
+figure "b1" kind=bar title="Composition" note="sorted" {
+    segment "Core" share=55
+}
+figure "s1" kind=scatter title="Scatter"

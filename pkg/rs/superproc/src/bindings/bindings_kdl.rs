@@ -18,7 +18,9 @@ pub(crate) const NODES: &[NodeShape] = &[
         .under(&["schema"])
         .declaration()
         .ty("NodeGroupDef"),
-    NodeShape::new("field").under(&["node"]).ty("FieldBinding"),
+    NodeShape::new("field")
+        .under(&["node", "case"])
+        .ty("FieldBinding"),
     NodeShape::new("argument")
         .under(SOURCE_PARENTS)
         .ty("ArgumentSource"),
@@ -44,7 +46,9 @@ pub(crate) const NODES: &[NodeShape] = &[
     NodeShape::new("children-group")
         .under(&["from"])
         .ty("ChildrenGroupSource"),
-    NodeShape::new("children").under(&["node"]).ty("ChildRule"),
+    NodeShape::new("children")
+        .under(&["node", "case"])
+        .ty("ChildRule"),
     NodeShape::new("children-group")
         .under(&["node"])
         .ty("ChildRule"),

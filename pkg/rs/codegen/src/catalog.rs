@@ -48,8 +48,11 @@ pub(crate) fn type_doc(name: &str) -> Option<&'static [&'static str]> {
             "property value, top-down with first match winning.",
         ],
         "CaseRule" => &[
-            "One case: when the named property is present and scalar-equal to",
-            "equals, the node binds as the type.",
+            "One case: when the named property is present and scalar-equal",
+            "to equals, the node binds as type, and the case's own field",
+            "and children bindings add to the node's common ones for that",
+            "instance. A case-level binding naming what a common binding of",
+            "the same node names is rejected when the definition compiles.",
         ],
         "Otherwise" => &[
             "The fallback of a case dispatch: the type a node binds as when no",

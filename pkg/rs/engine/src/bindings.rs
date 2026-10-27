@@ -261,13 +261,20 @@ impl BindingCodec {
 }
 
 /// One case of a case dispatch: when the named property is present and
-/// scalar-equal to `equals`, the node binds as `ty`.
+/// scalar-equal to `equals`, the node binds as `ty`, and the case's own
+/// field and children bindings add to the node's common ones for that
+/// instance. A case-level binding naming what a common binding names is
+/// rejected when the definition compiles.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct CaseRule {
     pub property: Sym,
     pub equals: Value,
     pub ty: TypeExpr,
+    /// The bindings this case adds when it matches.
+    pub fields: Vec<FieldBinding>,
+    /// The children rules this case enforces when it matches.
+    pub children: Vec<ChildRule>,
     pub site: Site,
 }
 
@@ -512,6 +519,10 @@ pub struct Scope {
     /// The owning node's properties the bindings consume.
     pub properties: Vec<Sym>,
     pub(crate) plans: BTreeMap<Sym, ChildPlan>,
+    /// The children case-level bindings consume, keyed by name then by
+    /// the case whose match admits them: a stake another case or no
+    /// match at all leaves unadmitted.
+    pub(crate) case_plans: BTreeMap<Sym, BTreeMap<usize, ChildPlan>>,
     /// The children that may also be spelled as a property carrying
     /// their one argument.
     pub(crate) compact: Vec<Sym>,
@@ -521,6 +532,12 @@ impl Scope {
     /// The plan for a child; `None` when no binding admits it here.
     pub fn child(&self, name: Sym) -> Option<ChildPlan> {
         self.plans.get(&name).copied()
+    }
+
+    /// The plan a matched case's own binding gives a child: only that
+    /// case's match admits it.
+    pub fn case_child(&self, name: Sym, case: usize) -> Option<ChildPlan> {
+        self.case_plans.get(&name)?.get(&case).copied()
     }
 
     /// Whether a property named `name` spells a child of that name.

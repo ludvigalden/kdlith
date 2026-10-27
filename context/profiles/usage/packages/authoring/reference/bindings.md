@@ -73,6 +73,44 @@ object type binds closed: its required fields are checked as the
 node's own (`KDLITH-BND004`) and a field the selected type does not
 declare is refused (`KDLITH-BND014`).
 
+A case body may also carry `field` and `children` binding
+declarations, adding to the node's common ones exactly while that
+case matches:
+
+```kdl
+node figure role=record type=Figure {
+    field id arg=0
+    field kind property=kind
+    field title property=title
+    cases {
+        case property=kind equals=funnel type=Figure {
+            field depth property=depth
+            children section min-occurs=1
+        }
+        case property=kind equals=bar type=Figure {
+            field note property=note
+            children segment min-occurs=1
+        }
+        otherwise type=Figure
+    }
+}
+```
+
+The common bindings always bind, for every case. A matched case's
+bindings add to them; under any other case — or `otherwise`, or no
+match at all — they contribute nothing: another case's child is an
+unknown node (`KDLITH-BND001`) and another case's property an unbound
+entry (`KDLITH-BND005`). A case-level children rule enforces its
+bounds only under its own case, composing with the rule's `when`
+branches. A field one case binds alone should be optional in the
+node's type, since it is absent wherever that case does not match.
+A case-level binding naming what the node binds in common — a field
+name, or a child name a common rule or field source takes — is
+refused at compile (`KDLITH-SCH023`). A node whose cases declare
+bindings settles its dispatch in the header: every case property
+binds from a property and reads no context slot or type-declared
+default (`KDLITH-DLC005`).
+
 A `value` block binds a node's remaining payload against a
 referenced declaration's member (`against target=FIELD member=FIELD`
 plus a `codec` such as `argument-tail`, `fixture-value`, or

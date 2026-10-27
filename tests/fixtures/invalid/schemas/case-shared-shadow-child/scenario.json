@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A case-level children rule naming a child the node binds in common is refused at schema compile: the bar case's segment rule beside a common segment rule fails with the case-binding-shadows-common code",
+  "args": [
+    "vet",
+    "schema",
+    "schema.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

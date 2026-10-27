@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A case-level field binding naming a field the node binds in common is refused at schema compile: the funnel case's title binding shadows the common title and the schema fails with the case-binding-shadows-common code",
+  "args": [
+    "vet",
+    "schema",
+    "schema.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

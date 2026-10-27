@@ -65,7 +65,11 @@ pub(crate) fn run(cx: &mut Cx<'_>, bindings: &BindingCatalog) {
     let mut seen: Vec<(Site, Sym, Value)> = Vec::new();
     for (_, node) in bindings.iter() {
         let label = cx.names.resolve(node.name).to_owned();
-        for rule in &node.children {
+        let rules = node
+            .children
+            .iter()
+            .chain(node.cases.iter().flat_map(|case| &case.children));
+        for rule in rules {
             let mut leaves = Vec::new();
             for branch in &rule.branches {
                 every_leaf(&branch.condition, &mut leaves);

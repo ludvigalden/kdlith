@@ -5,12 +5,12 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::bindings::{
-    Arity, BindingCatalog, ChildPlan, ChildRule, DescendantRule, NodeDecl, NodeDeclId, ParentKey,
-    Scope, ScopeId, SequenceDecl, SequenceStep, Source,
+    Arity, BindingCatalog, ChildPlan, ChildRule, Condition, DescendantRule, FieldBinding, NodeDecl,
+    NodeDeclId, ParentKey, Scope, ScopeId, SequenceDecl, SequenceStep, Source, WhenBranch,
 };
 use crate::compile::Cx;
 use crate::definition::CheckScope;
-use crate::diag::{CONFLICTING_BINDING, INVALID_BINDING, Site, duplicate};
+use crate::diag::{CASE_SHADOWS_COMMON, CONFLICTING_BINDING, INVALID_BINDING, Site, duplicate};
 use crate::names::Sym;
 use crate::overlap::{Consumed, overlaps};
 use crate::structure::{Occurs, OrderRule, ScopeRules};
@@ -44,6 +44,16 @@ struct ScopeInput<'s> {
     descendants: Vec<DescendantRule>,
     sequence: Option<SequenceDecl>,
     keys: Vec<u64>,
+}
+
+/// One case's additions to a node's scope: its index in the node's case
+/// list, its field bindings, and its children rules.
+struct CaseInput<'s> {
+    at: usize,
+    property: Sym,
+    equals: kdlith_model::Value,
+    fields: &'s [FieldBinding],
+    children: &'s [ChildRule],
 }
 
 pub(crate) fn build(cx: &mut Cx<'_>) -> BindingCatalog {
@@ -80,7 +90,19 @@ pub(crate) fn build(cx: &mut Cx<'_>) -> BindingCatalog {
             sequence: decl.sequence.clone(),
             keys: keys.get(&at).cloned().unwrap_or_default(),
         };
-        decl_scopes.push(builder.scope(cx, input));
+        let cases: Vec<CaseInput<'_>> = decl
+            .cases
+            .iter()
+            .enumerate()
+            .map(|(at, case)| CaseInput {
+                at,
+                property: case.property,
+                equals: case.equals.clone(),
+                fields: &case.fields,
+                children: &case.children,
+            })
+            .collect();
+        decl_scopes.push(builder.scope(cx, input, &cases));
     }
     let root = builder.root(cx);
     BindingCatalog {
@@ -196,6 +218,7 @@ impl Builder<'_> {
             arity: Arity::default(),
             properties: Vec::new(),
             plans,
+            case_plans: BTreeMap::new(),
             compact: Vec::new(),
         })
     }
@@ -206,7 +229,12 @@ impl Builder<'_> {
         id
     }
 
-    fn scope(&mut self, cx: &mut Cx<'_>, input: ScopeInput<'_>) -> ScopeId {
+    fn scope(
+        &mut self,
+        cx: &mut Cx<'_>,
+        input: ScopeInput<'_>,
+        cases: &[CaseInput<'_>],
+    ) -> ScopeId {
         let id = self.push(Scope {
             name: input.owner,
             decl: input.decl,
@@ -214,10 +242,12 @@ impl Builder<'_> {
             arity: Arity::default(),
             properties: Vec::new(),
             plans: BTreeMap::new(),
+            case_plans: BTreeMap::new(),
             compact: Vec::new(),
         });
-        let (arity, properties) = arguments_and_properties(cx, &input);
-        let (plans, mut rules, compact) = self.children(cx, &input);
+        let (arity, properties) = arguments_and_properties(cx, &input, cases);
+        let (plans, rules, compact) = self.children(cx, &input);
+        let (case_plans, mut rules) = self.case_bindings(cx, &input, cases, rules);
         for name in &compact {
             if properties.contains(name) {
                 let spelled = cx.names.resolve(*name);
@@ -253,6 +283,7 @@ impl Builder<'_> {
         scope.arity = arity;
         scope.properties = properties;
         scope.plans = plans;
+        scope.case_plans = case_plans;
         scope.rules = rules;
         scope.compact = compact;
         id
@@ -354,6 +385,212 @@ impl Builder<'_> {
             }
         }
         (plans, rules, compact)
+    }
+
+    /// Compile a node's case-level bindings into its scope: one child
+    /// plan per (case, child name), and one conditional counter per
+    /// name whose bounds the matching case selects. A name the common
+    /// bindings take (ruled or consumed) is refused.
+    fn case_bindings(
+        &mut self,
+        cx: &mut Cx<'_>,
+        input: &ScopeInput<'_>,
+        cases: &[CaseInput<'_>],
+        mut rules: ScopeRules,
+    ) -> (BTreeMap<Sym, BTreeMap<usize, ChildPlan>>, ScopeRules) {
+        let mut plans: BTreeMap<Sym, BTreeMap<usize, ChildPlan>> = BTreeMap::new();
+        if cases.is_empty() {
+            return (plans, rules);
+        }
+        let common: Vec<Sym> = {
+            let mut names: Vec<Sym> = input.rules.iter().map(|rule| rule.name).collect();
+            for usage in &input.uses {
+                let name = match usage.source {
+                    Source::Child { name, .. }
+                    | Source::Children { name, .. }
+                    | Source::Entries { node: name, .. } => *name,
+                    _ => continue,
+                };
+                if !names.contains(&name) {
+                    names.push(name);
+                }
+            }
+            names
+        };
+        // One case's stake in one child name: what its fields consume,
+        // and the rule it declares.
+        struct Stake<'s> {
+            case: usize,
+            property: Sym,
+            equals: kdlith_model::Value,
+            consumed: Vec<ChildUse<'s>>,
+            rule: Option<&'s ChildRule>,
+        }
+        let mut stakes: BTreeMap<Sym, Vec<Stake<'_>>> = BTreeMap::new();
+        for case in cases {
+            let mut consumed: Vec<(Sym, ChildUse<'_>)> = Vec::new();
+            for binding in case.fields {
+                for source in &binding.sources {
+                    let (name, child) = match source {
+                        Source::Child {
+                            name,
+                            sources,
+                            compact,
+                        }
+                        | Source::Children {
+                            name,
+                            sources,
+                            compact,
+                        } => (
+                            *name,
+                            ChildUse {
+                                field: binding.name,
+                                site: binding.site,
+                                many: matches!(source, Source::Children { .. }),
+                                nested: sources,
+                                entries: None,
+                                compact: *compact,
+                            },
+                        ),
+                        Source::Entries { node, key, value } => (
+                            *node,
+                            ChildUse {
+                                field: binding.name,
+                                site: binding.site,
+                                many: true,
+                                nested: &[],
+                                entries: Some((*key, *value)),
+                                compact: false,
+                            },
+                        ),
+                        _ => continue,
+                    };
+                    if let Some(slot) = consumed.iter_mut().find(|(held, _)| *held == name) {
+                        slot.1 = child;
+                        continue;
+                    }
+                    consumed.push((name, child));
+                }
+            }
+            for name in consumed.iter().map(|(name, _)| *name) {
+                let stake = Stake {
+                    case: case.at,
+                    property: case.property,
+                    equals: case.equals.clone(),
+                    consumed: consumed
+                        .iter()
+                        .filter(|(held, _)| *held == name)
+                        .map(|(_, child)| ChildUse {
+                            field: child.field,
+                            site: child.site,
+                            many: child.many,
+                            nested: child.nested,
+                            entries: child.entries,
+                            compact: child.compact,
+                        })
+                        .collect(),
+                    rule: case.children.iter().find(|rule| rule.name == name),
+                };
+                stakes.entry(name).or_default().push(stake);
+            }
+            for rule in case.children {
+                if stakes.contains_key(&rule.name) {
+                    continue;
+                }
+                stakes.entry(rule.name).or_default().push(Stake {
+                    case: case.at,
+                    property: case.property,
+                    equals: case.equals.clone(),
+                    consumed: Vec::new(),
+                    rule: Some(rule),
+                });
+            }
+        }
+        for (name, stakes) in stakes {
+            let spelled = cx.names.resolve(name).to_owned();
+            if common.contains(&name) {
+                for stake in &stakes {
+                    cx.diags.error(
+                        CASE_SHADOWS_COMMON,
+                        input.site,
+                        &[
+                            &spelled,
+                            &format!(
+                                "case {}={:?} of node {}",
+                                cx.names.resolve(stake.property),
+                                stake.equals,
+                                input.label
+                            ),
+                            "names a child the node binds in common",
+                        ],
+                    );
+                }
+                continue;
+            }
+            let mut branches: Vec<WhenBranch> = Vec::new();
+            let mut planned = 0;
+            for stake in &stakes {
+                let Some((plan, single)) = self.plan(cx, input, name, &stake.consumed, stake.rule)
+                else {
+                    continue;
+                };
+                planned += 1;
+                plans.entry(name).or_default().insert(stake.case, plan);
+                let gating = Condition::Equals {
+                    property: stake.property,
+                    equals: stake.equals.clone(),
+                };
+                let max = stake.rule.and_then(|r| r.max).or(single.then_some(1));
+                let min = stake.rule.and_then(|r| r.min).unwrap_or(0);
+                let owned = stake.rule.map(|rule| {
+                    rule.branches
+                        .iter()
+                        .map(|branch| WhenBranch {
+                            condition: branch.condition.clone(),
+                            min: branch.min,
+                            max: branch.max,
+                        })
+                        .collect::<Vec<_>>()
+                });
+                match owned {
+                    Some(branches_of_rule) if !branches_of_rule.is_empty() => {
+                        for branch in branches_of_rule {
+                            branches.push(WhenBranch {
+                                condition: Condition::All(vec![gating.clone(), branch.condition]),
+                                min: branch.min,
+                                max: branch.max,
+                            });
+                        }
+                        // The case matched but no when branch did: the
+                        // rule's base bounds govern.
+                        branches.push(WhenBranch {
+                            condition: gating,
+                            min: Some(min),
+                            max,
+                        });
+                    }
+                    _ => branches.push(WhenBranch {
+                        condition: gating,
+                        min: Some(min),
+                        max,
+                    }),
+                }
+            }
+            // No case's match leaves the child unadmitted by its plan,
+            // so the counter's base bounds never govern an occurrence;
+            // only the matching case's bounds do.
+            if planned > 0 {
+                rules.permit_conditional(
+                    Occurs {
+                        name,
+                        min: 0,
+                        max: None,
+                    },
+                    branches,
+                );
+            }
+        }
+        (plans, rules)
     }
 
     /// Why a child cannot be spelled as a property carrying its one
@@ -539,14 +776,27 @@ impl Builder<'_> {
             nested.rules.clone_from(&node.children);
             nested.groups.clone_from(&node.groups);
         }
-        Some((ChildPlan::Nested(self.scope(cx, nested)), !many))
+        Some((ChildPlan::Nested(self.scope(cx, nested, &[])), !many))
     }
+}
+
+/// One case-level scalar claim, owned so no borrow of the definition
+/// outlives the overlap check that validated it.
+enum Claim {
+    Arg(u64),
+    Rest,
+    Prop(Sym),
 }
 
 /// Arguments and properties two fields bind (with an entries envelope's
 /// key counted as consumed) are reported as overlaps; the first binding
-/// of each piece of syntax is kept.
-fn arguments_and_properties(cx: &mut Cx<'_>, input: &ScopeInput<'_>) -> (Arity, Vec<Sym>) {
+/// of each piece of syntax is kept. A case-level binding overlaps the
+/// common ones and its own case's, never another case's.
+fn arguments_and_properties(
+    cx: &mut Cx<'_>,
+    input: &ScopeInput<'_>,
+    cases: &[CaseInput<'_>],
+) -> (Arity, Vec<Sym>) {
     const KEY: &str = "the entries key";
     let names: Vec<String> = input
         .uses
@@ -589,6 +839,67 @@ fn arguments_and_properties(cx: &mut Cx<'_>, input: &ScopeInput<'_>) -> (Arity, 
                 properties.insert(*name);
             }
             _ => {}
+        }
+    }
+    for case in cases {
+        // One case's scalar claims overlap the common ones and its own;
+        // another case's never do, because cases are alternatives.
+        let (conflicts, claims) = {
+            let case_names: Vec<String> = case
+                .fields
+                .iter()
+                .map(|binding| cx.names.resolve(binding.name).to_owned())
+                .collect();
+            let mut case_uses = uses.clone();
+            let mut extra: Vec<(Site, &Source)> = Vec::new();
+            for (binding, field) in case.fields.iter().zip(&case_names) {
+                for source in &binding.sources {
+                    let consumed = match source {
+                        Source::Argument(index) => Consumed::Argument(*index),
+                        Source::Args => Consumed::Rest,
+                        Source::Property(name) => Consumed::Property(cx.names.resolve(*name)),
+                        _ => continue,
+                    };
+                    extra.push((binding.site, source));
+                    case_uses.push((field.as_str(), consumed));
+                }
+            }
+            let found = overlaps(&claimed, &case_uses);
+            let mut conflicts = Vec::new();
+            let mut claims = Vec::new();
+            for (at, (site, source)) in extra.iter().enumerate() {
+                if let Some(overlap) = found.iter().find(|o| o.at == at + uses.len()) {
+                    let values: [String; 3] = [
+                        overlap.syntax.clone(),
+                        overlap.first.clone(),
+                        overlap.field.clone(),
+                    ];
+                    conflicts.push((*site, values));
+                } else {
+                    match source {
+                        Source::Argument(index) => claims.push(Claim::Arg(*index)),
+                        Source::Args => claims.push(Claim::Rest),
+                        Source::Property(name) => claims.push(Claim::Prop(*name)),
+                        _ => {}
+                    }
+                }
+            }
+            (conflicts, claims)
+        };
+        for (site, values) in conflicts {
+            let values: [&str; 3] = [&values[0], &values[1], &values[2]];
+            cx.diags.error(CONFLICTING_BINDING, site, &values);
+        }
+        for claim in claims {
+            match claim {
+                Claim::Arg(index) => {
+                    indices.insert(index);
+                }
+                Claim::Rest => rest = true,
+                Claim::Prop(name) => {
+                    properties.insert(name);
+                }
+            }
         }
     }
     let indexed = indices.last().map_or(0, |last| last.saturating_add(1));

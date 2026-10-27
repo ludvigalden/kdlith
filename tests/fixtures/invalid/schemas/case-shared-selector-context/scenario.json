@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A case property that reads a context slot on a node whose cases declare bindings is refused at schema compile: the dispatch must be final in the node's header, because case-level children admission reads it there",
+  "args": [
+    "vet",
+    "schema",
+    "schema.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

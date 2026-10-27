@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "The bound view of one document holding all three figures shows each case binding only under its own kind: the funnel carries depth and its sections map, the bar note and its segments list, and the scatter figure the common fields alone",
+  "args": [
+    "inspect",
+    "data",
+    "--view",
+    "bound",
+    "--schema",
+    "{fx-suite}/processing/bind/caseshared.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

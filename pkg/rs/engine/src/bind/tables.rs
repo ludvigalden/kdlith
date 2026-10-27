@@ -54,6 +54,9 @@ pub(crate) enum Collect {
 #[derive(Clone, Debug)]
 pub(crate) struct FieldInfo {
     pub(crate) name: Sym,
+    /// The case whose match admits this field, when a case-level
+    /// binding declares it: the field binds only under that case.
+    pub(crate) case: Option<usize>,
     pub(crate) ty: Option<TypeExpr>,
     pub(crate) required: bool,
     pub(crate) collect: Collect,
@@ -235,7 +238,11 @@ pub(crate) fn build(def: &Definition) -> Tables {
     for (id, decl) in def.bindings.iter() {
         let info = decl_info(def, id, decl);
         let mut uses: Vec<Use<'_>> = Vec::new();
-        for binding in &decl.fields {
+        for binding in decl
+            .fields
+            .iter()
+            .chain(decl.cases.iter().flat_map(|case| &case.fields))
+        {
             let Some(at) = info.fields.iter().position(|f| f.name == binding.name) else {
                 continue;
             };
@@ -340,6 +347,7 @@ fn decl_info(def: &Definition, id: NodeDeclId, decl: &NodeDecl) -> DeclInfo {
             .iter()
             .map(|field| FieldInfo {
                 name: field.name,
+                case: None,
                 ty: Some(field.ty.clone()),
                 required: !optional(&field.ty),
                 collect: Collect::No,
@@ -363,6 +371,7 @@ fn decl_info(def: &Definition, id: NodeDeclId, decl: &NodeDecl) -> DeclInfo {
             .iter()
             .map(|binding| FieldInfo {
                 name: binding.name,
+                case: None,
                 ty: binding.ty.clone(),
                 required: binding.ty.as_ref().is_some_and(|ty| !optional(ty)),
                 collect: Collect::No,
@@ -376,8 +385,70 @@ fn decl_info(def: &Definition, id: NodeDeclId, decl: &NodeDecl) -> DeclInfo {
             })
             .collect(),
     };
+    // A case-level field joins the declaration's field set once, under
+    // the first case binding its name; its supplies are gated by the
+    // case the binding belongs to.
+    for (case_at, case) in decl.cases.iter().enumerate() {
+        for binding in &case.fields {
+            if let Some(at) = fields.iter().position(|info| info.name == binding.name) {
+                // A typed node's object supplies the field; it binds only
+                // under this case while no common binding takes it.
+                if fields[at].case.is_none()
+                    && !decl.fields.iter().any(|common| common.name == binding.name)
+                {
+                    fields[at].case = Some(case_at);
+                }
+                continue;
+            }
+            let from_object = object.and_then(|object| {
+                object
+                    .fields
+                    .iter()
+                    .find(|field| field.name == binding.name)
+            });
+            let info = match from_object {
+                Some(field) => FieldInfo {
+                    name: field.name,
+                    case: Some(case_at),
+                    ty: Some(field.ty.clone()),
+                    required: !optional(&field.ty),
+                    collect: Collect::No,
+                    fallback: field.fallback.as_ref().and_then(|d| d.literal().cloned()),
+                    computed: match &field.fallback {
+                        Some(DefaultSpec::Computed { dependencies }) => Some(dependencies.clone()),
+                        _ => None,
+                    },
+                    context: None,
+                    sensitivity: field.sensitivity,
+                    expand: Vec::new(),
+                    reference: reference_type(def, &field.ty),
+                    qualify: None,
+                },
+                None => FieldInfo {
+                    name: binding.name,
+                    case: Some(case_at),
+                    ty: binding.ty.clone(),
+                    required: binding.ty.as_ref().is_some_and(|ty| !optional(ty)),
+                    collect: Collect::No,
+                    fallback: None,
+                    computed: None,
+                    context: None,
+                    sensitivity: None,
+                    expand: Vec::new(),
+                    reference: binding.ty.as_ref().and_then(|ty| reference_type(def, ty)),
+                    qualify: None,
+                },
+            };
+            fields.push(info);
+        }
+    }
     let mut path = None;
-    for binding in &decl.fields {
+    let mut case_bindings: Vec<&crate::bindings::FieldBinding> = decl
+        .cases
+        .iter()
+        .flat_map(|case| case.fields.iter())
+        .collect();
+    for binding in decl.fields.iter().chain(case_bindings.drain(..)) {
         let Some(at) = fields.iter().position(|f| f.name == binding.name) else {
             continue;
         };
@@ -399,7 +470,9 @@ fn decl_info(def: &Definition, id: NodeDeclId, decl: &NodeDecl) -> DeclInfo {
                 Source::Expand { target, member } => {
                     info.expand.push((*target, *member));
                 }
-                Source::Argument(0) => path = Some(at),
+                // A case-level binding never identifies an import path;
+                // the import's own bindings stay common.
+                Source::Argument(0) if info.case.is_none() => path = Some(at),
                 _ => {}
             }
         }

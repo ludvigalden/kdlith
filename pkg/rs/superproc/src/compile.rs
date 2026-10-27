@@ -721,6 +721,16 @@ fn node_input(node: NodeDef) -> NodeInput {
                     property: rule.property.as_str().to_owned(),
                     equals: rule.equals.clone(),
                     ty: rule.ty.as_str().to_owned(),
+                    fields: rule
+                        .fields
+                        .iter()
+                        .map(|(name, binding)| field_binding(name.as_str().to_owned(), binding))
+                        .collect(),
+                    children: rule
+                        .children
+                        .iter()
+                        .map(|(name, rule)| child_rule(name.as_str(), rule))
+                        .collect(),
                 })
                 .collect();
             (cases, otherwise)

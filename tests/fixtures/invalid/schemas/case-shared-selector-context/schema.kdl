@@ -1,0 +1,78 @@
+// The case-shared bindings schema the case-shared scenarios share: one
+// figure node with common bindings, two cases that each add their own
+// field and children bindings on top of them while their kind matches,
+// and an otherwise that binds the common surface alone. The funnel case
+// admits a depth property and keyed sections; the bar case a note
+// property and a segments list; under any other kind neither surface is
+// admitted, so the Figure type declares the case-bound members optional:
+// a field one case binds alone is absent wherever that case does not
+// match, and the selected type stays the shape authority.
+schema caseshared version="1" {
+    context {
+        slot kind String
+    }
+    types {
+        object Figure {
+            field id String
+            field kind FigureKind
+            field title String
+            field depth "optional<U64>"
+            field note "optional<String>"
+            field sections "optional<ordered-map<String, Section>>"
+            field segments "optional<list<Segment>>"
+        }
+        enum FigureKind {
+            member funnel
+            member bar
+            member scatter
+        }
+        object Section {
+            field name String
+            field weight U64
+        }
+        object Segment {
+            field label String
+            field share U64
+        }
+    }
+    node figure role=record type=Figure {
+        field id arg=0
+        field kind {
+            from {
+                property kind
+                context kind policy=fallback
+            }
+        }
+        field title property=title
+        cases {
+            case property=kind equals=funnel type=Figure {
+                field depth property=depth
+                field sections {
+                    from {
+                        entries section key="arg(0)" value=Section
+                    }
+                    duplicate-keys reject
+                }
+                children section min-occurs=1
+            }
+            case property=kind equals=bar type=Figure {
+                field note property=note
+                field segments {
+                    from {
+                        children segment
+                    }
+                }
+                children segment min-occurs=1
+            }
+            otherwise type=Figure
+        }
+    }
+    node section type=Section parent=figure {
+        field name property=name
+        field weight property=weight
+    }
+    node segment type=Segment parent=figure {
+        field label arg=0
+        field share property=share
+    }
+}

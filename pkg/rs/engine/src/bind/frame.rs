@@ -91,6 +91,9 @@ pub struct BindFrame {
     pub(crate) key_rejected: bool,
     /// A scalar node's single value.
     pub(crate) scalar: Option<(Value, ByteSpan)>,
+    /// Supplies to case-gated fields, parked until the node's case
+    /// dispatch resolves them: the value, its span, and what it spells.
+    pub(crate) parked: Vec<(Bind, Value, ByteSpan, String)>,
     /// A declared node's dependent payload: the positional arguments no
     /// binding consumes, kept with their spans for the value block.
     pub(crate) payload: Vec<(Value, ByteSpan)>,
@@ -146,6 +149,7 @@ impl BindFrame {
             key: None,
             key_rejected: false,
             scalar: None,
+            parked: Vec::new(),
             payload: Vec::new(),
             structured: Vec::new(),
             mark: opened.mark,

@@ -1,0 +1,4 @@
+figure "b1" kind=bar title="Composition" note="sorted" {
+    segment "Core" share=55
+    segment "Edge" share=45
+}
