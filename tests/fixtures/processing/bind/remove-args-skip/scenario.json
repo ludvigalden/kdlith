@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "A non-string argument names no slot and is skipped, not an error: the clear control's field is a union of String and U64, its second argument is the number 5, the run exits 0 with locale removed and units still held",
+  "args": [
+    "inspect",
+    "data",
+    "--view",
+    "context",
+    "--schema",
+    "{fx-suite}/processing/bind/remove-args.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "context.golden"
+  }
+}

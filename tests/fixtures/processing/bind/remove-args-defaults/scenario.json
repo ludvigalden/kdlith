@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "A slot removed by a remove-from-args effect behaves as unset for defaults resolution: locale held en is removed, and the stamp's locale field falls back to its declared fallback sv-se rather than keeping the removed value",
+  "args": [
+    "inspect",
+    "data",
+    "--view",
+    "bound",
+    "--schema",
+    "{fx-suite}/processing/bind/remove-args.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "bound.golden"
+  }
+}

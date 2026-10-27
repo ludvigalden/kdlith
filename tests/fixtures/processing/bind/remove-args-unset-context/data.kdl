@@ -1,0 +1,4 @@
+system base
+locale sv-se
+units metric
+clear "locale" "units"

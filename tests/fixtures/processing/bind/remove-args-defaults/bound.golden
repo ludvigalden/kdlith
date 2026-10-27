@@ -1,0 +1,1 @@
+{"item":"record","data":{"node":{"source":0,"index":3},"type_name":"Stamp","fields":[{"name":"system","value":{"kind":"string","value":"base"},"origin":3},{"name":"locale","value":{"kind":"string","value":"sv-se"},"origin":3}],"origin":3,"validation":"valid"}}

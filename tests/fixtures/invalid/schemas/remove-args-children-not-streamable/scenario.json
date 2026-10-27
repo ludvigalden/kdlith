@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A remove-from-args effect applied to children through a field bound from children violates the streaming rule: children effects must be computable from the node header, so the schema fails to compile with the children-effect code",
+  "args": [
+    "vet",
+    "schema",
+    "schema.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

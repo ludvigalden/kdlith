@@ -435,6 +435,13 @@ pub enum Effect {
     Remove {
         slot: Sym,
     },
+    /// Remove the slots the named field's string values name, per
+    /// invocation: each string names one declared slot; a non-string
+    /// value names none; a string naming no declared slot fails at the
+    /// effect point.
+    RemoveArgs {
+        field: Sym,
+    },
     Clear {
         namespace: Sym,
     },

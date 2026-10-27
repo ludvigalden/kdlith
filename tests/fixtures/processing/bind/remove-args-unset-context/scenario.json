@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "The context view of a remove-from-args reading shows both named slots unset and every other slot held: locale and units carry null after the clear control, system keeps the value set before it",
+  "args": [
+    "inspect",
+    "data",
+    "--view",
+    "context",
+    "--schema",
+    "{fx-suite}/processing/bind/remove-args.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "context.golden"
+  }
+}

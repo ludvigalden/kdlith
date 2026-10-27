@@ -1,0 +1,5 @@
+system base
+locale sv-se
+reset {
+    mapping "locale"
+}

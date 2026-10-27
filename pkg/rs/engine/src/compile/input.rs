@@ -383,6 +383,11 @@ pub enum EffectInput {
     Remove {
         slot: String,
     },
+    /// Remove the slots the named field's string values name, per
+    /// invocation.
+    RemoveArgs {
+        field: String,
+    },
     Clear {
         namespace: String,
     },

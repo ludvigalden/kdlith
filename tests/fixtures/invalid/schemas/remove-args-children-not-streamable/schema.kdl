@@ -1,0 +1,29 @@
+// A remove-from-args effect whose field is bound from children runs
+// as a children effect: it cannot be computed from the node header,
+// so the streaming rule rejects it at compile time.
+schema not-streamable version="1" {
+    types {
+        string Name {
+            format kebab-case
+        }
+    }
+    context {
+        slot system Name
+    }
+    node wrap role=context-control {
+        field slots "optional<list<String>>" {
+            from {
+                children pick {
+                    args
+                }
+            }
+        }
+        children pick
+        effects target=children {
+            remove-from-args field=slots
+        }
+    }
+    document {
+        following wrap
+    }
+}

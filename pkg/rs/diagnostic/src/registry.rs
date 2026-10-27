@@ -929,9 +929,9 @@ pub const CODES: &[CodeDefinition] = &[
         label: "handler-effect-undeclared",
         severity: Severity::Error,
         exit_class: 1,
-        trigger: "an installed context handler, run at its effect point, sets or removes a context slot or clears a context namespace the definition does not declare; a declarative effect naming one is an undeclared reference at compile time",
+        trigger: "an installed context handler, run at its effect point, sets or removes a context slot or clears a context namespace the definition does not declare, or a remove-from-args effect names one; a declarative effect naming one is an undeclared reference at compile time",
         message_template: "handler <handler> <effect> <name>, which the definition does not declare",
-        correction: "Declare the slot or namespace in the schema's context block, or install a handler that addresses only declared ones",
+        correction: "Declare the slot or namespace in the schema's context block, install a handler that addresses only declared ones, or name only declared slots in the document",
         retired: false,
     },
     CodeDefinition {

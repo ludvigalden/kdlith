@@ -1229,6 +1229,9 @@ fn effect(cx: &mut Cx<'_>, site: Site, input: &EffectInput) -> Option<Effect> {
         EffectInput::Remove { slot } => Some(Effect::Remove {
             slot: cx.names.intern(slot),
         }),
+        EffectInput::RemoveArgs { field } => Some(Effect::RemoveArgs {
+            field: cx.names.intern(field),
+        }),
         EffectInput::Clear { namespace } => Some(Effect::Clear {
             namespace: cx.names.intern(namespace),
         }),

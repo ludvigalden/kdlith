@@ -4,7 +4,8 @@
 // or for its children. The engine manages context; it does not hardcode
 // what any context-producing node means. A schema definition declares
 // typed context slots and, on its context-control nodes, the generic
-// effects that set, remove, or clear those slots. Names such as package,
+// effects that set, remove, or clear those slots, or remove the slots
+// a node's argument values name. Names such as package,
 // defaults, or clear-defaults gain meaning only through a schema
 // definition, never through the engine.
 //
@@ -121,6 +122,7 @@ dialect kdlith version="0" {
         union Effect {
             variant set SetEffect
             variant remove RemoveEffect
+            variant remove-from-args RemoveArgsEffect
             variant clear ClearEffect
             variant handler HandlerEffect
         }
@@ -139,6 +141,14 @@ dialect kdlith version="0" {
         // Remove a slot's value; the slot becomes unset, not null.
         object RemoveEffect {
             field slot SlotName
+        }
+
+        // Remove the slots a node's argument values name, per invocation:
+        // each string the field holds names one declared slot, in order.
+        // A non-string value names no slot and is skipped; a string
+        // naming no declared slot fails closed at the effect point.
+        object RemoveArgsEffect {
+            field field FieldName
         }
 
         // Remove every slot in a namespace.
@@ -303,6 +313,7 @@ dialect kdlith version="0" {
             from {
                 children set
                 children remove
+                children remove-from-args
                 children clear
                 children handler
             }
@@ -318,6 +329,10 @@ dialect kdlith version="0" {
 
     node remove type=RemoveEffect parent=effects {
         field slot arg=0
+    }
+
+    node remove-from-args type=RemoveArgsEffect parent=effects {
+        field field property=field
     }
 
     node clear type=ClearEffect parent=effects {

@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "A remove-from-args effect unsets exactly the slots its node's argument values name: the document sets system, locale, and units, the clear control names locale and units as arguments, and vet data exits 0 with the stamp reading system and locale's fallback (the context view of the same reading is remove-args-unset-context, the undeclared-name control is invalid/data/remove-args-undeclared-slot)",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/remove-args.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":4},\"type_name\":\"Stamp\",\"fields\":[{\"name\":\"system\",\"value\":{\"kind\":\"string\",\"value\":\"base\"},\"origin\":4},{\"name\":\"locale\",\"value\":{\"kind\":\"string\",\"value\":\"sv-se\"},\"origin\":4}],\"origin\":4,\"validation\":\"valid\"}}\n"
+    ]
+  }
+}

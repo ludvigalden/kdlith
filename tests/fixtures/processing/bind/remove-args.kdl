@@ -1,0 +1,75 @@
+// The remove-from-args schema these scenarios share: three slots, a
+// clear control whose argument values name the slots it removes (the
+// union member lets a non-string argument through, which the effect
+// skips), a reset control spelling the same effect through a field
+// bound from children's arguments, and a stamp record whose locale
+// falls back once its slot is removed.
+schema remove-args version="1" {
+    types {
+        string Name {
+            format kebab-case
+        }
+        string Locale {
+            format kebab-case
+        }
+        object Stamp {
+            field system "optional<Name>"
+            field locale "optional<Locale>" {
+                fallback "sv-se"
+            }
+        }
+    }
+    context {
+        slot system Name
+        slot locale Locale
+        slot units String
+    }
+    node system role=context-control {
+        field value Name arg=0
+        effects target=following {
+            set system field=value
+        }
+    }
+    node locale role=context-control {
+        field value Locale arg=0
+        effects target=following {
+            set locale field=value
+        }
+    }
+    node units role=context-control {
+        field value String arg=0
+        effects target=following {
+            set units field=value
+        }
+    }
+    node clear role=context-control {
+        field slots "optional<union<String, U64>>" {
+            from {
+                args
+            }
+        }
+        effects target=following {
+            remove-from-args field=slots
+        }
+    }
+    node reset role=context-control {
+        field slots "optional<list<String>>" {
+            from {
+                children mapping {
+                    args
+                }
+            }
+        }
+        children mapping
+        effects target=following {
+            remove-from-args field=slots
+        }
+    }
+    node stamp role=record type=Stamp {
+        field system context=system
+        field locale context=locale
+    }
+    document {
+        following system locale units clear reset stamp
+    }
+}

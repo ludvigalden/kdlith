@@ -61,6 +61,7 @@ const CONTEXT_UNAVAILABLE: &str = "KDLITH-CTX001";
 const CONTEXT_DISAGREES: &str = "KDLITH-CTX002";
 const SLOT_DUPLICATE: &str = "KDLITH-CTX006";
 const HANDLER_UNDECLARED: &str = "KDLITH-CTX005";
+const REMOVE_ARGS: &str = "remove-from-args";
 const PROFILE_NOT_SELECTED: &str = "KDLITH-SCH011";
 const UNRESOLVED_VALUE: &str = "KDLITH-BND009";
 const UNSUPPORTED_KEY: &str = "KDLITH-BND010";
@@ -1622,6 +1623,38 @@ impl<'d, 's> Binder<'d, 's> {
                     }
                 }
                 EffectStep::Remove { slot } => out.push(ContextEffect::Remove { slot: *slot }),
+                // The slots to remove are data: each string the field
+                // holds names one, resolved against the declared slots
+                // here rather than at compile time. A non-string value
+                // names no slot; a string naming none fails closed.
+                EffectStep::RemoveArgs { field } => {
+                    let value = self.field_value(cx, frame, view, *field);
+                    let names = match value.as_ref() {
+                        Some(Value::String(name)) => vec![name.to_owned()],
+                        Some(Value::List(items)) => items
+                            .iter()
+                            .filter_map(|item| match item {
+                                Value::String(name) => Some(name.to_owned()),
+                                _ => None,
+                            })
+                            .collect(),
+                        _ => Vec::new(),
+                    };
+                    for name in names {
+                        match self
+                            .def
+                            .names
+                            .get(&name)
+                            .and_then(|sym| self.def.plan.context.slot(sym))
+                        {
+                            Some(slot) => out.push(ContextEffect::Remove { slot }),
+                            None => {
+                                let values = [REMOVE_ARGS, "removes context slot", &name];
+                                self.diagnose(cx, HANDLER_UNDECLARED, frame.span, &values);
+                            }
+                        }
+                    }
+                }
                 EffectStep::Clear { namespace } => out.push(ContextEffect::Clear {
                     namespace: *namespace,
                 }),

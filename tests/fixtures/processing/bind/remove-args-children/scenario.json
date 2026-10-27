@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "The child-sourced spelling of the same effect: the reset control's field is bound from the arguments of its mapping children, so reset { mapping \"locale\" } removes locale through remove-from-args while system keeps its value",
+  "args": [
+    "inspect",
+    "data",
+    "--view",
+    "context",
+    "--schema",
+    "{fx-suite}/processing/bind/remove-args.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "context.golden"
+  }
+}

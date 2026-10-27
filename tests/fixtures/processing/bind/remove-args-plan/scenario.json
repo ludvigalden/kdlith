@@ -1,0 +1,21 @@
+{
+  "binary": "kdlith",
+  "description": "The plan view renders the dynamic removal as its arm and field, never per-invocation names: both the clear and the reset control carry a remove-from-args step naming the field their slot names come from, and the plain controls' set steps render unchanged",
+  "args": [
+    "inspect",
+    "data",
+    "--view",
+    "plan",
+    "--schema",
+    "{fx-suite}/processing/bind/remove-args.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"plan-node\",\"data\":{\"name\":\"clear\",\"role\":\"context-control\",\"scope\":3,\"children-effects\":[],\"following-effects\":[{\"effect\":\"remove-from-args\",\"field\":\"slots\"}],\"context-reads\":[],\"deferred\":[],\"dependent\":null,\"declaration\":false,\"requires\":[\"global-validation\"]}}\n",
+      "{\"item\":\"plan-node\",\"data\":{\"name\":\"reset\",\"role\":\"context-control\",\"scope\":4,\"children-effects\":[],\"following-effects\":[{\"effect\":\"remove-from-args\",\"field\":\"slots\"}],\"context-reads\":[],\"deferred\":[],\"dependent\":null,\"declaration\":false,\"requires\":[\"global-validation\"]}}\n",
+      "{\"item\":\"plan-node\",\"data\":{\"name\":\"system\",\"role\":\"context-control\",\"scope\":0,\"children-effects\":[],\"following-effects\":[{\"effect\":\"set\",\"slot\":\"system\",\"field\":\"value\",\"layer\":null}],\"context-reads\":[],\"deferred\":[],\"dependent\":null,\"declaration\":false,\"requires\":[\"global-validation\"]}}\n"
+    ]
+  }
+}

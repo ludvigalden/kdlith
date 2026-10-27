@@ -29,6 +29,9 @@ pub(crate) const NODES: &[NodeShape] = &[
     NodeShape::new("remove")
         .under(&["effects"])
         .ty("RemoveEffect"),
+    NodeShape::new("remove-from-args")
+        .under(&["effects"])
+        .ty("RemoveArgsEffect"),
     NodeShape::new("clear")
         .under(&["effects"])
         .ty("ClearEffect"),

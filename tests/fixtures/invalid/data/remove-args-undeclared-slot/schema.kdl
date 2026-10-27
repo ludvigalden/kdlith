@@ -1,0 +1,32 @@
+// A remove-from-args effect naming a slot the definition does not
+// declare: the failure is decided at the effect point, from the data,
+// so the schema itself compiles.
+schema remove-args-invalid version="1" {
+    types {
+        string Name {
+            format kebab-case
+        }
+    }
+    context {
+        slot system Name
+    }
+    node system role=context-control {
+        field value Name arg=0
+        effects target=following {
+            set system field=value
+        }
+    }
+    node clear role=context-control {
+        field slots "optional<list<String>>" {
+            from {
+                args
+            }
+        }
+        effects target=following {
+            remove-from-args field=slots
+        }
+    }
+    document {
+        following system clear
+    }
+}

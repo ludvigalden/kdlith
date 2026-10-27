@@ -379,10 +379,22 @@ fn node_refs(cx: &mut Cx<'_>, bindings: &BindingCatalog, symbols: &SymbolCatalog
                     slot_ref(cx, group.site, *slot);
                     set_layer(cx, &label, group.site, *slot, *layer);
                     if let SetFrom::Field(field) = from {
-                        effect_field(cx, node, &label, group.target, group.site, (*slot, *field));
+                        let slot = cx.names.resolve(*slot).to_owned();
+                        effect_field(cx, node, &label, group.target, group.site, &slot, *field);
                     }
                 }
                 Effect::Remove { slot } => slot_ref(cx, group.site, *slot),
+                Effect::RemoveArgs { field } => {
+                    effect_field(
+                        cx,
+                        node,
+                        &label,
+                        group.target,
+                        group.site,
+                        "remove-from-args",
+                        *field,
+                    );
+                }
                 Effect::Clear { namespace } => {
                     if !cx.slots.iter().any(|s| s.namespace == Some(*namespace)) {
                         let spelled = cx.names.resolve(*namespace).to_owned();
@@ -598,15 +610,17 @@ fn dependent(
     }
 }
 
-/// A `set field=` names a field the node binds; on a children effect,
-/// that field must come from the header, not from a child.
+/// A `set field=` or `remove-from-args field=` names a field the node
+/// binds; on a children effect, that field must come from the header,
+/// not from a child.
 fn effect_field(
     cx: &mut Cx<'_>,
     node: &NodeDecl,
     label: &str,
     target: EffectTarget,
     site: Site,
-    (slot, field): (Sym, Sym),
+    what: &str,
+    field: Sym,
 ) {
     let Some(binding) = node.fields.iter().find(|f| f.name == field) else {
         let spelled = format!("{} of node {label}", cx.names.resolve(field));
@@ -620,10 +634,8 @@ fn effect_field(
         )
     });
     if target == EffectTarget::Children && from_child {
-        let slot = cx.names.resolve(slot).to_owned();
         let field = cx.names.resolve(field).to_owned();
-        cx.diags
-            .error(NOT_STREAMABLE, site, &[label, &slot, &field]);
+        cx.diags.error(NOT_STREAMABLE, site, &[label, what, &field]);
     }
 }
 

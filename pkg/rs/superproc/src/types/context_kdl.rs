@@ -108,6 +108,7 @@ union_type! {
     pub enum Effect {
         "set" => Set(SetEffect),
         "remove" => Remove(RemoveEffect),
+        "remove-from-args" => RemoveFromArgs(RemoveArgsEffect),
         "clear" => Clear(ClearEffect),
         "handler" => Handler(HandlerEffect),
     }
@@ -126,6 +127,12 @@ object_type! {
 object_type! {
     pub struct RemoveEffect {
         "slot" => slot: SlotName,
+    }
+}
+
+object_type! {
+    pub struct RemoveArgsEffect {
+        "field" => field: FieldName,
     }
 }
 
@@ -218,6 +225,7 @@ pub(crate) const TYPES: &[TypeShape] = &[
     Effect::SHAPE,
     SetEffect::SHAPE,
     RemoveEffect::SHAPE,
+    RemoveArgsEffect::SHAPE,
     ClearEffect::SHAPE,
     HandlerEffect::SHAPE,
     ContextPolicy::SHAPE,

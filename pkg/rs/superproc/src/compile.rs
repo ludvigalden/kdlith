@@ -917,6 +917,9 @@ fn effect(effect: &Effect) -> EffectInput {
         Effect::Remove(remove) => EffectInput::Remove {
             slot: remove.slot.as_str().to_owned(),
         },
+        Effect::RemoveFromArgs(remove) => EffectInput::RemoveArgs {
+            field: remove.field.as_str().to_owned(),
+        },
         Effect::Clear(clear) => EffectInput::Clear {
             namespace: clear.namespace.as_str().to_owned(),
         },

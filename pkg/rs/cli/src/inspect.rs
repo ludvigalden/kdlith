@@ -592,6 +592,9 @@ impl PlanNames<'_> {
                 EffectStep::Remove { slot } => {
                     json!({"effect": "remove", "slot": self.slot(slot.index())})
                 }
+                EffectStep::RemoveArgs { field } => {
+                    json!({"effect": "remove-from-args", "field": n.resolve(*field)})
+                }
                 EffectStep::Clear { namespace } => json!({
                     "effect": "clear",
                     "namespace": self.namespaces.get(namespace.index()).map_or("", String::as_str),

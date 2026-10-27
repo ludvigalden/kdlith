@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A remove-from-args effect fails closed on a name no declared slot carries: the clear control names nosuch, and the run fails with the handler-effect code at the effect point instead of skipping the name",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

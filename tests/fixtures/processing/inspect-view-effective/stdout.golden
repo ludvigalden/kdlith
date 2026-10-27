@@ -94,6 +94,7 @@
 {"item":"effective","data":{"section":"type","entry":{"name":"Qualification","parameters":[],"kind":"enum"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"QualifierRule","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"ReferenceDef","parameters":[],"kind":"object"}}}
+{"item":"effective","data":{"section":"type","entry":{"name":"RemoveArgsEffect","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"RemoveEffect","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"RepeatedImport","parameters":[],"kind":"enum"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"Requires","parameters":[],"kind":"object"}}}
@@ -194,6 +195,7 @@
 {"item":"effective","data":{"section":"node","entry":{"name":"qualifier","parents":["reference"],"role":null,"type":"QualifierRule","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"reference","parents":["schema"],"role":"declaration","type":"ReferenceDef","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"remove","parents":["effects"],"role":null,"type":"RemoveEffect","profile":null}}}
+{"item":"effective","data":{"section":"node","entry":{"name":"remove-from-args","parents":["effects"],"role":null,"type":"RemoveArgsEffect","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"requires","parents":["constraints"],"role":null,"type":"Requires","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"resolution","parents":["schema"],"role":"declaration","type":"ResolutionPolicyDef","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"roots","parents":["profile"],"role":null,"type":"RootsRule","profile":null}}}

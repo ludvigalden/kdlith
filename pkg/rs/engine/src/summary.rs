@@ -524,6 +524,9 @@ fn effect(n: &Names, effect: &Effect) -> String {
             }
         }
         Effect::Remove { slot } => format!("remove {}", n.resolve(*slot)),
+        Effect::RemoveArgs { field } => {
+            format!("remove-from-args field={}", n.resolve(*field))
+        }
         Effect::Clear { namespace } => format!("clear {}", n.resolve(*namespace)),
         Effect::Handler { name } => format!("handler {name}"),
     }

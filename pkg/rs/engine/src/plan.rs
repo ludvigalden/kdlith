@@ -47,6 +47,12 @@ pub enum EffectStep {
     Remove {
         slot: SlotId,
     },
+    /// Remove the slots the named field's string values name, per
+    /// invocation; each name resolves against the declared slots at the
+    /// effect point, failing closed when one names none.
+    RemoveArgs {
+        field: Sym,
+    },
     Clear {
         namespace: NamespaceId,
     },
@@ -199,6 +205,7 @@ fn effects(context: &ContextPlan, node: &NodeDecl, target: EffectTarget) -> Effe
                 Effect::Remove { slot } => {
                     context.slot(*slot).map(|slot| EffectStep::Remove { slot })
                 }
+                Effect::RemoveArgs { field } => Some(EffectStep::RemoveArgs { field: *field }),
                 Effect::Clear { namespace } => context
                     .namespace(*namespace)
                     .map(|namespace| EffectStep::Clear { namespace }),
