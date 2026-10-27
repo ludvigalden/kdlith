@@ -414,6 +414,10 @@ pub enum EffectTarget {
 pub struct EffectGroup {
     pub target: EffectTarget,
     pub effects: Vec<Effect>,
+    /// The group's `set` effects replace the held value of the slots
+    /// they name instead of failing the duplicate-set check; slots the
+    /// group does not name are untouched.
+    pub replace: bool,
     pub site: Site,
 }
 

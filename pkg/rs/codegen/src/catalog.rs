@@ -169,6 +169,10 @@ pub(crate) fn field_comment(ty: &str, field: &str) -> Option<&'static [&'static 
         ("SlotDef", "layers") => &["The layer order of a layered slot, highest precedence first."],
         ("AccumulationPolicy", "duplicates") => &["How merge treats a key contributed twice."],
         ("SetEffect", "layer") => &["The layer a set on a layered slot names."],
+        ("EffectGroup", "replace") => &[
+            "The group's set effects replace the held value of the slots",
+            "they name instead of failing the duplicate-set check.",
+        ],
         ("ProfileDef", "extends") => &[
             "The profile this one extends: roots and match rules compose with",
             "the parent's, and an own locations rule overrides the inherited one.",

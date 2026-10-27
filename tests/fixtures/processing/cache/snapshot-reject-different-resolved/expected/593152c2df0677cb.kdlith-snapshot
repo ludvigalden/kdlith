@@ -1,0 +1,3 @@
+kdlith-snapshot format=2 canonicalization=2
+{"key":"593152c2df0677cb","entry":"plain.kdl","revision":"fnv1a64:bf010ff6a1bc06a2","schema":"fnv1a64:42e680268da08387","profiles":"fnv1a64:e1b51df36e161fca","lineage":["secret.kdl","plain.kdl"],"records":1,"slots":1,"layout":"fnv1a64:92f98b5aa0f94401","digest":"fnv1a64:d353ffc776429bd7"}
+{"identity":null,"type":"Note","digest":"fnv1a64:bf010ff6a1bc06a2","source":1,"node":1,"span":{"start":43,"end":47},"snapshot":"593152c2df0677cb/0","validation":"validated","slots":[{"name":"token","value":{"kind":"string","value":"written-in-the-document"},"layer":null}]}

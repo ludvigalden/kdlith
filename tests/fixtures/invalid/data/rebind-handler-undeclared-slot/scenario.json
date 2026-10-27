@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A replace=#true effect group does not weaken the fail-closed rule for undeclared slots: the installed copy-fields handler runs inside the replace group and sets one slot per field name, the control's field is zone, and the schema declares only locale, so the run fails with the handler-effect code at the effect point rather than rebinding anything",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "--handler",
+    "copy-fields",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

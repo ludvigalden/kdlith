@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A byte-equal repeat under plain reject is still a second value and stays KDLITH-CTX006: the equal-repeat admission belongs to duplicates=reject-different only, so this regression pin keeps the reject default refusing an equal re-statement",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/policies.kdl",
+    "data.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "binary": "kdlith",
+  "description": "The no-snapshot contract of a resolver-consulted reading is unchanged by an equal repeat under duplicates=reject-different: one refresh with --resolve-from over secret.kdl (its credential's token comes from the vault key, and the following restate control re-states the same value, a no-op success the policy admits — under plain reject it would be KDLITH-CTX006) and plain.kdl (its credential writes the token, so nothing is resolved). The companion plain.kdl writes its cache entry and its snapshot entry, both pinned byte for byte, which proves the writer ran; secret.kdl gets neither — its snapshot key (derived from the documented key construction, entry spelling plus revision plus profile selection, in a control run whose schema leaves the token optional so no resolver is consulted) is pinned absent, and the stdout golden, one line per written entry, lists no entry for it. The provider is never executed",
+  "args": [
+    "cache",
+    "refresh",
+    "--state",
+    "state",
+    "--schema",
+    "schema.kdl",
+    "--resolve-from",
+    "values.kdl",
+    "secret.kdl",
+    "plain.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "files": {
+      "state/532772cf869da5d0.kdlith-cache": "expected/532772cf869da5d0.kdlith-cache",
+      "state/593152c2df0677cb.kdlith-snapshot": "expected/593152c2df0677cb.kdlith-snapshot"
+    },
+    "absent": [
+      "state/755ee4f17b30ce16.kdlith-snapshot",
+      "state/.755ee4f17b30ce16.kdlith-snapshot-part",
+      "state/.593152c2df0677cb.kdlith-snapshot-part",
+      "state/.532772cf869da5d0.kdlith-cache-part",
+      "provider-executed"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

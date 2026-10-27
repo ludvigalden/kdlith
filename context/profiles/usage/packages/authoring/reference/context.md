@@ -10,8 +10,10 @@ through the schema.
 namespace and description. Values set into a slot are validated
 against its type. A slot declares how a second value reaching it is
 treated: `duplicates=reject` (the default, `KDLITH-CTX006`),
-`duplicates=last-wins`, or `duplicates=layered` with a declared layer
-order. An accumulating slot instead declares a combining operation:
+`duplicates=reject-different` (a byte-equal repeat is a no-op success
+that keeps the held value; a differing one is rejected as reject
+rejects it), `duplicates=last-wins`, or `duplicates=layered` with a
+declared layer order. An accumulating slot instead declares a combining operation:
 `accumulate append` for list-typed slots or `accumulate merge` for
 map-typed slots, with `merge duplicates=reject` (default) or
 `duplicates=last-wins` for a twice-contributed key.
@@ -32,6 +34,12 @@ targets; a node affecting both declares two groups. Effects are
 `handler NAME` for domain computation the processor installs. An
 effect on an undeclared slot or namespace is rejected at its effect
 point (`KDLITH-CTX005`).
+
+A group may declare `replace=#true`: its `set` effects replace the
+held value of the slots they name instead of failing the
+duplicate-set check (`KDLITH-CTX006`), while slots the group does
+not name keep their values — what distinguishes it from
+clear-then-set.
 
 ## Execution timing
 

@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "A replace=#true effect group rebinds a set slot: release was set to 1.0 by a plain control, the rebind control's group replaces it with 2.0 instead of failing the duplicate-set check, and the context view shows the new value while the unnamed system slot keeps its prior value",
+  "args": [
+    "inspect",
+    "data",
+    "--view",
+    "context",
+    "--schema",
+    "{fx-suite}/processing/bind/rebind.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "context.golden"
+  }
+}

@@ -65,6 +65,7 @@ dialect kdlith version="0" {
         // later set after either is a first value again.
         enum SlotDuplicates {
             member reject description="A second value reaching an occupied slot is rejected"
+            member reject-different description="A second value equal to the held one is a no-op success; a different one is rejected as reject rejects it"
             member last-wins description="The later value replaces the held one"
             member layered description="A higher layer's value replaces a lower layer's; a lower layer's later value leaves the held value in place; a second value within one layer is rejected"
         }
@@ -103,6 +104,10 @@ dialect kdlith version="0" {
         object EffectGroup {
             field target EffectTarget
             field effects "list<Effect>"
+            // The group's set effects replace the held value of the
+            // slots they name instead of failing the duplicate-set
+            // check; slots the group does not name are untouched.
+            field replace "optional<Bool>"
         }
 
         union Effect {
@@ -285,6 +290,7 @@ dialect kdlith version="0" {
     // declaration.
     node effects type=EffectGroup parent=node {
         field target property=target
+        field replace property=replace
         field effects {
             from {
                 children set

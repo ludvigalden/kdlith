@@ -56,6 +56,17 @@ pub enum EffectStep {
     },
 }
 
+/// The effect steps of one group: a node's effects for one target,
+/// with the group's replace property — its set effects replace the
+/// held value of the slots they name instead of failing the
+/// duplicate-set check, and so do the sets a handler splices in.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct EffectSteps {
+    pub steps: Vec<EffectStep>,
+    pub replace: bool,
+}
+
 /// A field read from a context slot under its policy.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
@@ -90,9 +101,9 @@ pub struct NodePlan {
     /// completion checks run when it closes.
     pub scope: Option<ScopeId>,
     /// Applied when the node's children open; computable from its header.
-    pub children_effects: Vec<EffectStep>,
+    pub children_effects: EffectSteps,
     /// Applied to later siblings once the node completes successfully.
-    pub following_effects: Vec<EffectStep>,
+    pub following_effects: EffectSteps,
     pub context_reads: Vec<ContextRead>,
     pub deferred: Vec<DeferredBinding>,
     /// The dependent payload binding the node declares, if any: the
@@ -169,24 +180,34 @@ fn context_plan(slots: &[SlotDecl]) -> ContextPlan {
     plan
 }
 
-fn effects(context: &ContextPlan, node: &NodeDecl, target: EffectTarget) -> Vec<EffectStep> {
-    node.effects
-        .iter()
-        .filter(|group| group.target == target)
-        .flat_map(|group| &group.effects)
-        .filter_map(|effect| match effect {
-            Effect::Set { slot, from, layer } => context.slot(*slot).map(|slot| EffectStep::Set {
-                slot,
-                from: from.clone(),
-                layer: *layer,
-            }),
-            Effect::Remove { slot } => context.slot(*slot).map(|slot| EffectStep::Remove { slot }),
-            Effect::Clear { namespace } => context
-                .namespace(*namespace)
-                .map(|namespace| EffectStep::Clear { namespace }),
-            Effect::Handler { name } => Some(EffectStep::Handler { name: name.clone() }),
-        })
-        .collect()
+fn effects(context: &ContextPlan, node: &NodeDecl, target: EffectTarget) -> EffectSteps {
+    let mut steps = Vec::new();
+    // Linking rejects a second group for one target, so the steps of a
+    // target come from one group and carry its replace property.
+    let mut replace = false;
+    for group in node.effects.iter().filter(|group| group.target == target) {
+        replace = group.replace;
+        for effect in &group.effects {
+            let step = match effect {
+                Effect::Set { slot, from, layer } => {
+                    context.slot(*slot).map(|slot| EffectStep::Set {
+                        slot,
+                        from: from.clone(),
+                        layer: *layer,
+                    })
+                }
+                Effect::Remove { slot } => {
+                    context.slot(*slot).map(|slot| EffectStep::Remove { slot })
+                }
+                Effect::Clear { namespace } => context
+                    .namespace(*namespace)
+                    .map(|namespace| EffectStep::Clear { namespace }),
+                Effect::Handler { name } => Some(EffectStep::Handler { name: name.clone() }),
+            };
+            steps.extend(step);
+        }
+    }
+    EffectSteps { steps, replace }
 }
 
 fn context_reads(context: &ContextPlan, node: &NodeDecl) -> Vec<ContextRead> {

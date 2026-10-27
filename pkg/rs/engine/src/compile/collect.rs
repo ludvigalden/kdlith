@@ -1199,6 +1199,7 @@ fn effect_group(cx: &mut Cx<'_>, site: Site, input: &EffectGroupInput) -> Option
     Some(EffectGroup {
         target,
         effects,
+        replace: input.replace,
         site,
     })
 }

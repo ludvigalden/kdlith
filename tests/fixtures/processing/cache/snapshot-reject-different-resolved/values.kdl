@@ -1,0 +1,2 @@
+// The secret the vault provider would supply.
+value "vault" "s3cr3t-token-A"

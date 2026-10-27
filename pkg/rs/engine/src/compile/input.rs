@@ -365,6 +365,9 @@ pub enum ConditionInput {
 pub struct EffectGroupInput {
     pub target: String,
     pub effects: Vec<EffectInput>,
+    /// The group's `set` effects replace the held value of the slots
+    /// they name instead of failing the duplicate-set check.
+    pub replace: bool,
 }
 
 /// One context effect, as declared.

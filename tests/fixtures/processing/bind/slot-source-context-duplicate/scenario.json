@@ -11,7 +11,7 @@
   "expect": {
     "exit": 1,
     "stdout-contains": [
-      "{\"item\":\"diagnostic\",\"data\":{\"code\":\"KDLITH-CTX006\",\"severity\":\"error\",\"source_path\":\"en-gb.kdl\",\"span\":{\"start\":0,\"end\":3},\"line\":1,\"col\":1,\"origin\":\"data-document\",\"labels\":[],\"related\":[],\"correction\":\"Remove the held value before setting the slot again, or declare duplicates=last-wins or duplicates=layered on the slot\",\"message\":\"context loc under duplicates=reject receives a second value from line 1 column 5 while it holds one from source metadata\"}}\n",
+      "{\"item\":\"diagnostic\",\"data\":{\"code\":\"KDLITH-CTX006\",\"severity\":\"error\",\"source_path\":\"en-gb.kdl\",\"span\":{\"start\":0,\"end\":3},\"line\":1,\"col\":1,\"origin\":\"data-document\",\"labels\":[],\"related\":[],\"correction\":\"Remove the held value before setting the slot again, declare duplicates=last-wins or duplicates=layered on the slot, or set it through a replace=#true effect group\",\"message\":\"context loc under duplicates=reject receives a second value from line 1 column 5 while it holds one from source metadata\"}}\n",
       "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":1},\"type_name\":\"Stamp\",\"fields\":[{\"name\":\"loc\",\"value\":{\"kind\":\"string\",\"value\":\"en-gb\"},\"origin\":1},{\"name\":\"lw\",\"value\":{\"kind\":\"string\",\"value\":\"en-gb\"},\"origin\":1},{\"name\":\"lay\",\"value\":{\"kind\":\"string\",\"value\":\"en-gb\"},\"origin\":1}],\"origin\":1,\"validation\":\"valid\"}}\n"
     ],
     "stderr-golden": "stderr.golden"

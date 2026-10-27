@@ -1,0 +1,3 @@
+cache 532772cf869da5d0 revision=fnv1a64:bf010ff6a1bc06a2 schema=fnv1a64:42e680268da08387 context=fnv1a64:97c312de49340b52 profiles=fnv1a64:e1b51df36e161fca resolved=fnv1a64:7c4cd565807bb610 policy=reject items=2
+  derived entry=plain.kdl source=plain.kdl caller=-
+snapshot 593152c2df0677cb entry=plain.kdl revision=fnv1a64:bf010ff6a1bc06a2 schema=fnv1a64:42e680268da08387 profiles=fnv1a64:e1b51df36e161fca lineage=[secret.kdl,plain.kdl] records=1 slots=1 layout=fnv1a64:92f98b5aa0f94401

@@ -768,6 +768,7 @@ fn effect_group(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) -> Option<Effect
     let site = Site::new(doc, node.span);
     let mut part = Construct::new(cx, doc, node);
     let target = part.string_prop(cx, "target");
+    let replace = part.value_prop("replace");
     part.finish(cx);
     let target = match target.as_deref() {
         Some("following") => EffectTarget::Following,
@@ -778,6 +779,19 @@ fn effect_group(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) -> Option<Effect
         }
         None => {
             cx.missing(site, "effects", "target");
+            return None;
+        }
+    };
+    let replace = match replace {
+        None => false,
+        Some(Value::Bool(flag)) => flag,
+        Some(other) => {
+            cx.mistyped(
+                site,
+                "the replace property of effects",
+                "Bool",
+                &found(&other),
+            );
             return None;
         }
     };
@@ -844,6 +858,7 @@ fn effect_group(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) -> Option<Effect
     Some(EffectGroup {
         target,
         effects,
+        replace,
         site,
     })
 }

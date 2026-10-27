@@ -1,0 +1,21 @@
+// A replace effect group whose handler addresses a slot the
+// definition does not declare: the group's replace property changes
+// how its sets treat a held value, never whether their targets are
+// declared, so the handler's effect still fails closed at its effect
+// point.
+schema handlers version="1" {
+    types {
+        string Locale {
+            format kebab-case
+        }
+    }
+    context {
+        slot locale Locale namespace=defaults
+    }
+    node locale role=context-control {
+        field zone Locale arg=0
+        effects target=following replace=#true {
+            handler copy-fields
+        }
+    }
+}

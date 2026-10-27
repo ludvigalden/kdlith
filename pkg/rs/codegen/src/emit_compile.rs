@@ -736,6 +736,7 @@ fn node_input(node: NodeDef) -> NodeInput {
             .map(|group| EffectGroupInput {
                 target: group.target.member().to_owned(),
                 effects: group.effects.iter().map(effect).collect(),
+                replace: group.replace.unwrap_or(false),
             })
             .collect(),
         groups: node

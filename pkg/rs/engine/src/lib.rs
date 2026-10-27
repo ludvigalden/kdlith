@@ -103,7 +103,9 @@ pub use names::{Names, Sym};
 /// The pinned `regex` type is public API: tools and the generated
 /// crates that re-export it name it through the engine.
 pub use pattern::{Regex, matches_line};
-pub use plan::{ContextPlan, ContextRead, DeferredBinding, EffectStep, NodePlan, ProcessingPlan};
+pub use plan::{
+    ContextPlan, ContextRead, DeferredBinding, EffectStep, EffectSteps, NodePlan, ProcessingPlan,
+};
 pub use resolution::{ResolutionError, SharedContributionResolver, resolve};
 pub use snapshot_store::{SnapshotLoad, encode_snapshot_entry, load_snapshot};
 pub use snapshots::{

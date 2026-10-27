@@ -41,7 +41,7 @@ use crate::diag::{
 };
 use crate::names::Sym;
 use crate::overlap;
-use crate::plan::EffectStep;
+use crate::plan::{EffectStep, EffectSteps};
 use crate::structure::{ScopeRules, ScopeState, Violation};
 use crate::summary;
 use crate::types::{
@@ -1589,12 +1589,12 @@ impl<'d, 's> Binder<'d, 's> {
         &mut self,
         cx: &mut Cx<'_>,
         frame: &BindFrame,
-        steps: &[EffectStep],
+        group: &EffectSteps,
         target: ContextTarget,
         view: FieldView<'_>,
     ) -> Vec<ContextEffect> {
         let mut out = Vec::new();
-        for step in steps {
+        for step in &group.steps {
             match step {
                 EffectStep::Set { slot, from, layer } => {
                     let site = self.location(frame.span);
@@ -1752,6 +1752,7 @@ impl<'d, 's> Binder<'d, 's> {
         &mut self,
         cx: &mut Cx<'_>,
         effects: Vec<ContextEffect>,
+        replace: bool,
         span: ByteSpan,
     ) -> Vec<ContextEffect> {
         let mut kept = Vec::with_capacity(effects.len());
@@ -1796,7 +1797,8 @@ impl<'d, 's> Binder<'d, 's> {
             let incoming = SlotValue::new(decoded, value.origin)
                 .with_trace(value.trace)
                 .with_layer(value.layer);
-            let Some(placed) = self.combine(cx, &info, held.as_ref(), incoming, span) else {
+            let Some(placed) = self.combine(cx, &info, held.as_ref(), incoming, replace, span)
+            else {
                 continue;
             };
             written.insert(slot, Some(placed.clone()));
@@ -1811,12 +1813,14 @@ impl<'d, 's> Binder<'d, 's> {
     /// Place a set under the slot's accumulation or duplicate policy.
     /// `Some` is the slot's value after it; `None` leaves the slot as it
     /// was: rejected and reported, or outranked by a held layer.
+    /// `replace`: a duplicate-set failure places the incoming value.
     fn combine(
         &mut self,
         cx: &mut Cx<'_>,
         info: &SlotInfo,
         held: Option<&SlotValue>,
         incoming: SlotValue,
+        replace: bool,
         span: ByteSpan,
     ) -> Option<SlotValue> {
         let Some(held) = held else {
@@ -1835,11 +1839,27 @@ impl<'d, 's> Binder<'d, 's> {
             }
             None => match info.duplicates {
                 SlotDuplicates::Reject => {
+                    if replace {
+                        return Some(incoming);
+                    }
                     self.duplicate_set(cx, info, held, &incoming, span);
                     None
                 }
+                // An equal repeat is a no-op success: the slot keeps its
+                // held value, so the effective context is unchanged. A
+                // different one is rejected exactly as `reject` rejects.
+                SlotDuplicates::RejectDifferent => {
+                    if held.value == incoming.value {
+                        Some(held.clone())
+                    } else if replace {
+                        Some(incoming)
+                    } else {
+                        self.duplicate_set(cx, info, held, &incoming, span);
+                        None
+                    }
+                }
                 SlotDuplicates::LastWins => Some(incoming),
-                SlotDuplicates::Layered => self.layered(cx, info, held, incoming, span),
+                SlotDuplicates::Layered => self.layered(cx, info, held, incoming, replace, span),
             },
         }
     }
@@ -1884,13 +1904,16 @@ impl<'d, 's> Binder<'d, 's> {
 
     /// The layered arm, by declared order, highest first: a higher layer
     /// replaces, a lower one leaves the held value, so order never
-    /// matters. Same layer, or a held value without one, rejects.
+    /// matters. Same layer, or a held value without one, rejects — the
+    /// duplicate-set check a replace group's set passes by placing its
+    /// value.
     fn layered(
         &mut self,
         cx: &mut Cx<'_>,
         info: &SlotInfo,
         held: &SlotValue,
         incoming: SlotValue,
+        replace: bool,
         span: ByteSpan,
     ) -> Option<SlotValue> {
         let rank = |layer: &Option<String>| {
@@ -1905,6 +1928,9 @@ impl<'d, 's> Binder<'d, 's> {
             (Some(ours), Some(theirs)) if ours < theirs => Some(incoming),
             (Some(ours), Some(theirs)) if ours > theirs => None,
             _ => {
+                if replace {
+                    return Some(incoming);
+                }
                 self.duplicate_set(cx, info, held, &incoming, span);
                 None
             }
@@ -2423,7 +2449,7 @@ impl<'d, 's> Binder<'d, 's> {
                     ContextTarget::FollowingSiblings,
                     FieldView::Bound(&values),
                 );
-                for effect in self.typed(cx, effects, frame.span) {
+                for effect in self.typed(cx, effects, plan.following_effects.replace, frame.span) {
                     if let Some(following) = following.as_mut() {
                         following.push(effect);
                     }
@@ -3003,7 +3029,7 @@ impl<'s> Processor for Binder<'_, 's> {
             ContextTarget::Children,
             FieldView::Header,
         );
-        for effect in self.typed(cx, effects, frame.span) {
+        for effect in self.typed(cx, effects, plan.children_effects.replace, frame.span) {
             children.push(effect);
         }
     }

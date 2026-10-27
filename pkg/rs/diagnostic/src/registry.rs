@@ -939,9 +939,9 @@ pub const CODES: &[CodeDefinition] = &[
         label: "slot-duplicate-rejected",
         severity: Severity::Error,
         exit_class: 1,
-        trigger: "a set reaches an occupied slot that does not accumulate and the slot's declared duplicate policy rejects it: reject, the default, rejects every second value; layered rejects a second value within one layer, and a set meeting a held value without a layer or carrying none",
+        trigger: "a set reaches an occupied slot that does not accumulate and the slot's declared duplicate policy rejects it: reject, the default, rejects every second value; reject-different rejects a second value that differs from the held one; layered rejects a second value within one layer, and a set meeting a held value without a layer or carrying none",
         message_template: "context <slot> under duplicates=<policy> receives a second value from <incoming> while it holds one from <held>",
-        correction: "Remove the held value before setting the slot again, or declare duplicates=last-wins or duplicates=layered on the slot",
+        correction: "Remove the held value before setting the slot again, declare duplicates=last-wins or duplicates=layered on the slot, or set it through a replace=#true effect group",
         retired: false,
     },
     // REF

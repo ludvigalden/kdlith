@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "An equal repeat of a duplicates=reject-different slot binds as a no-op success: the entry document sets system base, the projected import part.kdl re-states the same value against the projected one, vet data exits 0 with both stamps reading base, and the context view holds one system binding (the differing-repeat control is invalid/data/reject-different-second-value, the plain-reject equal-repeat control is invalid/data/slot-duplicate-reject-equal)",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/rebind.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"import\",\"data\":{\"node\":{\"source\":0,\"index\":1},\"expression\":\"part.kdl\",\"targets\":[\"part.kdl\"],\"namespace\":null,\"project\":[\"system\"],\"repeated\":\"reject\"",
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":1,\"index\":1},\"type_name\":\"Stamp\",\"fields\":[{\"name\":\"system\",\"value\":{\"kind\":\"string\",\"value\":\"base\"},\"origin\":1}],\"origin\":1,\"validation\":\"valid\"}}\n"
+    ]
+  }
+}

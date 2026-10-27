@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A second, different value reaching a duplicates=reject-different slot is KDLITH-CTX006 exactly as under plain reject: system base then system other names both contributions by line and column with the policy spelled reject-different in the message",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/rebind.kdl",
+    "data.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

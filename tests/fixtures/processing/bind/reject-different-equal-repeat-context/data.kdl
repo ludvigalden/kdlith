@@ -1,0 +1,5 @@
+system base
+use "part.kdl" {
+    project system
+}
+stamp

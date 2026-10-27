@@ -1,0 +1,55 @@
+// The equal-repeat and rebind schema these scenarios share: a system
+// slot declaring duplicates=reject-different, a release slot under the
+// reject default, a rebind control whose replace effect group rebinds
+// release only, and a source import projecting both slots.
+schema rebind version="1" {
+    types {
+        string Name {
+            format kebab-case
+        }
+        object Stamp {
+            field system "optional<Name>"
+            field release "optional<String>"
+        }
+    }
+    context {
+        slot system Name duplicates=reject-different
+        slot release String
+    }
+    node system role=context-control {
+        field value Name arg=0
+        effects target=following {
+            set system field=value
+        }
+    }
+    node release role=context-control {
+        field value String arg=0
+        effects target=following {
+            set release field=value
+        }
+    }
+    node rebind role=context-control {
+        field release String arg=0
+        effects target=following replace=#true {
+            set release field=release
+        }
+    }
+    node stamp role=record type=Stamp {
+        field system context=system
+        field release context=release
+    }
+    node use role=source-import {
+        field path String arg=0
+        field project "optional<list<String>>" {
+            from {
+                child project {
+                    args
+                }
+            }
+        }
+        children project max-occurs=1
+    }
+    document {
+        following system release rebind stamp use
+    }
+}

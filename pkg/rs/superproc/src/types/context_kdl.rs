@@ -51,6 +51,7 @@ enum_type! {
     /// fail-closed default rejects.
     pub enum SlotDuplicates {
         "reject" => Reject,
+        "reject-different" => RejectDifferent,
         "last-wins" => LastWins,
         "layered" => Layered,
     }
@@ -93,6 +94,9 @@ object_type! {
     pub struct EffectGroup {
         "target" => target: EffectTarget,
         "effects" => effects: Vec<Effect>,
+        // The group's set effects replace the held value of the slots
+        // they name instead of failing the duplicate-set check.
+        "replace" => replace: Option<bool>,
     }
 }
 

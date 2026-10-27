@@ -7,10 +7,10 @@ use std::path::{Path, PathBuf};
 
 use kdlith_diagnostic::{DiagnosticRecord, ExitStatus, Severity};
 use kdlith_engine::{
-    AccumulateOp, CheckScope, ContextPolicy, DeferredBinding, Definition, EffectStep, EntryContext,
-    Extensions, ImportDecl, LinkOutcome, Names, NodeDecl, ReadOptions, Role, ScopeId, ScopeRules,
-    SetFrom, Site, SlotDecl, SourceRevisions, Sym, TypedItem, list_nodes, list_profiles,
-    list_types,
+    AccumulateOp, CheckScope, ContextPolicy, DeferredBinding, Definition, EffectStep, EffectSteps,
+    EntryContext, Extensions, ImportDecl, LinkOutcome, Names, NodeDecl, ReadOptions, Role, ScopeId,
+    ScopeRules, SetFrom, Site, SlotDecl, SourceRevisions, Sym, TypedItem, list_nodes,
+    list_profiles, list_types,
 };
 use kdlith_model::Location;
 use kdlith_superproc::{Item, load_dialect, load_schema_with, reader};
@@ -342,7 +342,12 @@ fn plan_lines(def: &Definition) -> Vec<serde_json::Value> {
     }})];
     for ((_, decl), node) in def.bindings.iter().zip(def.plan.nodes()) {
         let scope = node.scope.and_then(|id| def.bindings.scope(id));
-        let steps = || node.children_effects.iter().chain(&node.following_effects);
+        let steps = || {
+            node.children_effects
+                .steps
+                .iter()
+                .chain(&node.following_effects.steps)
+        };
         let flags = [
             (
                 "record-buffering",
@@ -559,10 +564,11 @@ impl PlanNames<'_> {
         self.slots.get(slot).map_or("", String::as_str)
     }
 
-    fn effects(&self, steps: &[EffectStep]) -> Vec<serde_json::Value> {
+    fn effects(&self, group: &EffectSteps) -> Vec<serde_json::Value> {
         use serde_json::json;
         let n = self.n;
-        steps
+        group
+            .steps
             .iter()
             .map(|step| match step {
                 EffectStep::Set { slot, from, layer } => {
@@ -571,12 +577,17 @@ impl PlanNames<'_> {
                         SetFrom::Value(value) => ("value", json!(value)),
                         _ => ("value", serde_json::Value::Null),
                     };
-                    json!({
+                    // A replace flag at its default adds nothing.
+                    let mut step = json!({
                         "effect": "set",
                         "slot": self.slot(slot.index()),
                         key: value,
                         "layer": layer.map(|l| n.resolve(l)),
-                    })
+                    });
+                    if group.replace {
+                        step["replace"] = json!(true);
+                    }
+                    step
                 }
                 EffectStep::Remove { slot } => {
                     json!({"effect": "remove", "slot": self.slot(slot.index())})
@@ -585,7 +596,9 @@ impl PlanNames<'_> {
                     "effect": "clear",
                     "namespace": self.namespaces.get(namespace.index()).map_or("", String::as_str),
                 }),
-                EffectStep::Handler { name } => json!({"effect": "handler", "name": name}),
+                EffectStep::Handler { name } => {
+                    json!({"effect": "handler", "name": name})
+                }
                 _ => json!({"effect": "unknown"}),
             })
             .collect()

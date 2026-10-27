@@ -1,0 +1,40 @@
+// A duplicates=reject-different slot set from a resolved secret and
+// re-stated with the same value: the equal repeat is a no-op success,
+// and because the reading consulted the value resolver it still
+// writes no snapshot.
+schema vault version="1" {
+    types {
+        object Credential {
+            field token String sensitivity=secret {
+                fallback computed=#true {
+                    dependency "vault"
+                }
+            }
+        }
+        object Restate {
+            field token String
+        }
+        object Note {
+            field text String
+        }
+    }
+    context {
+        slot token String duplicates=reject-different
+    }
+    node credential role=context-control type=Credential {
+        field token property=token
+        effects target=following {
+            set token field=token
+        }
+    }
+    node restate role=context-control type=Restate {
+        field token property=token
+        effects target=following {
+            set token field=token
+        }
+    }
+    node note role=record type=Note {
+        field text arg=0
+    }
+    provider vault ttl=300 "sh" "-c" "touch provider-executed"
+}

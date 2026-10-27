@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "The effective context of the equal-repeat reading holds one system binding: the imported re-statement left the projected value in place, so inspect's context view shows system base with release unset",
+  "args": [
+    "inspect",
+    "data",
+    "--view",
+    "context",
+    "--schema",
+    "{fx-suite}/processing/bind/rebind.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "context.golden"
+  }
+}

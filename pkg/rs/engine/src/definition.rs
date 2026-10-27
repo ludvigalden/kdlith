@@ -331,6 +331,9 @@ pub enum SlotDuplicates {
     /// A second value is rejected (`KDLITH-CTX006`).
     #[default]
     Reject,
+    /// A second value equal to the held one is a no-op success; a
+    /// different one is rejected exactly as `reject` rejects it.
+    RejectDifferent,
     /// The later value replaces the held one.
     LastWins,
     /// A higher layer's value replaces a lower layer's; a lower layer's
@@ -343,6 +346,7 @@ impl SlotDuplicates {
     pub fn from_name(name: &str) -> Option<Self> {
         Some(match name {
             "reject" => SlotDuplicates::Reject,
+            "reject-different" => SlotDuplicates::RejectDifferent,
             "last-wins" => SlotDuplicates::LastWins,
             "layered" => SlotDuplicates::Layered,
             _ => return None,
@@ -352,6 +356,7 @@ impl SlotDuplicates {
     pub fn name(self) -> &'static str {
         match self {
             SlotDuplicates::Reject => "reject",
+            SlotDuplicates::RejectDifferent => "reject-different",
             SlotDuplicates::LastWins => "last-wins",
             SlotDuplicates::Layered => "layered",
         }
