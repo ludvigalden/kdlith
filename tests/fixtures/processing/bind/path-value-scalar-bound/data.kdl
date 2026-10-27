@@ -1,0 +1,9 @@
+module "M1" status=active
+concept "C1" status="held text"
+amend "A1" {
+    changes {
+        set kind=module "status" "draft"
+        set kind=concept "status" "revised freely"
+        set kind=concept "note" 42
+    }
+}

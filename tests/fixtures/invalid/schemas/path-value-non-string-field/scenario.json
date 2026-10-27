@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A value-from-path whose named field does not admit only strings fails closed at definition compile: the path field is typed U64, and the schema fails with the malformed-construct code",
+  "args": [
+    "vet",
+    "schema",
+    "schema.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

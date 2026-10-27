@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A pending typed binding is excluded from typed reads per the pending-item contract: reading the amendment record by its identity returns the record with its operation parts and no pending payload, exit 0",
+  "args": [
+    "read",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/pathvalue.kdl",
+    "data.kdl",
+    "A1"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden"
+  }
+}

@@ -1,0 +1,7 @@
+amend "A1" {
+    changes {
+        set kind=module "status" "draft"
+        put "status" "untyped until the schema selects a subject"
+        put "validity" { validity from=1 }
+    }
+}

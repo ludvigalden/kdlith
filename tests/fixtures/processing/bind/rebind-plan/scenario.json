@@ -13,8 +13,8 @@
   "expect": {
     "exit": 0,
     "stdout-contains": [
-      "{\"item\":\"plan-node\",\"data\":{\"name\":\"rebind\",\"role\":\"context-control\",\"scope\":2,\"children-effects\":[],\"following-effects\":[{\"effect\":\"set\",\"slot\":\"release\",\"field\":\"release\",\"layer\":null,\"replace\":true}],\"context-reads\":[],\"deferred\":[],\"dependent\":null,\"declaration\":false,\"requires\":[\"global-validation\"]}}\n",
-      "{\"item\":\"plan-node\",\"data\":{\"name\":\"release\",\"role\":\"context-control\",\"scope\":1,\"children-effects\":[],\"following-effects\":[{\"effect\":\"set\",\"slot\":\"release\",\"field\":\"value\",\"layer\":null}],\"context-reads\":[],\"deferred\":[],\"dependent\":null,\"declaration\":false,\"requires\":[\"global-validation\"]}}\n"
+      "{\"item\":\"plan-node\",\"data\":{\"name\":\"rebind\",\"role\":\"context-control\",\"scope\":2,\"children-effects\":[],\"following-effects\":[{\"effect\":\"set\",\"slot\":\"release\",\"field\":\"release\",\"layer\":null,\"replace\":true}],\"context-reads\":[],\"deferred\":[],\"dependent\":null,\"value-from-path\":null,\"declaration\":false,\"requires\":[\"global-validation\"]}}\n",
+      "{\"item\":\"plan-node\",\"data\":{\"name\":\"release\",\"role\":\"context-control\",\"scope\":1,\"children-effects\":[],\"following-effects\":[{\"effect\":\"set\",\"slot\":\"release\",\"field\":\"value\",\"layer\":null}],\"context-reads\":[],\"deferred\":[],\"dependent\":null,\"value-from-path\":null,\"declaration\":false,\"requires\":[\"global-validation\"]}}\n"
     ]
   }
 }

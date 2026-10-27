@@ -41,8 +41,8 @@ pub use bindings::{
     Arity, BindingCatalog, BindingCodec, CaseRule, ChildPlan, ChildRule, Collision, Condition,
     ContextPolicy, DependentBinding, DescendantRule, DuplicateKeys, Effect, EffectGroup,
     EffectTarget, FieldBinding, IdentityDecl, NodeAnnotation, NodeDecl, NodeDeclId, ParentKey,
-    Placement, Role, Scope, ScopeId, SequenceDecl, SequenceStep, SetFrom, Source as FieldSource,
-    WhenBranch,
+    PathValueBinding, Placement, Role, Scope, ScopeId, SequenceDecl, SequenceStep, SetFrom,
+    Source as FieldSource, WhenBranch,
 };
 pub use cache::{DerivedState, derive_state};
 pub use compile::input::{
@@ -50,8 +50,8 @@ pub use compile::input::{
     Construct, DefaultInput, DefinitionInput, DependentInput, DescendantRuleInput, DocumentInput,
     DocumentRuleInput, EffectGroupInput, EffectInput, FieldBindingInput, FieldInput, FormatInput,
     GroupInput, IdentityInput, ImportInput, Located, LocationsInput, MatchRuleInput, MemberInput,
-    NodeAnnotationInput, NodeInput, OpenWorldInput, ProfileInput, ProviderInput, QualifierInput,
-    ReferenceInput, ResolutionInput, SequenceInput, SlotInput, SourceContextInput,
+    NodeAnnotationInput, NodeInput, OpenWorldInput, PathValueInput, ProfileInput, ProviderInput,
+    QualifierInput, ReferenceInput, ResolutionInput, SequenceInput, SlotInput, SourceContextInput,
     SourceFieldInput, SourceInput, StepInput, TypeInput, ValidatorInput, VariantInput,
 };
 pub use compile::{DIALECT_VERSION, compile_dialect, compile_dialect_input, compile_schema_input};

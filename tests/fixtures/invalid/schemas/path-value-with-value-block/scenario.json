@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A node declaring a value block beside value-from-path fails closed at definition compile: nothing binds a second payload, and the schema fails with the malformed-construct code",
+  "args": [
+    "vet",
+    "schema",
+    "schema.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

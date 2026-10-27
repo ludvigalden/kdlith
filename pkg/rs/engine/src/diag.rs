@@ -62,6 +62,7 @@ pub(crate) const VALUE_TYPE: &str = "KDLITH-BND003";
 pub(crate) const MISSING_FIELD: &str = "KDLITH-BND004";
 pub(crate) const UNBOUND_ENTRY: &str = "KDLITH-BND005";
 pub(crate) const DUPLICATE_KEY: &str = "KDLITH-BND006";
+pub(crate) const UNRESOLVED_PATH_VALUE: &str = "KDLITH-BND015";
 pub(crate) const UNKNOWN_MEMBER: &str = "KDLITH-BND008";
 
 /// Where a construct was written: the contributing document's position

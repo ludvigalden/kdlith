@@ -1,0 +1,8 @@
+[package]
+name = "path-value-exercise"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+
+[dependencies]
+path-value-proc = { path = "../path-value-proc" }

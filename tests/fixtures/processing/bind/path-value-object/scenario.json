@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "A structured path admits the child block form: the path validity resolves against the subject type's object field, the undeclared child node's properties compose the payload, each checked in the object's own field types, and vet data exits 0 (the bound view of the same reading is path-value-object-bound)",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/pathvalue.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"type_name\":\"Amend\""
+    ]
+  }
+}

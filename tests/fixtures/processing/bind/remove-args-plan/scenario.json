@@ -13,9 +13,9 @@
   "expect": {
     "exit": 0,
     "stdout-contains": [
-      "{\"item\":\"plan-node\",\"data\":{\"name\":\"clear\",\"role\":\"context-control\",\"scope\":3,\"children-effects\":[],\"following-effects\":[{\"effect\":\"remove-from-args\",\"field\":\"slots\"}],\"context-reads\":[],\"deferred\":[],\"dependent\":null,\"declaration\":false,\"requires\":[\"global-validation\"]}}\n",
-      "{\"item\":\"plan-node\",\"data\":{\"name\":\"reset\",\"role\":\"context-control\",\"scope\":4,\"children-effects\":[],\"following-effects\":[{\"effect\":\"remove-from-args\",\"field\":\"slots\"}],\"context-reads\":[],\"deferred\":[],\"dependent\":null,\"declaration\":false,\"requires\":[\"global-validation\"]}}\n",
-      "{\"item\":\"plan-node\",\"data\":{\"name\":\"system\",\"role\":\"context-control\",\"scope\":0,\"children-effects\":[],\"following-effects\":[{\"effect\":\"set\",\"slot\":\"system\",\"field\":\"value\",\"layer\":null}],\"context-reads\":[],\"deferred\":[],\"dependent\":null,\"declaration\":false,\"requires\":[\"global-validation\"]}}\n"
+      "{\"item\":\"plan-node\",\"data\":{\"name\":\"clear\",\"role\":\"context-control\",\"scope\":3,\"children-effects\":[],\"following-effects\":[{\"effect\":\"remove-from-args\",\"field\":\"slots\"}],\"context-reads\":[],\"deferred\":[],\"dependent\":null,\"value-from-path\":null,\"declaration\":false,\"requires\":[\"global-validation\"]}}\n",
+      "{\"item\":\"plan-node\",\"data\":{\"name\":\"reset\",\"role\":\"context-control\",\"scope\":4,\"children-effects\":[],\"following-effects\":[{\"effect\":\"remove-from-args\",\"field\":\"slots\"}],\"context-reads\":[],\"deferred\":[],\"dependent\":null,\"value-from-path\":null,\"declaration\":false,\"requires\":[\"global-validation\"]}}\n",
+      "{\"item\":\"plan-node\",\"data\":{\"name\":\"system\",\"role\":\"context-control\",\"scope\":0,\"children-effects\":[],\"following-effects\":[{\"effect\":\"set\",\"slot\":\"system\",\"field\":\"value\",\"layer\":null}],\"context-reads\":[],\"deferred\":[],\"dependent\":null,\"value-from-path\":null,\"declaration\":false,\"requires\":[\"global-validation\"]}}\n"
     ]
   }
 }

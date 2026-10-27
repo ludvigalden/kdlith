@@ -30,6 +30,9 @@ pub(crate) enum Kind {
     Nested,
     /// As exactly one positional value of an owner field.
     Scalar,
+    /// As the structured payload of a path-typed value node: an
+    /// undeclared child whose properties compose the payload map.
+    Payload,
 }
 
 /// A value supplied to a field, with the span it came from and the
@@ -91,6 +94,10 @@ pub struct BindFrame {
     /// A declared node's dependent payload: the positional arguments no
     /// binding consumes, kept with their spans for the value block.
     pub(crate) payload: Vec<(Value, ByteSpan)>,
+    /// A path-typed value node's structured payload: the properties its
+    /// raw payload children carry, composed against the resolved field's
+    /// object type when the node closes.
+    pub(crate) structured: Vec<(String, Value, ByteSpan)>,
     /// The binder's error count when the node opened.
     pub(crate) mark: u64,
     /// Errors of descendants that are processing items of their own.
@@ -140,6 +147,7 @@ impl BindFrame {
             key_rejected: false,
             scalar: None,
             payload: Vec::new(),
+            structured: Vec::new(),
             mark: opened.mark,
             excluded: 0,
             traces: Vec::new(),

@@ -1,0 +1,70 @@
+{
+  "heavy": true,
+  "binary": "kdlith",
+  "kind": "codegen-oracle",
+  "description": "The path-typed value generation fixture: gen schema generates the committed path-value schema, whose set node binds its payload through value-from-path, twice into two scratch trees the harness requires byte-identical; the generated crate compiles inside a scratch workspace materialized from this scenario's committed template, and the compiled processor loads the committed schema through its own loader, collects a committed data document as a reading linked under complete scope through its own typed reader, and reports every typed-binding item the value-from-path nodes leave at their stream position — the resolved ones naming their subject type and path, the subjectless one preserved raw — beside the amendment record, with no diagnostic",
+  "form": "schema",
+  "entrypoint": "{fx-suite}/processing/bind/pathvalue.kdl",
+  "crate": "path-value-proc",
+  "steps": [
+    {
+      "generate": "ws/rs/path-value-proc"
+    },
+    {
+      "generate": "gen-again"
+    },
+    {
+      "determinism": [
+        "ws/rs/path-value-proc",
+        "gen-again"
+      ]
+    },
+    {
+      "compile": {
+        "workspace": "ws",
+        "copy": {
+          "crates": [
+            "diagnostic",
+            "engine",
+            "model",
+            "parse",
+            "runtime",
+            "superproc"
+          ]
+        },
+        "command": [
+          "cargo",
+          "build",
+          "--offline",
+          "--manifest-path",
+          "ws/rs/path-value-proc/Cargo.toml"
+        ]
+      }
+    },
+    {
+      "exercise": {
+        "command": [
+          "cargo",
+          "run",
+          "--offline",
+          "--quiet",
+          "--manifest-path",
+          "ws/rs/exercise/Cargo.toml",
+          "--",
+          "processing/bind/pathvalue.kdl",
+          "inputs/data.kdl"
+        ],
+        "stdout-contains": [
+          "schema ok digest=55821240e1ae2a9a documents=1\n",
+          "read ok amends=1 pending=4\n",
+          "linked failed=false\n",
+          "typed-binding ModuleCard status\n",
+          "typed-binding ModuleCard validity.from\n",
+          "typed-binding ModuleCard validity\n",
+          "typed-binding  status\n",
+          "amend A1 changes=4\n"
+        ]
+      }
+    }
+  ]
+}

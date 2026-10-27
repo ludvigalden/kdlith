@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "The bound view admits the pending typed-binding items a subjectless value-from-path node leaves at its stream position: each carries its raw payload against no subject, while the resolved set beside them names its subject type and path",
+  "args": [
+    "inspect",
+    "data",
+    "--view",
+    "bound",
+    "--schema",
+    "{fx-suite}/processing/bind/pathvalue.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden"
+  }
+}

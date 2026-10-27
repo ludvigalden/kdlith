@@ -676,6 +676,9 @@ fn node_input(node: NodeDef) -> NodeInput {
         member: value.against.member.as_str().to_owned(),
         codec: value.codec.member().to_owned(),
     });
+    let value_from_path = node.value_from_path.map(|binding| PathValueInput {
+        field: binding.field.as_str().to_owned(),
+    });
     let (cases, otherwise) = match node.cases {
         Some(dispatch) => {
             let otherwise = dispatch
@@ -776,6 +779,7 @@ fn node_input(node: NodeDef) -> NodeInput {
                 .collect(),
         }),
         value,
+        value_from_path,
         cases,
         otherwise,
         identity: node.identity.as_ref().map(|identity| IdentityInput {

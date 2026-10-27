@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "A dotted path walks the subject type's object fields: validity.from resolves through ModuleCard's validity to Validity's from, and the payload binds in that field's U64",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/pathvalue.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"type_name\":\"Amend\""
+    ]
+  }
+}

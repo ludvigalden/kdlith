@@ -1,0 +1,79 @@
+// The path-typed value schema the value-from-path scenarios share:
+// amendment-style set nodes whose payload binds in the type of the field
+// the path argument names, resolved against the subject type the kind
+// case selects, and a put node whose payloads stay pending until the
+// schema gives it a case dispatch.
+schema pathvalue version="1" {
+    types {
+        object ModuleCard {
+            field code String
+            field status ModuleStatus
+            field validity "optional<Validity>"
+        }
+        object ConceptCard {
+            field code String
+            field status String
+            field note "optional<U64>"
+        }
+        object Validity {
+            field from U64
+            field to "optional<U64>"
+        }
+        enum ModuleStatus {
+            member draft
+            member active
+        }
+        object Amend {
+            field id String
+            field changes "list<Operation>"
+        }
+        object SetOperation {
+            field path String
+            field kind "optional<String>"
+        }
+        object PutOperation {
+            field path String
+        }
+        union Operation {
+            variant set SetOperation
+            variant put PutOperation
+        }
+    }
+    node module role=declaration type=ModuleCard {
+        field code arg=0
+        field status property=status
+    }
+    node concept role=declaration type=ConceptCard {
+        field code arg=0
+        field status property=status
+    }
+    node amend role=record type=Amend {
+        field id arg=0
+        field changes {
+            from {
+                child changes {
+                    children set
+                    children put
+                }
+            }
+        }
+        children changes min-occurs=1 max-occurs=1
+    }
+    node changes parent=amend {
+        children set
+        children put
+    }
+    node set type=SetOperation parent=changes {
+        field path arg=0
+        field kind property=kind
+        value-from-path field=path
+        cases {
+            case property=kind equals=module type=ModuleCard
+            case property=kind equals=concept type=ConceptCard
+        }
+    }
+    node put type=PutOperation parent=changes {
+        field path arg=0
+        value-from-path field=path
+    }
+}

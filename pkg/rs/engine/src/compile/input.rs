@@ -130,6 +130,12 @@ pub struct DependentInput {
     pub codec: String,
 }
 
+/// A node declaration's path-typed payload binding.
+#[derive(Clone, Debug)]
+pub struct PathValueInput {
+    pub field: String,
+}
+
 /// One case of a case dispatch, as declared.
 #[derive(Clone, Debug)]
 pub struct CaseInput {
@@ -237,8 +243,8 @@ pub enum ConstraintInput {
 
 /// A node declaration: role, type, placement, profile, field bindings,
 /// child rules, effect groups, exactly-one groups, descendant rules, the
-/// ordered sequence, and the identity, dependent-value, and case-dispatch
-/// blocks it declares.
+/// ordered sequence, and the identity, dependent-value, path-value, and
+/// case-dispatch blocks it declares.
 #[derive(Clone, Debug, Default)]
 pub struct NodeInput {
     pub name: String,
@@ -264,6 +270,7 @@ pub struct NodeInput {
     pub descendants: Vec<DescendantRuleInput>,
     pub sequence: Option<SequenceInput>,
     pub value: Option<DependentInput>,
+    pub value_from_path: Option<PathValueInput>,
     pub cases: Vec<CaseInput>,
     pub otherwise: Option<String>,
     pub identity: Option<IdentityInput>,

@@ -1,0 +1,36 @@
+schema broken version="1" {
+    types {
+        object Card {
+            field code String
+            field tail "list<String>"
+        }
+        object Op {
+            field path String
+            field target "ref<Card>"
+        }
+    }
+    node card role=declaration type=Card {
+        field code arg=0
+        field tail {
+            from {
+                args
+            }
+        }
+    }
+    node ops role=record {
+        field set "list<Op>" {
+            from {
+                children set
+            }
+        }
+        children set
+    }
+    node set role=contribution type=Op parent=ops {
+        field path arg=0
+        field target arg=1
+        value-from-path field=path
+        value codec=fixture-value {
+            against target=target member=tail
+        }
+    }
+}

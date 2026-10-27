@@ -72,6 +72,9 @@ pub(crate) const NODES: &[NodeShape] = &[
     NodeShape::new("against")
         .under(&["value"])
         .ty("DependentTarget"),
+    NodeShape::new("value-from-path")
+        .under(&["node"])
+        .ty("PathValueBinding"),
     NodeShape::new("cases").under(&["node"]).ty("CaseDispatch"),
     NodeShape::new("case").under(&["cases"]).ty("CaseRule"),
     NodeShape::new("otherwise")

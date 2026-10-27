@@ -24,6 +24,9 @@ const AMBIGUOUS: &str = "KDLITH-REF003";
 const UNMET_QUALIFIER: &str = "KDLITH-REF004";
 const PAYLOAD_TYPE: &str = "KDLITH-REF005";
 const ORIGIN: &str = "data-document";
+/// The codec name a path-typed payload's item carries: never a
+/// reference, never validated at link.
+pub(crate) const PATH_VALUE_CODEC: &str = "value-from-path";
 
 /// The linkable surface of one reading, gathered from its item stream:
 /// the items that carry declarations or references, the path of every
@@ -479,6 +482,12 @@ impl LinkReport {
             let Item::PendingBinding(pending) = item else {
                 continue;
             };
+            // A path-typed value is not a reference: its item carries the
+            // binding the binder resolved at bind time, and the link stage
+            // validates nothing of it.
+            if pending.codec == PATH_VALUE_CODEC {
+                continue;
+            }
             let linked = self.links_for(&pending.against).next().is_some();
             let Some(target) = self
                 .resolved_target(&pending.against)

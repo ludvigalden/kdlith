@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "A node whose case dispatch selects no subject type leaves its payload a pending typed binding, preserved raw and never validated: the put node's payloads stay pending beside a resolved set, and vet data under complete scope exits 0 with no link diagnostic — a path-typed value is not a reference and never enters the link stage (the bound view is path-value-pending-bound, the read exclusion is path-value-pending-read)",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "{fx-suite}/processing/bind/pathvalue.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"type_name\":\"Amend\""
+    ]
+  }
+}

@@ -8,7 +8,8 @@ use kdlith_model::Value;
 use kdlith_runtime::SlotId;
 
 use crate::bindings::{
-    CaseRule, ContextPolicy, DependentBinding, NodeDecl, NodeDeclId, Role, ScopeId, Source,
+    CaseRule, ContextPolicy, DependentBinding, NodeDecl, NodeDeclId, PathValueBinding, Role,
+    ScopeId, Source,
 };
 use crate::definition::{Definition, ReferenceDecl};
 use crate::names::Sym;
@@ -104,6 +105,8 @@ pub(crate) struct DeclInfo {
     pub(crate) otherwise: Option<TypeExpr>,
     /// The dependent payload binding, when the node declares one.
     pub(crate) dependent: Option<DependentBinding>,
+    /// The path-typed payload binding, when the node declares one.
+    pub(crate) path_value: Option<PathValueBinding>,
 }
 
 /// How a declaration composes its identity.
@@ -483,6 +486,7 @@ fn decl_info(def: &Definition, id: NodeDeclId, decl: &NodeDecl) -> DeclInfo {
         cases: decl.cases.clone(),
         otherwise: decl.otherwise.clone(),
         dependent: decl.value.clone(),
+        path_value: decl.path_value.clone(),
         fields,
     }
 }

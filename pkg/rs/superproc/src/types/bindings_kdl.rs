@@ -41,6 +41,7 @@ object_type! {
         "descendants" => descendants: Vec<DescendantRule>,
         "sequence" => sequence: Option<SequenceRule>,
         "value" => value: Option<DependentBinding>,
+        "value-from-path" => value_from_path: Option<PathValueBinding>,
         "cases" => cases: Option<CaseDispatch>,
         "identity" => identity: Option<IdentityBlock>,
         "description" => description: Option<String>,
@@ -109,6 +110,15 @@ enum_type! {
         "argument-tail" => ArgumentTail,
         "fixture-value" => FixtureValue,
         "from-kind" => FromKind,
+    }
+}
+
+object_type! {
+    /// A path-typed payload binding: how a node's remaining payload binds
+    /// in the type of the field its path field names, resolved against
+    /// the subject type the node's case dispatch selects.
+    pub struct PathValueBinding {
+        "field" => field: FieldName,
     }
 }
 
@@ -308,6 +318,7 @@ pub(crate) const TYPES: &[TypeShape] = &[
     DependentBinding::SHAPE,
     DependentTarget::SHAPE,
     BindingCodec::SHAPE,
+    PathValueBinding::SHAPE,
     CaseDispatch::SHAPE,
     CaseRule::SHAPE,
     Otherwise::SHAPE,

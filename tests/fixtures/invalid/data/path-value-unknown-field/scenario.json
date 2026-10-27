@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A path-typed value fails closed at bind when the path names no field of the subject type the kind case selected: the set node's nosuch path resolves nothing under ModuleCard, and the run fails with the unresolvable-path code instead of binding the payload",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

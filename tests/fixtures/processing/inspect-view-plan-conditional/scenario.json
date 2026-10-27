@@ -11,7 +11,7 @@
   "expect": {
     "exit": 0,
     "stdout-contains": [
-      "{\"name\":\"button\",\"role\":\"record\",\"scope\":0,\"children-effects\":[],\"following-effects\":[],\"context-reads\":[],\"deferred\":[],\"dependent\":null,\"declaration\":false,\"requires\":[\"scope-completion\"]}"
+      "{\"name\":\"button\",\"role\":\"record\",\"scope\":0,\"children-effects\":[],\"following-effects\":[],\"context-reads\":[],\"deferred\":[],\"dependent\":null,\"value-from-path\":null,\"declaration\":false,\"requires\":[\"scope-completion\"]}"
     ],
     "stdout-golden": "stdout.golden",
     "stderr-golden": "stderr.golden"

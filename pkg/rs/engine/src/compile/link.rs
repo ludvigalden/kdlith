@@ -349,6 +349,9 @@ fn node_refs(cx: &mut Cx<'_>, bindings: &BindingCatalog, symbols: &SymbolCatalog
     if let Some(value) = &node.value {
         dependent(cx, node, &label, value);
     }
+    if let Some(binding) = &node.path_value {
+        path_value(cx, symbols, node, &label, binding);
+    }
     for case in &node.cases {
         let Some(binding) = node.fields.iter().find(|f| f.name == case.property) else {
             let spelled = format!("{} of node {label}", cx.names.resolve(case.property));
@@ -607,6 +610,41 @@ fn dependent(
         let ty = cx.names.resolve(target).to_owned();
         let reason = format!("the member field {member} is not declared by type {ty}");
         cx.malformed(value.site, &construct, &reason);
+    }
+}
+
+/// A `value-from-path field=F` shape check: the field exists, admits
+/// only strings, and no `value` block sits beside it; the subject type
+/// is per-instance data, so nothing further is decidable at compile.
+fn path_value(
+    cx: &mut Cx<'_>,
+    symbols: &SymbolCatalog,
+    node: &NodeDecl,
+    label: &str,
+    binding: &crate::bindings::PathValueBinding,
+) {
+    let construct = format!("value-from-path binding of node {label}");
+    if node.value.is_some() {
+        let reason = "the node declares a value block already, so nothing binds a second payload";
+        cx.malformed(binding.site, &construct, reason);
+        return;
+    }
+    let Some(field) = node.fields.iter().find(|f| f.name == binding.field) else {
+        let spelled = format!("{} of node {label}", cx.names.resolve(binding.field));
+        unresolved(cx, binding.site, "field", &spelled);
+        return;
+    };
+    let spelled = cx.names.resolve(binding.field).to_owned();
+    match crate::plan::field_type(&cx.types, node, field) {
+        Some(ty) if admits_only_strings(cx, symbols, ty, 0) => {}
+        Some(_) => {
+            let reason = format!("the path field {spelled} does not admit only strings");
+            cx.malformed(binding.site, &construct, &reason);
+        }
+        None => {
+            let reason = format!("the path field {spelled} is declared with no type");
+            cx.malformed(binding.site, &construct, &reason);
+        }
     }
 }
 

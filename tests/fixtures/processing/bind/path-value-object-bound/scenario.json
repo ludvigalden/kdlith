@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "The bound view of a structured path-typed payload shows the decoded object: the set's typed-binding item carries the composed map, from and to bound as numbers in the validity field's own type",
+  "args": [
+    "inspect",
+    "data",
+    "--view",
+    "bound",
+    "--schema",
+    "{fx-suite}/processing/bind/pathvalue.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden"
+  }
+}

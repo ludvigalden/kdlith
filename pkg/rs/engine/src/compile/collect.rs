@@ -8,8 +8,8 @@ use kdlith_runtime::Repeated;
 use crate::bindings::{
     BindingCatalog, BindingCodec, CaseRule, ChildRule, Collision, Condition, ContextPolicy,
     DependentBinding, DescendantRule, DuplicateKeys, Effect, EffectGroup, EffectTarget,
-    FieldBinding, IdentityDecl, NodeAnnotation, NodeDecl, PendingGroupSource, Placement, Role,
-    SequenceDecl, SequenceStep, SetFrom, Source, WhenBranch,
+    FieldBinding, IdentityDecl, NodeAnnotation, NodeDecl, PathValueBinding, PendingGroupSource,
+    Placement, Role, SequenceDecl, SequenceStep, SetFrom, Source, WhenBranch,
 };
 use crate::compile::Cx;
 use crate::compile::conditions;
@@ -598,6 +598,17 @@ fn node(cx: &mut Cx<'_>, site: Site, input: &NodeInput) {
         .value
         .as_ref()
         .and_then(|value| dependent(cx, site, value));
+    let path_value = input.value_from_path.as_ref().and_then(|binding| {
+        if !field_name(&binding.field) {
+            let spelled = found(&Value::String(binding.field.clone()));
+            cx.mistyped(site, "the field of value-from-path", "FieldName", &spelled);
+            return None;
+        }
+        Some(PathValueBinding {
+            field: cx.names.intern(&binding.field),
+            site,
+        })
+    });
     let mut cases = Vec::new();
     for case in &input.cases {
         if !field_name(&case.property) {
@@ -683,6 +694,7 @@ fn node(cx: &mut Cx<'_>, site: Site, input: &NodeInput) {
         descendants,
         sequence,
         value,
+        path_value,
         cases,
         otherwise,
         identity,

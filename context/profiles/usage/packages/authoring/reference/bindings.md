@@ -81,6 +81,42 @@ binder emits a pending typed-binding item carrying the payload raw;
 linking validates it against the resolved declaration's member type
 (`KDLITH-REF005`).
 
+## Path-typed values
+
+A `value-from-path field=PATH` block types a node's remaining payload
+by the field the path names, resolved against the subject type the
+node's own case dispatch selects:
+
+```kdl
+node set type=SetOperation parent=changes {
+    field path arg=0
+    field kind property=kind
+    value-from-path field=path
+    cases {
+        case property=kind equals=module type=ModuleCard
+        case property=kind equals=concept type=ConceptCard
+    }
+}
+```
+
+A scalar payload binds through the same decode paths a static binding
+of the resolved field's type takes, and a dotted path
+(`validity.from`) walks the subject type's object fields. An
+object-typed path admits the child block form: the child's properties
+compose the payload, each checked in the resolved object's own field
+types. A path the subject type does not declare fails closed at bind
+(`KDLITH-BND015`), as does a payload that fails the resolved field's
+type (the same code a static binding produces). The dispatch's
+selected type is the subject the path resolves against, not the type
+the node binds as — its required fields and closed shape stay the
+subject's. A node whose dispatch selects no subject type leaves its
+payload a pending typed-binding item, preserved raw and never
+validated: the bound view shows it, `read data` and export exclude
+it. The named field must be one the node binds and admit only
+strings, and no `value` block may sit beside it (`KDLITH-DLC005`); a
+path-typed value is never a reference and never enters the link
+stage.
+
 ## Include expansion
 
 An `include NAME` child splices the entries of the named keyed member

@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A value-from-path naming a field the node does not bind fails closed at definition compile: field nosuch resolves to nothing under the set node, and the schema fails with the unresolved-schema code",
+  "args": [
+    "vet",
+    "schema",
+    "schema.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

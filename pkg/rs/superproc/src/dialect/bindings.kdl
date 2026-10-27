@@ -54,6 +54,7 @@ dialect kdlith version="0" {
             field descendants "list<DescendantRule>"
             field sequence "optional<SequenceRule>"
             field value "optional<DependentBinding>"
+            field value-from-path "optional<PathValueBinding>"
             field cases "optional<CaseDispatch>"
             field identity "optional<IdentityBlock>"
             field description "optional<String>"
@@ -118,6 +119,16 @@ dialect kdlith version="0" {
             member argument-tail description="The remaining arguments, typed per expected type, no scalar-to-list promotion"
             member fixture-value description="The type-directed recursive form"
             member from-kind description="The payload shape is selected by the value the resolved declaration holds in its member field: flag binds Bool, number U64, choice the declaration's choices, text String"
+        }
+
+        // A path-typed payload binding: how a node's remaining payload
+        // binds in the type of the field its path field names. The
+        // subject type is whatever the node's case dispatch selects, read
+        // per instance at bind time; a path resolving no field of it
+        // fails closed, and a node whose dispatch selects no subject type
+        // leaves its payload a pending typed binding, preserved raw.
+        object PathValueBinding {
+            field field FieldName
         }
 
         // A case dispatch: the logical type a node binds as, selected by
@@ -363,6 +374,7 @@ dialect kdlith version="0" {
             }
         }
         field value child=value
+        field value-from-path child=value-from-path
         field cases child=cases
         field identity child=identity
         field sequence child=sequence
@@ -380,6 +392,7 @@ dialect kdlith version="0" {
         children parents max-occurs=1
         children effects max-occurs=2
         children value max-occurs=1
+        children value-from-path max-occurs=1
         children cases max-occurs=1
         children identity max-occurs=1
         children sequence max-occurs=1
@@ -642,6 +655,13 @@ dialect kdlith version="0" {
     node against type=DependentTarget parent=value {
         field target property=target
         field member property=member
+    }
+
+    // A path-typed payload binding: how a node's remaining payload binds
+    // in the type of the field its path field names, resolved against
+    // the subject type the node's case dispatch selects.
+    node value-from-path type=PathValueBinding parent=node {
+        field field property=field
     }
 
     // A case dispatch: cases evaluate top-down on the node's

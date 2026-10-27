@@ -883,6 +883,16 @@ pub const CODES: &[CodeDefinition] = &[
         correction: "Remove the field, or spell the case the type belongs under",
         retired: false,
     },
+    CodeDefinition {
+        code: "KDLITH-BND015",
+        label: "unresolvable-path-value",
+        severity: Severity::Error,
+        exit_class: 1,
+        trigger: "a value-from-path binding finds no subject type, because the node's case dispatch selects none, or its path names no field of the subject type's object; a payload that resolves its field but fails its type is KDLITH-BND003",
+        message_template: "<node> declares value-from-path, but <what>",
+        correction: "Bind the node under a case that selects a subject type declaring the path's field, or spell a path the subject type declares",
+        retired: false,
+    },
     // CTX
     CodeDefinition {
         code: "KDLITH-CTX001",

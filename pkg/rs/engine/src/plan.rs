@@ -116,6 +116,8 @@ pub struct NodePlan {
     /// plan a processor follows to bind its remaining payload against
     /// the referenced declaration's member type.
     pub dependent: Option<crate::bindings::DependentBinding>,
+    /// The path-typed payload binding the node declares, if any.
+    pub path_value: Option<crate::bindings::PathValueBinding>,
     /// Whether the node registers an identity in the SymbolCatalog.
     pub declaration: bool,
 }
@@ -159,6 +161,7 @@ pub(crate) fn build(
             context_reads: context_reads(&context, node),
             deferred: deferred(types, symbols, node),
             dependent: node.value.clone(),
+            path_value: node.path_value.clone(),
             declaration: symbols.declaration(id).is_some(),
         })
         .collect();

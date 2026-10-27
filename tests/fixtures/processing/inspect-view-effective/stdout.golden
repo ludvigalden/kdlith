@@ -84,6 +84,7 @@
 {"item":"effective","data":{"section":"type","entry":{"name":"PathPrefixMatch","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"PathStemSource","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"PathSuffixMatch","parameters":[],"kind":"object"}}}
+{"item":"effective","data":{"section":"type","entry":{"name":"PathValueBinding","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"PatternsRule","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"ProfileDef","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"ProfileMatch","parameters":[],"kind":"object"}}}
@@ -209,6 +210,7 @@
 {"item":"effective","data":{"section":"node","entry":{"name":"types","parents":["dialect","schema"],"role":"container","type":null,"profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"union","parents":["types"],"role":"declaration","type":"UnionType","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"value","parents":["node"],"role":null,"type":"DependentBinding","profile":null}}}
+{"item":"effective","data":{"section":"node","entry":{"name":"value-from-path","parents":["node"],"role":null,"type":"PathValueBinding","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"variant","parents":["union"],"role":null,"type":"Variant","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"when","parents":["children","children-group"],"role":null,"type":"PropertyCondition","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"when","parents":["when-all","when-any"],"role":null,"type":"PropertyCondition","profile":null}}}

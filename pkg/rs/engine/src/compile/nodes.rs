@@ -5,8 +5,8 @@ use kdlith_model::Value;
 
 use crate::bindings::{
     BindingCodec, CaseRule, ChildRule, Collision, ContextPolicy, DependentBinding, DuplicateKeys,
-    Effect, EffectGroup, EffectTarget, FieldBinding, NodeAnnotation, NodeDecl, PendingGroupSource,
-    Placement, Role, SetFrom, Source,
+    Effect, EffectGroup, EffectTarget, FieldBinding, NodeAnnotation, NodeDecl, PathValueBinding,
+    PendingGroupSource, Placement, Role, SetFrom, Source,
 };
 use crate::compile::Cx;
 use crate::compile::reader::Construct;
@@ -63,6 +63,8 @@ pub(crate) fn declaration(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) {
     let mut groups: Vec<Vec<Sym>> = Vec::new();
     let mut value = None;
     let mut value_site = None;
+    let mut path_value = None;
+    let mut path_site = None;
     let mut cases: Vec<CaseRule> = Vec::new();
     let mut otherwise = None;
     let mut cases_site = None;
@@ -80,6 +82,11 @@ pub(crate) fn declaration(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) {
             "value" => {
                 if cx.only_once(&mut value_site, child_site, &label, "value") {
                     value = value_block(cx, doc, child, &name);
+                }
+            }
+            "value-from-path" => {
+                if cx.only_once(&mut path_site, child_site, &label, "value-from-path") {
+                    path_value = value_from_path_block(cx, doc, child);
                 }
             }
             "cases" => {
@@ -216,6 +223,7 @@ pub(crate) fn declaration(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) {
         descendants: Vec::new(),
         sequence: None,
         value,
+        path_value,
         cases,
         otherwise,
         identity: None,
@@ -658,6 +666,29 @@ fn value_block(
         target: cx.names.intern(&target),
         member: cx.names.intern(&member),
         codec,
+        site,
+    })
+}
+
+/// A `value-from-path` block: the path-typed payload binding of a node
+/// declaration, naming the field holding the path.
+fn value_from_path_block(
+    cx: &mut Cx<'_>,
+    doc: usize,
+    node: &SyntaxNode,
+) -> Option<PathValueBinding> {
+    let site = Site::new(doc, node.span);
+    let mut part = Construct::new(cx, doc, node);
+    let field = part.string_prop(cx, "field");
+    part.finish_leaf(cx);
+    let field = field?;
+    if !field_name(&field) {
+        let found = format!("string {field:?}");
+        cx.mistyped(site, "path field", "FieldName", &found);
+        return None;
+    }
+    Some(PathValueBinding {
+        field: cx.names.intern(&field),
         site,
     })
 }

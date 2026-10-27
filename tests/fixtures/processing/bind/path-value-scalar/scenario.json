@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "A value-from-path binding types a scalar payload by the field the path names: the same set node under two different kind cases resolves the same status path against ModuleCard's enum and ConceptCard's plain String, so draft binds as the enum member, revised freely as free text, and the note path's 42 as U64; vet data exits 0 (the bound view of the same reading is path-value-scalar-bound)",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/pathvalue.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"type_name\":\"Amend\""
+    ]
+  }
+}

@@ -1,0 +1,25 @@
+schema broken version="1" {
+    types {
+        object Card {
+            field code String
+        }
+        object Op {
+            field path U64
+        }
+    }
+    node card role=declaration type=Card {
+        field code arg=0
+    }
+    node ops role=record {
+        field set "list<Op>" {
+            from {
+                children set
+            }
+        }
+        children set
+    }
+    node set type=Op parent=ops {
+        field path arg=0
+        value-from-path field=path
+    }
+}

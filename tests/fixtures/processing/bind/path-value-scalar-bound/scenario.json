@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "The bound view of a path-typed scalar reading shows every set's typed value: each set leaves a pending typed-binding item naming its subject type and path with the decoded payload, a kind=module status holding the enum member draft and a kind=concept status holding free text and a kind=concept note holding 42",
+  "args": [
+    "inspect",
+    "data",
+    "--view",
+    "bound",
+    "--schema",
+    "{fx-suite}/processing/bind/pathvalue.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden"
+  }
+}

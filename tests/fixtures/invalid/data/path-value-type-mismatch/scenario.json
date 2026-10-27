@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A path-typed payload that resolves its field but fails its type produces the same diagnostic family a static binding of that type produces: the status path resolves to ModuleCard's enum and the payload names no member, so the run fails with the unknown-enum-member code",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

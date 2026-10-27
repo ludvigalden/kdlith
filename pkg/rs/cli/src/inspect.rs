@@ -397,6 +397,9 @@ fn plan_lines(def: &Definition) -> Vec<serde_json::Value> {
                 "member": n.resolve(dep.member),
                 "codec": dep.codec.name(),
             })),
+            "value-from-path": node.path_value.as_ref().map(|binding| json!({
+                "field": n.resolve(binding.field),
+            })),
             "declaration": node.declaration,
             "requires": requires,
         }}));

@@ -36,8 +36,8 @@ use crate::definition::{
 };
 use crate::diag::{
     CONFLICTING_BINDING, DUPLICATE_KEY, MALFORMED, MISSING_FIELD, NOT_INSTALLED, TYPE_EXPRESSION,
-    UNBOUND_ENTRY, UNKNOWN_MEMBER, UNKNOWN_NODE, VALUE_TYPE, near_miss_note, nearest_names,
-    sibling_note,
+    UNBOUND_ENTRY, UNKNOWN_MEMBER, UNKNOWN_NODE, UNRESOLVED_PATH_VALUE, VALUE_TYPE, near_miss_note,
+    nearest_names, sibling_note,
 };
 use crate::names::Sym;
 use crate::overlap;
@@ -1582,6 +1582,275 @@ impl<'d, 's> Binder<'d, 's> {
         )
     }
 
+    /// Bind a value-from-path node's payload: the case-selected subject
+    /// type, the path resolved against its object, and the payload
+    /// checked in the resolved field's type (63_path_typed_payloads.md).
+    fn path_value_payload(
+        &mut self,
+        cx: &mut Cx<'_>,
+        frame: &mut BindFrame,
+        values: &[Option<Value>],
+        typed_as: Option<Sym>,
+    ) -> Option<PendingBinding> {
+        let binding = self.tables.decls[frame.owner.index()].path_value.clone()?;
+        let infos = &self.tables.decls[frame.owner.index()];
+        let at = infos
+            .fields
+            .iter()
+            .position(|info| info.name == binding.field)?;
+        let held = values
+            .get(at)
+            .and_then(Option::as_ref)
+            .and_then(|value| match value {
+                Value::String(path) => Some(path.clone()),
+                _ => None,
+            });
+        let structured = std::mem::take(&mut frame.structured);
+        let payload = std::mem::take(&mut frame.payload);
+        if structured.is_empty() && payload.is_empty() {
+            return None;
+        }
+        let raw = Self::raw_path_payload(&structured, &payload);
+        let Some(path) = held else {
+            // No path to resolve: the payload is preserved raw.
+            return Some(self.path_item(cx, frame, binding.field, raw, None, ""));
+        };
+        let subject = typed_as.filter(|ty| self.object_type(*ty).is_some());
+        let Some(subject) = subject else {
+            // No subject type: the payload is preserved raw, pending.
+            return Some(self.path_item(cx, frame, binding.field, raw, None, &path));
+        };
+        let expected = match self.resolve_path_value(subject, &path) {
+            Ok(expected) => expected,
+            Err(what) => {
+                self.diagnose(
+                    cx,
+                    UNRESOLVED_PATH_VALUE,
+                    frame.span,
+                    &[self.name(frame.name), &what],
+                );
+                return None;
+            }
+        };
+        let decoded = self.path_payload_value(cx, frame, &expected, structured, payload, &path)?;
+        Some(self.path_item(cx, frame, binding.field, decoded, Some(subject), &path))
+    }
+
+    /// A path-typed payload as the item preserves it: the structured map
+    /// when its payload children supplied one, else the one argument
+    /// value or the list of every one.
+    fn raw_path_payload(
+        structured: &[(String, Value, ByteSpan)],
+        payload: &[(Value, ByteSpan)],
+    ) -> Value {
+        if !structured.is_empty() {
+            return Value::Map(
+                structured
+                    .iter()
+                    .map(|(name, value, _)| Entry::new(name.clone(), value.clone()))
+                    .collect(),
+            );
+        }
+        let values: Vec<Value> = payload.iter().map(|(value, _)| value.clone()).collect();
+        match values.len() {
+            1 => values.into_iter().next().expect("one payload value"),
+            _ => Value::List(values),
+        }
+    }
+
+    /// The typed-binding item a path-typed payload leaves at its node's
+    /// stream position: against a reference naming the subject type and
+    /// the path, kept raw for a payload that resolved nothing.
+    fn path_item(
+        &mut self,
+        cx: &Cx<'_>,
+        frame: &BindFrame,
+        field: Sym,
+        raw: Value,
+        subject: Option<Sym>,
+        path: &str,
+    ) -> PendingBinding {
+        let node = cx.node();
+        let site = self.location(frame.span);
+        let domain = subject
+            .map(|ty| self.name(ty).to_owned())
+            .unwrap_or_default();
+        let against = Reference::new(
+            domain,
+            QualifiedName(path.split('.').map(str::to_owned).collect()),
+            path.to_owned(),
+            site,
+        );
+        PendingBinding::new(
+            node,
+            self.name(field).to_owned(),
+            against,
+            raw,
+            OriginId(node.index),
+        )
+        .with_dependent(self.name(frame.name), path, "value-from-path")
+    }
+
+    /// Resolve a dotted path against a subject type's object fields:
+    /// each segment names a field, an intermediate segment's field must
+    /// name an object type, and the final field's declared type is the
+    /// payload's expected type.
+    fn resolve_path_value(&self, subject: Sym, path: &str) -> Result<TypeExpr, String> {
+        let segments: Vec<&str> = path.split('.').collect();
+        if segments.iter().any(|segment| segment.is_empty()) {
+            return Err(format!("its path {path:?} spells an empty segment"));
+        }
+        let mut ty = TypeExpr::Named(subject);
+        for (at, segment) in segments.iter().enumerate() {
+            let last = at + 1 == segments.len();
+            let TypeExpr::Named(name) = &ty else {
+                return Err(format!(
+                    "its path {path:?} reaches field {segment}, whose type is not an object"
+                ));
+            };
+            let spelled = self.name(*name);
+            let Some(object) = self.object_type(*name) else {
+                return Err(format!(
+                    "its path {path:?} names {spelled}, which is not an object type"
+                ));
+            };
+            let Some(field) = self
+                .def
+                .names
+                .get(segment)
+                .and_then(|sym| object.fields.iter().find(|field| field.name == sym))
+            else {
+                return Err(format!(
+                    "its path {path:?} names no field {segment} of {spelled}"
+                ));
+            };
+            ty = field.ty.clone();
+            while let TypeExpr::Optional(inner) = &ty {
+                ty = (**inner).clone();
+            }
+            if !last && !matches!(&ty, TypeExpr::Named(_)) {
+                return Err(format!(
+                    "its path {path:?} reaches field {segment}, whose type is not an object"
+                ));
+            }
+        }
+        Ok(ty)
+    }
+
+    /// Check a resolved path's payload: the structured form composes the
+    /// payload children's properties as the object's fields; the
+    /// argument form binds as a static binding, never promoting a scalar.
+    fn path_payload_value(
+        &mut self,
+        cx: &mut Cx<'_>,
+        frame: &BindFrame,
+        expected: &TypeExpr,
+        structured: Vec<(String, Value, ByteSpan)>,
+        payload: Vec<(Value, ByteSpan)>,
+        path: &str,
+    ) -> Option<Value> {
+        let node = self.name(frame.name);
+        let what = format!("the payload of {node}");
+        if structured.is_empty() {
+            return match expected {
+                TypeExpr::List(inner) => {
+                    let inner = (**inner).clone();
+                    let raw = Self::raw_path_payload(&[], &payload);
+                    for (value, span) in payload {
+                        self.check(cx, Some(inner.clone()), &what, value, span);
+                    }
+                    Some(raw)
+                }
+                _ => match payload.len() {
+                    0 => Some(Value::Null),
+                    1 => {
+                        let (value, span) = payload.into_iter().next().expect("one payload value");
+                        self.check(cx, Some(expected.clone()), &what, value, span)
+                    }
+                    count => {
+                        let spelled = summary::expr(&self.def.names, expected);
+                        self.diagnose(
+                            cx,
+                            crate::diag::CARDINALITY,
+                            frame.span,
+                            &[
+                                &what,
+                                &count.to_string(),
+                                &format!("at most 1 for {spelled}"),
+                            ],
+                        );
+                        None
+                    }
+                },
+            };
+        }
+        // The structured form: compose the payload children's properties
+        // as the resolved object's fields.
+        let object = self.object_of_expr(expected);
+        let Some(object) = object else {
+            return self.check(
+                cx,
+                Some(expected.clone()),
+                &what,
+                Self::raw_path_payload(&structured, &[]),
+                frame.span,
+            );
+        };
+        // Any argument tail beside the structured payload is checked
+        // against the resolved object type, where it cannot fit.
+        for (value, span) in payload {
+            self.check(cx, Some(expected.clone()), &what, value, span);
+        }
+        let mut entries: Vec<Entry> = Vec::new();
+        // Every name the payload supplied, whatever became of its value:
+        // a supplied value the type rejected is not also missing.
+        let mut supplied: Vec<String> = Vec::new();
+        for (name, value, span) in structured {
+            let field = self
+                .def
+                .names
+                .get(&name)
+                .and_then(|sym| object.fields.iter().find(|field| field.name == sym));
+            let Some(field) = field else {
+                let reason =
+                    format!("its payload names field {name}, which path {path:?} does not declare");
+                self.diagnose(cx, UNRESOLVED_PATH_VALUE, frame.span, &[node, &reason]);
+                continue;
+            };
+            if supplied.contains(&name) {
+                self.diagnose(
+                    cx,
+                    DUPLICATE_KEY,
+                    frame.span,
+                    &[&name, "path-value payload"],
+                );
+                continue;
+            }
+            supplied.push(name.clone());
+            if let Some(decoded) = self.check(cx, Some(field.ty.clone()), &what, value, span) {
+                entries.push(Entry::new(name, decoded));
+            }
+        }
+        // A required field the payload omits is missing.
+        for field in object.fields.iter().filter(|f| !optional(&f.ty)) {
+            if !supplied.iter().any(|name| name == self.name(field.name)) {
+                let missing = format!("{}.{}", self.name(field.name), path);
+                self.diagnose(cx, MISSING_FIELD, frame.span, &[node, &missing]);
+            }
+        }
+        Some(Value::Map(entries))
+    }
+
+    /// The object type a type expression names, through an optional
+    /// wrapper.
+    fn object_of_expr(&self, ty: &TypeExpr) -> Option<&'d ObjectType> {
+        match ty {
+            TypeExpr::Optional(inner) => self.object_of_expr(inner),
+            TypeExpr::Named(name) => self.object_type(*name),
+            _ => None,
+        }
+    }
+
     /// Resolve effect steps into runtime effects, in declared order:
     /// declarative steps read the fields they name, and a handler step
     /// runs its installed implementation with its results spliced in at
@@ -2458,9 +2727,17 @@ impl<'d, 's> Binder<'d, 's> {
             CaseSelection::Unmatched => unreachable!("an unmatched case returned above"),
         };
         let errors = self.errors;
-        self.selected_required(cx, frame, &values, typed_as);
-        self.selected_off_type(cx, frame, &values, typed_as, selected_on);
-        self.constraints(cx, frame, &values, typed_as);
+        // A path-typed value's case dispatch selects the subject type the
+        // payload resolves against, not the type the node binds as: the
+        // subject's shape stays the subject's, so the selected-type
+        // checks keep off the node.
+        let binding_type = match self.tables.decls[owner.index()].path_value {
+            Some(_) => None,
+            None => typed_as,
+        };
+        self.selected_required(cx, frame, &values, binding_type);
+        self.selected_off_type(cx, frame, &values, binding_type, selected_on);
+        self.constraints(cx, frame, &values, binding_type);
         if self.errors > errors {
             let bind = parent
                 .as_deref()
@@ -2472,6 +2749,7 @@ impl<'d, 's> Binder<'d, 's> {
             return;
         }
         let role = def.bindings.get(owner).and_then(|decl| decl.role);
+        let path_item = self.path_value_payload(cx, frame, &values, typed_as);
         if let Some(role) = role {
             let pending = self.dependent_payload(cx, frame, &values);
             if let Some(plan) = def.plan.node(owner) {
@@ -2494,6 +2772,9 @@ impl<'d, 's> Binder<'d, 's> {
             // a node rejected while emitting leaves nothing to defer.
             if let Some(pending) = pending.filter(|_| self.errors == errors) {
                 cx.emit(BoundItem::PendingBinding(pending));
+            }
+            if let Some(item) = path_item.filter(|_| self.errors == errors) {
+                cx.emit(BoundItem::PendingBinding(item));
             }
             return;
         }
@@ -2576,6 +2857,9 @@ impl<'d, 's> Binder<'d, 's> {
         }
         let span = frame.span;
         self.route(cx, parent, bind, value, span);
+        if let Some(item) = path_item {
+            cx.emit(BoundItem::PendingBinding(item));
+        }
     }
 
     /// Emit an `include` child's expansion request at its position among
@@ -2739,6 +3023,14 @@ impl<'d, 's> Binder<'d, 's> {
                 self.close_scalar(cx, parent.as_deref_mut(), &mut frame);
                 false
             }
+            Kind::Payload => {
+                // The raw payload child's properties join its owner's
+                // structured payload.
+                if let Some(parent) = parent.as_deref_mut() {
+                    parent.structured.append(&mut frame.structured);
+                }
+                false
+            }
         };
         let total = self.errors - frame.mark;
         if let Some(parent) = parent {
@@ -2848,6 +3140,47 @@ impl<'s> Processor for Binder<'_, 's> {
             self.diagnose(cx, PROFILE_NOT_SELECTED, span, &values);
             return Disposition::Skip;
         }
+        // An undeclared child of a node declaring value-from-path is its
+        // structured payload: the child block form. It opens through no
+        // declaration of its own, and no scope is consulted for it.
+        let payload_parent = parent.as_deref().and_then(|frame| {
+            let owner = frame.owner;
+            (frame.declared() && self.tables.decls[owner.index()].path_value.is_some())
+                .then_some(owner)
+        });
+        if let Some(owner) = payload_parent
+            && parent
+                .as_deref()
+                .and_then(|frame| frame.scope)
+                .and_then(|scope| def.bindings.scope(scope))
+                .and_then(|scope| {
+                    def.names
+                        .get(&node.name)
+                        .filter(|sym| scope.child(*sym).is_some())
+                })
+                .is_none()
+        {
+            let name = def.names.get(&node.name).unwrap_or_else(|| {
+                parent
+                    .as_deref()
+                    .expect("a payload child has a parent")
+                    .name
+            });
+            let enclosing = parent.as_deref().and_then(|frame| frame.enclosing());
+            return Disposition::Bind(BindFrame::new(Opened {
+                name,
+                node: cx.node(),
+                yields: false,
+                parent: enclosing,
+                owner,
+                kind: Kind::Payload,
+                scope: None,
+                state: None,
+                span,
+                width: 0,
+                mark,
+            }));
+        }
         let (Some(sym), Some(scope_id)) = (def.names.get(&node.name), scope) else {
             self.unknown(cx, span, &node.name, owner_label, previous, scope);
             return Disposition::Skip;
@@ -2915,14 +3248,14 @@ impl<'s> Processor for Binder<'_, 's> {
         }
         let width = match kind {
             Kind::Declared { decl, .. } => self.tables.decls[decl.index()].fields.len(),
-            Kind::Nested | Kind::Scalar => 0,
+            Kind::Nested | Kind::Scalar | Kind::Payload => 0,
         };
         let state = inner
             .and_then(|id| def.bindings.scope(id))
             .map(|scope| scope.rules.start());
         let yields = match kind {
             Kind::Declared { decl, .. } => yields_item(def, decl),
-            Kind::Nested | Kind::Scalar => false,
+            Kind::Nested | Kind::Scalar | Kind::Payload => false,
         };
         let enclosing = match parent.as_deref() {
             Some(frame) => frame.enclosing(),
@@ -2986,12 +3319,12 @@ impl<'s> Processor for Binder<'_, 's> {
             match frame.table(&self.tables).and_then(|table| table.arg(at)) {
                 Some(bind) => self.take(cx, frame, bind, entry.value, span),
                 None => {
-                    // A node with a dependent value binding keeps its
-                    // remaining arguments as its payload.
-                    if frame.declared()
-                        && frame.payload.len() < MAX_PAYLOAD
-                        && self.tables.decls[frame.owner.index()].dependent.is_some()
-                    {
+                    // A node with a dependent or path-typed value binding
+                    // keeps its remaining arguments as its payload.
+                    if frame.declared() && frame.payload.len() < MAX_PAYLOAD && {
+                        let info = &self.tables.decls[frame.owner.index()];
+                        info.dependent.is_some() || info.path_value.is_some()
+                    } {
                         frame.payload.push((entry.value, span));
                         return;
                     }
@@ -3001,6 +3334,17 @@ impl<'s> Processor for Binder<'_, 's> {
             }
             return;
         };
+        if frame.kind == Kind::Payload {
+            // A raw payload child of a path-typed value node: its
+            // properties compose the structured payload.
+            let owned = name.to_string();
+            if frame.structured.iter().any(|(held, _, _)| *held == owned) {
+                self.diagnose(cx, DUPLICATE_KEY, span, &[&owned, "path-value payload"]);
+                return;
+            }
+            frame.structured.push((owned, entry.value, span));
+            return;
+        }
         let sym = self.def.names.get(&name);
         if let Some(sym) = sym
             && frame.props.contains(&sym)

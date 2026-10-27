@@ -129,6 +129,8 @@ pub struct NodeDecl {
     pub sequence: Option<SequenceDecl>,
     /// The node's dependent payload binding, if it declares one.
     pub value: Option<DependentBinding>,
+    /// The node's path-typed payload binding, if it declares one.
+    pub path_value: Option<PathValueBinding>,
     /// The case dispatch that selects the type a node binds as, top-down,
     /// first match winning.
     pub cases: Vec<CaseRule>,
@@ -211,6 +213,17 @@ pub struct DependentBinding {
     pub member: Sym,
     /// The registered binding codec that binds the payload.
     pub codec: BindingCodec,
+    pub site: Site,
+}
+
+/// A path-typed payload binding: the field of the same node holding a
+/// path that names, through the subject type the node's case dispatch
+/// selects, the field whose type the payload binds in.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct PathValueBinding {
+    /// The field of the same node holding the path.
+    pub field: Sym,
     pub site: Site,
 }
 

@@ -12,8 +12,8 @@ use kdlith_engine::{
     DescendantRuleInput, DocumentInput, DocumentRuleInput, EffectGroupInput, EffectInput,
     Extensions, FieldBindingInput, FieldInput, FormatInput, GroupInput, IdentityInput, ImportInput,
     Located, LocationsInput, MatchRuleInput, MemberInput, NodeAnnotationInput, NodeInput,
-    OpenWorldInput, ParsedDocument, ProfileInput, ProviderInput, QualifierInput, ReadOptions,
-    ReferenceInput, ResolutionInput, SequenceInput, SlotInput, SourceContextInput,
+    OpenWorldInput, ParsedDocument, PathValueInput, ProfileInput, ProviderInput, QualifierInput,
+    ReadOptions, ReferenceInput, ResolutionInput, SequenceInput, SlotInput, SourceContextInput,
     SourceFieldInput, SourceInput, StepInput, TypeInput, TypedItem, ValidatorInput, VariantInput,
     compile_dialect, compile_dialect_input, compile_schema_input,
 };
@@ -706,6 +706,9 @@ fn node_input(node: NodeDef) -> NodeInput {
         member: value.against.member.as_str().to_owned(),
         codec: value.codec.member().to_owned(),
     });
+    let value_from_path = node.value_from_path.map(|binding| PathValueInput {
+        field: binding.field.as_str().to_owned(),
+    });
     let (cases, otherwise) = match node.cases {
         Some(dispatch) => {
             let otherwise = dispatch
@@ -806,6 +809,7 @@ fn node_input(node: NodeDef) -> NodeInput {
                 .collect(),
         }),
         value,
+        value_from_path,
         cases,
         otherwise,
         identity: node.identity.as_ref().map(|identity| IdentityInput {

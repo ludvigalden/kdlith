@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A structured path-typed payload's property that fails its field's type is rejected exactly as a static binding's value is: the from property of the validity payload names a U64 field and supplies a string",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

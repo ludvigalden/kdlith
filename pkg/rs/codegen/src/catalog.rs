@@ -29,6 +29,11 @@ pub(crate) fn type_doc(name: &str) -> Option<&'static [&'static str]> {
             "A dependent payload binding: how a node's remaining payload binds",
             "against the declaration a field of the same node references.",
         ],
+        "PathValueBinding" => &[
+            "A path-typed payload binding: how a node's remaining payload binds",
+            "in the type of the field its path field names, resolved against",
+            "the subject type the node's case dispatch selects.",
+        ],
         "DependentTarget" => &[
             "The field of the same node holding the reference, and the field of",
             "the referenced declaration's type holding the expected payload type.",
@@ -331,6 +336,7 @@ pub(crate) fn glue(name: &str) -> Option<Glue> {
             engine_inputs: &[
                 "NodeInput",
                 "DependentInput",
+                "PathValueInput",
                 "CaseInput",
                 "ChildRuleInput",
                 "ConditionInput",
