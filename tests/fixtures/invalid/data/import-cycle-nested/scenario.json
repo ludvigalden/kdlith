@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A nested source-import that re-enters the entry document is the same cycle check a root-level import takes: the import executed from inside the collection block names the entry document active on the invocation stack, and the chain is spelled from that stack",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

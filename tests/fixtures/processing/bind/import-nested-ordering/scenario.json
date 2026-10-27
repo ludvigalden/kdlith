@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "A source-import node declared as a child of a record executes mid-document at its stream position: the collection's claim bound before the import streams first, the import item follows with its site span inside the collection block (line 3, column 5 — not the document root), the imported invocation then streams its own document, record, and scope completion, and only after it do the post-import sibling claim and the enclosing system record bind — the nested form is the same invocation as a root-level import, placed where the collection names it",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":1},\"type_name\":\"Claim\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"pre-import\"},\"origin\":1}],\"origin\":1,\"validation\":\"valid\"}}\n{\"item\":\"import\",\"data\":{\"node\":{\"source\":0,\"index\":2},\"expression\":\"claims.kdl\",\"targets\":[\"claims.kdl\"],\"namespace\":null,\"project\":[],\"repeated\":\"reject\",\"site\":{\"source\":0,\"span\":{\"start\":{\"offset\":39,\"line\":3,\"column\":5},\"end\":{\"offset\":42,\"line\":3,\"column\":8}}},\"origin\":2}}\n",
+      "{\"item\":\"document\",\"data\":{\"source\":1,\"path\":\"claims.kdl\"}}\n{\"item\":\"record\",\"data\":{\"node\":{\"source\":1,\"index\":0},\"type_name\":\"Claim\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"imported\"},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n{\"item\":\"scope-complete\",\"data\":{\"source\":1,\"scope\":null}}\n{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":3},\"type_name\":\"Claim\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"post-import\"},\"origin\":3}],\"origin\":3,\"validation\":\"valid\"}}\n{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":0},\"type_name\":\"System\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"s1\"},\"origin\":0}],\"origin\":0,\"validation\":\"valid\"}}\n"
+    ]
+  }
+}

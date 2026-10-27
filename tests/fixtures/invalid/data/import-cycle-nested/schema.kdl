@@ -1,0 +1,36 @@
+// A schema whose source-import node is a child of a record: the
+// collection names its own imports, executed at their stream position.
+schema imports version="1" {
+    types {
+        object System {
+            field id String
+        }
+        object Claim {
+            field id String
+        }
+    }
+    node system role=record type=System {
+        field id arg=0
+        children claim
+        children use
+    }
+    node claim role=record type=Claim parent=system root=#true {
+        field id arg=0
+    }
+    node use role=source-import parent=system {
+        field path String arg=0
+        field repeated "optional<String>" property=repeated
+        field namespace "optional<String>" property=as
+        field project "optional<list<String>>" {
+            from {
+                child project {
+                    args
+                }
+            }
+        }
+        children project max-occurs=1
+    }
+    document {
+        following system claim
+    }
+}

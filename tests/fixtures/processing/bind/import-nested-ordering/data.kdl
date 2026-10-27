@@ -1,0 +1,5 @@
+system s1 {
+    claim "pre-import"
+    use "claims.kdl"
+    claim "post-import"
+}
