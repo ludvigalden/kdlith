@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A member spelled both concretely and admitted via a children-group in the same source set is a compile-time duplicate (KDLITH-SCH005, source for child delta spelled twice, directly and via group wings): the concrete children source claims the child name before the expansion splices, and the duplicate member is reported and skipped, never silently bound twice",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

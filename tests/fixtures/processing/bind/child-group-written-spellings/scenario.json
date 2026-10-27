@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "The expansion-equals-spelling control for child-group-spellings: the same data document under the hand-written twin schema (three explicit child sources with collision reject) produces the byte-identical bound output the group-sourced form pins, because the expansion is the whole mechanism",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/groupsources-written.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden"
+  }
+}

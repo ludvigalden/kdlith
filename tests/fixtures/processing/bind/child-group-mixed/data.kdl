@@ -1,0 +1,6 @@
+bundle b1 {
+    alpha "first"
+    delta "second"
+    epsilon "third"
+    zeta "fourth"
+}

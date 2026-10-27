@@ -5,8 +5,8 @@ use kdlith_model::Value;
 
 use crate::bindings::{
     BindingCodec, CaseRule, ChildRule, Collision, ContextPolicy, DependentBinding, DuplicateKeys,
-    Effect, EffectGroup, EffectTarget, FieldBinding, NodeAnnotation, NodeDecl, PathValueBinding,
-    PendingGroupSource, Placement, Role, SetFrom, Source,
+    Effect, EffectGroup, EffectTarget, FieldBinding, GroupSourceKind, NodeAnnotation, NodeDecl,
+    PathValueBinding, PendingGroupSource, Placement, Role, SetFrom, Source,
 };
 use crate::compile::Cx;
 use crate::compile::reader::Construct;
@@ -449,8 +449,8 @@ fn field_binding(
 
 /// The sources listed in a `from` block (`top`) or in a nested
 /// `child`/`children` source (positional, property, and child only).
-/// A `children-group` reference appears only at the top level, held
-/// pending until every declaration is read.
+/// A `children-group` or `child-group` reference appears only at the
+/// top level, held pending until every declaration is read.
 fn source_list(
     cx: &mut Cx<'_>,
     doc: usize,
@@ -526,6 +526,21 @@ fn source_list(
                     pending_groups.push(PendingGroupSource {
                         position: sources.len(),
                         name: cx.names.intern(&name),
+                        kind: GroupSourceKind::Children,
+                        site,
+                    });
+                }
+                None
+            }
+            "child-group" if top => {
+                let name = part.string_arg(cx, 0, "node group name");
+                if let Some(name) =
+                    name.filter(|name| cx.kebab(site, &label, name, "node group name"))
+                {
+                    pending_groups.push(PendingGroupSource {
+                        position: sources.len(),
+                        name: cx.names.intern(&name),
+                        kind: GroupSourceKind::Child,
                         site,
                     });
                 }

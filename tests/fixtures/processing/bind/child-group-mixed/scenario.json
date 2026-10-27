@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "Concrete and group-sourced children sources mix in one from block: the bundle's entries field spells one concrete children source, one children-group reference, and a second concrete source after it, and the group splices its members between them, so the field's sources read alpha, delta, epsilon, zeta and the bound list follows that expanded declaration order for a document spelling the children in it; the schema's digest is byte-identical to the hand-written twin groupsources-mixed-written.kdl (verified 4b6220715ef429ae on both)",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/groupsources-mixed.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden"
+  }
+}

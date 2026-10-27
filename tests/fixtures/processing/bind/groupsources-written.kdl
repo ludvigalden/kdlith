@@ -1,0 +1,52 @@
+// The hand-written control for groupsources.kdl: the same schema with
+// the selector's pick and carries fields spelled as explicit child and
+// children sources instead of one child-group and one children-group
+// reference. The group expansion splices exactly these sources in
+// exactly this order, so this file vets to the same digest line the
+// group-sourced form pins.
+schema groupsources version="1" {
+    types {
+        object Shape {
+            field label String
+        }
+        object Selector {
+            field name String
+            field pick Shape
+            field carries "list<Shape>"
+        }
+    }
+    group options alpha beta gamma
+    group extras delta epsilon
+    node selector role=record type=Selector {
+        field name arg=0
+        field pick {
+            from {
+                child alpha
+                child beta
+                child gamma
+            }
+            collision reject
+        }
+        field carries {
+            from {
+                children delta
+                children epsilon
+            }
+        }
+    }
+    node alpha type=Shape parent=selector {
+        field label arg=0
+    }
+    node beta type=Shape parent=selector {
+        field label arg=0
+    }
+    node gamma type=Shape parent=selector {
+        field label arg=0
+    }
+    node delta type=Shape parent=selector {
+        field label arg=0
+    }
+    node epsilon type=Shape parent=selector {
+        field label arg=0
+    }
+}

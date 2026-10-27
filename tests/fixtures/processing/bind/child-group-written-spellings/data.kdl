@@ -1,0 +1,12 @@
+selector first {
+    alpha "leading"
+    delta "left"
+    epsilon "right"
+}
+selector second {
+    beta "middle"
+}
+selector third {
+    gamma "trailing"
+    delta "only"
+}

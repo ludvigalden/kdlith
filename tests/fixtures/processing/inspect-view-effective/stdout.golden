@@ -17,6 +17,7 @@
 {"item":"effective","data":{"section":"type","entry":{"name":"Capture","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"CaseDispatch","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"CaseRule","parameters":[],"kind":"object"}}}
+{"item":"effective","data":{"section":"type","entry":{"name":"ChildGroupSource","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"ChildRule","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"ChildSource","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"ChildrenGroupSource","parameters":[],"kind":"object"}}}
@@ -146,6 +147,7 @@
 {"item":"effective","data":{"section":"node","entry":{"name":"case","parents":["cases"],"role":null,"type":"CaseRule","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"cases","parents":["node"],"role":null,"type":"CaseDispatch","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"child","parents":["child","children","from"],"role":null,"type":"ChildSource","profile":null}}}
+{"item":"effective","data":{"section":"node","entry":{"name":"child-group","parents":["from"],"role":null,"type":"ChildGroupSource","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"children","parents":["case","node"],"role":null,"type":"ChildRule","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"children","parents":["child","children","from"],"role":null,"type":"ChildrenSource","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"children-group","parents":["from"],"role":null,"type":"ChildrenGroupSource","profile":null}}}

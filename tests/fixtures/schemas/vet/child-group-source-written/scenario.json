@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "The hand-written repeated-source control for schemas/vet/child-group-source: the same schema with the selector's pick field spelled as three explicit child sources instead of one child-group reference vets to the same digest line the spliced form pins, proving the singular group expansion desugars to exactly the repeated-source form (canonical summary and bound plan byte-identical)",
+  "args": [
+    "vet",
+    "schema",
+    "{fx-suite}/processing/bind/groupsources-written.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "ok: schema groupsources version 1 scope=complete documents=1 types=2 nodes=6 slots=0 profiles=0 digest=2fff4a4f47e753ae"
+    ]
+  }
+}

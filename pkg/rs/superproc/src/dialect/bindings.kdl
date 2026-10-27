@@ -191,6 +191,7 @@ dialect kdlith version="0" {
             variant child ChildSource
             variant children ChildrenSource
             variant children-group ChildrenGroupSource
+            variant child-group ChildGroupSource
             variant entries EntriesSource
             variant expand ExpandSource
             variant context ContextSource
@@ -238,6 +239,14 @@ dialect kdlith version="0" {
         // this source's position when the schema is compiled, exactly as
         // the repeated hand-written form spells them.
         object ChildrenGroupSource {
+            field name NodeGroupName
+        }
+
+        // A pending child-group reference in a from block: one child
+        // source per member of the named group splices in at this
+        // source's position when the schema is compiled, exactly as the
+        // repeated hand-written form spells them.
+        object ChildGroupSource {
             field name NodeGroupName
         }
 
@@ -466,6 +475,7 @@ dialect kdlith version="0" {
                     children child
                     children children
                     children children-group
+                    children child-group
                     children entries
                     children expand
                     children context
@@ -549,6 +559,13 @@ dialect kdlith version="0" {
     // per member of the named group splices in at the reference's
     // position when the schema is compiled.
     node children-group type=ChildrenGroupSource parent=from {
+        field name arg=0
+    }
+
+    // A child-group reference in a from block: one child source per
+    // member of the named group splices in at the reference's position
+    // when the schema is compiled.
+    node child-group type=ChildGroupSource parent=from {
         field name arg=0
     }
 

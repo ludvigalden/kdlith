@@ -188,6 +188,16 @@ system-member=MEMBER values="V1 V2 ..."` (one whitespace-separated
   checking scope: unlike a children rule, which only grants permission,
   a from source decides where a field's data comes from, so an
   unresolvable reference is never silently dropped.
+- A `child-group NAME` reference in a `from` block beside the
+  `children-group` form: one child source per group member splices into
+  the field's sources at the reference's position, so a field sourced
+  where a `child NAME` source is spelled today admits every member
+  spelling through one reference, which changes the canonical dialect
+  digest. The expansion is exactly the hand-written repeated form, so a
+  group over several members carries `collision reject` as its twin
+  must, and a member spelled both concretely and through the group in
+  one field is a compile-time duplicate (`KDLITH-SCH005`), reported and
+  skipped for both group forms.
 - `root=#true` on a node declaration that also gives `parent=` or
   `parents` admits the node at the document root as well, so a
   recursive container that may also start a document needs one

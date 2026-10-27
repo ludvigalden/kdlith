@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "A child-group reference as a from-source vets green and compiles to exactly the hand-written repeated-source form: the group options expands to one child source per member (alpha, beta, gamma) spliced into the selector's pick field at the reference's position, so this schema's digest is byte-identical to the hand-written twin schemas/vet/child-group-source-written (the twin scenario pins the same line), which is the bound-plan byte-compare; the invalid twin is invalid/schemas/child-group-source-unknown",
+  "args": [
+    "vet",
+    "schema",
+    "{fx-suite}/processing/bind/groupsources.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "ok: schema groupsources version 1 scope=complete documents=1 types=2 nodes=6 slots=0 profiles=0 digest=2fff4a4f47e753ae"
+    ]
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "A child-group-sourced field admits every member spelling as the one child that supplies it: three selector records each pick through a different member of the three-member group (alpha, beta, gamma), the carries field collects the other group's members as a list, and vet data exits 0; the reading is byte-identical to the same data under the hand-written twin schema (child-group-written-spellings pins the same golden)",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/groupsources.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden"
+  }
+}

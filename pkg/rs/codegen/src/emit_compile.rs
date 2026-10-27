@@ -884,6 +884,9 @@ fn source(input: &Source) -> SourceInput {
         Source::ChildrenGroup(children_group) => SourceInput::ChildrenGroup {
             name: children_group.name.as_str().to_owned(),
         },
+        Source::ChildGroup(child_group) => SourceInput::ChildGroup {
+            name: child_group.name.as_str().to_owned(),
+        },
         Source::Entries(entries) => SourceInput::Entries {
             node: entries.node.as_str().to_owned(),
             key: entries.key.clone(),

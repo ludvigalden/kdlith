@@ -1,0 +1,21 @@
+schema s version="1" {
+    types {
+        object Shape { field label String }
+        object Selector {
+            field name String
+            field pick Shape
+        }
+    }
+    node selector role=record type=Selector {
+        field name arg=0
+        field pick {
+            collision reject
+            from {
+                child-group options
+            }
+        }
+    }
+    node alpha type=Shape parent=selector {
+        field label arg=0
+    }
+}

@@ -69,6 +69,12 @@ pub(crate) fn type_doc(name: &str) -> Option<&'static [&'static str]> {
             "position when the schema is compiled, as the hand-written form",
             "spells them.",
         ],
+        "ChildGroupSource" => &[
+            "A pending child-group reference in a from block: one child",
+            "source per member of the named group splices in at this source's",
+            "position when the schema is compiled, as the hand-written form",
+            "spells them.",
+        ],
         "AccumulateOp" => &[
             "How an accumulating effect combines with the slot's incoming",
             "value: append concatenates lists; merge combines maps key-wise.",

@@ -1,0 +1,25 @@
+schema s version="1" {
+    types {
+        object Shape { field label String }
+        object Bundle {
+            field name String
+            field entries "list<Shape>"
+        }
+    }
+    group wings delta epsilon
+    node bundle role=record type=Bundle {
+        field name arg=0
+        field entries {
+            from {
+                children delta
+                children-group wings
+            }
+        }
+    }
+    node delta type=Shape parent=bundle {
+        field label arg=0
+    }
+    node epsilon type=Shape parent=bundle {
+        field label arg=0
+    }
+}

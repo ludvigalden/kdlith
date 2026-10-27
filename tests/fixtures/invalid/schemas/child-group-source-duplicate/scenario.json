@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "The singular arm of the duplicate rule: a concrete child source and a child-group reference admitting the same member in one field is the same compile-time duplicate (KDLITH-SCH005, source for child alpha spelled twice, directly and via group options), fail closed even though the field carries a collision policy, because the duplicate is of the source spelling, not of a data supply",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

@@ -302,8 +302,8 @@ pub struct FieldBinding {
     /// qualifier from, overriding the field's reference type's choice.
     /// `None` defers to the reference type, else the `namespace` slot.
     pub qualify_from: Option<Sym>,
-    /// Pending `children-group` from-sources, spliced one children
-    /// source per member into `sources` at `position` by the group
+    /// Pending `children-group` and `child-group` from-sources, spliced
+    /// one source per member into `sources` at `position` by the group
     /// expansion pass — the hand-written repeated-source form.
     pub(crate) pending_groups: Vec<PendingGroupSource>,
     /// Required when two or more alternative sources (not `children` or
@@ -355,14 +355,25 @@ pub enum Source {
     },
 }
 
-/// A pending `children-group` from-source, resolved by the group
-/// expansion pass after the declaration pass completes.
+/// A pending `children-group` or `child-group` from-source, resolved by
+/// the group expansion pass after the declaration pass completes.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct PendingGroupSource {
     /// Where in the field's `sources` the spliced members land.
     pub(crate) position: usize,
     pub(crate) name: Sym,
+    /// Which source form each member splices as.
+    pub(crate) kind: GroupSourceKind,
     pub(crate) site: Site,
+}
+
+/// The form a group-sourced from-source splices per member: a `child`
+/// source names one alternative spelling of the field's value, a
+/// `children` source feeds the field's list.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum GroupSourceKind {
+    Child,
+    Children,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

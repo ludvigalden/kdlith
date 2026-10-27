@@ -8,8 +8,8 @@ use kdlith_runtime::Repeated;
 use crate::bindings::{
     BindingCatalog, BindingCodec, CaseRule, ChildRule, Collision, Condition, ContextPolicy,
     DependentBinding, DescendantRule, DuplicateKeys, Effect, EffectGroup, EffectTarget,
-    FieldBinding, IdentityDecl, NodeAnnotation, NodeDecl, PathValueBinding, PendingGroupSource,
-    Placement, Role, SequenceDecl, SequenceStep, SetFrom, Source, WhenBranch,
+    FieldBinding, GroupSourceKind, IdentityDecl, NodeAnnotation, NodeDecl, PathValueBinding,
+    PendingGroupSource, Placement, Role, SequenceDecl, SequenceStep, SetFrom, Source, WhenBranch,
 };
 use crate::compile::Cx;
 use crate::compile::conditions;
@@ -959,6 +959,15 @@ fn field_binding(
                 pending_groups.push(PendingGroupSource {
                     position: sources.len(),
                     name: cx.names.intern(name),
+                    kind: GroupSourceKind::Children,
+                    site,
+                });
+            }
+            SourceInput::ChildGroup { name } => {
+                pending_groups.push(PendingGroupSource {
+                    position: sources.len(),
+                    name: cx.names.intern(name),
+                    kind: GroupSourceKind::Child,
                     site,
                 });
             }
@@ -1068,12 +1077,16 @@ fn source(cx: &mut Cx<'_>, site: Site, label: &str, input: &SourceInput) -> Opti
             sources: nested(cx, site, label, sources),
             compact: *compact,
         }),
-        // The field pass peels every top-level children-group reference
-        // off as a pending source before this point, so one reaching
-        // here is nested inside a child or children source, where no
-        // from-block source nests.
+        // The field pass peels every top-level children-group and
+        // child-group reference off as a pending source before this
+        // point, so one reaching here is nested inside a child or
+        // children source, where no from-block source nests.
         SourceInput::ChildrenGroup { .. } => {
             cx.malformed(site, label, "children-group is a source of a from block");
+            None
+        }
+        SourceInput::ChildGroup { .. } => {
+            cx.malformed(site, label, "child-group is a source of a from block");
             None
         }
         SourceInput::Entries { node, key, value } => entries(cx, site, label, node, key, value),

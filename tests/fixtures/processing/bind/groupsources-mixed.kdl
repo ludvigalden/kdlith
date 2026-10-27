@@ -1,0 +1,41 @@
+// The mixed-source schema for the group-source scenarios: a bundle
+// field fed by one concrete children source, one children-group
+// reference, and a second concrete children source after it. The group
+// splices its members between the two concrete sources at compile, so
+// the field's sources read alpha, delta, epsilon, zeta — the order the
+// hand-written twin groupsources-mixed-written.kdl spells and vets to
+// the same digest line.
+schema groupsources-mixed version="1" {
+    types {
+        object Shape {
+            field label String
+        }
+        object Bundle {
+            field name String
+            field entries "list<Shape>"
+        }
+    }
+    group wings delta epsilon
+    node bundle role=record type=Bundle {
+        field name arg=0
+        field entries {
+            from {
+                children alpha
+                children-group wings
+                children zeta
+            }
+        }
+    }
+    node alpha type=Shape parent=bundle {
+        field label arg=0
+    }
+    node delta type=Shape parent=bundle {
+        field label arg=0
+    }
+    node epsilon type=Shape parent=bundle {
+        field label arg=0
+    }
+    node zeta type=Shape parent=bundle {
+        field label arg=0
+    }
+}

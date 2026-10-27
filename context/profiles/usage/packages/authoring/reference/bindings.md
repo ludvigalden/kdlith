@@ -60,6 +60,17 @@ collects repeated children in order. An `entries NODE
 key="arg(0)" value=TYPE` envelope consumes the selected argument as
 the map key exactly once, the rest of the node binding as the value.
 
+A `children-group GROUP` or `child-group GROUP` source in a `from`
+block admits every member of a declared node group as a source
+spelling: at compile the group splices one `children MEMBER` or one
+`child MEMBER` source per member at the reference's position, in
+member order, exactly as the hand-written repeated form spells them.
+A `child-group` field over several members is several alternative
+sources, so it carries `collision reject` like its hand-written form;
+naming an undeclared group fails compilation (`KDLITH-SCH006`), and a
+member spelled both concretely and through the group in one field is
+a compile-time duplicate (`KDLITH-SCH005`).
+
 ## Compact child spelling
 
 A `child` or `children` source may carry `compact=#true`: the child

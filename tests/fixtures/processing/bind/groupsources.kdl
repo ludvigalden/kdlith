@@ -1,0 +1,51 @@
+// The group-sourced field schema the group-source scenarios share: a
+// selector record whose pick field admits any member of a three-member
+// group through one child-group reference, and whose carries field
+// collects every member of another group through one children-group
+// reference. Both references expand when the schema is compiled, one
+// source per member in member order spliced at the reference's
+// position, exactly as the hand-written twin groupsources-written.kdl
+// spells them (the two vet to the same digest line).
+schema groupsources version="1" {
+    types {
+        object Shape {
+            field label String
+        }
+        object Selector {
+            field name String
+            field pick Shape
+            field carries "list<Shape>"
+        }
+    }
+    group options alpha beta gamma
+    group extras delta epsilon
+    node selector role=record type=Selector {
+        field name arg=0
+        field pick {
+            from {
+                child-group options
+            }
+            collision reject
+        }
+        field carries {
+            from {
+                children-group extras
+            }
+        }
+    }
+    node alpha type=Shape parent=selector {
+        field label arg=0
+    }
+    node beta type=Shape parent=selector {
+        field label arg=0
+    }
+    node gamma type=Shape parent=selector {
+        field label arg=0
+    }
+    node delta type=Shape parent=selector {
+        field label arg=0
+    }
+    node epsilon type=Shape parent=selector {
+        field label arg=0
+    }
+}

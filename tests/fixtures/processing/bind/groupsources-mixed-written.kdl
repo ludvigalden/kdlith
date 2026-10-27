@@ -1,0 +1,41 @@
+// The hand-written control for groupsources-mixed.kdl: the same schema
+// with the bundle's entries field spelled as four explicit children
+// sources instead of one concrete source, a children-group reference,
+// and a second concrete source. The group expansion splices exactly
+// these sources in exactly this order, so this file vets to the same
+// digest line the mixed form pins.
+schema groupsources-mixed version="1" {
+    types {
+        object Shape {
+            field label String
+        }
+        object Bundle {
+            field name String
+            field entries "list<Shape>"
+        }
+    }
+    group wings delta epsilon
+    node bundle role=record type=Bundle {
+        field name arg=0
+        field entries {
+            from {
+                children alpha
+                children delta
+                children epsilon
+                children zeta
+            }
+        }
+    }
+    node alpha type=Shape parent=bundle {
+        field label arg=0
+    }
+    node delta type=Shape parent=bundle {
+        field label arg=0
+    }
+    node epsilon type=Shape parent=bundle {
+        field label arg=0
+    }
+    node zeta type=Shape parent=bundle {
+        field label arg=0
+    }
+}

@@ -1,0 +1,4 @@
+{"item":"document","data":{"source":0,"path":"data.kdl"}}
+{"item":"record","data":{"node":{"source":0,"index":0},"type_name":"Bundle","fields":[{"name":"name","value":{"kind":"string","value":"b1"},"origin":0},{"name":"entries","value":{"kind":"list","value":[{"kind":"map","value":[{"key":"label","value":{"kind":"string","value":"first"}}]},{"kind":"map","value":[{"key":"label","value":{"kind":"string","value":"second"}}]},{"kind":"map","value":[{"key":"label","value":{"kind":"string","value":"third"}}]},{"kind":"map","value":[{"key":"label","value":{"kind":"string","value":"fourth"}}]}]},"origin":0}],"origin":0,"validation":"valid"}}
+{"item":"scope-complete","data":{"source":0,"scope":null}}
+{"item":"sources","data":{"sources":[{"name":null,"kind":"local","identity":"sha256:33d6ef3eb432a628a85e52bc710ad4b84ec0c20b0c71429b9038133749eb55d4","overridden":false}]}}

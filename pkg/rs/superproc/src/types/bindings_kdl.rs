@@ -180,6 +180,7 @@ union_type! {
         "child" => Child(ChildSource),
         "children" => Children(ChildrenSource),
         "children-group" => ChildrenGroup(ChildrenGroupSource),
+        "child-group" => ChildGroup(ChildGroupSource),
         "entries" => Entries(EntriesSource),
         "expand" => Expand(ExpandSource),
         "context" => Context(ContextSource),
@@ -224,6 +225,16 @@ object_type! {
     /// position when the schema is compiled, as the hand-written form
     /// spells them.
     pub struct ChildrenGroupSource {
+        "name" => name: NodeGroupName,
+    }
+}
+
+object_type! {
+    /// A pending child-group reference in a from block: one child
+    /// source per member of the named group splices in at this source's
+    /// position when the schema is compiled, as the hand-written form
+    /// spells them.
+    pub struct ChildGroupSource {
         "name" => name: NodeGroupName,
     }
 }
@@ -336,6 +347,7 @@ pub(crate) const TYPES: &[TypeShape] = &[
     ChildSource::SHAPE,
     ChildrenSource::SHAPE,
     ChildrenGroupSource::SHAPE,
+    ChildGroupSource::SHAPE,
     EntriesSource::SHAPE,
     ExpandSource::SHAPE,
     ContextSource::SHAPE,
