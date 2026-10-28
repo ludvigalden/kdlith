@@ -1,0 +1,12 @@
+component card {
+    knob color {
+        allows override reset
+    }
+    role title
+    role subtitle
+    override card:color reset role=title
+}
+override card:color override role=card:subtitle
+page home {
+    page-override card:color reset role=card:title
+}

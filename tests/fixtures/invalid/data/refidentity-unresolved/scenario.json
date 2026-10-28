@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A role misspelled in an override's composed identity fails closed at link under complete scope with KDLITH-REF001: the reference composes its segment and is still checked, so a typo never silently forks the identity",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "{fx-suite}/processing/linking/refidentity-schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

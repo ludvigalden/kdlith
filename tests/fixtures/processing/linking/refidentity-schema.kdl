@@ -1,0 +1,102 @@
+// Override blocks addressed by (target, role): each composes its
+// identity from its target knob's spelling and a role field typed with
+// a declared reference type, so the role is both checked at link and
+// part of the identity. Components scope their knobs and roles through
+// the namespace slot; a role written bare inside a component takes that
+// component as its namespace, and one written `owner:name` names it.
+// Each override's payload is checked against its knob's policy.
+schema refidentity version="1" {
+    types {
+        object Knob {
+            field owner String
+            field name String
+            field policy String {
+                fallback "choice"
+            }
+            field choices "list<String>"
+        }
+        object Role {
+            field owner String
+            field name String
+        }
+        object Override {
+            field target KnobRef
+            field role RoleRef
+        }
+        codec QualifiedName output=String {
+            match #"(?<owner>[a-z]+):(?<name>[a-z]+)"#
+            capture owner String
+            capture name String
+        }
+        codec RoleName output=String {
+            match #"(?:(?<owner>[a-z]+):)?(?<name>[a-z]+)"#
+            capture owner String
+            capture name String
+        }
+    }
+    context {
+        slot namespace String duplicates=last-wins
+    }
+    node component role=context-control {
+        field value String arg=0
+        effects target=children {
+            set namespace field=value
+        }
+        children knob
+        children role
+        children override
+    }
+    node knob role=declaration type=Knob parent=component {
+        field name arg=0
+        field owner context=namespace
+        field choices {
+            from {
+                child allows {
+                    args
+                }
+            }
+        }
+        identity {
+            domain knobs
+            compose qualified-name owner name
+        }
+    }
+    node role role=declaration type=Role parent=component {
+        field name arg=0
+        field owner context=namespace
+        identity {
+            domain roles
+            compose qualified-name owner name
+        }
+    }
+    node page role=context-control {
+        field name String arg=0
+        children page-override
+    }
+    node override role=declaration type=Override parent=component root=#true {
+        field target arg=0
+        field role property=role
+        value codec=from-kind {
+            against target=target member=policy
+        }
+        identity {
+            domain overrides
+            compose qualified-name target role
+        }
+    }
+    node page-override role=declaration type=Override parent=page {
+        field target arg=0
+        field role property=role
+        value codec=from-kind {
+            against target=target member=policy
+        }
+        identity {
+            domain page-overrides
+            compose qualified-name target role
+        }
+    }
+    reference KnobRef target=Knob codec=QualifiedName lookup=knobs qualification=explicit
+    reference RoleRef target=Role codec=RoleName lookup=roles qualification=explicit-or-context {
+        qualifier owner String required=#false
+    }
+}

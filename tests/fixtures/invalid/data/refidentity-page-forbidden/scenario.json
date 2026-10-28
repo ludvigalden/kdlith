@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A page override whose identity composes from a reference-typed role field fails closed with KDLITH-REF005 when its from-kind payload is outside the owner-scoped knob's choices",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "{fx-suite}/processing/linking/refidentity-schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

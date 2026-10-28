@@ -1,0 +1,21 @@
+{
+  "binary": "kdlith",
+  "description": "A composed identity field typed with a declared reference type contributes the reference's parsed name as its segment: the owner registers the identity (top, width), and under complete scope its reference resolves to the attr declaration",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"identity\":{\"domain\":\"owners\",\"name\":[\"top\",\"width\"]}",
+      "\"item\":\"scope-complete\""
+    ],
+    "stderr-golden": "stderr.golden"
+  }
+}

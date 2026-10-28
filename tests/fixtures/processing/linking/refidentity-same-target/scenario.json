@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "A role written bare inside component a and one written a:title name the same role, so they compose the same identity segment by design: the two overrides of one knob are one identity declared twice, KDLITH-REF002 at the second",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "{fx-suite}/processing/linking/refidentity-schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": [
+      "error[KDLITH-REF002]: overrides a.color.a.title declared more than once\n"
+    ]
+  }
+}

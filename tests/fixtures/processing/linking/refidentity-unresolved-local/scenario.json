@@ -1,0 +1,21 @@
+{
+  "binary": "kdlith",
+  "description": "A misspelled role still composes its identity, from the name as written, and under local scope the unresolved reference does not fail the run: the declaration and its pending payload stream and the exit is 0, while complete scope fails the same input with KDLITH-REF001",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "local",
+    "--schema",
+    "{fx-suite}/processing/linking/refidentity-schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"identity\":{\"domain\":\"overrides\",\"name\":[\"card.color\",\"card.titel\"]}",
+      "\"item\":\"pending-binding\""
+    ],
+    "stderr-golden": "stderr.golden"
+  }
+}

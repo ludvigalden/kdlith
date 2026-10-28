@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A page override whose composed identity holds a misspelled role fails closed at link under complete scope with KDLITH-REF001",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "{fx-suite}/processing/linking/refidentity-schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

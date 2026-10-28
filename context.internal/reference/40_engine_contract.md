@@ -21,10 +21,16 @@ implement the dialect for every processor, hand-written or generated:
    scenario (`dialect/entrypoint-vet/dialect`).
 4. **Link.** Check that every type, node, slot, and parent a
    definition references is declared, including the canonical files'
-   own self-description. Identity segments are string-typed by
-   construction: every field an `identity` block composes must bind a
-   string, so a composed identity field holding any other value is
-   rejected at binding (`KDLITH-BND003`). A declaration without an
+   own self-description. Every field an `identity` block composes
+   must bind a string or a reference of a declared reference type; a
+   composed identity field holding any other value is rejected at
+   binding (`KDLITH-BND003`). A reference contributes one segment:
+   its explicit qualifier values, then its parsed name segments,
+   joined by `.`; when no qualifier is spelled and its type admits
+   context, the context value in effect leads instead, as it does a
+   declaration's own context-sourced segment. The reference is still
+   linked, so a misspelling fails `KDLITH-REF001` under complete
+   scope. A declaration without an
    `identity` block takes its type as its domain and the value of its
    argument-0 field as its name, or is one of a kind in its scope
    when no field binds argument 0; a field type admitting any other

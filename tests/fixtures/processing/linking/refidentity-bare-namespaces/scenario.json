@@ -1,0 +1,21 @@
+{
+  "binary": "kdlith",
+  "description": "One bare role name written inside two components composes two different identity segments: no qualifier is spelled, so each component's namespace supplies it, and the two overrides of one knob are distinct declarations rather than a duplicate",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "{fx-suite}/processing/linking/refidentity-schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"identity\":{\"domain\":\"overrides\",\"name\":[\"a.color\",\"a.title\"]}",
+      "\"identity\":{\"domain\":\"overrides\",\"name\":[\"a.color\",\"b.title\"]}"
+    ],
+    "stderr-golden": "stderr.golden"
+  }
+}

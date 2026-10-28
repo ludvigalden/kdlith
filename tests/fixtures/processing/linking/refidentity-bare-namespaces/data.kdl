@@ -1,0 +1,14 @@
+component a {
+    knob color {
+        allows reset
+    }
+    role title
+    override a:color reset role=title
+}
+component b {
+    knob color {
+        allows reset
+    }
+    role title
+    override a:color reset role=title
+}

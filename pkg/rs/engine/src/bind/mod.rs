@@ -2774,10 +2774,9 @@ impl<'d, 's> Binder<'d, 's> {
         cx.emit(item);
     }
 
-    /// A declaration's identity. An identity field holding a value that
-    /// is not a string, or a composed field left unbound, is reported
-    /// and yields no identity, since a shortened name could collide
-    /// with another declaration's.
+    /// A declaration's identity. A field holding a non-string (a composed
+    /// one may hold a reference), or a composed field left unbound, is
+    /// reported and yields no identity: a shorter name could collide.
     fn compose_identity(
         &mut self,
         cx: &mut Cx<'_>,
@@ -2815,6 +2814,9 @@ impl<'d, 's> Binder<'d, 's> {
                 for (field, at) in fields {
                     match text(at) {
                         Some(Value::String(segment)) => name.push(segment.clone()),
+                        Some(Value::Reference(reference)) => {
+                            name.push(reference_segment(reference));
+                        }
                         Some(other) => {
                             complete = false;
                             let what = format!("{}.{}", self.name(frame.name), self.name(field));
@@ -3678,6 +3680,29 @@ impl<'s> Processor for Binder<'_, 's> {
             }
         }
     }
+}
+
+/// The identity segment a reference-typed field composes: its explicit
+/// qualifier values, then its parsed name segments, dot-joined as the
+/// link stage spells names. Built from parts rather than the written
+/// spelling so a codec's punctuation never leaks into identities. When
+/// nothing is qualified explicitly, context supplies the namespace, as
+/// it does a declaration's own owner segment, so one bare name in two
+/// namespaces composes two segments.
+fn reference_segment(reference: &Reference) -> String {
+    let context = if reference.qualifiers.is_empty() {
+        reference.context.as_deref()
+    } else {
+        None
+    };
+    reference
+        .qualifiers
+        .iter()
+        .map(|(_, value)| value.as_str())
+        .chain(context)
+        .chain(reference.name.0.iter().map(String::as_str))
+        .collect::<Vec<_>>()
+        .join(".")
 }
 
 /// The member names of the enum a type expression names, through any

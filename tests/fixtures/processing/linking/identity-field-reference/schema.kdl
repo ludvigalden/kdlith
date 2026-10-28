@@ -1,6 +1,6 @@
 // An owner composes its identity from its name and a field typed with
-// a declared reference type. Identity segments are text, so the
-// reference value bound there is no segment.
+// a declared reference type: the reference contributes its parsed name
+// as a segment, and linking still checks that it resolves.
 schema identref version="1" {
     types {
         codec Name output=String {

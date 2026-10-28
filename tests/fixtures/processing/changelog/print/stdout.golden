@@ -457,6 +457,14 @@ path=…; pinned "sha256:…" }`, whose pin is optional. kdlith never
   `card is missing required title (expected child title VALUE)`, with
   `property title=VALUE or` added when the source declares
   `compact=#true`.
+- A composed identity may draw a segment from a field typed with a
+  declared reference type, so a checked name can address a
+  declaration. The segment is the reference's explicit qualifier
+  values then its name segments, joined by `.`; when no qualifier is
+  spelled and the type admits context, the context value leads. The
+  reference still links, so a misspelling fails `KDLITH-REF001` under
+  complete scope. Before, such a field was `KDLITH-BND003` and the
+  declaration registered no identity.
 
 ### Fixed
 

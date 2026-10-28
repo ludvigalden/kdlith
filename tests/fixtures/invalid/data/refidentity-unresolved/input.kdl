@@ -1,0 +1,7 @@
+component card {
+    knob color {
+        allows override reset
+    }
+    role title
+}
+override card:color reset role=card:titel

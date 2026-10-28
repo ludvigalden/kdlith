@@ -1,0 +1,23 @@
+{
+  "binary": "kdlith",
+  "description": "An override's identity composes its target knob and a role field typed with the declared reference type RoleRef: a role written bare inside its component takes the component as its namespace and one written owner:name names it, so the component override and the root override compose distinct identities from distinct roles, the page override composes in its own domain, each role link resolves, and every from-kind payload fits its knob's choices under complete scope",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "{fx-suite}/processing/linking/refidentity-schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"identity\":{\"domain\":\"overrides\",\"name\":[\"card.color\",\"card.title\"]}",
+      "\"identity\":{\"domain\":\"overrides\",\"name\":[\"card.color\",\"card.subtitle\"]}",
+      "\"identity\":{\"domain\":\"page-overrides\",\"name\":[\"card.color\",\"card.title\"]}",
+      "\"item\":\"pending-binding\"",
+      "\"item\":\"scope-complete\""
+    ]
+  }
+}

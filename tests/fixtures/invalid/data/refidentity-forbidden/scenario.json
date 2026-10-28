@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "An override whose identity composes from a reference-typed role field still checks its from-kind payload: a value outside the owner-scoped knob's choices fails closed with KDLITH-REF005 under complete scope",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "{fx-suite}/processing/linking/refidentity-schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}
