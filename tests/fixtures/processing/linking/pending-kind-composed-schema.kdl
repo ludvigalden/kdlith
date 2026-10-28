@@ -1,0 +1,124 @@
+// The from-kind schema whose against targets compose their identities:
+// a component scopes its knobs, tokens, and props through the namespace
+// slot, so each declaration's identity is (owner, name) in its own
+// domain. Overrides, page overrides, provides, and queries reach those
+// declarations through declared reference types, and linking selects
+// each payload's shape from the resolved declaration's member value.
+schema pending-kind-composed version="1" {
+    types {
+        object Knob {
+            field owner String
+            field name String
+            field policy String {
+                fallback "choice"
+            }
+            field choices "list<String>"
+        }
+        object Token {
+            field owner String
+            field name String
+            field type "optional<String>"
+            field choices "optional<list<String>>"
+        }
+        object Prop {
+            field owner String
+            field name String
+            field context "optional<String>"
+        }
+        codec QualifiedName output=String {
+            match #"(?<owner>[a-z]+):(?<name>[a-z]+)"#
+            capture owner String
+            capture name String
+        }
+        codec LocalName output=String {
+            match #"(?<name>[a-z]+)"#
+            capture name String
+        }
+    }
+    context {
+        slot namespace String duplicates=last-wins
+    }
+    node component role=context-control {
+        field value String arg=0
+        effects target=children {
+            set namespace field=value
+        }
+        children knob
+        children token
+        children prop
+        children provide
+    }
+    node knob role=declaration type=Knob parent=component {
+        field name arg=0
+        field owner context=namespace
+        field choices {
+            from {
+                child allows {
+                    args
+                }
+            }
+        }
+        identity {
+            domain knobs
+            compose qualified-name owner name
+        }
+    }
+    node token role=declaration type=Token parent=component {
+        field name arg=0
+        field owner context=namespace
+        field type property=type
+        field choices {
+            from {
+                child keywords {
+                    args
+                }
+            }
+        }
+        identity {
+            domain tokens
+            compose qualified-name owner name
+        }
+    }
+    node prop role=declaration type=Prop parent=component {
+        field name arg=0
+        field owner context=namespace
+        field context property=context
+        identity {
+            domain props
+            compose qualified-name owner name
+        }
+    }
+    node page role=context-control {
+        field name String arg=0
+        children page-override
+    }
+    node override role=contribution {
+        field target KnobRef arg=0
+        value codec=from-kind {
+            against target=target member=policy
+        }
+    }
+    node page-override role=contribution parent=page {
+        field target KnobRef arg=0
+        value codec=from-kind {
+            against target=target member=policy
+        }
+    }
+    node provide role=contribution parent=component {
+        field target PropRef arg=0
+        value codec=from-kind {
+            against target=target member=context
+        }
+    }
+    node query role=contribution {
+        field target TokenRef arg=0
+        value codec=from-kind {
+            against target=target member=type
+        }
+    }
+    reference KnobRef target=Knob codec=QualifiedName lookup=knobs qualification=explicit
+    reference TokenRef target=Token codec=QualifiedName lookup=tokens qualification=explicit
+    reference PropRef target=Prop codec=LocalName lookup=props qualification=explicit-or-context {
+        qualifier namespace String required=#false
+    }
+}

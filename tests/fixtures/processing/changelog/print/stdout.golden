@@ -523,3 +523,10 @@ path=…; pinned "sha256:…" }`, whose pin is optional. kdlith never
   every map-valued field was replaced whole by the highest layer. A
   list declaring `merge=union` inside a nested block now appends at its
   own depth instead of being silently replaced.
+- A dependent value whose `against` target is typed by a declared
+  reference type now binds its payload as pending when the referenced
+  declaration composes its identity from an `identity` block, so
+  linking validates it and a payload that does not fit fails
+  `KDLITH-REF005`. Before, only a declaration keeping the fallback
+  identity was reached; a composed one dropped the payload unchecked
+  and the reading passed.

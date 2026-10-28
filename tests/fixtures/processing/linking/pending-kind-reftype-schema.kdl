@@ -1,0 +1,33 @@
+// The shared pending-kind schema with put's target typed by the declared
+// reference type SettingRef rather than ref<Setting>: settings keep the
+// fallback identity (no identity block), and linking validates each
+// from-kind payload through the declaration the reference resolves to.
+schema pending-kind-reftype version="1" {
+    types {
+        object Setting {
+            field name String
+            field kind "optional<String>"
+            field choices "optional<list<String>>"
+        }
+        codec SettingName output=String {
+            match #"(?<name>[a-z0-9-]+)"#
+            capture name String
+        }
+    }
+    node setting role=declaration type=Setting {
+        field name arg=0
+        field kind property=kind
+        field choices {
+            from {
+                args
+            }
+        }
+    }
+    node put role=contribution {
+        field target SettingRef arg=0
+        value codec=from-kind {
+            against target=target member=kind
+        }
+    }
+    reference SettingRef target=Setting codec=SettingName qualification=explicit
+}

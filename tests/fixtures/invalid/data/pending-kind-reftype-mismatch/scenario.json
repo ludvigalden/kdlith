@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "With put's target typed by the declared reference type SettingRef and settings keeping the fallback identity, a Bool for a number setting and a string outside a choice setting's choices each fail closed with KDLITH-REF005 under complete scope",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "{fx-suite}/processing/linking/pending-kind-reftype-schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

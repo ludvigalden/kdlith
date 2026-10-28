@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A provide against a component-scoped prop that binds no context member has no shape to fit, so linking fails it closed with KDLITH-REF005 under complete scope rather than admitting the payload unchecked: the unbound-member path a fallback-identity target takes holds for a composed identity too",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "{fx-suite}/processing/linking/pending-kind-composed-schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

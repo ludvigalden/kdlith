@@ -1,0 +1,22 @@
+{
+  "binary": "kdlith",
+  "description": "A page-level override nested under a page reaches the component-scoped knob through KnobRef, and its from-kind payload, one of the knob's allowed choices, links clean under complete scope",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "{fx-suite}/processing/linking/pending-kind-composed-schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"item\":\"pending-binding\"",
+      "\"name\":[\"card\",\"color\"]",
+      "\"raw\":{\"kind\":\"string\",\"value\":\"override\"}",
+      "\"item\":\"scope-complete\""
+    ]
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A style query against a component-scoped choice token with a keyword the token does not list fails closed with KDLITH-REF005 under complete scope",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "{fx-suite}/processing/linking/pending-kind-composed-schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

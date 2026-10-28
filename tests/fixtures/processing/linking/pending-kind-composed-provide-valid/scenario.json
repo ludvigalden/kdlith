@@ -1,0 +1,22 @@
+{
+  "binary": "kdlith",
+  "description": "A provide nested in its component reaches the component's prop through PropRef, its owner qualifier taken from the namespace slot; the prop opts into the context channel with context=text, so the string payload links clean under complete scope",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "{fx-suite}/processing/linking/pending-kind-composed-schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"item\":\"pending-binding\"",
+      "\"name\":[\"card\",\"title\"]",
+      "\"raw\":{\"kind\":\"string\",\"value\":\"Welcome\"}",
+      "\"item\":\"scope-complete\""
+    ]
+  }
+}

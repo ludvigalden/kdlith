@@ -1,0 +1,4 @@
+component card {
+    token gap
+}
+query card:gap 4

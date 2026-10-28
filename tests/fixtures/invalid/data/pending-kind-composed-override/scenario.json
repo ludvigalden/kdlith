@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "An override payload outside the choices of a knob whose identity is composed from its component and its name fails closed with KDLITH-REF005 under complete scope: the composed-identity target binds a pending payload exactly as a fallback-identity target does, so the from-kind check runs rather than being skipped",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "{fx-suite}/processing/linking/pending-kind-composed-schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

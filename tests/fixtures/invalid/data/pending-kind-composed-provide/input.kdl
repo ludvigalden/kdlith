@@ -1,0 +1,4 @@
+component card {
+    prop title
+    provide title "Welcome"
+}

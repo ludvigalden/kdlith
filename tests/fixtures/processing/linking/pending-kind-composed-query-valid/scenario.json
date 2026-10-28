@@ -1,0 +1,22 @@
+{
+  "binary": "kdlith",
+  "description": "A style query against a component-scoped token whose type is choice reaches the token through TokenRef, and a keyword the token lists links clean under complete scope",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "{fx-suite}/processing/linking/pending-kind-composed-schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"item\":\"pending-binding\"",
+      "\"name\":[\"card\",\"align\"]",
+      "\"raw\":{\"kind\":\"string\",\"value\":\"end\"}",
+      "\"item\":\"scope-complete\""
+    ]
+  }
+}

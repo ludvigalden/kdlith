@@ -1,0 +1,6 @@
+component card {
+    knob color {
+        allows override reset
+    }
+}
+override card:color reset

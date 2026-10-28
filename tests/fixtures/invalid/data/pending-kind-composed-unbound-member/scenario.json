@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A query against a component-scoped token that binds no type has no kind to select a shape from, so linking fails it closed with KDLITH-REF005 under complete scope",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "{fx-suite}/processing/linking/pending-kind-composed-schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

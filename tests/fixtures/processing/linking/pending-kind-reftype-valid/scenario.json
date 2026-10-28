@@ -1,0 +1,22 @@
+{
+  "binary": "kdlith",
+  "description": "With put's target typed by the declared reference type SettingRef and settings keeping the fallback identity, each from-kind payload that fits its setting's kind streams pending and links clean under complete scope",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "{fx-suite}/processing/linking/pending-kind-reftype-schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"item\":\"pending-binding\"",
+      "\"raw\":{\"kind\":\"number\",\"value\":\"3\"}",
+      "\"raw\":{\"kind\":\"string\",\"value\":\"slow\"}",
+      "\"item\":\"scope-complete\""
+    ]
+  }
+}

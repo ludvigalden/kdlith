@@ -1,0 +1,22 @@
+{
+  "binary": "kdlith",
+  "description": "An override whose target is a knob composing its identity from its component and its name resolves through the declared reference type KnobRef, streams its from-kind payload as a pending binding, and links clean under complete scope because the payload is one of the choices the knob's choice policy allows",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "{fx-suite}/processing/linking/pending-kind-composed-schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"item\":\"pending-binding\"",
+      "\"name\":[\"card\",\"color\"]",
+      "\"raw\":{\"kind\":\"string\",\"value\":\"reset\"}",
+      "\"item\":\"scope-complete\""
+    ]
+  }
+}

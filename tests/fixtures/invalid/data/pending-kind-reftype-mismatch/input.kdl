@@ -1,0 +1,4 @@
+setting "depth" kind=number
+setting "mode" kind=choice "fast" "slow"
+put "depth" #true
+put "mode" "medium"

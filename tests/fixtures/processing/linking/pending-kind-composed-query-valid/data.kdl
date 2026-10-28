@@ -1,0 +1,6 @@
+component card {
+    token align type=choice {
+        keywords start end
+    }
+}
+query card:align end

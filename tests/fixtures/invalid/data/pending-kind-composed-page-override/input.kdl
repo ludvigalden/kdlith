@@ -1,0 +1,8 @@
+component card {
+    knob color {
+        allows override reset
+    }
+}
+page home {
+    page-override card:color fixed
+}

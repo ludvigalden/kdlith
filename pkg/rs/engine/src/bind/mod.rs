@@ -1702,13 +1702,24 @@ impl<'d, 's> Binder<'d, 's> {
         let Some(Some(Value::Reference(reference))) = values.get(at) else {
             return None;
         };
-        let Some(domain) = self.def.names.get(&reference.domain) else {
+        // The target type comes from the field's declared type, never
+        // from the reference's identity domain: a composed identity's
+        // domain names no type.
+        let target = match (&infos.fields[at].reference, &infos.fields[at].ty) {
+            (Some(decl), _) => Some(decl.target),
+            (None, Some(TypeExpr::Ref(inner))) => match inner.as_ref() {
+                TypeExpr::Named(target) => Some(*target),
+                _ => None,
+            },
+            _ => None,
+        };
+        let Some(target) = target.or_else(|| self.def.names.get(&reference.domain)) else {
             return Some(self.pending(cx, frame, &dep, reference));
         };
         let Some(TypeKind::Object(object)) = self
             .def
             .types
-            .lookup(domain)
+            .lookup(target)
             .and_then(|id| self.def.types.get(id))
             .map(|decl| &decl.kind)
         else {
