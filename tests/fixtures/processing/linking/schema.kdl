@@ -97,6 +97,7 @@ schema linking version="1" {
     node import role=source-import {
         field path String arg=0
         field namespace "optional<String>" property=as
+        field repeated "optional<String>" property=repeated
     }
     reference ConfigVarRef target=ConfigVarDef codec=DottedName lookup=config-vars qualification=explicit-or-context {
         qualifier namespace String required=#false

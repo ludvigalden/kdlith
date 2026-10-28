@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "The same declarations loaded under two different aliases are not duplicates: one source imported twice with repeated=instantiate registers each instance under its own import's namespace, so both compose their identity without KDLITH-REF002 and an imported-or-context reference reaches each instance through its alias",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/linking/schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

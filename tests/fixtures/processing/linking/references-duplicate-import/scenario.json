@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A duplicate declaration across two documents is a stderr diagnostic naming both sites: the item stream renders first (the imported document's declaration, then the importing document's repeat, then the record, whose link resolved to the first), the run failing KDLITH-REF002 after the stream, under the default complete scope",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/linking/schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

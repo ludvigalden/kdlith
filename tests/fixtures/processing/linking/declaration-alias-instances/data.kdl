@@ -1,0 +1,5 @@
+import "part.kdl" as=left
+import "part.kdl" as=right repeated=instantiate
+input-set "local"
+takes "left.shared"
+takes "right.shared"

@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A declaration composed identically in two documents of one reading is a duplicate: the imported document's declaration is first and the importing document's repeat is reported at its own site, naming both documents",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/linking/schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

@@ -15,14 +15,18 @@ type's, else the `namespace` slot.
 | Code            | Failure                                                                     |
 | --------------- | --------------------------------------------------------------------------- |
 | `KDLITH-REF001` | no declaration matches; names the alias namespace when gating hid the match |
-| `KDLITH-REF002` | two declarations compose one identity in one domain                         |
+| `KDLITH-REF002` | two declarations compose one identity in one domain and namespace           |
 | `KDLITH-REF003` | the policy derives more than one candidate (ambiguous)                      |
 | `KDLITH-REF004` | the one candidate fails a required qualifier                                |
 | `KDLITH-REF005` | a pending payload does not fit the declaration its reference resolved to    |
 
 Aliased imports gate visibility: a document imported `as=NAME`
 resolves its own declarations unqualified, while every other document
-reaches them only under the alias.
+reaches them only under the alias. The duplicate rule is scoped the same
+way: two declarations collide only when their domain, namespace, and
+composed identity all agree, so a declaration repeated across two
+documents of one reading is a duplicate while the same declarations
+loaded under two different aliases are not.
 
 ## Scope behavior
 

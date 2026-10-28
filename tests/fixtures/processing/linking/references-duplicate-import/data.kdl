@@ -1,0 +1,3 @@
+import "part.kdl"
+input-set "shared"
+takes "shared"

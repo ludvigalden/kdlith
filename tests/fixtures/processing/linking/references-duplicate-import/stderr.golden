@@ -1,0 +1,4 @@
+error[KDLITH-REF002]: input-sets shared declared more than once
+  --> data.kdl:2:1
+  note: first declared here (part.kdl:1:1)
+  help: Rename or remove one declaration
