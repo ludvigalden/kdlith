@@ -1,0 +1,2 @@
+property-def "mystery" value-type="NoSuchType"
+property "mystery" 1

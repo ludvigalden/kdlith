@@ -458,8 +458,9 @@ impl LinkReport {
 
     /// Validate each pending typed binding among `items`, in stream
     /// order, against the one declaration its reference names — its
-    /// member type, or under `from-kind` the shape its member value
-    /// selects — appending a `KDLITH-REF005` for each payload that does
+    /// member type, under `from-kind` the shape its member value
+    /// selects, or under `from-type-name` the declared type its member
+    /// names — appending a `KDLITH-REF005` for each payload that does
     /// not fit. Linking resolves the reference first; a reference with
     /// a link entry that did not resolve already has its link's
     /// diagnostic and is not validated. Only a reference no declared
@@ -497,6 +498,8 @@ impl LinkReport {
             };
             let outcome = if pending.codec == BindingCodec::FromKind.name() {
                 kind_fits(&decoder, definition, items, target, pending)
+            } else if pending.codec == BindingCodec::FromTypeName.name() {
+                type_name_fits(&decoder, definition, items, target, pending)
             } else {
                 let Some(expected) = member_type(definition, items, target, &pending.member) else {
                     continue;
@@ -697,6 +700,71 @@ fn kind_fits(
         .ok_or_else(|| (builtin.name().to_owned(), "no such type".to_owned()))?;
     payload_fits(decoder, definition, &expected, pending)
         .map_err(|found| (builtin.name().to_owned(), found))
+}
+
+/// Whether a `from-type-name` payload fits the declared type its
+/// declaration names. A name no declared type answers, or a member
+/// holding no string, fits nothing.
+fn type_name_fits(
+    decoder: &Decoder,
+    definition: &Definition,
+    items: &[Item],
+    target: &IndexedDeclaration,
+    pending: &PendingBinding,
+) -> Result<(), (String, String)> {
+    let fields = items
+        .iter()
+        .find_map(|item| match item {
+            Item::Declaration(declaration) if declaration.node == target.node => {
+                Some(declaration.fields.as_slice())
+            }
+            _ => None,
+        })
+        .unwrap_or_default();
+    let member = pending.member.as_str();
+    let name = match fields
+        .iter()
+        .find(|field| field.name == member)
+        .map(|field| &field.value)
+    {
+        Some(Value::String(name)) => name.clone(),
+        Some(Value::Null) | None => {
+            return Err((member.to_owned(), format!("no value for member {member}")));
+        }
+        Some(other) => found(other),
+    };
+    let expected =
+        named_type(definition, &name).ok_or_else(|| (name.clone(), "no such type".to_owned()))?;
+    payload_fits(decoder, definition, &expected, pending)
+        .map_err(|found| (summary::expr(&definition.names, &expected), found))
+}
+
+/// The type a `from-type-name` member names: a bare name resolves to
+/// the declared type it spells, a compound expression when every type
+/// name it mentions is declared. Anything else resolves to nothing.
+fn named_type(definition: &Definition, text: &str) -> Option<TypeExpr> {
+    if let Some(sym) = definition.names.get(text) {
+        return definition.types.lookup(sym).map(|_| TypeExpr::Named(sym));
+    }
+    let mut names = definition.names.clone();
+    let expr = crate::type_expr::parse(text, &mut names).ok()?;
+    names_declared(definition, &expr).then_some(expr)
+}
+
+/// Whether every type name an expression mentions is a declared type.
+fn names_declared(definition: &Definition, ty: &TypeExpr) -> bool {
+    match ty {
+        TypeExpr::Named(sym) => definition.types.lookup(*sym).is_some(),
+        TypeExpr::Optional(inner)
+        | TypeExpr::Nullable(inner)
+        | TypeExpr::List(inner)
+        | TypeExpr::Ref(inner) => names_declared(definition, inner),
+        TypeExpr::Map(key, value) | TypeExpr::OrderedMap(key, value) => {
+            names_declared(definition, key) && names_declared(definition, value)
+        }
+        TypeExpr::Union(members) => members.iter().all(|m| names_declared(definition, m)),
+        TypeExpr::Instantiation(_, _) => false,
+    }
 }
 
 /// Whether a `choice` payload is exactly one scalar equal, by spelling,

@@ -1,0 +1,2 @@
+system "SNOMED" distribution=external
+property "SNOMED:width" 42

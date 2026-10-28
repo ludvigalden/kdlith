@@ -1,0 +1,23 @@
+{
+  "binary": "kdlith",
+  "description": "A property record's value is typed by the type name the property definition it names holds in its value-type string: two definitions declare U64 and String, and the same node shape binds each value by its definition's name, each payload pending its typed-binding item at the node's stream position and linking under complete scope validating each as its named type, so the run exits 0",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "{fx-suite}/processing/bind/propvalue.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"item\":\"pending-binding\"",
+      "\"field\":\"target\"",
+      "\"raw\":{\"kind\":\"number\",\"value\":\"42\"}",
+      "\"raw\":{\"kind\":\"string\",\"value\":\"hello\"}",
+      "\"item\":\"scope-complete\""
+    ]
+  }
+}

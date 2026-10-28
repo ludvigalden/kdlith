@@ -124,6 +124,7 @@ dialect kdlith version="0" {
             member argument-tail description="The remaining arguments, typed per expected type, no scalar-to-list promotion"
             member fixture-value description="The type-directed recursive form"
             member from-kind description="The payload shape is selected by the value the resolved declaration holds in its member field: flag binds Bool, number U64, choice the declaration's choices, text String"
+            member from-type-name description="The payload's type is the declared type the resolved declaration names in its member field, held as a type name string; a list-typed or optional spelling admits those forms, and a name no declared type answers fails closed at link"
         }
 
         // A path-typed payload binding: how a node's remaining payload

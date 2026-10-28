@@ -1,0 +1,6 @@
+property-def "count" value-type="U64"
+property-def "flag" value-type="Bool"
+property-def "mystery" value-type="NoSuchType"
+property "count" 42
+property "flag" "yes"
+property "mystery" 1

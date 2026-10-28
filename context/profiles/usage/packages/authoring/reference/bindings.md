@@ -147,11 +147,21 @@ default (`KDLITH-DLC005`).
 
 A `value` block binds a node's remaining payload against a
 referenced declaration's member (`against target=FIELD member=FIELD`
-plus a `codec` such as `argument-tail`, `fixture-value`, or
-`from-kind`). When the target declaration is not yet compiled the
-binder emits a pending typed-binding item carrying the payload raw;
-linking validates it against the resolved declaration's member type
-(`KDLITH-REF005`).
+plus a `codec` such as `argument-tail`, `fixture-value`, `from-kind`,
+or `from-type-name`). When the target declaration is not yet compiled
+the binder emits a pending typed-binding item carrying the payload
+raw; linking validates it against the resolved declaration's member
+type (`KDLITH-REF005`).
+
+Under `from-type-name` the member holds a type name as a string, and
+the payload binds under the declared type that string names: a bare
+name resolves to the declared type it spells, and a `list<T>` or
+`optional<T>` spelling admits those forms. A name no declared type
+answers, or a payload that does not decode as the named type, fails
+closed at link (`KDLITH-REF005`); a reference resolving external
+carries no declaration, so its payload stays pending. Scalar-union
+named types decode with the binder's scalar-union order, prefix first
+then the first accepting un-prefixed variant.
 
 ## Path-typed values
 

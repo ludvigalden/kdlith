@@ -1,0 +1,31 @@
+// A self-contained schema whose property record binds its value through
+// from-type-name: each payload stays pending until a linked reading
+// resolves the named property definition and validates the payload
+// against the declared type its value-type string names.
+schema typename version="1" {
+    types {
+        object PropertyDef {
+            field name String
+            field value-type String
+        }
+        union Flex {
+            variant number U64
+            variant flag Bool
+        }
+        codec PropName output=String {
+            match #"(?<name>[a-z0-9-]+)"#
+            capture name String
+        }
+    }
+    node property-def role=declaration type=PropertyDef {
+        field name arg=0
+        field value-type property=value-type
+    }
+    node property role=record {
+        field target "ref<PropertyDef>" arg=0
+        value codec=from-type-name {
+            against target=target member=value-type
+        }
+    }
+    reference PropRef target=PropertyDef codec=PropName lookup=properties qualification=explicit
+}

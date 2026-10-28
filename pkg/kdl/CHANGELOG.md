@@ -198,6 +198,15 @@ system-member=MEMBER values="V1 V2 ..."` (one whitespace-separated
   must, and a member spelled both concretely and through the group in
   one field is a compile-time duplicate (`KDLITH-SCH005`), reported and
   skipped for both group forms.
+- A `from-type-name` dependent-value codec beside `from-kind`: the
+  member field the `against` target names holds a type name as a
+  string, and the payload binds under the declared type that string
+  names, which changes the canonical dialect digest. A bare name
+  resolves to the declared type it spells and a `list<T>` or
+  `optional<T>` spelling admits those forms; a name no declared type
+  answers, or a payload that does not decode as the named type, fails
+  closed at link (`KDLITH-REF005`), and a reference resolving external
+  carries no declaration, so its payload stays pending.
 - `root=#true` on a node declaration that also gives `parent=` or
   `parents` admits the node at the document root as well, so a
   recursive container that may also start a document needs one

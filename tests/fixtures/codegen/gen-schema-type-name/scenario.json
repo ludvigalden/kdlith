@@ -1,0 +1,32 @@
+{
+  "heavy": true,
+  "binary": "kdlith",
+  "kind": "codegen-oracle",
+  "description": "Named-type payload validation through a generated crate: gen schema generates a committed self-contained schema whose property record binds its value under from-type-name, twice into scratch trees the harness requires byte-identical; the generated crate compiles inside a scratch workspace materialized from this scenario's committed template. The compiled processor, naming every kdlith type it spells through the generated crate alone, collects a committed data document as a reading linked under complete scope through its generated reader: each payload streams as a pending item with its raw value, the one decoding as the U64 its definition names passes, the string where a definition names Bool fails KDLITH-REF005, and the payload whose definition names a type no declaration answers fails KDLITH-REF005 with the same code; linked under local scope the same diagnostics are reported and the reading does not fail, each as vet data reports it on the same input",
+  "form": "schema",
+  "entrypoint": "inputs/typename.kdl",
+  "crate": "prop-proc",
+  "steps": [
+    { "generate": "ws/rs/prop-proc" },
+    { "generate": "gen-again" },
+    { "determinism": ["ws/rs/prop-proc", "gen-again"] },
+    {
+      "compile": {
+        "workspace": "ws",
+        "copy": {
+          "crates": ["diagnostic", "engine", "model", "parse", "runtime", "superproc"]
+        },
+        "command": ["cargo", "build", "--offline", "--manifest-path", "ws/rs/prop-proc/Cargo.toml"]
+      }
+    },
+    {
+      "exercise": {
+        "command": ["cargo", "run", "--offline", "--quiet", "--manifest-path", "ws/rs/exercise/Cargo.toml", "--", "inputs/typename.kdl", "inputs/data.kdl"],
+        "stdout-contains": [
+          "schema ok digest=7a3a7e6691a8549b\nlinked complete failed=true pending=3 diagnostics=2\npending against=count raw={\"kind\":\"number\",\"value\":\"42\"}\npending against=flag raw={\"kind\":\"string\",\"value\":\"yes\"}\npending against=mystery raw={\"kind\":\"number\",\"value\":\"1\"}\ndiag KDLITH-REF005 5:10 pending payload of property under codec from-type-name does not match Bool: found string \"yes\"\ndiag KDLITH-REF005 6:10 pending payload of property under codec from-type-name does not match NoSuchType: found no such type\n",
+          "linked local failed=false pending=3 diagnostics=2\npending against=count raw={\"kind\":\"number\",\"value\":\"42\"}\npending against=flag raw={\"kind\":\"string\",\"value\":\"yes\"}\npending against=mystery raw={\"kind\":\"number\",\"value\":\"1\"}\ndiag KDLITH-REF005 5:10 pending payload of property under codec from-type-name does not match Bool: found string \"yes\"\ndiag KDLITH-REF005 6:10 pending payload of property under codec from-type-name does not match NoSuchType: found no such type\n"
+        ]
+      }
+    }
+  ]
+}

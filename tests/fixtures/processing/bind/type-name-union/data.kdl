@@ -1,0 +1,3 @@
+property-def "size" value-type="Flex"
+property "size" 7
+property "size" "${label}"

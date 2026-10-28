@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A from-type-name payload whose against-reference resolved external carries no declaration, hence no type name: validation skips it exactly as an unresolved one, no REF005, and the reading vets clean under complete scope",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/linking/typename-schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

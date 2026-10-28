@@ -1,0 +1,20 @@
+{
+  "binary": "kdlith",
+  "description": "The bound view admits every from-type-name pending item at its node's stream position: each property record binds its target reference, and its value follows as a pending typed-binding item carrying the raw payload and the reference naming its definition, the U64 and the String spelled by the two definitions, so each value shows typed by the definition it names",
+  "args": [
+    "inspect",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "{fx-suite}/processing/bind/propvalue.kdl",
+    "--view",
+    "bound",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

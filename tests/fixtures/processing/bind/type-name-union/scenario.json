@@ -1,0 +1,21 @@
+{
+  "binary": "kdlith",
+  "description": "A union-named type decodes its payload with the binder's scalar-union order, prefix first then the first accepting un-prefixed variant: the Flex union's prefixed template spelling binds the ${label} string and its un-prefixed number variant binds the bare 7, both validated against the union the definition names, exit 0",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "{fx-suite}/processing/bind/propvalue.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"raw\":{\"kind\":\"number\",\"value\":\"7\"}",
+      "\"raw\":{\"kind\":\"string\",\"value\":\"${label}\"}",
+      "\"item\":\"scope-complete\""
+    ]
+  }
+}

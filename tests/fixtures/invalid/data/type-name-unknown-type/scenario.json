@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A value-type name no declared type answers fails closed at the decode point rather than admitting the payload unchecked: linking under complete scope reports KDLITH-REF005 naming the unknown type",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "{fx-suite}/processing/bind/propvalue.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

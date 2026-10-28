@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A schema whose property record binds its value through from-type-name vets green: the against field is a declared reference type, the value-type member is declared by the referenced declaration's type as a string, and the codec is registered, so the definition-compile shape check every against target passes admits the named-type arm",
+  "args": [
+    "vet",
+    "schema",
+    "{fx-suite}/processing/bind/propvalue.kdl"
+  ],
+  "expect": {
+    "exit": 0
+  }
+}

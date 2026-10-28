@@ -1,0 +1,2 @@
+property-def "count" value-type="U64"
+entry "e1" of="count" 42

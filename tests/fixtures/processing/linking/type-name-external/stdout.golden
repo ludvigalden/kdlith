@@ -1,0 +1,5 @@
+{"item":"document","data":{"source":0,"path":"data.kdl"}}
+{"item":"declaration","data":{"node":{"source":0,"index":0},"identity":{"domain":"systems","name":["SNOMED"]},"type_name":"SystemDef","fields":[{"name":"name","value":{"kind":"string","value":"SNOMED"},"origin":0},{"name":"distribution","value":{"kind":"string","value":"external"},"origin":0}],"origin":0,"validation":"valid"}}
+{"item":"record","data":{"node":{"source":0,"index":1},"type_name":"property","fields":[{"name":"target","value":{"kind":"reference","value":{"domain":"properties","name":["width"],"qualifiers":[["system","SNOMED"]],"written":"SNOMED:width","site":{"source":0,"span":{"start":{"offset":47,"line":2,"column":10},"end":{"offset":62,"line":2,"column":25}}}}},"origin":1}],"origin":1,"validation":"provisional"}}
+{"item":"scope-complete","data":{"source":0,"scope":null}}
+{"item":"sources","data":{"sources":[{"name":null,"kind":"local","identity":"sha256:b706483fd78329e49134b60f985153749f3ee89c8d5aa8649ea4bf57ee2540f7","overridden":false}]}}

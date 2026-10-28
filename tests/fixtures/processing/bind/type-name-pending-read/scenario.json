@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A from-type-name payload is excluded from typed reads per the pending-item contract: reading the property record by its identity returns the record with its target reference and no pending payload, exit 0",
+  "args": [
+    "read",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/propvalue.kdl",
+    "data.kdl",
+    "e1"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden"
+  }
+}

@@ -1,0 +1,4 @@
+property-def "count" value-type="U64"
+property-def "title" value-type="String"
+property "count" 42
+property "title" "hello"

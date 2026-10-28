@@ -1,0 +1,20 @@
+{
+  "binary": "kdlith",
+  "description": "A list-typed value-type spelling admits the list form exactly as a static list<T> binding does: the definition names list<U64> and the record's three payload values each decode as the list's U64 element, no scalar promoted and no value dropped, exit 0",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "{fx-suite}/processing/bind/propvalue.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"raw\":{\"kind\":\"list\",\"value\":[{\"kind\":\"number\",\"value\":\"1\"},{\"kind\":\"number\",\"value\":\"2\"},{\"kind\":\"number\",\"value\":\"3\"}]}",
+      "\"item\":\"scope-complete\""
+    ]
+  }
+}

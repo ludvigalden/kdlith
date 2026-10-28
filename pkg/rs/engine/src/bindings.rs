@@ -239,6 +239,9 @@ pub enum BindingCodec {
     /// The payload shape selected by the value the resolved declaration
     /// holds in its member field.
     FromKind,
+    /// The declared type the resolved declaration names in its member
+    /// field, held as a type name string.
+    FromTypeName,
 }
 
 impl BindingCodec {
@@ -247,6 +250,7 @@ impl BindingCodec {
             "argument-tail" => BindingCodec::ArgumentTail,
             "fixture-value" => BindingCodec::FixtureValue,
             "from-kind" => BindingCodec::FromKind,
+            "from-type-name" => BindingCodec::FromTypeName,
             _ => return None,
         })
     }
@@ -256,6 +260,7 @@ impl BindingCodec {
             BindingCodec::ArgumentTail => "argument-tail",
             BindingCodec::FixtureValue => "fixture-value",
             BindingCodec::FromKind => "from-kind",
+            BindingCodec::FromTypeName => "from-type-name",
         }
     }
 }

@@ -1,0 +1,2 @@
+property-def "scores" value-type="list<U64>"
+property "scores" 1 2 3

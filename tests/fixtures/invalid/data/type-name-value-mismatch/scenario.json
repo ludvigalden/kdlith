@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A from-type-name payload that does not decode as its definition's named type fails closed under complete scope with the payload-type diagnostic family a static binding of that type produces at link: a string where the definition names U64 is KDLITH-REF005",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "{fx-suite}/processing/bind/propvalue.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

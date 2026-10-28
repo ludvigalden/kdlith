@@ -111,6 +111,7 @@ enum_type! {
         "argument-tail" => ArgumentTail,
         "fixture-value" => FixtureValue,
         "from-kind" => FromKind,
+        "from-type-name" => FromTypeName,
     }
 }
 

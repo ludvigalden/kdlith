@@ -1,0 +1,60 @@
+// The open-world linking schema the from-type-name external scenario
+// uses: systems declare a distribution member, property definitions
+// declare the type name their values bind under, and property records
+// name a definition and carry the value; a property naming a system
+// whose distribution holds a listed value links as external, so its
+// payload carries no declaration, no type name, and stays pending.
+schema typename-open version="1" {
+    types {
+        object SystemDef {
+            field name String
+            field distribution String
+        }
+        object PropertyDef {
+            field system String
+            field name String
+            field value-type String
+        }
+        codec PropCodec output=String {
+            match #"(?:(?<system>[A-Z][A-Za-z0-9_]*):)?(?<name>[a-z0-9-]+)"#
+            capture system String
+            capture name String
+        }
+    }
+    context {
+        slot namespace String duplicates=last-wins
+    }
+    node namespace role=context-control {
+        field value String arg=0
+        effects target=following {
+            set namespace field=value
+        }
+    }
+    node system role=declaration type=SystemDef {
+        field name arg=0
+        field distribution property=distribution
+        identity {
+            domain systems
+            compose qualified-name name
+        }
+    }
+    node property-def role=declaration type=PropertyDef {
+        field name arg=0
+        field value-type property=value-type
+        field system context=namespace
+        identity {
+            domain properties
+            compose qualified-name system name
+        }
+    }
+    node property role=record {
+        field target PropRef arg=0
+        value codec=from-type-name {
+            against target=target member=value-type
+        }
+    }
+    reference PropRef target=PropertyDef codec=PropCodec lookup=properties qualification=explicit-or-context {
+        qualifier system String required=#false
+        open-world system-member=distribution values="external"
+    }
+}
