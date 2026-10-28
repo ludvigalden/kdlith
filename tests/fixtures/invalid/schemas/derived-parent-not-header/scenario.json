@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A parent source naming a field the parent binds from its children, not its header, fails closed at definition compile: children close after their reader, so the supply would not be there, and the binding is KDLITH-SCH005",
+  "args": [
+    "vet",
+    "schema",
+    "schema.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

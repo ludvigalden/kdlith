@@ -27,6 +27,8 @@ pub enum Derivation {
     Default,
     Context,
     Import,
+    Ordinal,
+    Parent,
 }
 
 /// Where a value came from: written literally at a location, derived by

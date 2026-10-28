@@ -185,6 +185,8 @@ union_type! {
         "entries" => Entries(EntriesSource),
         "expand" => Expand(ExpandSource),
         "context" => Context(ContextSource),
+        "ordinal" => Ordinal(OrdinalSource),
+        "parent" => Parent(ParentSource),
     }
 }
 
@@ -237,6 +239,18 @@ object_type! {
     /// spells them.
     pub struct ChildGroupSource {
         "name" => name: NodeGroupName,
+    }
+}
+
+object_type! {
+    pub struct OrdinalSource {
+        "key" => key: Option<FieldName>,
+    }
+}
+
+object_type! {
+    pub struct ParentSource {
+        "field" => field: FieldName,
     }
 }
 
@@ -349,6 +363,8 @@ pub(crate) const TYPES: &[TypeShape] = &[
     ChildrenSource::SHAPE,
     ChildrenGroupSource::SHAPE,
     ChildGroupSource::SHAPE,
+    OrdinalSource::SHAPE,
+    ParentSource::SHAPE,
     EntriesSource::SHAPE,
     ExpandSource::SHAPE,
     ContextSource::SHAPE,

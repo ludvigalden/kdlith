@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "An explicit mapping id colliding with a sibling's derived id fails the complete-scope link stage: both compose the same identity, and the duplicate composed identity is KDLITH-REF002",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "{fx-suite}/processing/bind/derivedid.kdl",
+    "data.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

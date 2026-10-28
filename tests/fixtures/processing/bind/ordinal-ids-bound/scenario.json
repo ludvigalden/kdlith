@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "The bound view of the derived-id reading: each mapping's derived id appears among its bound fields and in its composed identity",
+  "args": [
+    "inspect",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/derivedid.kdl",
+    "--view",
+    "bound",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden"
+  }
+}

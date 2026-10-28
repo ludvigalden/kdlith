@@ -1,0 +1,4 @@
+concept "A01" {
+    mapping "S1.1" source="S1" target="T1"
+    mapping "9.9" source="S1" target="T2"
+}

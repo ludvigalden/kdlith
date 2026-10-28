@@ -346,6 +346,15 @@ pub enum SourceInput {
         slot: String,
         policy: Option<String>,
     },
+    /// A derived ordinal source: the sibling-key field, when the from
+    /// block names one.
+    Ordinal {
+        key: Option<String>,
+    },
+    /// A parent-derived source: the enclosing node's field.
+    Parent {
+        field: String,
+    },
 }
 
 /// A `children NAME` rule's occurrence bounds and its when branches,

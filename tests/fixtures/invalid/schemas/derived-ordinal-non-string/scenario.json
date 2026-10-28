@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "An ordinal source on a field whose type does not admit only strings fails closed at definition compile: a U64 counter field is KDLITH-SCH005",
+  "args": [
+    "vet",
+    "schema",
+    "schema.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

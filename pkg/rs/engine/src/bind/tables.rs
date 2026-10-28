@@ -79,6 +79,20 @@ pub(crate) struct FieldInfo {
     /// its qualifier from, when the field binding or its reference type
     /// names one; `None` defers to the definition's default slot.
     pub(crate) qualify: Option<SlotId>,
+    /// How the field derives its value when nothing else supplies it.
+    pub(crate) derived: Option<Derived>,
+}
+
+/// How a field derives its value when nothing else supplies it.
+#[derive(Clone, Debug)]
+pub(crate) enum Derived {
+    /// The node's 1-based ordinal among its same-named siblings under
+    /// the same parent node, spelled "<key>.<ordinal>" through the key
+    /// field's value, or the bare ordinal when no key is named.
+    Ordinal { key: Option<Sym> },
+    /// The value the immediately enclosing node bound in the named field
+    /// of its own header.
+    Parent { field: Sym },
 }
 
 /// Everything the binder needs about one node declaration.
@@ -319,7 +333,10 @@ fn fill(
                 },
             )),
             // Expansion splices at field finalization, not per entry.
-            Source::Expand { .. } | Source::Context { .. } => {}
+            Source::Expand { .. }
+            | Source::Context { .. }
+            | Source::Ordinal { .. }
+            | Source::Parent { .. } => {}
         }
     }
     if let Some(at) = scopes.get_mut(scope.index()) {
@@ -364,6 +381,7 @@ fn decl_info(def: &Definition, id: NodeDeclId, decl: &NodeDecl) -> DeclInfo {
                 expand: Vec::new(),
                 reference: reference_type(def, &field.ty),
                 qualify: None,
+                derived: None,
             })
             .collect(),
         None => decl
@@ -382,6 +400,7 @@ fn decl_info(def: &Definition, id: NodeDeclId, decl: &NodeDecl) -> DeclInfo {
                 expand: Vec::new(),
                 reference: binding.ty.as_ref().and_then(|ty| reference_type(def, ty)),
                 qualify: None,
+                derived: None,
             })
             .collect(),
     };
@@ -423,6 +442,7 @@ fn decl_info(def: &Definition, id: NodeDeclId, decl: &NodeDecl) -> DeclInfo {
                     expand: Vec::new(),
                     reference: reference_type(def, &field.ty),
                     qualify: None,
+                    derived: None,
                 },
                 None => FieldInfo {
                     name: binding.name,
@@ -437,6 +457,7 @@ fn decl_info(def: &Definition, id: NodeDeclId, decl: &NodeDecl) -> DeclInfo {
                     expand: Vec::new(),
                     reference: binding.ty.as_ref().and_then(|ty| reference_type(def, ty)),
                     qualify: None,
+                    derived: None,
                 },
             };
             fields.push(info);
@@ -469,6 +490,16 @@ fn decl_info(def: &Definition, id: NodeDeclId, decl: &NodeDecl) -> DeclInfo {
                 }
                 Source::Expand { target, member } => {
                     info.expand.push((*target, *member));
+                }
+                Source::Ordinal { key } => {
+                    if info.derived.is_none() {
+                        info.derived = Some(Derived::Ordinal { key: *key });
+                    }
+                }
+                Source::Parent { field } => {
+                    if info.derived.is_none() {
+                        info.derived = Some(Derived::Parent { field: *field });
+                    }
                 }
                 // A case-level binding never identifies an import path;
                 // the import's own bindings stay common.

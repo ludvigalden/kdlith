@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A schema declaring an ordinal-derived mapping id and a parent-derived pack code vets green: the mapping's id field carries an ordinal source keyed by source, the pack's code field carries a parent source naming the concept's header-bound code",
+  "args": [
+    "vet",
+    "schema",
+    "{fx-suite}/processing/bind/derivedid.kdl"
+  ],
+  "expect": {
+    "exit": 0
+  }
+}

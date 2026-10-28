@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "An ordinal source whose key names no field of the node fails closed at definition compile: key nosuch is KDLITH-SCH006",
+  "args": [
+    "vet",
+    "schema",
+    "schema.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

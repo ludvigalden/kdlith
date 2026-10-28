@@ -81,7 +81,9 @@
 {"item":"effective","data":{"section":"type","entry":{"name":"NodeName","parameters":[],"kind":"string"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"ObjectType","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"OpenWorldDef","parameters":[],"kind":"object"}}}
+{"item":"effective","data":{"section":"type","entry":{"name":"OrdinalSource","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"Otherwise","parameters":[],"kind":"object"}}}
+{"item":"effective","data":{"section":"type","entry":{"name":"ParentSource","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"PathPrefixMatch","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"PathStemSource","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"PathSuffixMatch","parameters":[],"kind":"object"}}}
@@ -187,7 +189,9 @@
 {"item":"effective","data":{"section":"node","entry":{"name":"node","parents":["dialect","schema"],"role":"declaration","type":"NodeDef","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"object","parents":["types"],"role":"declaration","type":"ObjectType","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"open-world","parents":["reference"],"role":null,"type":"OpenWorldDef","profile":null}}}
+{"item":"effective","data":{"section":"node","entry":{"name":"ordinal","parents":["from"],"role":null,"type":"OrdinalSource","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"otherwise","parents":["cases"],"role":null,"type":"Otherwise","profile":null}}}
+{"item":"effective","data":{"section":"node","entry":{"name":"parent","parents":["from"],"role":null,"type":"ParentSource","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"path-prefix","parents":["match"],"role":null,"type":"PathPrefixMatch","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"path-stem","parents":["from"],"role":null,"type":"PathStemSource","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"path-suffix","parents":["match"],"role":null,"type":"PathSuffixMatch","profile":null}}}

@@ -236,6 +236,7 @@ fn finish<'d>(
     let symbols = SymbolCatalog::build(&bindings, &cx.references);
     source_context_check(&mut cx);
     collect::qualify_from_slots(&mut cx, &bindings, &symbols);
+    collect::derived_sources(&mut cx, &bindings, &symbols);
     if cx.scope == CheckScope::Complete && !cx.diags.has_errors() {
         link::run(&mut cx, &bindings, &symbols);
         if !cx.diags.has_errors() {

@@ -926,6 +926,12 @@ fn source(input: &Source) -> SourceInput {
             slot: context.slot.as_str().to_owned(),
             policy: context.policy.map(|policy| policy.member().to_owned()),
         },
+        Source::Ordinal(ordinal) => SourceInput::Ordinal {
+            key: ordinal.key.as_ref().map(|key| key.as_str().to_owned()),
+        },
+        Source::Parent(parent) => SourceInput::Parent {
+            field: parent.field.as_str().to_owned(),
+        },
     }
 }
 

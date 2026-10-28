@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A field naming two derived sources fails closed at definition compile: one field derives from one, and the doubled source is KDLITH-SCH005",
+  "args": [
+    "vet",
+    "schema",
+    "schema.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

@@ -1,0 +1,10 @@
+concept "A01" {
+    mapping source="S1" target="T1"
+    mapping source="S1" target="T2"
+    mapping source="S2" target="T3"
+    pack note="outer"
+}
+concept "B07" {
+    mapping "B07.9" source="S9" target="T4"
+    pack note="inner"
+}

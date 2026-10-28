@@ -9,7 +9,7 @@ mod tables;
 
 use std::borrow::Cow;
 use std::cmp::Ordering;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
 use kdlith_diagnostic::registry::{lookup, render};
 use kdlith_diagnostic::{ByteSpan, DiagnosticRecord, Label};
@@ -53,7 +53,7 @@ pub use frame::BindFrame;
 pub use source::ParseEvents;
 
 use frame::{Kind, Opened, Sibling, Supplied};
-use tables::{Bind, Collect, FieldInfo, IdentityBind, Mode, SlotInfo, Tables, optional};
+use tables::{Bind, Collect, Derived, FieldInfo, IdentityBind, Mode, SlotInfo, Tables, optional};
 
 const COLLISION: &str = "KDLITH-BND007";
 const DUPLICATE_PROPERTY: &str = "KDLITH-SYN003";
@@ -243,6 +243,10 @@ pub struct Binder<'d, 's> {
     /// When one node is bound alone, the item node enclosing it in its
     /// whole document.
     window_parent: Option<NodeId>,
+    /// The 1-based ordinal counters of derived ordinal sources: one per
+    /// (parent node, node name, key value), counted in close order within
+    /// this document.
+    ordinals: HashMap<(Option<NodeId>, Sym, String), u64>,
     errors: u64,
 }
 
@@ -349,6 +353,7 @@ impl<'d, 's> Binder<'d, 's> {
             left: None,
             window: None,
             window_parent: None,
+            ordinals: HashMap::new(),
             resolved_secret: false,
             errors: 0,
         }
@@ -833,7 +838,12 @@ impl<'d, 's> Binder<'d, 's> {
     /// Resolve every field of a closing declared node: explicit values,
     /// context under its policy, fallbacks, empty collections, and the
     /// required check. Returns the values by field position.
-    fn finish_fields(&mut self, cx: &mut Cx<'_>, frame: &mut BindFrame) -> Vec<Option<Value>> {
+    fn finish_fields(
+        &mut self,
+        cx: &mut Cx<'_>,
+        parent: Option<&BindFrame>,
+        frame: &mut BindFrame,
+    ) -> Vec<Option<Value>> {
         let owner = frame.owner;
         let count = self.tables.decls[owner.index()].fields.len();
         let mut values = Vec::with_capacity(count);
@@ -889,6 +899,7 @@ impl<'d, 's> Binder<'d, 's> {
                         && context.policy.is_none()
                         && info.required
                         && info.fallback.is_none()
+                        && info.derived.is_none()
                     {
                         let slot = self.name(context.name);
                         self.diagnose(cx, CONTEXT_UNAVAILABLE, frame.span, &[slot]);
@@ -907,8 +918,43 @@ impl<'d, 's> Binder<'d, 's> {
                 (None, None) => (None, Trace::default()),
             };
             let defaulted = value.is_none();
+            // A derived source counts its ordinal for every occurrence of
+            // the node, whether or not this field derives, so explicit and
+            // derived siblings number together; it supplies the field only
+            // when neither an explicit supply nor context did.
+            let mut derived: Option<(Value, Derivation)> = None;
+            if let Some(spec) = info.derived.clone() {
+                let ordinal = match &spec {
+                    Derived::Ordinal { key } => self.count_ordinal(cx, parent, frame, *key),
+                    Derived::Parent { .. } => None,
+                };
+                if defaulted {
+                    let candidate = self.derive_value(cx, parent, frame, spec, ordinal);
+                    if let Some((candidate, how)) = candidate {
+                        let label = self.field_label(owner, at);
+                        let how_to_check = CheckAs {
+                            conceal: self.conceals(owner, at),
+                            qualify: info.qualify,
+                        };
+                        match self.check_as(
+                            cx,
+                            info.ty.clone(),
+                            &label,
+                            candidate,
+                            frame.span,
+                            how_to_check,
+                        ) {
+                            Some(value) => derived = Some((value, how)),
+                            None => frame.rejected.push(at),
+                        }
+                    }
+                }
+            }
             let mut resolved = None;
-            let value = match value.or(info.fallback.clone()) {
+            let value = match value
+                .or_else(|| derived.as_ref().map(|(value, _)| value.clone()))
+                .or(info.fallback.clone())
+            {
                 Some(value) => Some(value),
                 None => match self.resolve_value(cx, frame, at, &info) {
                     Resolution::Resolved(value, origin) => {
@@ -928,8 +974,11 @@ impl<'d, 's> Binder<'d, 's> {
                 Collect::No => None,
             });
             if defaulted && value.is_some() {
-                trace = resolved
-                    .unwrap_or_else(|| Trace::derived(Derivation::Default, site, Vec::new()));
+                trace = match derived.as_ref().map(|&(_, how)| how) {
+                    Some(how) => Trace::derived(how, site, Vec::new()),
+                    None => resolved
+                        .unwrap_or_else(|| Trace::derived(Derivation::Default, site, Vec::new())),
+                };
             }
             let expands = !self.tables.decls[owner.index()].fields[at]
                 .expand
@@ -1044,6 +1093,69 @@ impl<'d, 's> Binder<'d, 's> {
                 let values = [label.as_str(), node, unresolvable.reason()];
                 self.diagnose(cx, UNRESOLVED_VALUE, frame.span, &values);
                 Resolution::Failed
+            }
+        }
+    }
+
+    /// The next 1-based ordinal of a derived ordinal source: the node's
+    /// position, counted in close order, among its same-named siblings
+    /// under the same parent whose key field holds the same string. An
+    /// occurrence whose named key holds no string value counts nowhere
+    /// and derives nothing.
+    fn count_ordinal(
+        &mut self,
+        cx: &Cx<'_>,
+        parent: Option<&BindFrame>,
+        frame: &BindFrame,
+        key: Option<Sym>,
+    ) -> Option<u64> {
+        let key_text = match key {
+            None => String::new(),
+            Some(key) => match self.header_value(cx, frame, key) {
+                Some(Value::String(text)) => text,
+                _ => return None,
+            },
+        };
+        let node = parent.map(|parent| parent.node);
+        let counter = self
+            .ordinals
+            .entry((node, frame.name, key_text))
+            .or_insert(0);
+        *counter += 1;
+        Some(*counter)
+    }
+
+    /// The value a derived source supplies for a field nothing else did:
+    /// an ordinal spelled through its key, or the enclosing node's bound
+    /// field. `None` leaves the field absent for the required check.
+    fn derive_value(
+        &mut self,
+        cx: &Cx<'_>,
+        parent: Option<&BindFrame>,
+        frame: &BindFrame,
+        spec: Derived,
+        ordinal: Option<u64>,
+    ) -> Option<(Value, Derivation)> {
+        match spec {
+            Derived::Ordinal { key } => {
+                let ordinal = ordinal?;
+                let text = match key {
+                    None => ordinal.to_string(),
+                    Some(key) => match self.header_value(cx, frame, key) {
+                        Some(Value::String(text)) => format!("{text}.{ordinal}"),
+                        _ => return None,
+                    },
+                };
+                Some((Value::String(text), Derivation::Ordinal))
+            }
+            Derived::Parent { field } => {
+                let parent = parent?;
+                let at = self.tables.decls[parent.owner.index()]
+                    .fields
+                    .iter()
+                    .position(|info| info.name == field)?;
+                let supplied = parent.fields.get(at)?.as_ref()?;
+                Some((supplied.value.clone(), Derivation::Parent))
             }
         }
     }
@@ -2769,7 +2881,7 @@ impl<'d, 's> Binder<'d, 's> {
             let node = self.name(frame.name);
             self.diagnose(cx, MISSING_FIELD, frame.span, &[node, "key argument"]);
         }
-        let values = self.finish_fields(cx, frame);
+        let values = self.finish_fields(cx, parent.as_deref(), frame);
         // Branch bounds are selected from the values the node holds once
         // every field is resolved — explicit, context-filled, or
         // defaulted — the same values the case dispatch reads.

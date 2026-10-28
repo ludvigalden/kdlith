@@ -1,0 +1,63 @@
+{
+  "heavy": true,
+  "binary": "kdlith",
+  "kind": "codegen-oracle",
+  "description": "Derived identity through a generated crate: gen schema generates a committed self-contained schema whose mapping id carries an ordinal source keyed by source and whose pack code carries a parent source naming the concept's code, twice into scratch trees the harness requires byte-identical; the generated crate compiles inside a scratch workspace materialized from this scenario's committed template. The compiled processor, naming every kdlith type it spells through the generated crate alone, collects a committed data document as readings linked under complete and local scope through its generated reader: every omitted mapping id binds as source-dot-ordinal and composes the declaration's identity, the one explicit id wins, and every pack's code is its enclosing concept's code in both the typed record and the composed identity",
+  "form": "schema",
+  "entrypoint": "inputs/derivedid.kdl",
+  "crate": "derived-proc",
+  "steps": [
+    {
+      "generate": "ws/rs/derived-proc"
+    },
+    {
+      "generate": "gen-again"
+    },
+    {
+      "determinism": [
+        "ws/rs/derived-proc",
+        "gen-again"
+      ]
+    },
+    {
+      "compile": {
+        "workspace": "ws",
+        "copy": {
+          "crates": [
+            "diagnostic",
+            "engine",
+            "model",
+            "parse",
+            "runtime",
+            "superproc"
+          ]
+        },
+        "command": [
+          "cargo",
+          "build",
+          "--offline",
+          "--manifest-path",
+          "ws/rs/derived-proc/Cargo.toml"
+        ]
+      }
+    },
+    {
+      "exercise": {
+        "command": [
+          "cargo",
+          "run",
+          "--offline",
+          "--quiet",
+          "--manifest-path",
+          "ws/rs/exercise/Cargo.toml",
+          "--",
+          "inputs/derivedid.kdl",
+          "inputs/data.kdl"
+        ],
+        "stdout-contains": [
+          "schema ok digest=cb3ef3142d54a545\nlinked complete failed=false declarations=8\nmapping A01.S1.1 id=S1.1 source=S1\nmapping A01.S1.2 id=S1.2 source=S1\nmapping A01.S2.1 id=S2.1 source=S2\npack A01 code=A01 note=outer\nconcept A01 code=A01\nmapping B07.B07.9 id=B07.9 source=S9\npack B07 code=B07 note=inner\nconcept B07 code=B07\nlinked local failed=false declarations=8\nmapping A01.S1.1 id=S1.1 source=S1\nmapping A01.S1.2 id=S1.2 source=S1\nmapping A01.S2.1 id=S2.1 source=S2\npack A01 code=A01 note=outer\nconcept A01 code=A01\nmapping B07.B07.9 id=B07.9 source=S9\npack B07 code=B07 note=inner\nconcept B07 code=B07\n"
+        ]
+      }
+    }
+  ]
+}

@@ -49,6 +49,10 @@ pub(crate) const NODES: &[NodeShape] = &[
     NodeShape::new("child-group")
         .under(&["from"])
         .ty("ChildGroupSource"),
+    NodeShape::new("ordinal")
+        .under(&["from"])
+        .ty("OrdinalSource"),
+    NodeShape::new("parent").under(&["from"]).ty("ParentSource"),
     NodeShape::new("children")
         .under(&["node", "case"])
         .ty("ChildRule"),

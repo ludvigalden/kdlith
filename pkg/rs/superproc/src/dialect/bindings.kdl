@@ -196,6 +196,8 @@ dialect kdlith version="0" {
             variant entries EntriesSource
             variant expand ExpandSource
             variant context ContextSource
+            variant ordinal OrdinalSource
+            variant parent ParentSource
         }
 
         // One positional argument, by index.
@@ -249,6 +251,22 @@ dialect kdlith version="0" {
         // repeated hand-written form spells them.
         object ChildGroupSource {
             field name NodeGroupName
+        }
+
+        // A derived source: when nothing else supplies the field, its
+        // value is the node's 1-based ordinal among its same-named
+        // siblings under the same parent node, spelled "<key>.<ordinal>"
+        // through the named key field's value, or the bare ordinal when
+        // no key is named.
+        object OrdinalSource {
+            field key "optional<FieldName>"
+        }
+
+        // A derived source: when nothing else supplies the field, its
+        // value is the value the immediately enclosing node bound in the
+        // named field of its own header.
+        object ParentSource {
+            field field FieldName
         }
 
         // An envelope binding for keyed collections: the selected argument
@@ -480,6 +498,8 @@ dialect kdlith version="0" {
                     children entries
                     children expand
                     children context
+                    children ordinal
+                    children parent
                 }
             }
         }
@@ -568,6 +588,19 @@ dialect kdlith version="0" {
     // when the schema is compiled.
     node child-group type=ChildGroupSource parent=from {
         field name arg=0
+    }
+
+    // A derived ordinal source in a from block: one per field, key
+    // naming the sibling-key field through its property.
+    node ordinal type=OrdinalSource parent=from {
+        field key property=key
+    }
+
+    // A parent-derived source in a from block: the enclosing node's
+    // field named by argument 0 supplies this field when nothing else
+    // does.
+    node parent type=ParentSource parent=from {
+        field field arg=0
     }
 
     node children type=ChildRule {

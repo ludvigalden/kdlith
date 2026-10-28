@@ -71,6 +71,23 @@ naming an undeclared group fails compilation (`KDLITH-SCH006`), and a
 member spelled both concretely and through the group in one field is
 a compile-time duplicate (`KDLITH-SCH005`).
 
+Two derived sources fill a field from its context instead of its
+syntax. `from { ordinal key=FIELD }` supplies the field, when nothing
+else does, with the node's ordinal among its same-named siblings
+under the same parent — counted from 1 per key value and spelled
+`key.1`, `key.2`, or bare `1`, `2` when no key is named — so a
+collection of mappings may omit an id that repeats its source code.
+`from { parent FIELD }` supplies the field, when nothing else does,
+with the value the enclosing node bound in the named field of its
+header, so a child that always repeats its parent's code spells it
+once on the parent. An explicit value wins over both, the derived
+value composes the declaration's identity like any bound field, and
+the compile checks fail closed: the field must admit only strings
+(ordinal), the key and the parent's field must be declared, and the
+parent's field must come from the parent's header
+(`KDLITH-SCH005`/`KDLITH-SCH006`); an occurrence with no parent or no
+parent value leaves the field absent (`KDLITH-BND004`).
+
 ## Compact child spelling
 
 A `child` or `children` source may carry `compact=#true`: the child

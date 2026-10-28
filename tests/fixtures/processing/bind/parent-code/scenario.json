@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "A pack whose code argument is omitted derives it from the enclosing concept's code at bind time, and the derived value composes the pack's identity",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "{fx-suite}/processing/bind/derivedid.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":1},\"identity\":{\"domain\":\"packs\",\"name\":[\"A01\"]},\"type_name\":\"Pack\",\"fields\":[{\"name\":\"code\",\"value\":{\"kind\":\"string\",\"value\":\"A01\"},\"origin\":1},{\"name\":\"note\",\"value\":{\"kind\":\"string\",\"value\":\"outer\"},\"origin\":1}],\"origin\":1,\"validation\":\"valid\"}}\n"
+    ]
+  }
+}

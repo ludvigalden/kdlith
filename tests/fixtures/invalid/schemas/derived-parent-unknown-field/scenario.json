@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A parent source naming a field the parent node does not bind fails closed at definition compile: field nosuch of node concept is KDLITH-SCH006",
+  "args": [
+    "vet",
+    "schema",
+    "schema.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

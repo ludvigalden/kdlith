@@ -207,6 +207,23 @@ system-member=MEMBER values="V1 V2 ..."` (one whitespace-separated
   answers, or a payload that does not decode as the named type, fails
   closed at link (`KDLITH-REF005`), and a reference resolving external
   carries no declaration, so its payload stays pending.
+- Two derived field sources in a `from` block, which change the
+  canonical dialect digest. `ordinal` supplies a field, when nothing
+  else does, with the node's 1-based ordinal among its same-named
+  siblings under the same parent, spelled `<key>.<ordinal>` through the
+  named key field's value or as the bare ordinal when no key is named;
+  the ordinal is counted per key within the parent, so omitted mapping
+  ids bind as `source.1`, `source.2`, and an explicit value wins over
+  the derivation. `parent FIELD` supplies a field, when nothing else
+  does, with the value the immediately enclosing node bound in the named
+  field of its header, so a child whose code repeats its parent's binds
+  once instead of per occurrence. The derived value composes the
+  declaration's identity and reaches every reading path as a bound
+  field; a field whose type does not admit only strings, a key or
+  parent field nothing declares, or a parent field not bound from the
+  parent's header fails closed at definition compile
+  (`KDLITH-SCH005`/`KDLITH-SCH006`), and an occurrence that derives
+  nothing reports through the required-field check (`KDLITH-BND004`).
 - `root=#true` on a node declaration that also gives `parent=` or
   `parents` admits the node at the document root as well, so a
   recursive container that may also start a document needs one

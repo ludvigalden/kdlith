@@ -1004,10 +1004,20 @@ fn field_binding(
             }
         });
     // A pending children-group reference is a spelling of the field:
-    // its expansion is at least one children source.
+    // its expansion is at least one children source. A derived source
+    // is neither: it supplies the field only when nothing else does,
+    // so it never needs a collision policy.
     let spellings = sources
         .iter()
-        .filter(|s| !matches!(s, Source::Context { .. } | Source::Expand { .. }))
+        .filter(|s| {
+            !matches!(
+                s,
+                Source::Context { .. }
+                    | Source::Expand { .. }
+                    | Source::Ordinal { .. }
+                    | Source::Parent { .. }
+            )
+        })
         .count()
         + pending_groups.len();
     let alternatives = sources
@@ -1015,7 +1025,11 @@ fn field_binding(
         .filter(|s| {
             !matches!(
                 s,
-                Source::Context { .. } | Source::Children { .. } | Source::Expand { .. }
+                Source::Context { .. }
+                    | Source::Children { .. }
+                    | Source::Expand { .. }
+                    | Source::Ordinal { .. }
+                    | Source::Parent { .. }
             )
         })
         .count();
@@ -1119,6 +1133,12 @@ fn source(cx: &mut Cx<'_>, site: Site, label: &str, input: &SourceInput) -> Opti
                 policy,
             })
         }
+        SourceInput::Ordinal { key } => Some(Source::Ordinal {
+            key: key.as_deref().map(|key| cx.names.intern(key)),
+        }),
+        SourceInput::Parent { field } => Some(Source::Parent {
+            field: cx.names.intern(field),
+        }),
     }
 }
 
@@ -1964,6 +1984,139 @@ fn check_qualify_slot(cx: &mut Cx<'_>, symbols: &SymbolCatalog, site: Site, what
     }
 }
 
+/// Every derived field source, once every declaration is read: an
+/// ordinal source derives a string, so its field must admit only
+/// strings, and its key must name a string-valued field of the same
+/// node; a parent source must name a field every parent of the node
+/// binds from its header. A field names at most one derived source.
+pub(crate) fn derived_sources(cx: &mut Cx<'_>, bindings: &BindingCatalog, symbols: &SymbolCatalog) {
+    let by_name: Vec<(Sym, &NodeDecl)> =
+        bindings.iter().map(|(_, decl)| (decl.name, decl)).collect();
+    for (_, decl) in bindings.iter() {
+        let node = cx.names.resolve(decl.name).to_owned();
+        let fields: Vec<&FieldBinding> = decl
+            .fields
+            .iter()
+            .chain(decl.cases.iter().flat_map(|case| case.fields.iter()))
+            .collect();
+        // One ordinal counter serves one field of a node: a second
+        // ordinal-derived field would number against the first's count.
+        let mut ordinal_field: Option<Sym> = None;
+        for field in &fields {
+            let derived: Vec<&Source> = field
+                .sources
+                .iter()
+                .filter(|s| matches!(s, Source::Ordinal { .. } | Source::Parent { .. }))
+                .collect();
+            if derived.is_empty() {
+                continue;
+            }
+            if matches!(derived[0], Source::Ordinal { .. }) {
+                if let Some(first) = ordinal_field.replace(field.name) {
+                    let reason = format!(
+                        "names {} and {} as ordinal-derived; one ordinal serves one field",
+                        cx.names.resolve(first),
+                        cx.names.resolve(field.name)
+                    );
+                    cx.diags
+                        .error(INVALID_BINDING, field.site, &[&node, &reason]);
+                    continue;
+                }
+            }
+            if derived.len() > 1 {
+                let reason = format!(
+                    "{} names {} derived sources; one field derives from one",
+                    cx.names.resolve(field.name),
+                    derived.len()
+                );
+                cx.diags
+                    .error(INVALID_BINDING, field.site, &[&node, &reason]);
+                continue;
+            }
+            match derived[0] {
+                Source::Ordinal { key } => {
+                    let ty = field.ty.clone().or_else(|| {
+                        decl.ty
+                            .and_then(|ty| object_field(cx, ty, field.name).cloned())
+                    });
+                    if ty
+                        .as_ref()
+                        .is_none_or(|ty| !super::link::admits_only_strings(cx, symbols, ty, 0))
+                    {
+                        let reason = format!(
+                            "{} derives an ordinal but does not admit only strings",
+                            cx.names.resolve(field.name)
+                        );
+                        cx.diags
+                            .error(INVALID_BINDING, field.site, &[&node, &reason]);
+                    }
+                    if let Some(key) = key {
+                        let key_field = fields.iter().find(|f| f.name == *key);
+                        let key_ty = key_field
+                            .and_then(|f| f.ty.clone())
+                            .or_else(|| decl.ty.and_then(|ty| object_field(cx, ty, *key).cloned()));
+                        let declared = key_field.is_some() || key_ty.is_some();
+                        let spelled = format!("{} of node {}", cx.names.resolve(*key), node);
+                        if !declared {
+                            super::link::unresolved(cx, field.site, "field", &spelled);
+                        } else if key_ty
+                            .as_ref()
+                            .is_none_or(|ty| !super::link::admits_only_strings(cx, symbols, ty, 0))
+                        {
+                            let reason = format!(
+                                "{} derives through key {}, which does not admit only strings",
+                                cx.names.resolve(field.name),
+                                cx.names.resolve(*key)
+                            );
+                            cx.diags
+                                .error(INVALID_BINDING, field.site, &[&node, &reason]);
+                        }
+                    }
+                }
+                Source::Parent {
+                    field: parent_field,
+                } => {
+                    for parent in decl.placement.parents() {
+                        let Some(parent_decl) = by_name
+                            .iter()
+                            .find(|(name, _)| *name == *parent)
+                            .map(|(_, decl)| *decl)
+                        else {
+                            continue;
+                        };
+                        let Some(binding) =
+                            parent_decl.fields.iter().find(|f| f.name == *parent_field)
+                        else {
+                            let spelled = format!(
+                                "{} of node {}",
+                                cx.names.resolve(*parent_field),
+                                cx.names.resolve(*parent)
+                            );
+                            super::link::unresolved(cx, field.site, "field", &spelled);
+                            continue;
+                        };
+                        let header = binding
+                            .sources
+                            .iter()
+                            .any(|s| matches!(s, Source::Argument(_) | Source::Property(_)));
+                        if !header {
+                            let reason = format!(
+                                "{} derives from {}, which node {} does not bind from its header",
+                                cx.names.resolve(field.name),
+                                cx.names.resolve(*parent_field),
+                                cx.names.resolve(*parent)
+                            );
+                            cx.diags
+                                .error(INVALID_BINDING, field.site, &[&node, &reason]);
+                        }
+                    }
+                }
+                _ => unreachable!("the filter above admits only derived sources"),
+            }
+        }
+    }
+}
+
 /// The outermost identity field of the first declaration binding
 /// `target` with an identity block, and how many fields that identity
 /// composes.
@@ -1975,10 +2128,10 @@ fn outermost_identity(bindings: &BindingCatalog, target: Sym) -> Option<(Sym, us
     Some((*fields.first()?, fields.len()))
 }
 
-/// The type the arm's member is statically checked against: the target
-/// of the reference type the outermost identity field names — through
-/// the field's own declared type or its declared qualifier. Any other
-/// type names its declaration only in the data.
+/// The type the arm's member is statically checked against: the
+/// reference type the outermost identity field names — its own declared
+/// type, or its declared qualifier. Any other type names its
+/// declaration only in the data.
 fn system_member_type(
     cx: &Cx<'_>,
     target: Sym,

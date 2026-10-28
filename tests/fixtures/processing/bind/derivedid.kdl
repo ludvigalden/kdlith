@@ -1,0 +1,62 @@
+// A schema whose mapping declarations derive their id from position and
+// whose pack declarations derive their code from the enclosing concept:
+// the mapping's id is omitted in data and bound as "<source>.<ordinal>"
+// (the ordinal per source within its concept), and the pack's code is
+// omitted and bound from the enclosing concept's code. Explicit values
+// win over both derivations.
+schema derivedid version="0" {
+    types {
+        object Concept {
+            field code String
+        }
+        object Mapping {
+            field id String
+            field code String
+            field source String
+            field target String
+        }
+        object Pack {
+            field code String
+            field note String
+        }
+    }
+    node concept root=#true role=declaration type=Concept {
+        identity {
+            domain concepts
+            compose qualified-name code
+        }
+        field code arg=0
+        children mapping
+        children pack
+    }
+    node mapping parent=concept role=declaration type=Mapping {
+        identity {
+            domain mappings
+            compose qualified-name code id
+        }
+        field id arg=0 {
+            from {
+                ordinal key=source
+            }
+        }
+        field code {
+            from {
+                parent code
+            }
+        }
+        field source property=source
+        field target property=target
+    }
+    node pack parent=concept root=#true role=declaration type=Pack {
+        identity {
+            domain packs
+            compose qualified-name code
+        }
+        field code arg=0 {
+            from {
+                parent code
+            }
+        }
+        field note property=note
+    }
+}

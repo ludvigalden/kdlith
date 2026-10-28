@@ -1,0 +1,22 @@
+{
+  "binary": "kdlith",
+  "description": "Mappings whose id argument is omitted derive it as source-dot-ordinal at bind time, the ordinal counted per source within its concept and restarting under the next concept, and each derived value composes the declaration's identity (the bound view of the same reading is ordinal-ids-bound, the colliding explicit id is invalid/data/derived-id-collision)",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "{fx-suite}/processing/bind/derivedid.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":1},\"identity\":{\"domain\":\"mappings\",\"name\":[\"A01\",\"S1.1\"]},\"type_name\":\"Mapping\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"S1.1\"},\"origin\":1},{\"name\":\"code\",\"value\":{\"kind\":\"string\",\"value\":\"A01\"},\"origin\":1},{\"name\":\"source\",\"value\":{\"kind\":\"string\",\"value\":\"S1\"},\"origin\":1},{\"name\":\"target\",\"value\":{\"kind\":\"string\",\"value\":\"T1\"},\"origin\":1}],\"origin\":1,\"validation\":\"valid\"}}\n",
+      "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":2},\"identity\":{\"domain\":\"mappings\",\"name\":[\"A01\",\"S1.2\"]},\"type_name\":\"Mapping\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"S1.2\"},\"origin\":2},{\"name\":\"code\",\"value\":{\"kind\":\"string\",\"value\":\"A01\"},\"origin\":2},{\"name\":\"source\",\"value\":{\"kind\":\"string\",\"value\":\"S1\"},\"origin\":2},{\"name\":\"target\",\"value\":{\"kind\":\"string\",\"value\":\"T2\"},\"origin\":2}],\"origin\":2,\"validation\":\"valid\"}}\n",
+      "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":3},\"identity\":{\"domain\":\"mappings\",\"name\":[\"A01\",\"S2.1\"]},\"type_name\":\"Mapping\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"S2.1\"},\"origin\":3},{\"name\":\"code\",\"value\":{\"kind\":\"string\",\"value\":\"A01\"},\"origin\":3},{\"name\":\"source\",\"value\":{\"kind\":\"string\",\"value\":\"S2\"},\"origin\":3},{\"name\":\"target\",\"value\":{\"kind\":\"string\",\"value\":\"T3\"},\"origin\":3}],\"origin\":3,\"validation\":\"valid\"}}\n",
+      "{\"item\":\"declaration\",\"data\":{\"node\":{\"source\":0,\"index\":5},\"identity\":{\"domain\":\"mappings\",\"name\":[\"B07\",\"S1.1\"]},\"type_name\":\"Mapping\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"S1.1\"},\"origin\":5},{\"name\":\"code\",\"value\":{\"kind\":\"string\",\"value\":\"B07\"},\"origin\":5},{\"name\":\"source\",\"value\":{\"kind\":\"string\",\"value\":\"S1\"},\"origin\":5},{\"name\":\"target\",\"value\":{\"kind\":\"string\",\"value\":\"T4\"},\"origin\":5}],\"origin\":5,\"validation\":\"valid\"}}\n"
+    ]
+  }
+}

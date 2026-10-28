@@ -504,6 +504,11 @@ fn source(n: &Names, source: &Source) -> String {
             };
             format!("context {} policy={policy}", n.resolve(*slot))
         }
+        Source::Ordinal { key } => match key {
+            None => "ordinal".to_owned(),
+            Some(key) => format!("ordinal key={}", n.resolve(*key)),
+        },
+        Source::Parent { field } => format!("parent {}", n.resolve(*field)),
     }
 }
 

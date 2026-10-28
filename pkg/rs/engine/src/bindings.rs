@@ -358,6 +358,17 @@ pub enum Source {
         slot: Sym,
         policy: Option<ContextPolicy>,
     },
+    /// A derived ordinal, spelled "<key>.<ordinal>" through the named
+    /// key field's value, or bare when no key is named: the node's
+    /// 1-based position among same-named siblings under one parent.
+    Ordinal {
+        key: Option<Sym>,
+    },
+    /// The value the immediately enclosing node bound in the named
+    /// field of its own header.
+    Parent {
+        field: Sym,
+    },
 }
 
 /// A pending `children-group` or `child-group` from-source, resolved by

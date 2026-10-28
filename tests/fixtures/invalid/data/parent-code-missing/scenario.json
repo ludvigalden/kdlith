@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A pack placed at the root, where no enclosing concept exists, derives no code and fails the required-field check: the omitted parent supply is KDLITH-BND004",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/derivedid.kdl",
+    "data.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}
