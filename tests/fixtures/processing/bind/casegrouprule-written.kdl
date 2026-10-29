@@ -1,0 +1,97 @@
+// The hand-written control for casegrouprule.kdl: the same schema with
+// each case's children-group rule spelled as one children rule per
+// member, carrying the group rule's bounds and when branches. The case
+// expansion splices exactly these rules in this order, so this file
+// vets to the same digest and binds every document identically.
+schema casegrouprule version="1" {
+    types {
+        object Panel {
+            field id String
+            field kind PanelKind
+            field dense "optional<Bool>"
+            field buttons "optional<list<Button>>"
+            field sliders "optional<list<Slider>>"
+            field items "optional<list<Item>>"
+            field links "optional<list<Link>>"
+        }
+        enum PanelKind {
+            member form
+            member menu
+            member static
+        }
+        object Button {
+            field label String
+        }
+        object Slider {
+            field label String
+            field max U64
+        }
+        object Item {
+            field label String
+        }
+        object Link {
+            field label String
+            field href String
+        }
+    }
+    group controls button slider
+    group entries item link
+    node panel role=record type=Panel {
+        field id arg=0
+        field kind property=kind
+        field dense property=dense
+        cases {
+            case property=kind equals=form type=Panel {
+                field buttons {
+                    from {
+                        children button
+                    }
+                }
+                field sliders {
+                    from {
+                        children slider
+                    }
+                }
+                children button min-occurs=1 max-occurs=3 {
+                    when property=dense equals=#true max-occurs=1
+                }
+                children slider min-occurs=1 max-occurs=3 {
+                    when property=dense equals=#true max-occurs=1
+                }
+            }
+            case property=kind equals=menu type=Panel {
+                field items {
+                    from {
+                        children item
+                    }
+                }
+                field links {
+                    from {
+                        children link
+                    }
+                }
+                children item max-occurs=1
+                children link max-occurs=1
+            }
+            otherwise type=Panel
+        }
+    }
+    node button type=Button {
+        parents panel
+        field label arg=0
+    }
+    node slider type=Slider {
+        parents panel
+        field label arg=0
+        field max property=max
+    }
+    node item type=Item {
+        parents panel
+        field label arg=0
+    }
+    node link type=Link {
+        parents panel
+        field label arg=0
+        field href property=href
+    }
+}

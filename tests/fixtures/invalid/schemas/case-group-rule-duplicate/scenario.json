@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A case body ruling one child both directly and through a children-group rule is refused at schema compile: the form case's direct slider rule and its controls group both rule slider, which is the invalid-binding code",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

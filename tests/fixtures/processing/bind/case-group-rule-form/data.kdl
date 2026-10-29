@@ -1,0 +1,9 @@
+panel "p1" kind=form {
+    button "Save"
+    button "Reset"
+    slider "Volume" max=10
+}
+panel "p2" kind=form dense=#true {
+    button "Ok"
+    slider "Zoom" max=4
+}

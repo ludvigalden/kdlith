@@ -152,8 +152,8 @@
 {"item":"effective","data":{"section":"node","entry":{"name":"child-group","parents":["from"],"role":null,"type":"ChildGroupSource","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"children","parents":["case","node"],"role":null,"type":"ChildRule","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"children","parents":["child","children","from"],"role":null,"type":"ChildrenSource","profile":null}}}
+{"item":"effective","data":{"section":"node","entry":{"name":"children-group","parents":["case","node"],"role":null,"type":"ChildRule","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"children-group","parents":["from"],"role":null,"type":"ChildrenGroupSource","profile":null}}}
-{"item":"effective","data":{"section":"node","entry":{"name":"children-group","parents":["node"],"role":null,"type":"ChildRule","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"clear","parents":["effects"],"role":null,"type":"ClearEffect","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"codec","parents":["types"],"role":"declaration","type":"CodecType","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"compose","parents":["identity"],"role":null,"type":"ComposeRule","profile":null}}}

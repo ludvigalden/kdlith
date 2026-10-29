@@ -1,0 +1,17 @@
+panel "p1" kind=form {
+    button "Save"
+    button "Reset"
+    slider "Volume" max=10
+}
+panel "p2" kind=form dense=#true {
+    button "Ok"
+    slider "Zoom" max=4
+}
+panel "m1" kind=menu {
+    item "Open"
+    link "Help" href="/help"
+}
+panel "m2" kind=menu {
+    link "Docs" href="/docs"
+}
+panel "s1" kind=static

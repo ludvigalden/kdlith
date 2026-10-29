@@ -701,6 +701,11 @@ fn node_input(node: NodeDef) -> NodeInput {
                         .iter()
                         .map(|(name, rule)| child_rule(name.as_str(), rule))
                         .collect(),
+                    children_groups: rule
+                        .children_groups
+                        .iter()
+                        .map(|(name, rule)| child_rule(name.as_str(), rule))
+                        .collect(),
                 })
                 .collect();
             (cases, otherwise)

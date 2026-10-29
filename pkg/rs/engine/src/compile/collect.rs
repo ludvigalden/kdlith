@@ -670,12 +670,19 @@ fn node(cx: &mut Cx<'_>, site: Site, input: &NodeInput) {
             }
             case_children.push(rule);
         }
+        let mut case_groups = Vec::new();
+        for rule in &case.children_groups {
+            if let Some(rule) = child_rule(cx, site, rule, &label) {
+                case_groups.push(rule);
+            }
+        }
         cases.push(CaseRule {
             property: cx.names.intern(&case.property),
             equals: case.equals.clone(),
             ty,
             fields: case_fields,
             children: case_children,
+            children_groups: case_groups,
             site,
         });
     }

@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A case-level children-group rule whose group reaches a child the node rules in common is refused at schema compile: the form case's controls group expands to button beside a common button rule and fails with the case-binding-shadows-common code",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

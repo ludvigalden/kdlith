@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "The form case's group rule admits its members within the rule's bounds: a form panel with two buttons and one slider, and a dense form panel with one of each (the dense branch caps each member at one), both bind and vet data exits 0",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/casegrouprule.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"type_name\":\"Panel\""
+    ]
+  }
+}

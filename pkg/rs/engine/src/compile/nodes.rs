@@ -835,6 +835,7 @@ fn cases_block(
                     ty,
                     fields,
                     children,
+                    children_groups: Vec::new(),
                     site: child_site,
                 });
             }

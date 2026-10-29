@@ -101,14 +101,36 @@ fn resolve(cx: &mut Cx<'_>, site: Site, name: Sym, complete: bool) -> Option<Vec
     None
 }
 
-/// Each `children-group` rule becomes one children rule per member, with
-/// the rule's bounds, after the declaration's literal rules. A name that
-/// already has a rule contradicts it.
+/// Each `children-group` rule becomes one children rule per member with
+/// the rule's bounds, after the literal rules; case group rules splice
+/// into their case. A name already ruled in the same list contradicts it.
 fn children(cx: &mut Cx<'_>, decl: &mut NodeDecl, complete: bool) {
+    let owner = cx.names.resolve(decl.name).to_owned();
     let rules = std::mem::take(&mut decl.children_groups);
+    splice(cx, &owner, &mut decl.children, &rules, complete);
+    decl.children_groups = rules;
+    for case in &mut decl.cases {
+        let rules = std::mem::take(&mut case.children_groups);
+        let label = format!(
+            "case {}={:?} of node {owner}",
+            cx.names.resolve(case.property),
+            case.equals
+        );
+        splice(cx, &label, &mut case.children, &rules, complete);
+        case.children_groups = rules;
+    }
+}
+
+fn splice(
+    cx: &mut Cx<'_>,
+    owner: &str,
+    children: &mut Vec<ChildRule>,
+    rules: &[ChildRule],
+    complete: bool,
+) {
     let mut origin: Vec<(Sym, Option<Sym>)> =
-        decl.children.iter().map(|rule| (rule.name, None)).collect();
-    for rule in &rules {
+        children.iter().map(|rule| (rule.name, None)).collect();
+    for rule in rules {
         let Some(members) = resolve(cx, rule.site, rule.name, complete) else {
             continue;
         };
@@ -123,13 +145,12 @@ fn children(cx: &mut Cx<'_>, decl: &mut NodeDecl, complete: bool) {
                     "children rule for {} is spelled twice ({first} and via group {group})",
                     cx.names.resolve(member)
                 );
-                let owner = cx.names.resolve(decl.name).to_owned();
                 cx.diags
-                    .error(INVALID_BINDING, rule.site, &[&owner, &reason]);
+                    .error(INVALID_BINDING, rule.site, &[owner, &reason]);
                 continue;
             }
             origin.push((member, Some(rule.name)));
-            decl.children.push(ChildRule {
+            children.push(ChildRule {
                 name: member,
                 min: rule.min,
                 max: rule.max,
@@ -138,7 +159,6 @@ fn children(cx: &mut Cx<'_>, decl: &mut NodeDecl, complete: bool) {
             });
         }
     }
-    decl.children_groups = rules;
 }
 
 /// A `parents group=` reference places the node under every member as

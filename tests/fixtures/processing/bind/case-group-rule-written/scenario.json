@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "The expansion-equals-spelling control for case-group-rule-bound: the same data document under the hand-written per-member twin schema produces the byte-identical bound view the group form pins, because the per-case expansion is the whole mechanism",
+  "args": [
+    "inspect",
+    "data",
+    "--view",
+    "bound",
+    "--schema",
+    "{fx-suite}/processing/bind/casegrouprule-written.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

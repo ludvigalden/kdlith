@@ -1,0 +1,95 @@
+// The case-group rule schema the case-group-rule scenarios share: one
+// panel node whose cases each carry a children-group rule over a node
+// group. The form case rules the controls group (button, slider): each
+// member one to three times, at most once on a dense panel; the menu
+// case rules the entries group (item, link) at most once each; otherwise
+// admits no member. The group rule expands, per case, to one children
+// rule per member carrying its bounds and when branches.
+schema casegrouprule version="1" {
+    types {
+        object Panel {
+            field id String
+            field kind PanelKind
+            field dense "optional<Bool>"
+            field buttons "optional<list<Button>>"
+            field sliders "optional<list<Slider>>"
+            field items "optional<list<Item>>"
+            field links "optional<list<Link>>"
+        }
+        enum PanelKind {
+            member form
+            member menu
+            member static
+        }
+        object Button {
+            field label String
+        }
+        object Slider {
+            field label String
+            field max U64
+        }
+        object Item {
+            field label String
+        }
+        object Link {
+            field label String
+            field href String
+        }
+    }
+    group controls button slider
+    group entries item link
+    node panel role=record type=Panel {
+        field id arg=0
+        field kind property=kind
+        field dense property=dense
+        cases {
+            case property=kind equals=form type=Panel {
+                field buttons {
+                    from {
+                        children button
+                    }
+                }
+                field sliders {
+                    from {
+                        children slider
+                    }
+                }
+                children-group controls min-occurs=1 max-occurs=3 {
+                    when property=dense equals=#true max-occurs=1
+                }
+            }
+            case property=kind equals=menu type=Panel {
+                field items {
+                    from {
+                        children item
+                    }
+                }
+                field links {
+                    from {
+                        children link
+                    }
+                }
+                children-group entries max-occurs=1
+            }
+            otherwise type=Panel
+        }
+    }
+    node button type=Button {
+        parents panel
+        field label arg=0
+    }
+    node slider type=Slider {
+        parents panel
+        field label arg=0
+        field max property=max
+    }
+    node item type=Item {
+        parents panel
+        field label arg=0
+    }
+    node link type=Link {
+        parents panel
+        field label arg=0
+        field href property=href
+    }
+}

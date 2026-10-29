@@ -471,6 +471,12 @@ path=…; pinned "sha256:…" }`, whose pin is optional. kdlith never
   spelling of one target share a counter, and one bare name in two
   namespaces counts twice. The reference still links. Before, such a
   key was `KDLITH-SCH005`.
+- A `case` body admits `children-group NAME` rules. For that case
+  alone each expands to one `children` rule per group member, carrying
+  the rule's bounds and `when` branches, as if the members were spelled
+  one by one. A member the case already rules is `KDLITH-SCH005`, and a
+  member the node rules in common is `KDLITH-SCH023`. Before, the rule
+  under a case was `KDLITH-BND001`.
 
 ### Fixed
 

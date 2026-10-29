@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "A schema whose case bodies carry children-group rules compiles clean: the form case rules the controls group with bounds and a when branch, the menu case rules the entries group, and each expands per case to one children rule per member",
+  "args": [
+    "vet",
+    "schema",
+    "{fx-suite}/processing/bind/casegrouprule.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "ok: schema casegrouprule version 1 scope=complete documents=1 types=6 nodes=5 slots=0 profiles=0 digest=73413c0bcaca4a3f"
+    ]
+  }
+}

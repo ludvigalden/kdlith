@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "The hand-written per-member control for schemas/vet/case-group-rule: the same schema with each case's children-group rule spelled as one children rule per member vets to the same digest line the group form pins, proving the case expansion desugars to exactly the per-member rules",
+  "args": [
+    "vet",
+    "schema",
+    "{fx-suite}/processing/bind/casegrouprule-written.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "ok: schema casegrouprule version 1 scope=complete documents=1 types=6 nodes=5 slots=0 profiles=0 digest=73413c0bcaca4a3f"
+    ]
+  }
+}

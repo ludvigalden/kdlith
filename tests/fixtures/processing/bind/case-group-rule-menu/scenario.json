@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "The menu case's group rule applies only under its case: a menu panel with one item and one link, and one with a link alone (each member at most once, none required), both bind and vet data exits 0",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/casegrouprule.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"type_name\":\"Panel\""
+    ]
+  }
+}

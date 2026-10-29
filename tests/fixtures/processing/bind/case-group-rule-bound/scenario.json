@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "The bound view of one document holding form, menu, and static panels under the group-rule schema: each case's member children bind only under that case",
+  "args": [
+    "inspect",
+    "data",
+    "--view",
+    "bound",
+    "--schema",
+    "{fx-suite}/processing/bind/casegrouprule.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

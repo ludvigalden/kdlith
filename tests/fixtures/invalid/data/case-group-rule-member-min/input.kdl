@@ -1,0 +1,3 @@
+panel "f1" kind=form {
+    button "A"
+}

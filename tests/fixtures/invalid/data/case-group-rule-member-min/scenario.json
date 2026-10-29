@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A case-group rule's bounds apply per member under its case: a form panel with a button and no slider fails the min-occurs 1 the controls group rule carries to slider, under the cardinality code",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/casegrouprule.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

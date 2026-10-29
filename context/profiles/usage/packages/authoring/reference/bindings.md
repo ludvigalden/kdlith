@@ -168,6 +168,33 @@ bindings settles its dispatch in the header: every case property
 binds from a property and reads no context slot or type-declared
 default (`KDLITH-DLC005`).
 
+A case body may also carry a `children-group NAME` rule over a node
+group. It expands, for that case alone, to one `children` rule per
+member carrying the group rule's bounds and `when` branches, exactly
+as if the members were spelled one by one:
+
+```kdl
+group controls button slider
+node panel role=record type=Panel {
+    field id arg=0
+    field kind property=kind
+    cases {
+        case property=kind equals=form type=Panel {
+            field buttons { from { children button } }
+            field sliders { from { children slider } }
+            children-group controls min-occurs=1 max-occurs=3
+        }
+        otherwise type=Panel
+    }
+}
+```
+
+A member a case already rules directly, or through an earlier group,
+is `KDLITH-SCH005`; a member the node rules or consumes in common is
+`KDLITH-SCH023`; an undeclared group is `KDLITH-SCH006`. Group
+from-sources (`children-group` or `child-group` inside a case field's
+`from` block) stay refused: spell those members per case.
+
 A `value` block binds a node's remaining payload against a
 referenced declaration's member (`against target=FIELD member=FIELD`
 plus a `codec` such as `argument-tail`, `fixture-value`, `from-kind`,

@@ -1,0 +1,7 @@
+panel "m1" kind=menu {
+    item "Open"
+    link "Help" href="/help"
+}
+panel "m2" kind=menu {
+    link "Docs" href="/docs"
+}

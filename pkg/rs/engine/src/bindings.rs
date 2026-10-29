@@ -280,6 +280,9 @@ pub struct CaseRule {
     pub fields: Vec<FieldBinding>,
     /// The children rules this case enforces when it matches.
     pub children: Vec<ChildRule>,
+    /// The case's `children-group` rules, each named by its node group;
+    /// expanded into `children` once every declaration is read.
+    pub children_groups: Vec<ChildRule>,
     pub site: Site,
 }
 

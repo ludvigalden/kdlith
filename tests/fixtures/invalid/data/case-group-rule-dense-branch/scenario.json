@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A case-group rule's when branch applies to every member under its case: a dense form panel with two buttons exceeds the dense branch's max-occurs 1 the group rule carries to button, under the cardinality code",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/casegrouprule.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

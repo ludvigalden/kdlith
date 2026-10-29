@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "An unmatched case contributes no member rule: a static panel falls to otherwise and binds the common surface alone with no group member admitted, and vet data exits 0",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/casegrouprule.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"type_name\":\"Panel\""
+    ]
+  }
+}

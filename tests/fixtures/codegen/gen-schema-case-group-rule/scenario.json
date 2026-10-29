@@ -1,0 +1,68 @@
+{
+  "heavy": true,
+  "binary": "kdlith",
+  "kind": "codegen-oracle",
+  "description": "The case-group rule generation fixture: gen schema generates the committed case-group rule schema, whose panel cases each carry a children-group rule expanding per case to one children rule per member, twice into two scratch trees the harness requires byte-identical; the generated crate compiles inside a scratch workspace materialized from this scenario's committed template, and the compiled processor loads the committed schema through its own loader and reads a committed data document holding all three panel kinds as a linked reading through its own typed reader, reporting which members each panel bound",
+  "form": "schema",
+  "entrypoint": "{fx-suite}/processing/bind/casegrouprule.kdl",
+  "crate": "casegrouprule-proc",
+  "steps": [
+    {
+      "generate": "ws/rs/casegrouprule-proc"
+    },
+    {
+      "generate": "gen-again"
+    },
+    {
+      "determinism": [
+        "ws/rs/casegrouprule-proc",
+        "gen-again"
+      ]
+    },
+    {
+      "compile": {
+        "workspace": "ws",
+        "copy": {
+          "crates": [
+            "diagnostic",
+            "engine",
+            "model",
+            "parse",
+            "runtime",
+            "superproc"
+          ]
+        },
+        "command": [
+          "cargo",
+          "build",
+          "--offline",
+          "--manifest-path",
+          "ws/rs/casegrouprule-proc/Cargo.toml"
+        ]
+      }
+    },
+    {
+      "exercise": {
+        "command": [
+          "cargo",
+          "run",
+          "--offline",
+          "--quiet",
+          "--manifest-path",
+          "ws/rs/exercise/Cargo.toml",
+          "--",
+          "processing/bind/casegrouprule.kdl",
+          "inputs/data.kdl"
+        ],
+        "stdout-contains": [
+          "schema ok digest=73413c0bcaca4a3f",
+          "read ok panels=3\n",
+          "linked failed=false\n",
+          "panel p1 buttons=2 sliders=1 items=0 links=0\n",
+          "panel m1 buttons=0 sliders=0 items=1 links=1\n",
+          "panel s1 buttons=0 sliders=0 items=0 links=0\n"
+        ]
+      }
+    }
+  ]
+}

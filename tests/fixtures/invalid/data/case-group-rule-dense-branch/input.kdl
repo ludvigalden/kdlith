@@ -1,0 +1,5 @@
+panel "d1" kind=form dense=#true {
+    button "A"
+    button "B"
+    slider "S" max=1
+}

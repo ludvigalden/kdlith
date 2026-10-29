@@ -1,0 +1,10 @@
+panel "p1" kind=form {
+    button "Save"
+    button "Reset"
+    slider "Volume" max=10
+}
+panel "m1" kind=menu {
+    item "Open"
+    link "Help" href="/help"
+}
+panel "s1" kind=static

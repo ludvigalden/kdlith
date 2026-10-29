@@ -146,6 +146,9 @@ pub struct CaseInput {
     pub ty: String,
     pub fields: Vec<FieldBindingInput>,
     pub children: Vec<ChildRuleInput>,
+    /// The case's `children-group` rules, each expanding to one children
+    /// rule per member while the case matches.
+    pub children_groups: Vec<ChildRuleInput>,
 }
 
 /// A built-in string format and its width, as declared.
