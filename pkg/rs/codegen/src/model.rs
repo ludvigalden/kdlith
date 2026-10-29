@@ -700,10 +700,10 @@ fn declaration_sites<'a>(decl: &'a TypeDecl, names: &Names) -> Vec<(String, &'a 
     }
 }
 
-/// The by-value edges the expression at `owner`'s site `key` draws: a
-/// named declared type reached through no indirection. `Vec`, the
-/// maps, and `Ref` sever the chain below them; an inline union holds
-/// its members by value, so they draw the owner's edges.
+/// The by-value edges of the expression at `owner`'s site `key`: a
+/// named declared type reached through no indirection. `Vec`, maps,
+/// and `Ref` sever the chain; an inline union holds its members by
+/// value, so they draw the owner's edges.
 fn direct_edges(
     expr: &TypeExpr,
     owner: &str,

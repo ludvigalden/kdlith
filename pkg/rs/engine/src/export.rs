@@ -274,10 +274,10 @@ impl Selection<'_> {
         }
     }
 
-    /// Whether a bound item is one of its entry's top-level nodes: the
-    /// item's node opened at a start offset the entry's syntax scan
-    /// recorded at depth zero. Offsets, not node numbers, decide it, so
-    /// a subtree the binder skipped never shifts the match.
+    /// Whether a bound item is one of its entry's top-level nodes: its
+    /// node opened at an offset the entry's syntax scan recorded at depth
+    /// zero. Offsets, not node numbers, decide it, so a subtree the binder
+    /// skipped never shifts the match.
     fn is_root(&self, source: SourceId, span: ByteSpan) -> bool {
         self.roots
             .get(&source)

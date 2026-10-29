@@ -616,12 +616,10 @@ fn member_type<'d>(
     Some(&object.fields.iter().find(|def| def.name == member)?.ty)
 }
 
-/// Whether a pending payload fits its expected type, or what was found
-/// instead. The raw payload is the argument tail: one value alone, or a
-/// list of every value when there are more or fewer than one. A list
-/// member takes zero or more values, each decoding as the element type;
-/// any other member takes exactly one value, or none when optional. A
-/// scalar is never read as a one-element list, nor a list as a scalar.
+/// Whether a pending payload (one value, else a list of all values)
+/// fits its expected type, or what was found. A list member takes
+/// element-typed values; any other takes one, or none if optional.
+/// No scalar/list promotion either way.
 fn payload_fits(
     decoder: &Decoder,
     definition: &Definition,

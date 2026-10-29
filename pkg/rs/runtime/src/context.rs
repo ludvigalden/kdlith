@@ -87,11 +87,10 @@ pub struct SlotValue {
     /// How the value came to be; empty when untraced. Fingerprints
     /// ignore it: provenance is not semantics.
     pub trace: Trace,
-    /// The declared override layer the value was set under, for a slot
-    /// whose duplicate policy is layered; `None` for every other value.
-    /// It travels with the value through scope restore, projection, and
-    /// snapshots, so layered precedence never depends on where the held
-    /// value came from.
+    /// The override layer the value was set under, for a layered slot;
+    /// `None` otherwise. It travels with the value through scope restore,
+    /// projection, and snapshots, so layered precedence never depends on
+    /// where the value came from.
     pub layer: Option<String>,
 }
 

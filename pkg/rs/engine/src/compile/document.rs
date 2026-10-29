@@ -51,9 +51,9 @@ pub(crate) fn context(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) {
         }
         let namespace = namespace.map(|namespace| cx.names.intern(&namespace));
         // The canonical dialect's own slots declare no accumulation; the
-        // reader path lands accumulate with the expanded-surface issue.
-        // Nor do they declare a duplicate policy: the seed reads none,
-        // so a canonical slot keeps the fail-closed reject default.
+        // reader path lands accumulate with the expanded-surface issue. Nor
+        // do they declare a duplicate policy, so a canonical slot keeps the
+        // fail-closed reject default.
         cx.slots.push(SlotDecl {
             name: sym,
             ty,

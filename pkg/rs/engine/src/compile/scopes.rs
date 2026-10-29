@@ -788,10 +788,10 @@ enum Claim {
     Prop(Sym),
 }
 
-/// Arguments and properties two fields bind (with an entries envelope's
-/// key counted as consumed) are reported as overlaps; the first binding
-/// of each piece of syntax is kept. A case-level binding overlaps the
-/// common ones and its own case's, never another case's.
+/// Arguments and properties two fields bind (an entries envelope's key
+/// counts as consumed) are reported as overlaps, keeping the first
+/// binding. A case-level binding overlaps the common ones and its own
+/// case's, never another case's.
 fn arguments_and_properties(
     cx: &mut Cx<'_>,
     input: &ScopeInput<'_>,

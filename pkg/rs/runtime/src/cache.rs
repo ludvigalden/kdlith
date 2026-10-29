@@ -973,9 +973,9 @@ fn decode(key: &str, bytes: &[u8]) -> Result<CacheEntry, EntryFault> {
 }
 
 /// Checked access to one snapshot entry: header, metadata, key, body
-/// digest, then every record line — its validation status, its
-/// snapshot id, its slot count, and its slot names against the layout
-/// digest — each verified before anything is trusted.
+/// digest, then each record line's validation status, snapshot id,
+/// slot count, and slot names against the layout digest, each verified
+/// before anything is trusted.
 fn decode_snapshot(
     key: &str,
     bytes: &[u8],

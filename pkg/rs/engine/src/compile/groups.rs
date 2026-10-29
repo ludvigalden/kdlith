@@ -195,7 +195,7 @@ fn parents(cx: &mut Cx<'_>, decl: &mut NodeDecl, complete: bool) {
 /// Each pending group from-source splices one source per member at
 /// the reference's position: children sources for `children-group`,
 /// child sources for `child-group`, as if hand-written. Case fields
-/// splice the same way, into their case's own sources.
+/// splice into their case's own sources.
 fn sources(cx: &mut Cx<'_>, decl: &mut NodeDecl) {
     let owner = cx.names.resolve(decl.name).to_owned();
     for field in &mut decl.fields {

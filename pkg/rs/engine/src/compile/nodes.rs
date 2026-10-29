@@ -447,10 +447,10 @@ fn field_binding(
     })
 }
 
-/// The sources listed in a `from` block (`top`) or in a nested
-/// `child`/`children` source (positional, property, and child only).
-/// A `children-group` or `child-group` reference appears only at the
-/// top level, held pending until every declaration is read.
+/// The sources in a `from` block (`top`) or a nested `child`/`children`
+/// source (positional, property, and child only). A group reference
+/// appears only at the top level, held pending until every declaration
+/// is read.
 fn source_list(
     cx: &mut Cx<'_>,
     doc: usize,
@@ -745,11 +745,10 @@ fn value_from_path_block(
     })
 }
 
-/// A `cases` block: the property-value dispatch that selects the type a
-/// node binds as, top-down, first match winning. A case body may carry
-/// `field` and `children` binding declarations that add to the node's
-/// common ones exactly while that case matches; one naming what a common
-/// binding of the same node names is rejected here.
+/// A `cases` block: property-value dispatch picking the type a node
+/// binds as, first match winning. A case's `field` and `children`
+/// bindings add to the common ones while it matches; one naming what
+/// a common binding names is rejected.
 fn cases_block(
     cx: &mut Cx<'_>,
     doc: usize,

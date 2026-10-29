@@ -1098,10 +1098,9 @@ impl<'d, 's> Binder<'d, 's> {
     }
 
     /// The next 1-based ordinal of a derived ordinal source: the node's
-    /// position, counted in close order, among its same-named siblings
-    /// under the same parent whose key field holds the same key text. An
-    /// occurrence whose named key holds no key text counts nowhere and
-    /// derives nothing.
+    /// close-order position among same-named siblings of one parent whose
+    /// key field holds the same key text. A node with no key text counts
+    /// nowhere and derives nothing.
     fn count_ordinal(
         &mut self,
         cx: &Cx<'_>,
@@ -1489,10 +1488,10 @@ impl<'d, 's> Binder<'d, 's> {
         }
     }
 
-    /// A case-selected object type's closed shape: a field the node holds
-    /// a value for that the selected type does not declare is refused
-    /// (`KDLITH-BND014`), however it came to hold one. The case selector
-    /// is dispatch input, not payload, so it is always admitted.
+    /// A case-selected object type's closed shape: a field holding a value
+    /// the selected type does not declare is refused (`KDLITH-BND014`),
+    /// however it got one. The case selector is dispatch input, not
+    /// payload, so it is always admitted.
     fn selected_off_type(
         &mut self,
         cx: &mut Cx<'_>,
@@ -1536,13 +1535,10 @@ impl<'d, 's> Binder<'d, 's> {
             .is_some_and(Option::is_some)
     }
 
-    /// Enforce the object constraints of every type the node binds as —
-    /// its own declared type and the type a case selected
-    /// (`KDLITH-BND011`): `requires F G` fails when F holds a value and G
-    /// none, and `all-or-none` fails for each listed field left absent
-    /// while another holds a value. A `bound` fails for each number
-    /// outside its inclusive range (`KDLITH-BND012`); `at-most-one` and
-    /// `exactly-one-field` fail on their held count (`KDLITH-BND013`).
+    /// Enforce the object constraints of the node's declared and
+    /// case-selected types: `requires`, `all-or-none` (`KDLITH-BND011`),
+    /// `bound` (`KDLITH-BND012`), and the held counts of `at-most-one`
+    /// and `exactly-one-field` (`KDLITH-BND013`).
     fn constraints(
         &mut self,
         cx: &mut Cx<'_>,
@@ -2348,9 +2344,9 @@ impl<'d, 's> Binder<'d, 's> {
     }
 
     /// Place a set under the slot's accumulation or duplicate policy.
-    /// `Some` is the slot's value after it; `None` leaves the slot as it
-    /// was: rejected and reported, or outranked by a held layer.
-    /// `replace`: a duplicate-set failure places the incoming value.
+    /// `Some` is the slot's new value; `None` leaves it unchanged (rejected
+    /// and reported, or outranked by a held layer). Under `replace`, a
+    /// duplicate set places its value.
     fn combine(
         &mut self,
         cx: &mut Cx<'_>,
@@ -2419,9 +2415,9 @@ impl<'d, 's> Binder<'d, 's> {
     }
 
     /// Whether a set on a layered slot names a layer the slot declares.
-    /// The compiler rejects every declarative set that does not; a
-    /// handler's set cannot name one, so it fails closed here
-    /// (`KDLITH-DLC005`) rather than landing outside the layer order.
+    /// The compiler rejects declarative sets that do not; a handler's set
+    /// cannot name one, so it fails closed (`KDLITH-DLC005`) rather than
+    /// landing outside the layer order.
     fn layer_declared(
         &mut self,
         cx: &mut Cx<'_>,
@@ -2439,11 +2435,10 @@ impl<'d, 's> Binder<'d, 's> {
         false
     }
 
-    /// The layered arm, by declared order, highest first: a higher layer
-    /// replaces, a lower one leaves the held value, so order never
-    /// matters. Same layer, or a held value without one, rejects — the
-    /// duplicate-set check a replace group's set passes by placing its
-    /// value.
+    /// The layered arm, highest layer first: a higher layer replaces, a
+    /// lower one keeps the held value, so order never matters. Same layer,
+    /// or a held value without one, rejects; a replace group's set passes
+    /// that check by placing its value.
     fn layered(
         &mut self,
         cx: &mut Cx<'_>,
