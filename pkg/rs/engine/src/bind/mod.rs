@@ -3020,12 +3020,18 @@ impl<'d, 's> Binder<'d, 's> {
         };
         let infos = &self.tables.decls[owner.index()].fields;
         // A part's case selector is dispatch input, not payload: the
-        // variant it lands under says it. An item keeps the property
-        // among its fields, per its selected type's contract.
+        // variant it lands under says it. When the case-selected type
+        // declares the selector, the payload must carry it to conform to
+        // that type, as an item keeps it among its fields.
+        let stripped = selected_on.filter(|on| {
+            !binding_type
+                .and_then(|selected| self.object_type(selected))
+                .is_some_and(|object| object.fields.iter().any(|field| field.name == *on))
+        });
         let entries = infos
             .iter()
             .zip(values)
-            .filter(|(info, _)| Some(info.name) != selected_on)
+            .filter(|(info, _)| Some(info.name) != stripped)
             .filter_map(|(info, value)| Some(Entry::new(self.name(info.name), value?)))
             .collect();
         let mut value = Value::Map(entries);

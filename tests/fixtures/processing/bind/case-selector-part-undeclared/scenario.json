@@ -1,0 +1,22 @@
+{
+  "binary": "kdlith",
+  "description": "A part's case selector stays out of its payload when the case-selected type does not declare it: the variant it lands under says it",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"key\":\"a\",\"value\":{\"kind\":\"map\",\"value\":[{\"key\":\"note\",\"value\":{\"kind\":\"string\",\"value\":\"n\"}}]}}",
+      "{\"key\":\"b\",\"value\":{\"kind\":\"map\",\"value\":[{\"key\":\"size\",\"value\":{\"kind\":\"number\",\"value\":\"3\"}}]}}",
+      "\"validation\":\"valid\""
+    ],
+    "stdout-not-contains": [
+      "{\"key\":\"kind\""
+    ]
+  }
+}

@@ -1,0 +1,32 @@
+schema cd version="1" {
+    types {
+        enum Kind {
+            member a
+            member b
+        }
+        object Detail {
+            field kind Kind
+            field note "optional<String>"
+        }
+        object AInput {
+            field kind Kind
+            field note "optional<String>"
+        }
+        object Holder {
+            field name String
+            field detail AInput
+        }
+    }
+    node detail type=Detail parent=holder {
+        field kind property=kind
+        field note property=note
+        cases {
+            case property=kind equals=a type=AInput
+        }
+    }
+    node holder role=record type=Holder {
+        field name arg=0
+        field detail child=detail
+        children detail min-occurs=1 max-occurs=1
+    }
+}

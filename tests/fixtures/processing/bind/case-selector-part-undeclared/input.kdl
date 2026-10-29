@@ -1,0 +1,6 @@
+holder "x" {
+    detail kind=a note="n"
+}
+holder "y" {
+    detail kind=b size=3
+}

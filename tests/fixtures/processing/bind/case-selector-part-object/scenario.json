@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "A case-dispatched part feeding a plain object field keeps its case selector when the case-selected type declares it",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"name\":\"detail\",\"value\":{\"kind\":\"map\",\"value\":[{\"key\":\"kind\",\"value\":{\"kind\":\"string\",\"value\":\"a\"}},{\"key\":\"note\",\"value\":{\"kind\":\"string\",\"value\":\"n\"}}]}",
+      "\"validation\":\"valid\""
+    ]
+  }
+}

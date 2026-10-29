@@ -32,7 +32,9 @@ case selects; that type's required fields are checked like the node's
 own (`KDLITH-BND004`, named `Type.field`), and the selected object
 type is closed (`KDLITH-BND014`, whether the value was written,
 filled by context or fallback, or spliced by an `include`). The case
-selector is dispatch input and is always admitted. An `identity` block
+selector is dispatch input and is always admitted; a part's payload
+carries it only when the case-selected type declares a field of that
+name. An `identity` block
 pins its declaration's domain regardless of the selected type: the
 composed identity registers under the block's domain, and only a
 declaration without one falls back to the selected type's name (its

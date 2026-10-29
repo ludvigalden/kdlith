@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "A part's case selector stays in its payload when the case-selected type declares it: each union variant value carries the kind its selected type requires",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"key\":\"a\",\"value\":{\"kind\":\"map\",\"value\":[{\"key\":\"kind\",\"value\":{\"kind\":\"string\",\"value\":\"a\"}},{\"key\":\"note\",\"value\":{\"kind\":\"string\",\"value\":\"n\"}}]}}",
+      "{\"key\":\"b\",\"value\":{\"kind\":\"map\",\"value\":[{\"key\":\"kind\",\"value\":{\"kind\":\"string\",\"value\":\"b\"}},{\"key\":\"size\",\"value\":{\"kind\":\"number\",\"value\":\"3\"}}]}}",
+      "\"validation\":\"valid\""
+    ]
+  }
+}
