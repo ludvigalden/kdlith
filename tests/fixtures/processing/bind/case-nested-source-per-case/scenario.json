@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "Two cases may read from inside the same child name through nested sources of their own: a circle's size binds argument 0 into radius alone, a square's size binds argument 0 into side and its unit property into unit, each under the case its kind selects",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/casenested.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

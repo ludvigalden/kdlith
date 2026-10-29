@@ -8,8 +8,8 @@ use kdlith_model::Value;
 use kdlith_runtime::SlotId;
 
 use crate::bindings::{
-    CaseRule, ContextPolicy, DependentBinding, NodeDecl, NodeDeclId, PathValueBinding, Role,
-    ScopeId, Source,
+    CaseRule, ChildPlan, ContextPolicy, DependentBinding, FieldBinding, NodeDecl, NodeDeclId,
+    PathValueBinding, Role, ScopeId, Source,
 };
 use crate::definition::{Definition, ReferenceDecl};
 use crate::names::Sym;
@@ -253,23 +253,39 @@ pub(crate) fn build(def: &Definition) -> Tables {
     };
     for (id, decl) in def.bindings.iter() {
         let info = decl_info(def, id, decl);
-        let mut uses: Vec<Use<'_>> = Vec::new();
-        for binding in decl
-            .fields
+        let mut uses = supplies(&info, &decl.fields);
+        let cases: Vec<Vec<Use<'_>>> = decl
+            .cases
             .iter()
-            .chain(decl.cases.iter().flat_map(|case| &case.fields))
-        {
-            let Some(at) = info.fields.iter().position(|f| f.name == binding.name) else {
-                continue;
-            };
-            uses.extend(binding.sources.iter().map(|source| (at, source)));
-        }
+            .map(|case| supplies(&info, &case.fields))
+            .collect();
+        uses.extend(cases.iter().flatten().copied());
         tables.decls.push(info);
         if let Some(scope) = def.bindings.decl_scope(id) {
             fill(def, &mut tables.scopes, scope, &uses, false);
+            // A case-only child is planned per case, so each case's nested
+            // sources fill that case's own child scope, never a merge.
+            for (case, case_uses) in cases.iter().enumerate() {
+                let (_, nested) = table(case_uses, false);
+                descend(def, &mut tables.scopes, nested, |name| {
+                    def.bindings.scope(scope)?.case_child(name, case)
+                });
+            }
         }
     }
     tables
+}
+
+/// The sources of field bindings, each with the owner field it supplies.
+fn supplies<'d>(info: &DeclInfo, bindings: &'d [FieldBinding]) -> Vec<Use<'d>> {
+    let mut uses = Vec::new();
+    for binding in bindings {
+        let Some(at) = info.fields.iter().position(|f| f.name == binding.name) else {
+            continue;
+        };
+        uses.extend(binding.sources.iter().map(|source| (at, source)));
+    }
+    uses
 }
 
 /// Build the table of one scope from the sources that select from it,
@@ -281,6 +297,34 @@ fn fill(
     uses: &[Use<'_>],
     many: bool,
 ) {
+    let (table, nested) = table(uses, many);
+    if let Some(at) = scopes.get_mut(scope.index()) {
+        *at = Some(table);
+    }
+    descend(def, scopes, nested, |name| def.bindings.child(scope, name));
+}
+
+/// The children a scope's nested sources select from, with whether each
+/// repeats and the sources selecting inside it.
+type Nested<'d> = BTreeMap<Sym, (bool, Vec<Use<'d>>)>;
+
+/// Fill the table of each nested child the plan lookup gives a scope.
+fn descend(
+    def: &Definition,
+    scopes: &mut [Option<Table>],
+    nested: Nested<'_>,
+    plan: impl Fn(Sym) -> Option<ChildPlan>,
+) {
+    for (name, (repeated, inner)) in nested {
+        if let Some(ChildPlan::Nested(child)) = plan(name) {
+            fill(def, scopes, child, &inner, repeated);
+        }
+    }
+}
+
+/// One scope's table from the sources selecting from it, and the nested
+/// sources left for its children.
+fn table<'d>(uses: &[Use<'d>], many: bool) -> (Table, Nested<'d>) {
     let single = if many { Mode::Append } else { Mode::Single };
     let mut table = Table {
         args: Vec::new(),
@@ -288,7 +332,7 @@ fn fill(
         props: Vec::new(),
         children: Vec::new(),
     };
-    let mut nested: BTreeMap<Sym, (bool, Vec<Use<'_>>)> = BTreeMap::new();
+    let mut nested: Nested<'d> = BTreeMap::new();
     for &(field, source) in uses {
         match source {
             Source::Argument(index) => {
@@ -341,14 +385,7 @@ fn fill(
             | Source::Parent { .. } => {}
         }
     }
-    if let Some(at) = scopes.get_mut(scope.index()) {
-        *at = Some(table);
-    }
-    for (name, (repeated, inner)) in nested {
-        if let Some(crate::bindings::ChildPlan::Nested(child)) = def.bindings.child(scope, name) {
-            fill(def, scopes, child, &inner, repeated);
-        }
-    }
+    (table, nested)
 }
 
 fn decl_info(def: &Definition, id: NodeDeclId, decl: &NodeDecl) -> DeclInfo {

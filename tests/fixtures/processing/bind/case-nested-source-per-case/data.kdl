@@ -1,0 +1,6 @@
+shape "c1" kind=circle {
+    size 5
+}
+shape "s1" kind=square {
+    size 3 unit=cm
+}

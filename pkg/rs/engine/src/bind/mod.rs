@@ -1345,14 +1345,23 @@ impl<'d, 's> Binder<'d, 's> {
         self.tables.decls[frame.owner.index()].fields[bind.field].case
     }
 
+    /// Whether a supply waits for its node's case to resolve. A nested
+    /// part was admitted by its owner's matched case, so its gated supplies
+    /// bind at once.
+    fn parks(&self, frame: &BindFrame, bind: Bind) -> bool {
+        frame.declared() && self.gated(frame, bind).is_some()
+    }
+
     /// Whether the parent's dispatch admits a gated child bind: a field a
-    /// case declares consumes the child only while that case matches.
+    /// case declares consumes the child only while that case matches. A
+    /// nested parent was itself admitted by the matched case.
     fn admits_case(&self, parent: &BindFrame, bind: Bind) -> bool {
-        self.tables.decls[parent.owner.index()]
-            .fields
-            .get(bind.field)
-            .and_then(|info| info.case)
-            .is_none_or(|case| self.frame_case(parent) == Some(case))
+        !parent.declared()
+            || self.tables.decls[parent.owner.index()]
+                .fields
+                .get(bind.field)
+                .and_then(|info| info.case)
+                .is_none_or(|case| self.frame_case(parent) == Some(case))
     }
 
     /// The bind a child of `parent` takes: the one its matched case (or
@@ -3555,7 +3564,7 @@ impl<'s> Processor for Binder<'_, 's> {
             }
             match frame.table(&self.tables).and_then(|table| table.arg(at)) {
                 Some(bind) => {
-                    if self.gated(frame, bind).is_some() {
+                    if self.parks(frame, bind) {
                         let what = format!("argument {at}");
                         frame.parked.push((bind, entry.value, span, what));
                         return;
@@ -3600,7 +3609,7 @@ impl<'s> Processor for Binder<'_, 's> {
         match (sym, bind) {
             (Some(sym), Some(bind)) => {
                 frame.props.push(sym);
-                if self.gated(frame, bind).is_some() {
+                if self.parks(frame, bind) {
                     let what = format!("property {name}");
                     frame.parked.push((bind, entry.value, span, what));
                     return;

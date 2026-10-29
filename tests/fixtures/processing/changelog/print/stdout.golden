@@ -567,3 +567,8 @@ path=…; pinned "sha256:…" }`, whose pin is optional. kdlith never
   field and bounds. Before, only the first case consumed it and the
   other case's child was `KDLITH-BND001`. A case that did not match
   still admits none of its children.
+- A case field may now take its value from inside a child through
+  nested sources (`from { child size { argument 0 } }`), and each case
+  binds its own nested sources when two cases share a child name.
+  Before, the child's entries were `KDLITH-BND005` under the matched
+  case.

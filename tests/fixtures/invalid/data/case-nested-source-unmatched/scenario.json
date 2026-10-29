@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A child only the cases' nested sources consume stays unadmitted when no such case matches: a dot shape's size child binds through no plan in effect and the run fails with the unknown-node code",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/casenested.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

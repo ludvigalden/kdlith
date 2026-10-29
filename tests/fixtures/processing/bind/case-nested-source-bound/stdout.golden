@@ -1,0 +1,4 @@
+{"item":"document","data":{"source":0,"path":"data.kdl"}}
+{"item":"record","data":{"node":{"source":0,"index":0},"type_name":"Shape","fields":[{"name":"id","value":{"kind":"string","value":"c1"},"origin":0},{"name":"kind","value":{"kind":"string","value":"circle"},"origin":0},{"name":"radius","value":{"kind":"number","value":"5"},"origin":0}],"origin":0,"validation":"valid"}}
+{"item":"scope-complete","data":{"source":0,"scope":null}}
+{"item":"sources","data":{"sources":[{"name":null,"kind":"local","identity":"sha256:0013d3f467799219792b8eef35136347a27a5c5d364f1ae645fe4222d639543a","overridden":false}]}}

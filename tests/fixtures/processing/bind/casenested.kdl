@@ -1,0 +1,50 @@
+// The case-nested schema the case-nested scenarios share: one shape
+// node whose circle and square cases each read a field from inside the
+// same child name, size, through nested sources of their own. The
+// circle case takes radius from size's argument 0; the square case
+// takes side from size's argument 0 and unit from its unit property.
+// The otherwise case consumes no size child.
+schema casenested version="1" {
+    types {
+        object Shape {
+            field id String
+            field kind ShapeKind
+            field radius "optional<U64>"
+            field side "optional<U64>"
+            field unit "optional<String>"
+        }
+        enum ShapeKind {
+            member circle
+            member square
+            member dot
+        }
+    }
+    node shape role=record type=Shape {
+        field id arg=0
+        field kind property=kind
+        cases {
+            case property=kind equals=circle type=Shape {
+                field radius {
+                    from {
+                        child size { argument 0 }
+                    }
+                }
+            }
+            case property=kind equals=square type=Shape {
+                field side {
+                    from {
+                        child size { argument 0 }
+                    }
+                }
+                field unit {
+                    from {
+                        child size { property unit }
+                    }
+                }
+            }
+            otherwise type=Shape
+        }
+    }
+    node size parent=shape {
+    }
+}

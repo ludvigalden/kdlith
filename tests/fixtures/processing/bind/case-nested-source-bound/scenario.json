@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A case field may read from inside a child: a circle shape's radius comes from its size child's argument 0 through the circle case's nested source, and vet data binds the record with radius 5",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/casenested.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}
