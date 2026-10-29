@@ -43,6 +43,17 @@ manifests): a default harness run excludes them and prints the count it
 skipped, and they run deliberately through `--fx-heavy` or an explicit
 `--fx-filter`; `--fx-list` still lists every scenario.
 
+Counting rule: a scenario is a directory holding `scenario.json` that no
+enclosing directory below the suite root already claims, because
+discovery stops descending at the first manifest. A raw count of
+`scenario.json` files is therefore larger by exactly the inner
+scenarios the detection meta-fixtures carry as their own input suites:
+two under `harness/source-embedded-detects/inner/` and two under
+`harness/stdout-not-contains-detects/inner/`. Those four never run as
+suite scenarios and are not census entries. Data files, schema files,
+goldens, and generated workspaces inside a scenario are not scenarios,
+so neither directory nor file totals measure the suite.
+
 ## Construct census
 
 One row per in-scope mechanism row of the dialect record
@@ -113,6 +124,7 @@ that declares the mechanism.
 | Typed slots | context.kdl | schemas/vet/catalog, invalid/data/slot-type, invalid/schemas/unknown-slot | Slot-typed values validated |
 | Effect targets (`following`/`children`) | context.kdl | schemas/inspect/shelf, invalid/schemas/effects-without-context-control, invalid/schemas/children-effect-from-child | |
 | Generic effects (`set`/`remove`/`clear`) | context.kdl | schemas/inspect/shelf, invalid/data/failed-control | Both targets |
+| Selective removal (`remove-from-args field=`) | context.kdl | processing/bind/remove-args-unset, processing/bind/remove-args-unset-context, processing/bind/remove-args-children, processing/bind/remove-args-skip, processing/bind/remove-args-defaults, processing/bind/remove-args-plan, invalid/data/remove-args-undeclared-slot, invalid/schemas/remove-args-children-not-streamable | Over the shared `processing/bind/remove-args.kdl` schema, the effect unsets exactly the slots the named field's values name and leaves every other slot held (`-unset`, `-unset-context`), whether the field is bound from arguments or from mapping children (`-children`); a non-string value names no slot and is skipped (`-skip`); a removed slot is unset for defaults resolution, so a fallback applies (`-defaults`); the plan view renders one remove-from-args step naming the field (`-plan`). A name no declared slot carries fails closed (KDLITH-CTX005), and a children-sourced field on a children effect is not streamable (KDLITH-SCH007) |
 | Replacing effect groups (`replace=#true`) | context.kdl | processing/bind/rebind-replace, processing/bind/rebind-plan, invalid/data/rebind-handler-undeclared-slot | The group's set effects replace the held value of the slots they name instead of failing the duplicate-set check (CTX006), slots the group does not name keep their values, the sets a handler in the group splices in carry the group's replace too, and a set on an undeclared slot still fails closed (CTX005 at the effect point); the plan view spells the flag on each set step of a replace group |
 | Registered handlers | context.kdl | processing/bind/handler-effect, processing/bind/handler-remove, processing/bind/handler-clear, processing/bind/handler-clear-non-string, processing/export/handler-effect, processing/bind/import-handler-coalesce, processing/bind/import-handler-instantiate, invalid/data/handler-not-installed, invalid/data/handler-undeclared-slot, invalid/data/handler-remove-undeclared-slot, invalid/data/handler-clear-undeclared-namespace, invalid/data/handler-not-installed-inspect, invalid/export/handler-not-installed, invalid/schemas/handler-not-installed, invalid/schemas/validator-not-installed, processing/inspect-rejects-handler-not-installed | An installed handler executes through `--handler` naming a built-in of the CLI's catalog: `copy-fields` sets, `remove-fields` unsets each slot its fields name (not null, so a later set under the reject policy is a first one), and `clear-namespace` clears the namespace each string field names (a non-string field names none and produces no effect); an uninstalled name fails closed on the vet, inspect (data and schema), export, and schema-load paths; an installed handler whose effect sets, removes, or clears an undeclared slot or namespace is KDLITH-CTX005 at its effect point; a handler-set slot projected into coalesced or instantiated imports composes per invocation (reuse only under an equal projected context, imported handler effects never escape) |
 | Context-bound fields and policies (`fallback`/`fixed`) | context.kdl | processing/bind/context, invalid/data/context-fixed, invalid/data/context-unavailable | |

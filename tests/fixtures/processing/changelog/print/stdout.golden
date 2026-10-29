@@ -414,14 +414,12 @@ path=…; pinned "sha256:…" }`, whose pin is optional. kdlith never
 - A schema load's warnings and notes, such as an overridden source,
   are reported by every verb that loads a schema, and decide the exit
   under `--warnings-as-errors`.
-
 - Breaking: a schema definition's own imports are confined as a data
   document's are: an unprefixed import stays under the project root and
   a `$name/` import inside its source (`KDLITH-LOC002`). Dialect
   definitions keep resolving from their own directory unconfined. A
   location naming a missing file in a directory source now reads "the
   source holds no such file", as it does in an embedded source.
-
 - Breaking: the locations model replaces discovery grammars, anchors,
   and host import aliases, with no compatibility path. Removed from the
   dialect: `discovery`, `anchor`, `provider`, and the `grammar=`
@@ -442,7 +440,6 @@ path=…; pinned "sha256:…" }`, whose pin is optional. kdlith never
   namespace. Its behaviour is unchanged.
 - `--match-root` is now spelled `--root`, which also roots import
   locations; `--match-root` still names the same root.
-
 - Profile match rules compare an entry's path normalized and relative
   to the match root instead of as the invocation spells it, so an
   absolute, `./`-prefixed, or parent-relative spelling of one document
