@@ -31,9 +31,9 @@ the three flags are mutually exclusive. Without any, the manifest
 keeps sibling paths.
 
 Every generated manifest carries registry metadata — the package
-name, a version, and a `description` naming the definition the crate
-was generated from — which is what a crates.io-style publication
-requires.
+name, a version, a `description` naming the definition the crate
+was generated from, and `license = "MIT"` — which is what a
+crates.io-style publication requires.
 
 A dialect crate embeds its seed as a versioned snapshot: the
 dialect's contributing documents are written under `src/dialect/`,

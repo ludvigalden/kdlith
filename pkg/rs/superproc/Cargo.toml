@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 description = "Reference processor for kdlith schema definitions"
+license = "MIT"
 autotests = false
 
 [lints]

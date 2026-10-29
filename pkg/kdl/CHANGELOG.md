@@ -483,6 +483,9 @@ path=…; pinned "sha256:…" }`, whose pin is optional. kdlith never
   position, exactly the hand-written repeated form, with the same
   duplicate (`KDLITH-SCH005`) and collision-policy checks as at node
   level. Before, either reference under a case was `KDLITH-SCH005`.
+- `gen dialect` and `gen schema` write `license = "MIT"` into the
+  generated manifest's `[package]` after its `description`, so a
+  generated crate carries the metadata a registry publication needs.
 
 ### Fixed
 

@@ -177,8 +177,8 @@ impl Emission<'_> {
         out.line("[package]");
         out.line(&format!("name = \"{}\"", self.crate_name));
         out.line(&format!("version = \"{}\"", env!("CARGO_PKG_VERSION")));
-        // Registry metadata: name, version, and description are what a
-        // crates.io-style publication requires of the manifest.
+        // Registry metadata: name, version, description, and license are
+        // what a crates.io-style publication requires of the manifest.
         let form = match self.kind {
             DefinitionKind::Dialect => "dialect",
             _ => "schema",
@@ -187,6 +187,7 @@ impl Emission<'_> {
             "description = \"Generated kdlith processor for the {} {}.\"",
             self.name, form
         ));
+        out.line("license = \"MIT\"");
         out.line("edition = \"2024\"");
         out.line("rust-version = \"1.85\"");
         out.line("autotests = false");

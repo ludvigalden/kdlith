@@ -75,7 +75,8 @@ generation never deletes anything. `--dry-run` prints the plan;
 `--check` reports missing, changed, and stale paths, each
 `KDLITH-GEN002`, exiting 1 on any finding; the modes exclude each
 other. The generated `Cargo.toml` is standalone and carries registry
-metadata (name, version, and a `description` naming the definition):
+metadata (name, version, a `description` naming the definition, and
+`license = "MIT"`):
 by default the kdlith dependencies are sibling paths, `--kdlith-path PATH`
 re-roots them, and `--kdlith-version VER` writes registry
 dependencies — both forms, values verbatim, flags mutually exclusive,
