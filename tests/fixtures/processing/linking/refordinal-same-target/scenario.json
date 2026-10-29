@@ -1,0 +1,22 @@
+{
+  "binary": "kdlith",
+  "description": "A bare reference key and its qualified spelling of the same target share one ordinal counter: inside namespace A, S1 and A:S1 compose the same key text, so the three mappings number A.S1.1, A.S1.2, A.S1.3",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "{fx-suite}/processing/linking/refordinal-schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"identity\":{\"domain\":\"mappings\",\"name\":[\"A\",\"A.S1.1\"]}",
+      "\"identity\":{\"domain\":\"mappings\",\"name\":[\"A\",\"A.S1.2\"]}",
+      "\"identity\":{\"domain\":\"mappings\",\"name\":[\"A\",\"A.S1.3\"]}"
+    ],
+    "stderr-golden": "stderr.golden"
+  }
+}

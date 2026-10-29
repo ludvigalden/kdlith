@@ -1,0 +1,23 @@
+{
+  "binary": "kdlith",
+  "description": "One bare reference key in two namespaces keeps two ordinal counters: S1 under A and S1 under B compose A.S1 and B.S1, so B's first mapping is B.S1.1, while a qualified A:S1 written under B continues A's counter",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "{fx-suite}/processing/linking/refordinal-schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"identity\":{\"domain\":\"mappings\",\"name\":[\"A\",\"A.S1.1\"]}",
+      "\"identity\":{\"domain\":\"mappings\",\"name\":[\"A\",\"A.S1.2\"]}",
+      "\"identity\":{\"domain\":\"mappings\",\"name\":[\"B\",\"B.S1.1\"]}",
+      "\"identity\":{\"domain\":\"mappings\",\"name\":[\"B\",\"A.S1.3\"]}"
+    ],
+    "stderr-golden": "stderr.golden"
+  }
+}

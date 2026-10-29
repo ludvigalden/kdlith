@@ -1099,9 +1099,9 @@ impl<'d, 's> Binder<'d, 's> {
 
     /// The next 1-based ordinal of a derived ordinal source: the node's
     /// position, counted in close order, among its same-named siblings
-    /// under the same parent whose key field holds the same string. An
-    /// occurrence whose named key holds no string value counts nowhere
-    /// and derives nothing.
+    /// under the same parent whose key field holds the same key text. An
+    /// occurrence whose named key holds no key text counts nowhere and
+    /// derives nothing.
     fn count_ordinal(
         &mut self,
         cx: &Cx<'_>,
@@ -1111,10 +1111,7 @@ impl<'d, 's> Binder<'d, 's> {
     ) -> Option<u64> {
         let key_text = match key {
             None => String::new(),
-            Some(key) => match self.header_value(cx, frame, key) {
-                Some(Value::String(text)) => text,
-                _ => return None,
-            },
+            Some(key) => ordinal_key(self.header_value(cx, frame, key)?)?,
         };
         let node = parent.map(|parent| parent.node);
         let counter = self
@@ -1141,10 +1138,10 @@ impl<'d, 's> Binder<'d, 's> {
                 let ordinal = ordinal?;
                 let text = match key {
                     None => ordinal.to_string(),
-                    Some(key) => match self.header_value(cx, frame, key) {
-                        Some(Value::String(text)) => format!("{text}.{ordinal}"),
-                        _ => return None,
-                    },
+                    Some(key) => {
+                        let text = ordinal_key(self.header_value(cx, frame, key)?)?;
+                        format!("{text}.{ordinal}")
+                    }
                 };
                 Some((Value::String(text), Derivation::Ordinal))
             }
@@ -3682,13 +3679,20 @@ impl<'s> Processor for Binder<'_, 's> {
     }
 }
 
-/// The identity segment a reference-typed field composes: its explicit
-/// qualifier values, then its parsed name segments, dot-joined as the
-/// link stage spells names. Built from parts rather than the written
-/// spelling so a codec's punctuation never leaks into identities. When
-/// nothing is qualified explicitly, context supplies the namespace, as
-/// it does a declaration's own owner segment, so one bare name in two
-/// namespaces composes two segments.
+/// An ordinal key's text: a string as written, a reference as the
+/// segment it composes into an identity, so the same target keys one
+/// counter however it is spelled.
+fn ordinal_key(value: Value) -> Option<String> {
+    match value {
+        Value::String(text) => Some(text),
+        Value::Reference(reference) => Some(reference_segment(&reference)),
+        _ => None,
+    }
+}
+
+/// A reference's identity segment: explicit qualifiers, else the context
+/// namespace, then its parsed name parts, dot-joined. Parts, not the
+/// spelling, so codec punctuation never leaks into identities.
 fn reference_segment(reference: &Reference) -> String {
     let context = if reference.qualifiers.is_empty() {
         reference.context.as_deref()

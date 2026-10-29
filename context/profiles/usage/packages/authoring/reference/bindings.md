@@ -77,13 +77,19 @@ else does, with the node's ordinal among its same-named siblings
 under the same parent — counted from 1 per key value and spelled
 `key.1`, `key.2`, or bare `1`, `2` when no key is named — so a
 collection of mappings may omit an id that repeats its source code.
+The key field holds a string, or a reference (`ref<T>` or a declared
+reference type): a reference keys by the text it composes into an
+identity — explicit qualifiers or else the context namespace, then
+its name — so `S1` and `A:S1` written in namespace `A` share one
+counter, while a bare `S1` in two namespaces counts twice.
 `from { parent FIELD }` supplies the field, when nothing else does,
 with the value the enclosing node bound in the named field of its
 header, so a child that always repeats its parent's code spells it
 once on the parent. An explicit value wins over both, the derived
 value composes the declaration's identity like any bound field, and
 the compile checks fail closed: the field must admit only strings
-(ordinal), the key and the parent's field must be declared, and the
+(ordinal), the key must be declared and string- or reference-typed,
+the parent's field must be declared, and the
 parent's field must come from the parent's header
 (`KDLITH-SCH005`/`KDLITH-SCH006`); an occurrence with no parent or no
 parent value leaves the field absent (`KDLITH-BND004`).

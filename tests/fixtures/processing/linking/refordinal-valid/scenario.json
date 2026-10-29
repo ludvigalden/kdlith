@@ -1,0 +1,24 @@
+{
+  "binary": "kdlith",
+  "description": "An ordinal keyed by a field typed with a declared reference type numbers each key independently: the key text is the reference's composed segment, so mappings of S1 and S2 interleave as A.S1.1, A.S2.1, A.S1.2, A.S2.2, A.S1.3",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "{fx-suite}/processing/linking/refordinal-schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"identity\":{\"domain\":\"mappings\",\"name\":[\"A\",\"A.S1.1\"]}",
+      "\"identity\":{\"domain\":\"mappings\",\"name\":[\"A\",\"A.S2.1\"]}",
+      "\"identity\":{\"domain\":\"mappings\",\"name\":[\"A\",\"A.S1.2\"]}",
+      "\"identity\":{\"domain\":\"mappings\",\"name\":[\"A\",\"A.S2.2\"]}",
+      "\"identity\":{\"domain\":\"mappings\",\"name\":[\"A\",\"A.S1.3\"]}"
+    ],
+    "stderr-golden": "stderr.golden"
+  }
+}

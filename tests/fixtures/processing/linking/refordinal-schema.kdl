@@ -1,0 +1,59 @@
+// The schema the reference-keyed ordinal scenarios share: a namespace
+// control sets the namespace for the nodes after it, concepts declare
+// under that namespace, and each mapping derives its id per source,
+// where source is typed with a declared reference type admitting
+// context. Mappings sit at the root, so the key text alone separates
+// their counters.
+schema refordinal version="0" {
+    types {
+        object Concept {
+            field system String
+            field code String
+        }
+        object Mapping {
+            field system String
+            field id String
+            field source ConceptRef
+            field target String
+        }
+        codec Endpoint output=String {
+            match #"(?:(?<system>[A-Z]+):)?(?<code>[A-Za-z0-9]+)"#
+            capture system String
+            capture code String
+        }
+    }
+    context {
+        slot namespace String duplicates=last-wins
+    }
+    node namespace role=context-control root=#true {
+        field value String arg=0
+        effects target=following replace=#true {
+            set namespace field=value
+        }
+    }
+    node concept role=declaration type=Concept root=#true {
+        field code arg=0
+        field system context=namespace
+        identity {
+            domain concepts
+            compose qualified-name system code
+        }
+    }
+    node mapping role=declaration type=Mapping root=#true {
+        field system context=namespace
+        field id arg=0 {
+            from {
+                ordinal key=source
+            }
+        }
+        field source property=source
+        field target property=target
+        identity {
+            domain mappings
+            compose qualified-name system id
+        }
+    }
+    reference ConceptRef target=Concept codec=Endpoint lookup=concepts qualification=explicit-or-context {
+        qualifier system String required=#false
+    }
+}

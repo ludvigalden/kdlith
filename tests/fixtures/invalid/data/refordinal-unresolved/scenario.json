@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A reference that keys an ordinal and names no declared concept fails closed at link under complete scope with KDLITH-REF001: the key still derives the id, and linking still checks the reference",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "{fx-suite}/processing/linking/refordinal-schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

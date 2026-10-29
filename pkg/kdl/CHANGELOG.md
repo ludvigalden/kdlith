@@ -465,6 +465,12 @@ path=…; pinned "sha256:…" }`, whose pin is optional. kdlith never
   reference still links, so a misspelling fails `KDLITH-REF001` under
   complete scope. Before, such a field was `KDLITH-BND003` and the
   declaration registered no identity.
+- `from { ordinal key=F }` admits a key field typed with a declared
+  reference type or `ref<T>`. The key text is the segment the
+  reference composes into an identity, so a bare and a qualified
+  spelling of one target share a counter, and one bare name in two
+  namespaces counts twice. The reference still links. Before, such a
+  key was `KDLITH-SCH005`.
 
 ### Fixed
 

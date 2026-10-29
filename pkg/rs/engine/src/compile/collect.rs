@@ -1984,11 +1984,24 @@ fn check_qualify_slot(cx: &mut Cx<'_>, symbols: &SymbolCatalog, site: Site, what
     }
 }
 
+/// Whether `ty` is a reference: `ref<T>` or a declared reference type,
+/// optionally wrapped. An ordinal key keys on the reference's composed
+/// text, as an identity segment does.
+fn names_reference(symbols: &SymbolCatalog, ty: &TypeExpr) -> bool {
+    match ty {
+        TypeExpr::Optional(inner) => names_reference(symbols, inner),
+        TypeExpr::Ref(inner) => matches!(inner.as_ref(), TypeExpr::Named(_)),
+        TypeExpr::Named(name) => symbols.reference(*name).is_some(),
+        _ => false,
+    }
+}
+
 /// Every derived field source, once every declaration is read: an
 /// ordinal source derives a string, so its field must admit only
-/// strings, and its key must name a string-valued field of the same
-/// node; a parent source must name a field every parent of the node
-/// binds from its header. A field names at most one derived source.
+/// strings, and its key must name a string- or reference-typed field
+/// of the same node; a parent source must name a field every parent of
+/// the node binds from its header. A field names at most one derived
+/// source.
 pub(crate) fn derived_sources(cx: &mut Cx<'_>, bindings: &BindingCatalog, symbols: &SymbolCatalog) {
     let by_name: Vec<(Sym, &NodeDecl)> =
         bindings.iter().map(|(_, decl)| (decl.name, decl)).collect();
@@ -2059,10 +2072,10 @@ pub(crate) fn derived_sources(cx: &mut Cx<'_>, bindings: &BindingCatalog, symbol
                         let spelled = format!("{} of node {}", cx.names.resolve(*key), node);
                         if !declared {
                             super::link::unresolved(cx, field.site, "field", &spelled);
-                        } else if key_ty
-                            .as_ref()
-                            .is_none_or(|ty| !super::link::admits_only_strings(cx, symbols, ty, 0))
-                        {
+                        } else if key_ty.as_ref().is_none_or(|ty| {
+                            !super::link::admits_only_strings(cx, symbols, ty, 0)
+                                && !names_reference(symbols, ty)
+                        }) {
                             let reason = format!(
                                 "{} derives through key {}, which does not admit only strings",
                                 cx.names.resolve(field.name),

@@ -1,0 +1,22 @@
+{
+  "binary": "kdlith",
+  "description": "An ordinal keyed by a ref<T> field numbers per referenced name: the key text is the reference's name segment, so the S1 and S2 mappings derive S1.1, S1.2, and S2.1",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "{fx-suite}/processing/linking/refordinal-typed-ref-schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"identity\":{\"domain\":\"mappings\",\"name\":[\"A\",\"S1.1\"]}",
+      "\"identity\":{\"domain\":\"mappings\",\"name\":[\"A\",\"S1.2\"]}",
+      "\"identity\":{\"domain\":\"mappings\",\"name\":[\"A\",\"S2.1\"]}"
+    ],
+    "stderr-golden": "stderr.golden"
+  }
+}

@@ -1,0 +1,44 @@
+// The reference-keyed ordinal schema with its key typed ref<Concept>
+// instead of a declared reference type: concepts declare in their
+// type's own domain, which a ref<T> resolves against.
+schema refordinaltyped version="0" {
+    types {
+        object Concept {
+            field system String
+            field code String
+        }
+        object Mapping {
+            field system String
+            field id String
+            field source "ref<Concept>"
+            field target String
+        }
+    }
+    context {
+        slot namespace String duplicates=last-wins
+    }
+    node namespace role=context-control root=#true {
+        field value String arg=0
+        effects target=following replace=#true {
+            set namespace field=value
+        }
+    }
+    node concept role=declaration type=Concept root=#true {
+        field code arg=0
+        field system context=namespace
+    }
+    node mapping role=declaration type=Mapping root=#true {
+        field system context=namespace
+        field id arg=0 {
+            from {
+                ordinal key=source
+            }
+        }
+        field source property=source
+        field target property=target
+        identity {
+            domain mappings
+            compose qualified-name system id
+        }
+    }
+}

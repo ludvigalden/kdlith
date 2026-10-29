@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "An ordinal source whose key is typed as a list of references fails closed at definition compile with KDLITH-SCH005: only a string- or reference-typed key keys an ordinal",
+  "args": [
+    "vet",
+    "schema",
+    "schema.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

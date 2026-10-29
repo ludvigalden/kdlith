@@ -1,0 +1,8 @@
+namespace A
+concept S1
+mapping source=S1 target=T1
+mapping source=S1 target=T2
+namespace B
+concept S1
+mapping source=S1 target=T3
+mapping source=A:S1 target=T4
