@@ -1355,6 +1355,23 @@ impl<'d, 's> Binder<'d, 's> {
             .is_none_or(|case| self.frame_case(parent) == Some(case))
     }
 
+    /// The bind a child of `parent` takes: the one its matched case (or
+    /// the common surface) declares, since alternatives may each consume
+    /// the same child name.
+    fn child_bind(&self, parent: &BindFrame, name: Sym) -> Option<Bind> {
+        parent
+            .table(&self.tables)?
+            .children_named(name)
+            .find(|bind| self.admits_case(parent, *bind))
+    }
+
+    /// The field a failed child leaves rejected on its parent: the
+    /// admitted bind's, else the first bind of its name.
+    fn rejected_bind(&self, parent: &BindFrame, name: Sym) -> Option<Bind> {
+        self.child_bind(parent, name)
+            .or_else(|| parent.table(&self.tables)?.children_named(name).next())
+    }
+
     /// Resolve the supplies parked against a node's case-gated fields:
     /// those of the matched case bind through the ordinary take path; the
     /// rest name no binding that is in effect, exactly as a supply no
@@ -2910,8 +2927,7 @@ impl<'d, 's> Binder<'d, 's> {
             // is not also missing.
             let bind = parent
                 .as_deref()
-                .and_then(|p| p.table(&self.tables))
-                .and_then(|t| t.child(frame.name));
+                .and_then(|p| self.rejected_bind(p, frame.name));
             if let (Some(parent), Some(bind)) = (parent, bind) {
                 parent.rejected.push(bind.field);
             }
@@ -2952,8 +2968,7 @@ impl<'d, 's> Binder<'d, 's> {
         if self.errors > errors {
             let bind = parent
                 .as_deref()
-                .and_then(|p| p.table(&self.tables))
-                .and_then(|t| t.child(frame.name));
+                .and_then(|p| self.rejected_bind(p, frame.name));
             if let (Some(parent), Some(bind)) = (parent, bind) {
                 parent.rejected.push(bind.field);
             }
@@ -2992,10 +3007,7 @@ impl<'d, 's> Binder<'d, 's> {
         let Some(parent) = parent else {
             return;
         };
-        let bind = parent
-            .table(&self.tables)
-            .and_then(|t| t.child(frame.name))
-            .filter(|bind| self.admits_case(parent, *bind));
+        let bind = self.child_bind(parent, frame.name);
         let Some(bind) = bind else {
             if !self.expansion_point(cx, parent, frame, &values) {
                 self.reject_unconsumed(cx, parent, frame);
@@ -3296,10 +3308,7 @@ impl<'d, 's> Binder<'d, 's> {
         let Some(parent) = parent else {
             return;
         };
-        let bind = parent
-            .table(&self.tables)
-            .and_then(|t| t.child(frame.name))
-            .filter(|bind| self.admits_case(parent, *bind));
+        let bind = self.child_bind(parent, frame.name);
         let Some(bind) = bind else {
             return;
         };

@@ -1,0 +1,8 @@
+panel "m1" kind=menu {
+    c "a"
+    c "b"
+}
+panel "p1" kind=form {
+    c "x"
+    c "y"
+}

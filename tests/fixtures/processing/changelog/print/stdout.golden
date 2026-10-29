@@ -565,3 +565,8 @@ path=…; pinned "sha256:…" }`, whose pin is optional. kdlith never
   `KDLITH-REF005`. Before, only a declaration keeping the fallback
   identity was reached; a composed one dropped the payload unchecked
   and the reading passed.
+- A child name that two cases of one node each bind now binds under
+  whichever case the node's dispatch selects, with that case's own
+  field and bounds. Before, only the first case consumed it and the
+  other case's child was `KDLITH-BND001`. A case that did not match
+  still admits none of its children.

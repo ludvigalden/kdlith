@@ -1,0 +1,20 @@
+{
+  "binary": "kdlith",
+  "description": "Each case enforces its own bound on a shared child name: a menu panel's two c children stay within the menu case's max-occurs 3 and bind, while a form panel's two exceed the form case's max-occurs 1; the run exits 1 with the cardinality code alone, no c reported unbound",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/casesamechild.kdl",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": [
+      "error[KDLITH-BND002]: c under panel occurs 2 times; expected at most 1\n"
+    ],
+    "stdout-not-contains": [
+      "KDLITH-BND001"
+    ]
+  }
+}

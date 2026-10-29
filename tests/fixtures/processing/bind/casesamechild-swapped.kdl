@@ -1,0 +1,47 @@
+// The case-same-child schema with its two cases in the opposite order:
+// the menu case, binding c into entries up to three times, precedes the
+// form case, binding c into picks at most once. Case order decides
+// nothing about which case a shared child name binds under.
+schema casesamechildswapped version="1" {
+    types {
+        object Panel {
+            field id String
+            field kind PanelKind
+            field picks "optional<list<Control>>"
+            field entries "optional<list<Control>>"
+        }
+        enum PanelKind {
+            member form
+            member menu
+        }
+        object Control {
+            field label String
+        }
+    }
+    node panel role=record type=Panel {
+        field id arg=0
+        field kind property=kind
+        cases {
+            case property=kind equals=menu type=Panel {
+                field entries {
+                    from {
+                        children c
+                    }
+                }
+                children c max-occurs=3
+            }
+            case property=kind equals=form type=Panel {
+                field picks {
+                    from {
+                        children c
+                    }
+                }
+                children c max-occurs=1
+            }
+        }
+    }
+    node c type=Control {
+        parents panel
+        field label arg=0
+    }
+}

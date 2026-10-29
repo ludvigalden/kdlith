@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "Case order decides nothing about a shared child name: the same data binds identically when the menu case precedes the form case, each panel's c children landing under whichever case its kind selects, and vet data exits 0",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/casesamechild-swapped.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"type_name\":\"Panel\"",
+      "\"picks\"",
+      "\"entries\""
+    ]
+  }
+}

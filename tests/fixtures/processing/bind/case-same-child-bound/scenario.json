@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "Two cases may consume the same child name: a panel whose form case binds c into picks (one) and whose menu case binds c into entries (three) both bind under the case its kind selects, and vet data exits 0",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/casesamechild.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"type_name\":\"Panel\"",
+      "\"picks\"",
+      "\"entries\""
+    ]
+  }
+}

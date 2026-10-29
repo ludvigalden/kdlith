@@ -160,10 +160,12 @@ impl Table {
         self.props.iter().find(|(n, _)| *n == name).map(|(_, b)| *b)
     }
 
-    pub(crate) fn child(&self, name: Sym) -> Option<Bind> {
+    /// Every bind of a child name, in binding order: cases that each
+    /// consume the same child contribute one bind apiece.
+    pub(crate) fn children_named(&self, name: Sym) -> impl Iterator<Item = Bind> + '_ {
         self.children
             .iter()
-            .find(|(n, _)| *n == name)
+            .filter(move |(n, _)| *n == name)
             .map(|(_, b)| *b)
     }
 }

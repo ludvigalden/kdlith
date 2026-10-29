@@ -1,0 +1,8 @@
+panel "p1" kind=form {
+    c "pick-one"
+}
+panel "p2" kind=menu {
+    c "entry-one"
+    c "entry-two"
+    c "entry-three"
+}

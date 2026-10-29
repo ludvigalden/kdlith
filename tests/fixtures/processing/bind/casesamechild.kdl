@@ -1,0 +1,49 @@
+// The case-same-child schema the case-same-child scenarios share: one
+// panel node whose two cases each consume the same child name, c, into
+// a field of their own, under bounds of their own. The form case binds
+// c into picks at most once; the menu case binds c into entries up to
+// three times. Cases are alternatives, so each panel's c children bind
+// under whichever case its kind selects.
+schema casesamechild version="1" {
+    types {
+        object Panel {
+            field id String
+            field kind PanelKind
+            field picks "optional<list<Control>>"
+            field entries "optional<list<Control>>"
+        }
+        enum PanelKind {
+            member form
+            member menu
+        }
+        object Control {
+            field label String
+        }
+    }
+    node panel role=record type=Panel {
+        field id arg=0
+        field kind property=kind
+        cases {
+            case property=kind equals=form type=Panel {
+                field picks {
+                    from {
+                        children c
+                    }
+                }
+                children c max-occurs=1
+            }
+            case property=kind equals=menu type=Panel {
+                field entries {
+                    from {
+                        children c
+                    }
+                }
+                children c max-occurs=3
+            }
+        }
+    }
+    node c type=Control {
+        parents panel
+        field label arg=0
+    }
+}
