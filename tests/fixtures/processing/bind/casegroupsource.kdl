@@ -1,0 +1,70 @@
+// The case group-source schema the case-group-source scenarios share:
+// one panel node whose cases each bind a field through a group
+// from-source. The form case's pick field admits one member of the
+// controls group (button, slider) through a child-group reference; the
+// menu case's entries field collects every member of the links group
+// (item, link) through a children-group reference; otherwise binds
+// neither. Each reference expands, for its case only, to one source per
+// member at its position, exactly as casegroupsource-written.kdl spells
+// them.
+schema casegroupsource version="1" {
+    types {
+        object Panel {
+            field id String
+            field kind PanelKind
+            field pick "optional<Control>"
+            field entries "optional<list<Entry>>"
+        }
+        enum PanelKind {
+            member form
+            member menu
+            member static
+        }
+        object Control {
+            field label String
+        }
+        object Entry {
+            field label String
+        }
+    }
+    group controls button slider
+    group links item link
+    node panel role=record type=Panel {
+        field id arg=0
+        field kind property=kind
+        cases {
+            case property=kind equals=form type=Panel {
+                field pick {
+                    from {
+                        child-group controls
+                    }
+                    collision reject
+                }
+            }
+            case property=kind equals=menu type=Panel {
+                field entries {
+                    from {
+                        children-group links
+                    }
+                }
+            }
+            otherwise type=Panel
+        }
+    }
+    node button type=Control {
+        parents panel
+        field label arg=0
+    }
+    node slider type=Control {
+        parents panel
+        field label arg=0
+    }
+    node item type=Entry {
+        parents panel
+        field label arg=0
+    }
+    node link type=Entry {
+        parents panel
+        field label arg=0
+    }
+}

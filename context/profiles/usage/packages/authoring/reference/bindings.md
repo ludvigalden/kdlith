@@ -193,7 +193,9 @@ A member a case already rules directly, or through an earlier group,
 is `KDLITH-SCH005`; a member the node rules or consumes in common is
 `KDLITH-SCH023`; an undeclared group is `KDLITH-SCH006`. Group
 from-sources (`children-group` or `child-group` inside a case field's
-`from` block) stay refused: spell those members per case.
+`from` block) splice for that case alone, one source per member at
+the reference's position, under the same duplicate and collision
+checks as at node level.
 
 A `value` block binds a node's remaining payload against a
 referenced declaration's member (`against target=FIELD member=FIELD`

@@ -2,7 +2,7 @@
 //! group reference expands to per-member rules, sources, and parents
 //! before scopes are built.
 
-use crate::bindings::{ChildRule, GroupSourceKind, NodeDecl, Placement, Source};
+use crate::bindings::{ChildRule, FieldBinding, GroupSourceKind, NodeDecl, Placement, Source};
 use crate::compile::Cx;
 use crate::compile::link::unresolved;
 use crate::definition::CheckScope;
@@ -194,112 +194,104 @@ fn parents(cx: &mut Cx<'_>, decl: &mut NodeDecl, complete: bool) {
 
 /// Each pending group from-source splices one source per member at
 /// the reference's position: children sources for `children-group`,
-/// child sources for `child-group`, as if hand-written.
+/// child sources for `child-group`, as if hand-written. Case fields
+/// splice the same way, into their case's own sources.
 fn sources(cx: &mut Cx<'_>, decl: &mut NodeDecl) {
     let owner = cx.names.resolve(decl.name).to_owned();
-    // A group-sourced from-source under a case body is refused: case
-    // field bindings compile into per-case plans, and a reference the
-    // expansion pass cannot splice would silently bind nothing.
+    for field in &mut decl.fields {
+        splice_sources(cx, &owner, field);
+    }
     for case in &mut decl.cases {
+        let label = format!(
+            "case {}={:?} of node {owner}",
+            cx.names.resolve(case.property),
+            case.equals
+        );
         for field in &mut case.fields {
-            if field.pending_groups.is_empty() {
-                continue;
-            }
-            let pending = std::mem::take(&mut field.pending_groups);
-            for group in &pending {
-                let reason = match group.kind {
-                    GroupSourceKind::Children => {
-                        "a children-group source under a case body is not admitted; spell the members per case"
-                    }
-                    GroupSourceKind::Child => {
-                        "a child-group source under a case body is not admitted; spell the members per case"
-                    }
-                };
-                cx.diags
-                    .error(INVALID_BINDING, group.site, &[&owner, reason]);
-            }
+            splice_sources(cx, &label, field);
         }
     }
-    for field in &mut decl.fields {
-        if field.pending_groups.is_empty() {
+}
+
+fn splice_sources(cx: &mut Cx<'_>, owner: &str, field: &mut FieldBinding) {
+    if field.pending_groups.is_empty() {
+        return;
+    }
+    let pending = std::mem::take(&mut field.pending_groups);
+    // Child names the spliced members must not double: the field's
+    // concrete child and children sources, then members an earlier
+    // group spliced.
+    let mut claimed: Vec<(Sym, Option<Sym>)> = field
+        .sources
+        .iter()
+        .filter_map(|source| match source {
+            Source::Child { name, .. } | Source::Children { name, .. } => Some((*name, None)),
+            _ => None,
+        })
+        .collect();
+    let mut spliced: Vec<(usize, Vec<Source>)> = Vec::with_capacity(pending.len());
+    let mut singular = false;
+    for group in &pending {
+        singular |= group.kind == GroupSourceKind::Child;
+        let Some(members) = resolve(cx, group.site, group.name, true) else {
             continue;
-        }
-        let pending = std::mem::take(&mut field.pending_groups);
-        // Child names the spliced members must not double: the field's
-        // concrete child and children sources, then members an earlier
-        // group spliced.
-        let mut claimed: Vec<(Sym, Option<Sym>)> = field
-            .sources
-            .iter()
-            .filter_map(|source| match source {
-                Source::Child { name, .. } | Source::Children { name, .. } => Some((*name, None)),
-                _ => None,
-            })
-            .collect();
-        let mut spliced: Vec<(usize, Vec<Source>)> = Vec::with_capacity(pending.len());
-        let mut singular = false;
-        for group in &pending {
-            singular |= group.kind == GroupSourceKind::Child;
-            let Some(members) = resolve(cx, group.site, group.name, true) else {
+        };
+        let mut sources = Vec::with_capacity(members.len());
+        for member in members {
+            if let Some((_, earlier)) = claimed.iter().find(|(name, _)| *name == member) {
+                let via = cx.names.resolve(group.name);
+                let first = match earlier {
+                    None => "directly".to_owned(),
+                    Some(other) => format!("via group {}", cx.names.resolve(*other)),
+                };
+                let reason = format!(
+                    "source for child {} is spelled twice ({first} and via group {via})",
+                    cx.names.resolve(member)
+                );
+                cx.diags
+                    .error(INVALID_BINDING, group.site, &[owner, &reason]);
                 continue;
-            };
-            let mut sources = Vec::with_capacity(members.len());
-            for member in members {
-                if let Some((_, earlier)) = claimed.iter().find(|(name, _)| *name == member) {
-                    let via = cx.names.resolve(group.name);
-                    let first = match earlier {
-                        None => "directly".to_owned(),
-                        Some(other) => format!("via group {}", cx.names.resolve(*other)),
-                    };
-                    let reason = format!(
-                        "source for child {} is spelled twice ({first} and via group {via})",
-                        cx.names.resolve(member)
-                    );
-                    cx.diags
-                        .error(INVALID_BINDING, group.site, &[&owner, &reason]);
-                    continue;
-                }
-                claimed.push((member, Some(group.name)));
-                sources.push(match group.kind {
-                    GroupSourceKind::Children => Source::Children {
-                        name: member,
-                        sources: Vec::new(),
-                        compact: false,
-                    },
-                    GroupSourceKind::Child => Source::Child {
-                        name: member,
-                        sources: Vec::new(),
-                        compact: false,
-                    },
-                });
             }
-            spliced.push((group.position, sources));
+            claimed.push((member, Some(group.name)));
+            sources.push(match group.kind {
+                GroupSourceKind::Children => Source::Children {
+                    name: member,
+                    sources: Vec::new(),
+                    compact: false,
+                },
+                GroupSourceKind::Child => Source::Child {
+                    name: member,
+                    sources: Vec::new(),
+                    compact: false,
+                },
+            });
         }
-        // Positions are ascending, so splicing from the back keeps every
-        // earlier position valid.
-        for (position, sources) in spliced.into_iter().rev() {
-            field.sources.splice(position..position, sources);
-        }
-        if !singular {
-            continue;
-        }
-        let alternatives = field
-            .sources
-            .iter()
-            .filter(|s| {
-                !matches!(
-                    s,
-                    Source::Context { .. } | Source::Children { .. } | Source::Expand { .. }
-                )
-            })
-            .count();
-        if alternatives > 1 && field.collision.is_none() {
-            let name = cx.names.resolve(field.name);
-            let reason = format!(
-                "field {name} has {alternatives} alternative sources and no collision policy; no implicit precedence exists"
-            );
-            cx.diags
-                .error(INVALID_BINDING, field.site, &[&owner, &reason]);
-        }
+        spliced.push((group.position, sources));
+    }
+    // Positions are ascending, so splicing from the back keeps every
+    // earlier position valid.
+    for (position, sources) in spliced.into_iter().rev() {
+        field.sources.splice(position..position, sources);
+    }
+    if !singular {
+        return;
+    }
+    let alternatives = field
+        .sources
+        .iter()
+        .filter(|s| {
+            !matches!(
+                s,
+                Source::Context { .. } | Source::Children { .. } | Source::Expand { .. }
+            )
+        })
+        .count();
+    if alternatives > 1 && field.collision.is_none() {
+        let name = cx.names.resolve(field.name);
+        let reason = format!(
+            "field {name} has {alternatives} alternative sources and no collision policy; no implicit precedence exists"
+        );
+        cx.diags
+            .error(INVALID_BINDING, field.site, &[owner, &reason]);
     }
 }

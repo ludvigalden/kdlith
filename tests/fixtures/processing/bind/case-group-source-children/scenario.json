@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "A children-group from-source inside a case body expands, for that case, to one children source per member: menu panels collect their item and link children into the entries field in document order, and vet data exits 0",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/casegroupsource.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"type_name\":\"Panel\""
+    ]
+  }
+}

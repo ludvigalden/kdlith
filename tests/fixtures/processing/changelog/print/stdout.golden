@@ -477,6 +477,12 @@ path=…; pinned "sha256:…" }`, whose pin is optional. kdlith never
   one by one. A member the case already rules is `KDLITH-SCH005`, and a
   member the node rules in common is `KDLITH-SCH023`. Before, the rule
   under a case was `KDLITH-BND001`.
+- A case field's `from` block admits `children-group NAME` and
+  `child-group NAME` sources. For that case alone each splices one
+  `children` or `child` source per group member at the reference's
+  position, exactly the hand-written repeated form, with the same
+  duplicate (`KDLITH-SCH005`) and collision-policy checks as at node
+  level. Before, either reference under a case was `KDLITH-SCH005`.
 
 ### Fixed
 

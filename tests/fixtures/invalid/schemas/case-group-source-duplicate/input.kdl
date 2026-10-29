@@ -1,0 +1,62 @@
+schema casegroupsource version="1" {
+    types {
+        object Panel {
+            field id String
+            field kind PanelKind
+            field pick "optional<Control>"
+            field entries "optional<list<Entry>>"
+        }
+        enum PanelKind {
+            member form
+            member menu
+            member static
+        }
+        object Control {
+            field label String
+        }
+        object Entry {
+            field label String
+        }
+    }
+    group controls button slider
+    group links item link
+    node panel role=record type=Panel {
+        field id arg=0
+        field kind property=kind
+        cases {
+            case property=kind equals=form type=Panel {
+                field pick {
+                    from {
+                        child-group controls
+                    }
+                    collision reject
+                }
+            }
+            case property=kind equals=menu type=Panel {
+                field entries {
+                    from {
+                        children item
+                        children-group links
+                    }
+                }
+            }
+            otherwise type=Panel
+        }
+    }
+    node button type=Control {
+        parents panel
+        field label arg=0
+    }
+    node slider type=Control {
+        parents panel
+        field label arg=0
+    }
+    node item type=Entry {
+        parents panel
+        field label arg=0
+    }
+    node link type=Entry {
+        parents panel
+        field label arg=0
+    }
+}

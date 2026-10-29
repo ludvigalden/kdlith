@@ -1,0 +1,12 @@
+panel "f1" kind=form {
+    button "Save"
+}
+panel "f2" kind=form {
+    slider "Volume"
+}
+panel "m1" kind=menu {
+    item "Open"
+    link "Help"
+    item "Close"
+}
+panel "s1" kind=static

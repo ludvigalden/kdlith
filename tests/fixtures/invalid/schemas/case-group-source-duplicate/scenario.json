@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A case field sourcing one child both directly and through a children-group from-source is refused at schema compile: the menu case's entries field spells children item and the links group also admits item, which is the invalid-binding code, as at node level",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

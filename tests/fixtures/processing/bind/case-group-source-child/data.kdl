@@ -1,0 +1,6 @@
+panel "f1" kind=form {
+    button "Save"
+}
+panel "f2" kind=form {
+    slider "Volume"
+}
