@@ -1,0 +1,21 @@
+{
+  "binary": "kdlith",
+  "description": "read data --scope NAME finds no identity settled only under other scopes: mode, contributed only under dev and staging, is not found under --scope prod and the diagnostic names the scope restriction",
+  "args": [
+    "read",
+    "data",
+    "--scope",
+    "prod",
+    "--schema",
+    "{fx-suite}/processing/resolution/scope.kdl",
+    "{fx-suite}/processing/resolution/scope-partition/data.kdl",
+    "mode"
+  ],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": [
+      "no record with identity mode in",
+      "under --scope prod"
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "binary": "kdlith",
+  "description": "read data --scope staging selects the staging partition rather than the first in sorted order: mode resolves there by the user-over-base settle to dark, scope staging",
+  "args": [
+    "read",
+    "data",
+    "--scope",
+    "staging",
+    "--schema",
+    "{fx-suite}/processing/resolution/scope.kdl",
+    "{fx-suite}/processing/resolution/scope-partition/data.kdl",
+    "mode"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"item\":\"resolution\"",
+      "\"written\":\"mode\"",
+      "\"dark\"",
+      "\"layers\":[\"user\"]",
+      "\"scope\":\"staging\""
+    ]
+  }
+}

@@ -1,5 +1,4 @@
-error[KDLITH-CLI001]: invalid value 'wide' for '--scope <SCOPE>'
-  [possible values: local, complete]
+error[KDLITH-CLI001]: invalid value 'Wide_Scope' for '--scope <SCOPE>': scope takes local, complete, or a kebab scope name, not "Wide_Scope"
 
 For more information, try '--help'.
   help: Pass a value of the documented form; see the command's --help

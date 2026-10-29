@@ -117,6 +117,21 @@ pub(crate) fn parse_profiles(value: &str) -> Result<ProfileSet, String> {
     Ok(ProfileSet(names))
 }
 
+/// Parse one `read data --scope` value: `local`, `complete`, or a
+/// kebab-form scope name.
+pub(crate) fn parse_read_scope(value: &str) -> Result<crate::ReadScope, String> {
+    match value {
+        "local" => Ok(crate::ReadScope::Local),
+        "complete" => Ok(crate::ReadScope::Complete),
+        name if StringFormat::KebabCase.matches(name, None) => {
+            Ok(crate::ReadScope::Named(name.to_owned()))
+        }
+        _ => Err(format!(
+            "scope takes local, complete, or a kebab scope name, not {value:?}"
+        )),
+    }
+}
+
 /// Validate one `--handler` value against the built-in catalog.
 pub(crate) fn parse_handler(value: &str) -> Result<String, String> {
     if BUILT_INS.contains(&value) {

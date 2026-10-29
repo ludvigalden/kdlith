@@ -399,6 +399,12 @@ path=…; pinned "sha256:…" }`, whose pin is optional. kdlith never
   reports drift as `KDLITH-GEN002`, and a source that cannot pin the
   crates is `KDLITH-GEN007`. A writing run prints the one-time cargo
   cache seed for an unreachable origin as a note.
+- `read data --scope` also admits a kebab-form scope name beside
+  `local` and `complete`: the lookup then consults only the resolution
+  partitions settled under that scope, a record is found under any
+  scope, and a miss names the restriction (`under --scope NAME`). A
+  malformed name stays `KDLITH-CLI001`; `vet` and `inspect` keep
+  `local|complete`.
 
 ### Changed
 

@@ -13,7 +13,7 @@ use kdlith_parse::Parser;
 
 use crate::DiagnosticsArg;
 use crate::ReadArgs;
-use crate::ScopeArg;
+use crate::ReadScope;
 use crate::report::{report, report_all};
 
 /// Run a parsed `read` argument set: the explicit `file` and `data`
@@ -80,8 +80,9 @@ pub(crate) fn source_error(code: &str, values: &[&str]) -> DiagnosticRecord {
 /// through an import is found like any other. `--scope` selects the
 /// partition the lookup consults — every `(target, scope)` partition
 /// the resolver settled under `complete` (the default), the scope-less
-/// partition under `local` — while a record is found under both; it
-/// never gates the exit. The binding always runs
+/// partition under `local`, only the named scope's partitions under a
+/// scope name — while a record is found under each; it never gates the
+/// exit. The binding always runs
 /// to the end, so a diagnostic anywhere in the documents fails the read
 /// even after the record is found. With `--state`, a snapshot of the
 /// record restores its context and, of the read document, only its span
@@ -110,7 +111,7 @@ pub(crate) fn read_data(args: &crate::ReadDataArgs) -> ExitStatus {
     let reader = options.reader(&definition);
     let read_options = options.read_options();
     if let Some(state) = args.state.as_deref() {
-        let mut found = Found::new(&args.id, args.scope);
+        let mut found = Found::new(&args.id, &args.scope);
         let restored =
             reader.read_restored(&documents, &read_options, state, &args.id, &mut |item| {
                 found.take(item)
@@ -131,7 +132,7 @@ pub(crate) fn read_data(args: &crate::ReadDataArgs) -> ExitStatus {
             Ok(_) => {}
         }
     }
-    let mut found = Found::new(&args.id, args.scope);
+    let mut found = Found::new(&args.id, &args.scope);
     let read = reader.read(&documents, &read_options, &mut |item| found.take(item));
     if let Err(error) = read {
         report_all(&found.records);
@@ -145,13 +146,13 @@ pub(crate) fn read_data(args: &crate::ReadDataArgs) -> ExitStatus {
 /// identity asked for under the scope the lookup consults.
 struct Found<'a> {
     id: &'a str,
-    scope: ScopeArg,
+    scope: &'a ReadScope,
     records: Vec<DiagnosticRecord>,
     item: Option<Item>,
 }
 
 impl<'a> Found<'a> {
-    fn new(id: &'a str, scope: ScopeArg) -> Self {
+    fn new(id: &'a str, scope: &'a ReadScope) -> Self {
         Self {
             id,
             scope,
@@ -189,8 +190,9 @@ impl<'a> Found<'a> {
             None => {
                 report_all(&self.records);
                 let scope = match self.scope {
-                    ScopeArg::Local => " under --scope local",
-                    ScopeArg::Complete => "",
+                    ReadScope::Local => " under --scope local".to_owned(),
+                    ReadScope::Complete => String::new(),
+                    ReadScope::Named(name) => format!(" under --scope {name}"),
                 };
                 eprintln!(
                     "kdlith: no record with identity {} in {}{scope}",
@@ -203,12 +205,15 @@ impl<'a> Found<'a> {
     }
 }
 
-/// Whether the lookup consults `item` under `scope`: a resolution of a
-/// scoped partition is consulted only under complete scope, while a
-/// record and a scope-less resolution are consulted under both.
-fn admitted(scope: ScopeArg, item: &Item) -> bool {
+/// Whether the lookup consults `item` under `scope`: a resolution is
+/// consulted by complete scope, by local when scope-less, and by a name
+/// when its partition carries that name; a record under every scope.
+fn admitted(scope: &ReadScope, item: &Item) -> bool {
     match (scope, item) {
-        (ScopeArg::Local, Item::Resolution(resolved)) => resolved.scope.is_none(),
+        (ReadScope::Local, Item::Resolution(resolved)) => resolved.scope.is_none(),
+        (ReadScope::Named(name), Item::Resolution(resolved)) => {
+            resolved.scope.as_deref() == Some(name.as_str())
+        }
         _ => true,
     }
 }

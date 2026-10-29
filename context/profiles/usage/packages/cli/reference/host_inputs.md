@@ -33,7 +33,9 @@ fails it.
 names one profile explicitly. `--scope local|complete` (default
 `complete`) on `vet data` and `inspect data` gates whether link
 diagnostics fail the run: every view renders first, and the scope
-decides only the exit.
+decides only the exit. On `read data` the same flag instead selects the
+partition the lookup consults and also admits a scope name (see the
+verbs reference).
 
 ## Limits and resolvers
 

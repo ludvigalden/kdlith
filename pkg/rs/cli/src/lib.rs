@@ -386,11 +386,20 @@ impl ProfileArgs {
     }
 }
 
-/// The `--scope` value of `vet`, `inspect data`, and `read data`.
+/// The `--scope` value of `vet` and `inspect data`.
 #[derive(Clone, Copy, Debug, ValueEnum)]
 enum ScopeArg {
     Local,
     Complete,
+}
+
+/// The `--scope` value of `read data`: the two reserved words, or a
+/// scope name selecting only its own partitions.
+#[derive(Clone, Debug)]
+enum ReadScope {
+    Local,
+    Complete,
+    Named(String),
 }
 
 /// The `--diagnostics` value of the data verbs.
@@ -724,10 +733,16 @@ struct ReadDataArgs {
     #[arg(long = "handler", value_name = "NAME", value_parser = handlers::parse_handler)]
     handlers: Vec<String>,
     /// Look the identity up over every (target, scope) partition the
-    /// resolver settled (complete) or only the scope-less partition, a
-    /// record matching under both (local)
-    #[arg(long, value_enum, default_value_t = ScopeArg::Complete)]
-    scope: ScopeArg,
+    /// resolver settled (complete), only the scope-less partition
+    /// (local), or only the partitions of the kebab-form scope NAME; a
+    /// record matches under each
+    #[arg(
+        long,
+        value_name = "SCOPE",
+        default_value = "complete",
+        value_parser = handlers::parse_read_scope
+    )]
+    scope: ReadScope,
     /// Also write every diagnostic of the run to stdout as one compact
     /// JSON line per record, beside the unchanged stderr text
     #[arg(long = "diagnostics", value_enum, value_name = "FORMAT")]

@@ -1,11 +1,11 @@
 {
   "binary": "kdlith",
-  "description": "a read data --scope value other than local or complete is an argument-form fault: exit 2 under KDLITH-CLI001 naming the possible values, nothing is read",
+  "description": "a read data --scope value that is neither local, complete, nor a kebab scope name is an argument-form fault: exit 2 under KDLITH-CLI001 stating the accepted form, nothing is read",
   "args": [
     "read",
     "data",
     "--scope",
-    "wide",
+    "Wide_Scope",
     "--schema",
     "{fx-suite}/processing/bind/schema.kdl",
     "{fx-suite}/processing/bind/stream/input.kdl",

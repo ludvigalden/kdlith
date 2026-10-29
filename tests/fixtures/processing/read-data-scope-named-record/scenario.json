@@ -1,0 +1,20 @@
+{
+  "binary": "kdlith",
+  "description": "a record is found by read data under a scope name: --scope dev restricts only the resolution partitions the lookup consults, so the record one is found exactly as without the flag",
+  "args": [
+    "read",
+    "data",
+    "--scope",
+    "dev",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "{fx-suite}/processing/bind/stream/input.kdl",
+    "one"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":6},\"type_name\":\"Item\",\"fields\":[{\"name\":\"id\",\"value\":{\"kind\":\"string\",\"value\":\"one\"}"
+    ]
+  }
+}
