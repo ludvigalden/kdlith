@@ -34,13 +34,10 @@ pub(crate) fn run(scenario: &CodegenOracle, cwd: &Path, env: &RunEnv<'_>) -> Res
     Ok(())
 }
 
-/// Resolve the repository root: an explicit `KDLITH_FX_REPO` override
-/// when it names a root holding the workspace manifest and the
-/// reference processor, else the nearest such ancestor of the suite.
-/// The override keeps runs under an external scratch root working —
-/// the suite copy may sit below no repository at all — and a value
-/// that fails the check is a loud failure, never a silent fallback
-/// that could mask a stale inherited root.
+/// Resolve the repository root: a valid `KDLITH_FX_REPO` override
+/// (for suite copies outside any repository), else the nearest
+/// ancestor holding the manifest and reference crate. An invalid
+/// override fails loudly, never falling back.
 fn locate_repo(suite: &Path) -> Result<PathBuf, String> {
     if let Some(value) = std::env::var_os(ENV_REPO) {
         let root = PathBuf::from(&value);

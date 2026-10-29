@@ -100,9 +100,8 @@ impl GenForm {
 #[derive(Debug)]
 pub(crate) enum OracleStep {
     /// Run the processor's `gen` form into `out` (relative to the
-    /// materialized copy) with the declared `args` appended after the
-    /// pinned argument shape; a nonzero exit fails the scenario, so a
-    /// gen flag the processor refuses fails here by construction.
+    /// materialized copy), appending the declared `args` to the pinned
+    /// argument shape; a nonzero exit, such as a refused flag, fails.
     Generate { out: String, args: Vec<String> },
     /// Require every named tree (relative to the materialized copy) to
     /// hold exactly the same files with exactly the same bytes.
