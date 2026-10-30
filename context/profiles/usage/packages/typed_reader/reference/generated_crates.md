@@ -31,9 +31,13 @@ the three flags are mutually exclusive. Without any, the manifest
 keeps sibling paths.
 
 Every generated manifest carries registry metadata — the package
-name, a version, a `description` naming the definition the crate
-was generated from, and `license = "MIT"` — which is what a
-crates.io-style publication requires.
+name, a version, and a `description` naming the definition the crate
+was generated from. The license is never claimed for the consumer:
+under `--kdlith-workspace` the manifest carries
+`license.workspace = true` and the consuming workspace's
+`[workspace.package]` license governs; under every other packaging
+there is no `license` key, and a registry publication gets its
+license from the consumer's own manifest or publisher.
 
 A dialect crate embeds its seed as a versioned snapshot: the
 dialect's contributing documents are written under `src/dialect/`,

@@ -75,16 +75,19 @@ generation never deletes anything. `--dry-run` prints the plan;
 `--check` reports missing, changed, and stale paths, each
 `KDLITH-GEN002`, exiting 1 on any finding; the modes exclude each
 other. The generated `Cargo.toml` is standalone and carries registry
-metadata (name, version, a `description` naming the definition, and
-`license = "MIT"`):
+metadata (name, version, and a `description` naming the definition;
+no license is claimed for the consumer — under workspace packaging the
+manifest inherits the consuming workspace's license, otherwise it
+carries no `license` key):
 by default the kdlith dependencies are sibling paths, `--kdlith-path PATH`
 re-roots them, and `--kdlith-version VER` writes registry
 dependencies — both forms, values verbatim, flags mutually exclusive,
 empty or non-UTF-8 values failing closed. `--kdlith-workspace`
 (both forms, exclusive with the other two) writes
-`{ workspace = true }` dependencies and `[lints] workspace = true`, so
-the bytes stay a pure function of the inputs while the source moves to
-the consumer's root manifest.
+`{ workspace = true }` dependencies, `[lints] workspace = true`, and
+`license.workspace = true`, so the bytes stay a pure function of the
+inputs while the source and the license move to the consumer's root
+manifest.
 
 A dialect crate embeds its seed as a versioned snapshot: every
 contributing document is written under `src/dialect/` (byte-identical

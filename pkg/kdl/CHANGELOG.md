@@ -486,9 +486,13 @@ path=…; pinned "sha256:…" }`, whose pin is optional. kdlith never
   position, exactly the hand-written repeated form, with the same
   duplicate (`KDLITH-SCH005`) and collision-policy checks as at node
   level. Before, either reference under a case was `KDLITH-SCH005`.
-- `gen dialect` and `gen schema` write `license = "MIT"` into the
-  generated manifest's `[package]` after its `description`, so a
-  generated crate carries the metadata a registry publication needs.
+- `gen dialect` and `gen schema` no longer claim a license for the
+  consumer: under `--kdlith-workspace` the generated manifest carries
+  `license.workspace = true`, inheriting the consuming workspace's
+  license like its lints and dependencies; under every other packaging
+  the manifest carries no `license` key, and the consumer's own
+  manifest or publisher supplies one. Before, every generated manifest
+  hard-coded `license = "MIT"`.
 
 ### Fixed
 
