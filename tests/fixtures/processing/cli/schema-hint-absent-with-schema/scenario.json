@@ -1,0 +1,21 @@
+{
+  "binary": "kdlith",
+  "description": "A failing data reading with --schema given never hints: the data document binds against the schema it names and fails on its own mistyped argument (BND003), and stderr carries the diagnostic alone",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": [
+      "error[KDLITH-BND003]"
+    ],
+    "stdout-not-contains": [
+      "hint:"
+    ],
+    "stderr-golden": "stderr.golden"
+  }
+}

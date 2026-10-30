@@ -1,0 +1,11 @@
+// The schema the failing data document of this scenario binds against.
+schema demo version="1" {
+    types {
+        object Demo {
+            field name String
+        }
+    }
+    node demo role=declaration type=Demo {
+        field name arg=0
+    }
+}

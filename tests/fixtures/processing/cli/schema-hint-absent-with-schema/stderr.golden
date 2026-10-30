@@ -1,0 +1,3 @@
+error[KDLITH-BND003]: demo.name expects String, found number 5
+  --> data.kdl:1:6
+  help: Supply a value of the declared type

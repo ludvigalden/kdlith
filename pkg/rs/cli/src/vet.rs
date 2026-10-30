@@ -17,6 +17,7 @@ use kdlith_superproc::{load_dialect, load_schema_with, seed};
 
 use crate::handlers;
 use crate::report::{mirror_diagnostics_as_json, report_all};
+use crate::schema_hint;
 use crate::{DiagnosticsArg, ScopeArg, VetCommand};
 
 /// Run a parsed `vet` subcommand.
@@ -443,7 +444,13 @@ pub(crate) fn stream_data_then(
     };
     let definition = match loaded {
         Ok(definition) => definition,
-        Err(records) => return finish(None, &[], None, report_all(&records)),
+        Err(records) => {
+            return schema_hint::on_failure(
+                schema,
+                entries,
+                finish(None, &[], None, report_all(&records)),
+            );
+        }
     };
     let reader = options.reader(&definition);
     let mut records: Vec<DiagnosticRecord> = Vec::new();
@@ -489,7 +496,8 @@ pub(crate) fn stream_data_then(
         report,
         documents: &inputs.documents,
     });
-    finish(Some(&definition), &contexts, linked, status)
+    let status = finish(Some(&definition), &contexts, linked, status);
+    schema_hint::on_failure(schema, entries, status)
 }
 
 pub(crate) fn write_item(out: &mut impl std::io::Write, item: &Item) -> std::io::Result<()> {

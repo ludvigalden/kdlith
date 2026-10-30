@@ -1,0 +1,21 @@
+{
+  "binary": "kdlith",
+  "description": "inspect data fails the same way vet data does on a schema definition bound as data (BND003), rendering its plan view first and failing the exit under complete scope; the hint line lands on stderr after the rendered diagnostics, and the stdout item stream stays free of it",
+  "args": [
+    "inspect",
+    "data",
+    "--view",
+    "plan",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": [
+      "hint: input.kdl is a schema definition; pass it as --schema input.kdl"
+    ],
+    "stdout-not-contains": [
+      "hint:"
+    ],
+    "stderr-golden": "stderr.golden"
+  }
+}

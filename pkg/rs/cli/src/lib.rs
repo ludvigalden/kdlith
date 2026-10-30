@@ -11,6 +11,7 @@ mod list;
 mod read;
 mod report;
 mod resolve;
+mod schema_hint;
 mod sources;
 mod usage;
 mod vet;

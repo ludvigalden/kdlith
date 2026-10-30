@@ -1,0 +1,12 @@
+// A valid schema definition: read as data against the governing
+// dialect it binds clean and exits 0, so no hint may appear.
+schema planned version="1" {
+    types {
+        object Bin {
+            field name String
+        }
+    }
+    node bin role=declaration type=Bin {
+        field name arg=0
+    }
+}

@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A schema-root entry document that binds clean and exits 0 never hints: the hint is failure-gated, and this control pins the empty stderr of the success path",
+  "args": [
+    "vet",
+    "data",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-not-contains": [
+      "hint:"
+    ],
+    "stderr-golden": "stderr.golden"
+  }
+}

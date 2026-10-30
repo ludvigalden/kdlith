@@ -1,0 +1,13 @@
+// The same schema-as-data input as schema-hint-vet-data: a schema
+// definition whose version property is a number, failing the dialect's
+// String binding for schema.version (KDLITH-BND003) when read as data.
+schema demo version=1 {
+    types {
+        object Demo {
+            field name String
+        }
+    }
+    node demo role=declaration type=Demo {
+        field name arg=0
+    }
+}

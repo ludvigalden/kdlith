@@ -1,0 +1,4 @@
+error[KDLITH-BND003]: schema.version expects String, found number 1
+  --> input.kdl:5:13
+  help: Supply a value of the declared type
+hint: input.kdl is a schema definition; pass it as --schema input.kdl

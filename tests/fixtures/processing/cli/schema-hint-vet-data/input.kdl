@@ -1,0 +1,14 @@
+// A schema definition whose version property is a number, so binding
+// it as data against the governing dialect fails: the dialect binds
+// schema.version as String (KDLITH-BND003). Read as the schema it
+// declares itself to be (--schema), the document is valid.
+schema demo version=1 {
+    types {
+        object Demo {
+            field name String
+        }
+    }
+    node demo role=declaration type=Demo {
+        field name arg=0
+    }
+}
