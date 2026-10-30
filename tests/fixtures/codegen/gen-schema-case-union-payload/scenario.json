@@ -1,0 +1,35 @@
+{
+  "heavy": true,
+  "binary": "kdlith",
+  "kind": "codegen-oracle",
+  "description": "Typed-reader parity for a case-dispatched union payload: gen schema generates a schema whose detail node selects AInput or BInput by its kind property, each variant type requiring kind, twice into two scratch trees the harness requires byte-identical; the generated crate compiles inside a scratch workspace materialized from this scenario's committed template, and the compiled processor loads the committed schema through its own loader, collects a committed data document as a reading linked under complete scope through its own typed reader, and decodes both holders' details as their case-selected variants, each carrying the kind its type requires, with no diagnostic",
+  "form": "schema",
+  "entrypoint": "inputs/schema.kdl",
+  "crate": "case-union-proc",
+  "steps": [
+    { "generate": "ws/rs/case-union-proc" },
+    { "generate": "gen-again" },
+    { "determinism": ["ws/rs/case-union-proc", "gen-again"] },
+    {
+      "compile": {
+        "workspace": "ws",
+        "copy": {
+          "crates": ["diagnostic", "engine", "model", "parse", "runtime", "superproc"]
+        },
+        "command": ["cargo", "build", "--offline", "--manifest-path", "ws/rs/case-union-proc/Cargo.toml"]
+      }
+    },
+    {
+      "exercise": {
+        "command": ["cargo", "run", "--offline", "--quiet", "--manifest-path", "ws/rs/exercise/Cargo.toml", "--", "inputs/schema.kdl", "inputs/data.kdl"],
+        "stdout-contains": [
+          "schema ok digest=ac4aabb77f7d412d\n",
+          "read ok holders=2 diagnostics=0\n",
+          "linked failed=false\n",
+          "holder x variant=a kind=a note=n\n",
+          "holder y variant=b kind=b size=3\n"
+        ]
+      }
+    }
+  ]
+}
