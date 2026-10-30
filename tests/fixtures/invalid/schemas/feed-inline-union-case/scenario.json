@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "An inline union field fed whole by a case-dispatched child is refused at definition compile under SCH020, since an inline union decodes untagged and cannot tell the case-selected objects apart (generation refuses the same shape): exit 1, stderr pinned byte for byte; the passing named-union twin is schemas/vet/feed-union-child-case-named",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": [
+      "error[KDLITH-SCH020]"
+    ],
+    "stderr-golden": "stderr.golden"
+  }
+}

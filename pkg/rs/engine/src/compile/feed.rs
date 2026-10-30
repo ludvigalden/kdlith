@@ -107,6 +107,23 @@ pub(crate) fn run(cx: &mut Cx<'_>, bindings: &BindingCatalog) {
                     });
                     continue;
                 }
+                if let Some(ty @ TypeExpr::Union(_)) = &expected
+                    && !feeding.cases.is_empty()
+                {
+                    // An inline union decodes untagged, so the objects a
+                    // case dispatch selects cannot be told apart; only a
+                    // named union's discriminators keep them distinct.
+                    found.push(Defect {
+                        site: field.site,
+                        node: cx.names.resolve(owner.name).to_owned(),
+                        field: cx.names.resolve(field.name).to_owned(),
+                        kind,
+                        child: cx.names.resolve(child).to_owned(),
+                        expected: spelling(cx, ty),
+                        types: item_types(cx, feeding).join(" or "),
+                    });
+                    continue;
+                }
                 let Some(TypeExpr::Named(name)) = expected else {
                     continue;
                 };

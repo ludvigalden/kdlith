@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "The passing named-union twin of invalid/schemas/feed-inline-union-case: Holder.detail is the named union Input whose variants hold every case-selected type (AInput, BInput) of the case-dispatched detail child, so the conformance pass agrees and the definition vets clean with a pinned digest",
+  "args": [
+    "vet",
+    "schema",
+    "schema.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "ok: schema cd version 1 scope=complete documents=1 types=6 nodes=2 slots=0 profiles=0 digest=ac4aabb77f7d412d"
+    ]
+  }
+}

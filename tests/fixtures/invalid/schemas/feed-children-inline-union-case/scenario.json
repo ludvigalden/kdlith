@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A list of an inline union fed by a repeated children source naming a case-dispatched node is refused at definition compile under SCH020, since each element decodes as an untagged inline union that cannot tell the case-selected objects apart (generation refuses the same shape): exit 1, stderr pinned byte for byte",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": [
+      "error[KDLITH-SCH020]"
+    ],
+    "stderr-golden": "stderr.golden"
+  }
+}

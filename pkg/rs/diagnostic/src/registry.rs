@@ -717,9 +717,9 @@ pub const CODES: &[CodeDefinition] = &[
         label: "invalid-field-child-binding",
         severity: Severity::Error,
         exit_class: 1,
-        trigger: "a field a child, children, or entries source populates is typed other than the feeding node's bound type, or names a node holding a processing role, which emits as its own item and never feeds the field",
+        trigger: "a field a child, children, or entries source populates is typed other than the feeding node's bound type, is an inline union fed by a case-dispatched node, or names a node holding a processing role, which emits as its own item and never feeds the field",
         message_template: "node <node>: field <field> fed by <kind> <child> expects <expected>, but the child binds <types>",
-        correction: "Type the field as the child's bound type, give the child no role, or select the child's parts through nested sources",
+        correction: "Type the field as the child's bound type, declare a named union for a case-dispatched child, give the child no role, or select the child's parts through nested sources",
         retired: false,
     },
     CodeDefinition {
