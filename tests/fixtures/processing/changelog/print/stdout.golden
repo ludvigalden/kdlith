@@ -405,6 +405,13 @@ path=…; pinned "sha256:…" }`, whose pin is optional. kdlith never
   scope, and a miss names the restriction (`under --scope NAME`). A
   malformed name stays `KDLITH-CLI001`; `vet` and `inspect` keep
   `local|complete`.
+- A data verb that fails while reading an entry document that is a
+  schema definition now prints one hint line on stderr after the
+  rendered diagnostics: when no `--schema` was given and one of the
+  entries opens with a root node named `schema`, the hint names the
+  path and asks for it as `--schema <path>`. The hint is plain
+  renderer output — no diagnostic code, and stdout, the diagnostic
+  stream, and the exit code are unchanged.
 
 ### Changed
 
@@ -576,3 +583,17 @@ path=…; pinned "sha256:…" }`, whose pin is optional. kdlith never
   binds its own nested sources when two cases share a child name.
   Before, the child's entries were `KDLITH-BND005` under the matched
   case.
+- A node that dispatches on `cases` and fills a union field through a
+  `child` or `children` source now carries the case selector in the
+  bound part payload when the case-selected type declares a field of
+  that name, so the payload conforms to that type the same way an
+  item's fields do. Before, the dispatched-on property was stripped
+  from every part payload, and a schema that vetted clean produced a
+  typed read whose items failed with `KDLITH-GEN003`.
+- `vet schema` now refuses the same inline-union shape `gen schema`
+  refuses: a `child` or `children` source that feeds an inline union
+  while the feeding node dispatches on `cases` fails definition
+  compile with `KDLITH-SCH020`, which names the inline union spelling
+  and the types the node's cases select. Before, such a schema passed
+  vet and failed only at generation; spelling the union as a named
+  type keeps both paths accepting it.
