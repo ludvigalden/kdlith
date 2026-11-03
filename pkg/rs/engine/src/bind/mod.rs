@@ -1460,16 +1460,56 @@ impl<'d, 's> Binder<'d, 's> {
         }
     }
 
-    /// A case-selected type's required fields, checked as the node's own
-    /// are: one the node holds no value for is missing (`KDLITH-BND004`).
-    /// The record carries the node's fields, so the selected type's
-    /// fallbacks supply nothing.
+    /// A case-selected type's literal fallbacks supply absent values as
+    /// the node's own do: each fills the node's field of that name; one
+    /// only the selected type declares returns as a payload extra.
+    fn apply_selected_fallbacks(
+        &mut self,
+        frame: &mut BindFrame,
+        values: &mut [Option<Value>],
+        typed_as: Option<Sym>,
+    ) -> Vec<(Sym, Value)> {
+        let own = self.def.bindings.get(frame.owner).and_then(|decl| decl.ty);
+        let Some(selected) = typed_as.filter(|selected| Some(*selected) != own) else {
+            return Vec::new();
+        };
+        let Some(object) = self.object_type(selected) else {
+            return Vec::new();
+        };
+        let site = self.location(frame.span);
+        let mut extras = Vec::new();
+        for field in &object.fields {
+            let Some(fallback) = field.fallback.as_ref().and_then(|d| d.literal().cloned()) else {
+                continue;
+            };
+            let at = self.tables.decls[frame.owner.index()]
+                .fields
+                .iter()
+                .position(|info| info.name == field.name);
+            match at {
+                Some(at) if values[at].is_none() => {
+                    values[at] = Some(fallback);
+                    if let Some(trace) = frame.traces.get_mut(at) {
+                        *trace = Trace::derived(Derivation::Default, site, Vec::new());
+                    }
+                }
+                Some(_) => {}
+                None => extras.push((field.name, fallback)),
+            }
+        }
+        extras
+    }
+
+    /// A case-selected type's required fields, checked as the node's
+    /// own are (`KDLITH-BND004`); the selected type's fallbacks have
+    /// already supplied the fields that declare one.
     fn selected_required(
         &mut self,
         cx: &mut Cx<'_>,
         frame: &BindFrame,
         values: &[Option<Value>],
         typed_as: Option<Sym>,
+        extras: &[(Sym, Value)],
     ) {
         let own = self.def.bindings.get(frame.owner).and_then(|decl| decl.ty);
         let Some(selected) = typed_as.filter(|selected| Some(*selected) != own) else {
@@ -1479,7 +1519,9 @@ impl<'d, 's> Binder<'d, 's> {
             return;
         };
         for field in object.fields.iter().filter(|f| !optional(&f.ty)) {
-            if self.held(frame, values, field.name) {
+            if self.held(frame, values, field.name)
+                || extras.iter().any(|(name, _)| *name == field.name)
+            {
                 continue;
             }
             let node = self.name(frame.name);
@@ -2630,6 +2672,7 @@ impl<'d, 's> Binder<'d, 's> {
         role: Role,
         values: Vec<Option<Value>>,
         typed_as: Option<Sym>,
+        extras: &[(Sym, Value)],
     ) {
         let owner = frame.owner;
         let node = cx.node();
@@ -2711,6 +2754,18 @@ impl<'d, 's> Binder<'d, 's> {
             .collect();
         let node_site = self.location(frame.span);
         let node_name = self.name(frame.name);
+        // A field only the case-selected type declares rides the payload
+        // after the node's own fields, carrying the fallback that
+        // supplied it.
+        let mut fields = fields;
+        for (name, value) in extras {
+            fields.push(
+                Field::new(self.name(*name), value.clone(), origin).with_provenance(
+                    Trace::derived(Derivation::Default, node_site, Vec::new()),
+                    false,
+                ),
+            );
+        }
         let item = match role {
             Role::Record => BoundItem::Record(
                 BoundRecord::new(
@@ -2968,7 +3023,12 @@ impl<'d, 's> Binder<'d, 's> {
             Some(_) => None,
             None => typed_as,
         };
-        self.selected_required(cx, frame, &values, binding_type);
+        // A case-selected type's literal fallbacks supply the fields it
+        // declares before its checks read them: each fallback-filled
+        // value rides the matched instance's payload.
+        let mut values = values;
+        let extras = self.apply_selected_fallbacks(frame, &mut values, binding_type);
+        self.selected_required(cx, frame, &values, binding_type, &extras);
         self.selected_off_type(cx, frame, &values, binding_type, selected_on);
         self.constraints(cx, frame, &values, binding_type);
         if self.errors > errors {
@@ -2999,7 +3059,7 @@ impl<'d, 's> Binder<'d, 's> {
                 }
             }
             let errors = self.errors;
-            self.emit(cx, frame, role, values, typed_as);
+            self.emit(cx, frame, role, values, typed_as, &extras);
             // The pending binding follows the item holding its reference;
             // a node rejected while emitting leaves nothing to defer.
             if let Some(pending) = pending.filter(|_| self.errors == errors) {
@@ -3035,7 +3095,13 @@ impl<'d, 's> Binder<'d, 's> {
             .zip(values)
             .filter(|(info, _)| Some(info.name) != stripped)
             .filter_map(|(info, value)| Some(Entry::new(self.name(info.name), value?)))
-            .collect();
+            .collect::<Vec<_>>();
+        // A field only the case-selected type declares rides the part's
+        // payload like an item's, after the fields the node declares.
+        let mut entries = entries;
+        for (name, value) in extras {
+            entries.push(Entry::new(self.name(name), value));
+        }
         let mut value = Value::Map(entries);
         if let Some(variants) = self.union_of(parent.owner, bind) {
             // A union value is spelled by the node naming its variant, or

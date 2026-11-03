@@ -1,0 +1,35 @@
+// A case-selected type's literal fallbacks supply absent values as the
+// node's own do: Rich.tone fills the node's declared field and Rich.badge
+// rides the payload as a field only the selected type declares, while
+// Rich.note — required with no fallback — stays required.
+schema cases version="1" {
+    types {
+        object Prop {
+            field label String
+            field mode "optional<String>"
+            field tone "optional<String>"
+            field note "optional<String>"
+        }
+        object Rich {
+            field label String
+            field mode "optional<String>"
+            field tone String {
+                fallback "flat"
+            }
+            field badge String {
+                fallback "new"
+            }
+            field note String
+        }
+    }
+    node prop role=record type=Prop {
+        field label arg=0
+        field mode property=mode
+        field tone property=tone
+        field note property=note
+        cases {
+            case property=mode equals="rich" type=Rich
+            otherwise type=Prop
+        }
+    }
+}

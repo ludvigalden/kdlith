@@ -31,7 +31,13 @@ A node with a `cases` block binds under the type its first matching
 case selects; that type's required fields are checked like the node's
 own (`KDLITH-BND004`, named `Type.field`), and the selected object
 type is closed (`KDLITH-BND014`, whether the value was written,
-filled by context or fallback, or spliced by an `include`). The case
+filled by context or fallback, or spliced by an `include`). The
+selected type's literal fallbacks supply absent values as the node's
+own do, once the dispatch selects the type: a fallback on a field the
+node declares fills that field, and a field only the selected type
+declares rides the payload with its fallback value; an unmatched or
+`otherwise` instance gets neither, and a required field whose
+selected type declares no fallback stays missing. The case
 selector is dispatch input and is always admitted; a part's payload
 carries it only when the case-selected type declares a field of that
 name. An `identity` block

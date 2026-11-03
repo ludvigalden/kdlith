@@ -128,7 +128,11 @@ value: `case property=NAME equals=V type=TYPE` children evaluated
 top-down, with an optional `otherwise type=TYPE`. A case-selected
 object type binds closed: its required fields are checked as the
 node's own (`KDLITH-BND004`) and a field the selected type does not
-declare is refused (`KDLITH-BND014`).
+declare is refused (`KDLITH-BND014`). Its literal `fallback`s supply
+absent values on the matched instance as the node's own do — a
+fallback on a field the node declares fills it, and a field only the
+selected type declares rides the record with its fallback value —
+while another case's or `otherwise` instance gets neither.
 
 A case body may also carry `field` and `children` binding
 declarations, adding to the node's common ones exactly while that

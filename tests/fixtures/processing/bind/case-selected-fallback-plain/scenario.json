@@ -1,0 +1,22 @@
+{
+  "binary": "kdlith",
+  "description": "A selected type's fallbacks reach only the matched instance: the otherwise arm binds Prop, whose optional tone stays absent and which declares no badge, so the record carries neither fallback value",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/case-selected-fallback/schema.kdl",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"type_name\":\"Prop\",\"fields\":[{\"name\":\"label\",\"value\":{\"kind\":\"string\",\"value\":\"title\"},\"origin\":0},{\"name\":\"mode\",\"value\":{\"kind\":\"string\",\"value\":\"plain\"},\"origin\":0}],\"origin\":0,\"validation\":\"valid\""
+    ],
+    "stdout-not-contains": [
+      "\"item\":\"diagnostic\"",
+      "\"value\":\"flat\"",
+      "\"value\":\"new\""
+    ]
+  }
+}

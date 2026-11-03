@@ -1,0 +1,20 @@
+{
+  "binary": "kdlith",
+  "description": "A selected type's required field without a fallback stays required: mode=rich selects Rich, whose tone and badge fallbacks supply, but note is required with no fallback and omitted, so the node fails KDLITH-BND004 naming Rich.note and no record is emitted",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/case-selected-fallback/schema.kdl",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": [
+      "error[KDLITH-BND004]: prop is missing required Rich.note"
+    ],
+    "stdout-not-contains": [
+      "\"item\":\"record\""
+    ]
+  }
+}

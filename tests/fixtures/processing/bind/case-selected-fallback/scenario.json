@@ -1,0 +1,24 @@
+{
+  "binary": "kdlith",
+  "description": "A case-selected type's literal fallbacks supply absent values as the node's own do: mode=rich selects Rich, whose tone fallback fills the node's declared tone field and whose badge fallback rides the payload as a field only Rich declares, so the record binds valid carrying both",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"type_name\":\"Rich\"",
+      "{\"name\":\"tone\",\"value\":{\"kind\":\"string\",\"value\":\"flat\"}",
+      "{\"name\":\"note\",\"value\":{\"kind\":\"string\",\"value\":\"hello\"}",
+      "{\"name\":\"badge\",\"value\":{\"kind\":\"string\",\"value\":\"new\"}",
+      "\"validation\":\"valid\""
+    ],
+    "stdout-not-contains": [
+      "\"item\":\"diagnostic\""
+    ]
+  }
+}
