@@ -1,0 +1,51 @@
+{
+  "heavy": true,
+  "binary": "kdlith",
+  "kind": "codegen-oracle",
+  "description": "The KDL writer fixture: an exercise crate built against kdlith-parse alone (copied into a scratch workspace from this scenario's committed template; no processor is generated) builds a document through WriteDocument and WriteNode whose names and strings carry every character class the writer must handle, renders it, and reads the text back with the parser. The rendered text is pinned: string values are quoted unless written as identifiers (WriteValue::identifier, bare when the bare spelling reads back as the same string, quoted otherwise) with quote, backslash, newline, and tab escaped and a bidi control and a non-breaking space written as unicode escapes, a name that reads as a number or a keyword or carries a space is quoted, numbers and #true/#false keep their spelling, comments split per line, and an empty block renders braces. The parser's events over that text are pinned too: every node, argument, and property reads back as exactly the value that was written, so a writer that loses a character or writes text the parser reads differently fails. is_bare_string answers which spellings may stand bare",
+  "form": "schema",
+  "entrypoint": "{fx-suite}/processing/bind/context-fed-reference/schema.kdl",
+  "crate": "unused-proc",
+  "steps": [
+    {
+      "compile": {
+        "workspace": "ws",
+        "copy": {
+          "crates": [
+            "diagnostic",
+            "model",
+            "parse"
+          ]
+        },
+        "command": [
+          "cargo",
+          "build",
+          "--offline",
+          "--manifest-path",
+          "ws/rs/exercise/Cargo.toml"
+        ]
+      }
+    },
+    {
+      "exercise": {
+        "command": [
+          "cargo",
+          "run",
+          "--offline",
+          "--quiet",
+          "--manifest-path",
+          "ws/rs/exercise/Cargo.toml"
+        ],
+        "stdout-contains": [
+          "// written by the writer exercise\n// second comment line\nsystem \"ICD10_SE\" kind=classification label=\"needs quotes\" count=3 active=#true retired=#false {\n    name \"sv\" \"Diagnos \\\"A\\\" \\\\ B\"\n    note \"line one\\nline two\\ttab\"\n    // an empty and an odd string follow\n    empty \"\"\n    odd \"bidi\\u{200e}nbsp\\u{a0}end\"\n}\n\"123\" \"true\"=\"x=y\" \"has space\"=\"#z\"\nleaf {\n}\n",
+          "--- events\nnode \"system\"\narg string \"ICD10_SE\"\nprop \"kind\" string \"classification\"\nprop \"label\" string \"needs quotes\"\nprop \"count\" number 3\nprop \"active\" bool true\nprop \"retired\" bool false\nchildren\nnode \"name\"\narg string \"sv\"\narg string \"Diagnos \\\"A\\\" \\\\ B\"\nend\nnode \"note\"\narg string \"line one\\nline two\\ttab\"\nend\nnode \"empty\"\narg string \"\"\nend\nnode \"odd\"\narg string \"bidi\\u{200e}nbsp\\u{a0}end\"\nend\nend\nnode \"123\"\nprop \"true\" string \"x=y\"\nprop \"has space\" string \"#z\"\nend\nnode \"leaf\"\nchildren\nend\n",
+          "--- bare\n\"ICD10_SE\" true\n\"123\" false\n\"-1\" false\n\".5\" false\n\"true\" false\n\"inf\" false\n\"a=b\" false\n\"x y\" false\n\"\" false\n\"Ä\" true\n"
+        ],
+        "stdout-not-contains": [
+          "error ",
+          "other"
+        ]
+      }
+    }
+  ]
+}

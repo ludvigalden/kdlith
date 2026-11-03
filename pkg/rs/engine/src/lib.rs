@@ -76,6 +76,9 @@ pub use kdlith_model::ResolvedContribution;
 /// Deliberate root surface: tools name `Value` through the engine and
 /// the generated crates that re-export it, never through `__private`.
 pub use kdlith_model::{Asset, SourceKind, SourceOverride, SourceSet, SourceUse, Value};
+/// The KDL writer: tools emitting documents name it through the engine
+/// and the generated crates that re-export it.
+pub use kdlith_parse::{WriteDocument, WriteNode, WriteValue};
 pub use kdlith_runtime::{
     CacheEntry, CacheScan, CleanOutcome, Derivation, EncodedEntry, EntryClass, EntryFault,
     OwnedEntry, SnapshotEntry, SnapshotMeta, SnapshotRecord, WriteOutcome, cache_key,
