@@ -412,6 +412,15 @@ path=…; pinned "sha256:…" }`, whose pin is optional. kdlith never
   path and asks for it as `--schema <path>`. The hint is plain
   renderer output — no diagnostic code, and stdout, the diagnostic
   stream, and the exit code are unchanged.
+- A `from-kind` value binding may name the field its choice payload
+  checks: `against target=<field> member=<field> choices=<field>`.
+  The named field of the resolved declaration's type holds the choice
+  set, so one declaration type can host two choice-checked payload
+  families, each under its own field; an omitted `choices` keeps the
+  default `choices` field. A named field the target type does not
+  declare fails definition compile, and a payload outside the named
+  set fails `KDLITH-REF005` at link. This changes the canonical
+  dialect digest.
 
 ### Changed
 

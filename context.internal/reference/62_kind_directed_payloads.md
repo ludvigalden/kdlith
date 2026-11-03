@@ -23,6 +23,15 @@ node put role=contribution {
 }
 ```
 
+A `choice` set may name its own field: `against target=FIELD
+member=FIELD choices=FIELD` reads the set from that field of the
+resolved declaration instead of `choices`, so one declaration type can
+host two choice-checked payload families, each under its own field (a
+keyword knob's values under `choices`, its override kinds under
+`allows`). An omitted `choices` keeps the default field, and a named
+field the referenced object type does not declare is `KDLITH-DLC005`
+at definition compile.
+
 The shape is only known once the reference resolves, so the binder
 always defers a `from-kind` payload to a pending typed-binding item,
 even when the member's declared type is known. Under complete scope,
@@ -34,20 +43,20 @@ maps it:
 | `flag`              | one `Bool`                                                              |
 | `number`            | one `U64`                                                               |
 | `text`              | one `String`                                                            |
-| `choice`            | one scalar equal to one value of the same declaration's bound `choices` |
+| `choice`            | one scalar equal to one value of the declaration's choice set: the bound `choices` field, or the field the against block names |
 | no value or `#null` | nothing fits: `KDLITH-REF005`, naming the member                        |
 | any other value     | nothing fits: `KDLITH-REF005`, naming the kind the codec does not bind  |
 
 A scalar arm takes exactly one value and never promotes it to a list.
 Choice equality compares spellings, as case dispatch does; a `choice`
-declaration with no bound `choices` admits nothing. A payload outside
-the selected shape is `KDLITH-REF005`, its expected value the
+declaration with no bound set admits nothing. A payload outside the
+selected shape is `KDLITH-REF005`, its expected value the
 selected type or, for a choice, the rendered choices. The map is
 exhaustive, so a kind it does not name fails closed rather than
 admitting the payload unchecked. An unresolved reference still
 reports its link failure alone and leaves the payload unvalidated.
 
 The binding's shape is checked when the definition compiles, for
-every codec: an against target whose field type is not `ref<T>`, and
-a member the referenced object type does not declare, are each
-`KDLITH-DLC005`.
+every codec: an against target whose field type is not `ref<T>`, a
+member the referenced object type does not declare, and a named
+choices field that type does not declare, are each `KDLITH-DLC005`.

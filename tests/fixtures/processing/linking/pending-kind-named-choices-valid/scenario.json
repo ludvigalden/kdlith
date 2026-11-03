@@ -1,0 +1,22 @@
+{
+  "binary": "kdlith",
+  "description": "An override whose against block names the knob's allows field as its choice set links clean under complete scope: the payload is one of the named field's values, not one of the keyword values the same knob binds under choices",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "{fx-suite}/processing/linking/pending-kind-named-choices-schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "\"item\":\"pending-binding\"",
+      "\"name\":[\"card\",\"color\"]",
+      "\"raw\":{\"kind\":\"string\",\"value\":\"reset\"}",
+      "\"item\":\"scope-complete\""
+    ]
+  }
+}

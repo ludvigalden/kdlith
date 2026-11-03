@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A keyword value the knob binds under choices fails closed when the against block names allows as its choice set: the payload is not one of the named field's values, so the from-kind check fails KDLITH-REF005 instead of passing a keyword as an override kind",
+  "args": [
+    "vet",
+    "data",
+    "--scope",
+    "complete",
+    "--schema",
+    "{fx-suite}/processing/linking/pending-kind-named-choices-schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

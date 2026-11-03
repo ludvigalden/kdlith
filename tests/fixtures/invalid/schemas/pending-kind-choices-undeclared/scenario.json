@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "A from-kind binding whose against block names a choices field the referenced object type does not declare has no field to read its choice set from, so the definition fails closed with KDLITH-DLC005 when it compiles",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

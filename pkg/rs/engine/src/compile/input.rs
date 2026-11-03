@@ -127,6 +127,9 @@ pub struct CaptureInput {
 pub struct DependentInput {
     pub target: String,
     pub member: String,
+    /// The field holding the choice set a `from-kind` payload checks;
+    /// `None` means the default `choices` field.
+    pub choices: Option<String>,
     pub codec: String,
 }
 

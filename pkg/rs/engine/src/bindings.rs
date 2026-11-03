@@ -211,6 +211,9 @@ pub struct DependentBinding {
     /// The field of the referenced declaration's type holding the
     /// expected payload type.
     pub member: Sym,
+    /// The field of the referenced declaration's type holding the
+    /// choice set a `from-kind` payload checks; absent means `choices`.
+    pub choices: Option<Sym>,
     /// The registered binding codec that binds the payload.
     pub codec: BindingCodec,
     pub site: Site,

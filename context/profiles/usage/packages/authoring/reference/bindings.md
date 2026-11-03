@@ -205,6 +205,13 @@ the binder emits a pending typed-binding item carrying the payload
 raw; linking validates it against the resolved declaration's member
 type (`KDLITH-REF005`).
 
+A `from-kind` binding whose kind selects a choice set may name the
+field holding it — `against target=FIELD member=FIELD choices=FIELD`
+— so one declaration type can host two choice-checked payload
+families, each under its own field; an omitted `choices` keeps the
+default `choices` field, and a named field the referenced type does
+not declare fails definition compile.
+
 Under `from-type-name` the member holds a type name as a string, and
 the payload binds under the declared type that string names: a bare
 name resolves to the declared type it spells, and a `list<T>` or

@@ -674,6 +674,10 @@ fn node_input(node: NodeDef) -> NodeInput {
     let value = node.value.map(|value| DependentInput {
         target: value.against.target.as_str().to_owned(),
         member: value.against.member.as_str().to_owned(),
+        choices: value
+            .against
+            .choices
+            .map(|choices| choices.as_str().to_owned()),
         codec: value.codec.member().to_owned(),
     });
     let value_from_path = node.value_from_path.map(|binding| PathValueInput {

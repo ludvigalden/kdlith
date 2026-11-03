@@ -1,0 +1,62 @@
+// The from-kind schema whose choice set names its own field: a knob
+// keeps its keyword values under `choices` and its override kinds under
+// `allows`, and the override family checks its payload against the
+// field its against block names instead of the default `choices`.
+schema pending-kind-named-choices version="1" {
+    types {
+        object Knob {
+            field owner String
+            field name String
+            field policy String {
+                fallback "choice"
+            }
+            field choices "optional<list<String>>"
+            field allows "optional<list<String>>"
+        }
+        codec QualifiedName output=String {
+            match #"(?<owner>[a-z]+):(?<name>[a-z]+)"#
+            capture owner String
+            capture name String
+        }
+    }
+    context {
+        slot namespace String duplicates=last-wins
+    }
+    node component role=context-control {
+        field value String arg=0
+        effects target=children {
+            set namespace field=value
+        }
+        children knob
+        children override
+    }
+    node knob role=declaration type=Knob parent=component {
+        field name arg=0
+        field owner context=namespace
+        field choices {
+            from {
+                child values {
+                    args
+                }
+            }
+        }
+        field allows {
+            from {
+                child allows {
+                    args
+                }
+            }
+        }
+        identity {
+            domain knobs
+            compose qualified-name owner name
+        }
+    }
+    node override role=contribution parent=component {
+        field target KnobRef arg=0
+        value codec=from-kind {
+            against target=target member=policy choices=allows
+        }
+    }
+    reference KnobRef target=Knob codec=QualifiedName lookup=knobs qualification=explicit
+}

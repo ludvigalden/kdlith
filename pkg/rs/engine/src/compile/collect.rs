@@ -923,9 +923,20 @@ fn dependent(cx: &mut Cx<'_>, site: Site, input: &DependentInput) -> Option<Depe
             return None;
         }
     }
+    if let Some(spelled) = &input.choices {
+        if !field_name(spelled) {
+            let found = format!("string {spelled:?}");
+            cx.mistyped(site, "choices field", "FieldName", &found);
+            return None;
+        }
+    }
     Some(DependentBinding {
         target: cx.names.intern(&input.target),
         member: cx.names.intern(&input.member),
+        choices: input
+            .choices
+            .as_deref()
+            .map(|spelled| cx.names.intern(spelled)),
         codec,
         site,
     })

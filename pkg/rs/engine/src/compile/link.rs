@@ -679,10 +679,22 @@ fn dependent(
         &decl.kind,
         TypeKind::Object(object) if object.fields.iter().any(|f| f.name == value.member)
     );
+    let declares_choices = value.choices.is_some_and(|choices| {
+        matches!(
+            &decl.kind,
+            TypeKind::Object(object) if object.fields.iter().any(|f| f.name == choices)
+        )
+    });
     if !declares {
         let member = cx.names.resolve(value.member).to_owned();
         let ty = cx.names.resolve(target).to_owned();
         let reason = format!("the member field {member} is not declared by type {ty}");
+        cx.malformed(value.site, &construct, &reason);
+    }
+    if let Some(choices) = value.choices.filter(|_| !declares_choices) {
+        let spelled = cx.names.resolve(choices).to_owned();
+        let ty = cx.names.resolve(target).to_owned();
+        let reason = format!("the choices field {spelled} is not declared by type {ty}");
         cx.malformed(value.site, &construct, &reason);
     }
 }

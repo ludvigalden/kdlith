@@ -1806,11 +1806,13 @@ impl<'d, 's> Binder<'d, 's> {
         };
         let node = cx.node();
         let field = self.name(dep.target);
-        PendingBinding::new(node, field, against.clone(), raw, OriginId(node.index)).with_dependent(
-            self.name(frame.name),
-            self.name(dep.member),
-            dep.codec.name(),
-        )
+        PendingBinding::new(node, field, against.clone(), raw, OriginId(node.index))
+            .with_dependent(
+                self.name(frame.name),
+                self.name(dep.member),
+                dep.codec.name(),
+            )
+            .with_choices(dep.choices.map(|choices| self.name(choices)))
     }
 
     /// Bind a value-from-path node's payload: the case-selected subject

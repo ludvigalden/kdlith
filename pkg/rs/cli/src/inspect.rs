@@ -392,11 +392,17 @@ fn plan_lines(def: &Definition) -> Vec<serde_json::Value> {
                 "policy": read.policy.map(policy_name),
             })).collect::<Vec<_>>(),
             "deferred": node.deferred.iter().map(|d| names.deferred(d)).collect::<Vec<_>>(),
-            "dependent": node.dependent.as_ref().map(|dep| json!({
-                "target": n.resolve(dep.target),
-                "member": n.resolve(dep.member),
-                "codec": dep.codec.name(),
-            })),
+            "dependent": node.dependent.as_ref().map(|dep| {
+                let mut value = json!({
+                    "target": n.resolve(dep.target),
+                    "member": n.resolve(dep.member),
+                    "codec": dep.codec.name(),
+                });
+                if let Some(choices) = dep.choices {
+                    value["choices"] = json!(n.resolve(choices));
+                }
+                value
+            }),
             "value-from-path": node.path_value.as_ref().map(|binding| json!({
                 "field": n.resolve(binding.field),
             })),

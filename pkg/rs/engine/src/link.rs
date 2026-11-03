@@ -655,7 +655,9 @@ fn payload_fits(
 
 /// Whether a `from-kind` payload fits the shape its declaration's
 /// member value selects: flag Bool, number U64, text String, choice one
-/// of its bound `choices`. Any other or missing kind fits no shape.
+/// of the set held in the field the binding names, or the declaration's
+/// `choices` when it names none. Any other or missing kind fits no
+/// shape.
 fn kind_fits(
     decoder: &Decoder,
     definition: &Definition,
@@ -685,7 +687,10 @@ fn kind_fits(
         "flag" => Builtin::Bool,
         "number" => Builtin::U64,
         "text" => Builtin::String,
-        "choice" => return choice_fits(bound("choices").map(|field| &field.value), pending),
+        "choice" => {
+            let set = pending.choices.as_deref().unwrap_or("choices");
+            return choice_fits(bound(set).map(|field| &field.value), pending);
+        }
         _ => {
             let found = format!("kind {kind} is not a kind the codec binds");
             return Err((member.to_owned(), found));

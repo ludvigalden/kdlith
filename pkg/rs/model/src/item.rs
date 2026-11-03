@@ -197,6 +197,11 @@ pub struct PendingBinding {
     /// expected payload type; not part of the item's serialized form.
     #[serde(skip)]
     pub member: String,
+    /// The field of the referenced declaration's type holding the
+    /// choice set a `from-kind` payload checks, when the binding names
+    /// one; not part of the item's serialized form.
+    #[serde(skip)]
+    pub choices: Option<String>,
     /// The binding codec the payload awaits; not part of the item's
     /// serialized form.
     #[serde(skip)]
@@ -417,6 +422,7 @@ impl PendingBinding {
             origin,
             node_name: String::new(),
             member: String::new(),
+            choices: None,
             codec: String::new(),
         }
     }
@@ -432,6 +438,14 @@ impl PendingBinding {
         self.node_name = node_name.into();
         self.member = member.into();
         self.codec = codec.into();
+        self
+    }
+
+    /// The field of the referenced declaration's type holding the
+    /// choice set a `from-kind` payload checks, when the binding names
+    /// one instead of the default `choices`.
+    pub fn with_choices(mut self, choices: Option<impl Into<String>>) -> Self {
+        self.choices = choices.map(Into::into);
         self
     }
 }

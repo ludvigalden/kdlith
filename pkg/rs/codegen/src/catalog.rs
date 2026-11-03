@@ -36,7 +36,8 @@ pub(crate) fn type_doc(name: &str) -> Option<&'static [&'static str]> {
         ],
         "DependentTarget" => &[
             "The field of the same node holding the reference, and the field of",
-            "the referenced declaration's type holding the expected payload type.",
+            "the referenced declaration's type holding the expected payload type;",
+            "a from-kind binding may name the field holding its choice set.",
         ],
         "BindingCodec" => &[
             "The registered binding codecs a dependent value may name; an unknown",

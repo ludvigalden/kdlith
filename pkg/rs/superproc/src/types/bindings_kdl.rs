@@ -96,10 +96,12 @@ object_type! {
 
 object_type! {
     /// The field of the same node holding the reference, and the field of
-    /// the referenced declaration's type holding the expected payload type.
+    /// the referenced declaration's type holding the expected payload type;
+    /// a from-kind binding may name the field holding its choice set.
     pub struct DependentTarget {
         "target" => target: FieldName,
         "member" => member: FieldName,
+        "choices" => choices: Option<FieldName>,
     }
 }
 

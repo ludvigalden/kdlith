@@ -344,8 +344,14 @@ fn node_line(n: &Names, node: &NodeDecl) -> String {
     let value = node.value.as_ref().map_or_else(
         || "-".to_owned(),
         |value| {
+            // A named choice set is written only when the binding names
+            // one, so every digest of a definition using the default
+            // stays unchanged.
+            let choices = value.choices.map_or_else(String::new, |choices| {
+                format!(" choices {}", n.resolve(choices))
+            });
             format!(
-                "against {} {} codec {}",
+                "against {} {}{choices} codec {}",
                 n.resolve(value.target),
                 n.resolve(value.member),
                 value.codec.name()

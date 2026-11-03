@@ -679,7 +679,7 @@ fn value_block(
             None
         }
     });
-    let mut against: Option<(String, String)> = None;
+    let mut against: Option<(String, String, Option<String>)> = None;
     let mut seen = None;
     for child in &node.children {
         let child_site = Site::new(doc, child.span);
@@ -693,9 +693,10 @@ fn value_block(
         let mut part = Construct::new(cx, doc, child);
         let target = part.string_prop(cx, "target");
         let member = part.string_prop(cx, "member");
+        let choices = part.string_prop(cx, "choices");
         part.finish_leaf(cx);
         against = match (target, member) {
-            (Some(target), Some(member)) => Some((target, member)),
+            (Some(target), Some(member)) => Some((target, member, choices)),
             _ => {
                 cx.missing(child_site, "against", "target and member");
                 None
@@ -703,7 +704,7 @@ fn value_block(
         };
     }
     let codec = codec?;
-    let Some((target, member)) = against else {
+    let Some((target, member, choices)) = against else {
         cx.missing(site, owner, "against");
         return None;
     };
@@ -714,9 +715,17 @@ fn value_block(
             return None;
         }
     }
+    if let Some(spelled) = &choices {
+        if !crate::compile::types::field_name(spelled) {
+            let found = format!("string {spelled:?}");
+            cx.mistyped(site, "choices field", "FieldName", &found);
+            return None;
+        }
+    }
     Some(DependentBinding {
         target: cx.names.intern(&target),
         member: cx.names.intern(&member),
+        choices: choices.as_deref().map(|spelled| cx.names.intern(spelled)),
         codec,
         site,
     })

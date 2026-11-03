@@ -1,0 +1,7 @@
+component card {
+    knob color {
+        values calm loud
+        allows override reset
+    }
+    override card:color loud
+}
