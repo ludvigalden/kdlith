@@ -1,0 +1,5 @@
+room "attic"
+shelf "fiction"
+spot "fiction"
+defaults shelf="drama"
+book "Dune"

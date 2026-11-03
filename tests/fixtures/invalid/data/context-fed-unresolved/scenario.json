@@ -1,0 +1,20 @@
+{
+  "binary": "kdlith",
+  "description": "A context-fed reference links like a written one: the shelf slot holds drama, which decodes through ShelfName but names no shelf, so the reference Book.shelf holds is KDLITH-REF001 at the book under complete scope, as are the one Book.tags holds and the one Book.placed holds under context attic",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/context-fed-reference/schema.kdl",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": [
+      "error[KDLITH-REF001]: reference drama in shelves held by book.shelf does not resolve",
+      "error[KDLITH-REF001]: reference drama in shelves held by book.tags does not resolve",
+      "error[KDLITH-REF001]: reference drama in placed held by book.placed does not resolve",
+      "--> input.kdl:5:1"
+    ]
+  }
+}

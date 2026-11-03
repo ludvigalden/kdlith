@@ -1,0 +1,35 @@
+{
+  "heavy": true,
+  "binary": "kdlith",
+  "kind": "codegen-oracle",
+  "description": "The context-fed reference generation fixture: gen schema generates the committed processing/bind/context-fed-reference schema, whose ShelfRef and PlacedRef fields take their value from a String-typed context slot when the book writes none, twice into two scratch trees the harness requires byte-identical; the generated crate compiles inside a scratch workspace materialized from this scenario's committed template, and the compiled processor collects the committed data document as a reading linked under complete scope through its own typed reader. Before the binder decoded context-fed values through the field's type, the typed handlers rejected every such book as KDLITH-GEN003 and dropped it; now both books read, the context-fed shelf and the one-element tags list resolve to the fiction shelf, the explicit shelf property still wins on the second book, and the contextual placed reference carries the room it was bound under (Ref::context) and resolves to that room's spot, with no diagnostic",
+  "form": "schema",
+  "entrypoint": "{fx-suite}/processing/bind/context-fed-reference/schema.kdl",
+  "crate": "shelf-proc",
+  "steps": [
+    { "generate": "ws/rs/shelf-proc" },
+    { "generate": "gen-again" },
+    { "determinism": ["ws/rs/shelf-proc", "gen-again"] },
+    {
+      "compile": {
+        "workspace": "ws",
+        "copy": {
+          "crates": ["diagnostic", "engine", "model", "parse", "runtime", "superproc"]
+        },
+        "command": ["cargo", "build", "--offline", "--manifest-path", "ws/rs/shelf-proc/Cargo.toml"]
+      }
+    },
+    {
+      "exercise": {
+        "command": ["cargo", "run", "--offline", "--quiet", "--manifest-path", "ws/rs/exercise/Cargo.toml", "--", "processing/bind/context-fed-reference/schema.kdl", "processing/bind/context-fed-reference/input.kdl"],
+        "stdout-contains": [
+          "schema ok digest=362829ae25d7ccd8\n",
+          "read failed=false books=2 diagnostics=0\n",
+          "book Dune shelf=fiction->fiction tags=[fiction->fiction] placed=fiction context=attic -> attic.fiction\n",
+          "book Odes shelf=poetry->poetry tags=[fiction->fiction] placed=fiction context=attic -> attic.fiction\n"
+        ],
+        "stdout-not-contains": ["diag "]
+      }
+    }
+  ]
+}

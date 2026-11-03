@@ -77,7 +77,14 @@ caller's context; a late effect never changes nodes already bound.
 
 A field may read a slot (`context=SLOT` or a `context` source) under
 policy `fallback` (supplies the field only when no explicit value is
-present) or `fixed` (an explicit value must agree).
+present) or `fixed` (an explicit value must agree). A value the slot
+feeds decodes against the field's own type at the bound node, as an
+explicit value does: a reference-typed field fed a string holds a
+reference decoded through its codec (qualified, for a contextual
+reference type, from the context in effect at the node), a `list<T>`
+field fed one `T` holds it as its one element, and a value the field's
+type rejects is `KDLITH-BND003` there. A literal `fallback` default
+decodes the same way.
 
 A layered slot lists its layers highest precedence first
 (`layers user base`); every `set` on it names one

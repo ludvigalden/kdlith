@@ -296,13 +296,35 @@ pub struct Reading<T> {
     report: Option<LinkReport>,
     diagnostics: Vec<DiagnosticRecord>,
     failed: bool,
-    /// Each linked reference's link, by the site it was written at: a
-    /// site is one token of one document, so it names one reference.
-    sites: HashMap<Location, (usize, usize)>,
+    /// Each linked reference's link, by its site and what it names:
+    /// references a slot or fallback feeds share their node's site, so
+    /// the site alone does not tell them apart.
+    sites: HashMap<LinkKey, (usize, usize)>,
     /// Each typed declaration's item, by node.
     declarations: HashMap<NodeId, usize>,
     /// The source set the reading resolved its assets against.
     assets: Option<AssetSet>,
+}
+
+/// What names one linked reference of a reading: where it was bound,
+/// and the domain, name segments, and qualifiers it looks up.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+struct LinkKey {
+    site: Location,
+    domain: String,
+    name: Vec<String>,
+    qualifiers: Vec<(String, String)>,
+}
+
+impl LinkKey {
+    fn new(site: Location, domain: &str, name: &[String], qualifiers: &[(String, String)]) -> Self {
+        Self {
+            site,
+            domain: domain.to_owned(),
+            name: name.to_vec(),
+            qualifiers: qualifiers.to_vec(),
+        }
+    }
 }
 
 impl<T> Reading<T> {
@@ -332,7 +354,13 @@ impl<T> Reading<T> {
             diagnostics.extend(report.diagnostics.iter().cloned());
             for (kind, entry) in report.types.iter().enumerate() {
                 for (at, link) in entry.links.iter().enumerate() {
-                    sites.entry(link.reference.site).or_insert((kind, at));
+                    let key = LinkKey::new(
+                        link.reference.site,
+                        &link.reference.domain,
+                        &link.reference.name.0,
+                        &link.reference.qualifiers,
+                    );
+                    sites.entry(key).or_insert((kind, at));
                 }
             }
         }
@@ -421,11 +449,17 @@ impl<T> Reading<T> {
     }
 
     /// The link the reading's link stage made for `reference`, found by
-    /// the site it was written at. Its `gated` lists the namespace
+    /// the site it was bound at and what it names. Its `gated` lists the
     /// namespaces that hid a match; `resolve` reports them only on
     /// failure, so a resolved reference's gate list is read here.
     pub fn link_of<V>(&self, reference: &Ref<V>) -> Option<&Link> {
-        let (kind, at) = *self.sites.get(&reference.site())?;
+        let key = LinkKey::new(
+            reference.site(),
+            reference.domain(),
+            reference.name(),
+            reference.qualifiers(),
+        );
+        let (kind, at) = *self.sites.get(&key)?;
         self.report.as_ref()?.types.get(kind)?.links.get(at)
     }
 

@@ -1,0 +1,26 @@
+{
+  "binary": "kdlith",
+  "description": "A value a context slot feeds a field decodes against the field's own type, as an explicit supply does: the String-typed shelf slot set by defaults feeds Book.shelf (optional<ShelfRef>) a reference in the shelves domain decoded through its codec, feeds Book.tags (list<ShelfRef>) a one-element list holding that reference, and feeds Book.placed (a PlacedRef whose qualification may come from context) a reference carrying the namespace slot's value attic as its context, so it links to the spot attic declares; an explicit shelf property still wins over the slot, and the reading links clean under complete scope",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"name\":\"title\",\"value\":{\"kind\":\"string\",\"value\":\"Dune\"},\"origin\":5},{\"name\":\"shelf\",\"value\":{\"kind\":\"reference\",\"value\":{\"domain\":\"shelves\",\"name\":[\"fiction\"],\"qualifiers\":[],\"written\":\"fiction\"",
+      "{\"name\":\"tags\",\"value\":{\"kind\":\"list\",\"value\":[{\"kind\":\"reference\",\"value\":{\"domain\":\"shelves\",\"name\":[\"fiction\"],\"qualifiers\":[],\"written\":\"fiction\"",
+      "{\"name\":\"placed\",\"value\":{\"kind\":\"reference\",\"value\":{\"domain\":\"placed\",\"name\":[\"fiction\"],\"qualifiers\":[],\"written\":\"fiction\"",
+      "\"context\":\"attic\"",
+      "{\"name\":\"title\",\"value\":{\"kind\":\"string\",\"value\":\"Odes\"},\"origin\":6},{\"name\":\"shelf\",\"value\":{\"kind\":\"reference\",\"value\":{\"domain\":\"shelves\",\"name\":[\"poetry\"],\"qualifiers\":[],\"written\":\"poetry\""
+    ],
+    "stdout-not-contains": [
+      "\"item\":\"diagnostic\"",
+      "{\"name\":\"shelf\",\"value\":{\"kind\":\"string\"",
+      "{\"name\":\"tags\",\"value\":{\"kind\":\"string\""
+    ]
+  }
+}

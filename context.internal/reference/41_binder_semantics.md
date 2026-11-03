@@ -69,7 +69,17 @@ the selected type does not declare is not emitted.
 ## Context, items, stream order
 
 A context-bound field takes the slot's value only under `fallback`;
-under `fixed` an explicit value must agree. Effects follow the
+under `fixed` an explicit value must agree. A slot's value, like a
+literal fallback, is decoded against the receiving field's type at the
+bound node (`fed` in `bind/mod.rs`): the slot's own type admitted it,
+but the field's codec, reference type, or list shape has not seen it.
+A reference-typed field holds a reference decoded through its codec,
+its site the bound node and its context the qualifier slot in effect
+there; a `list<T>` field fed one `T` holds a one-element list; a value
+the field's type rejects is `KDLITH-BND003` and the node is not
+emitted. Fed references link like written ones. Because several fed
+references share one node's site, a typed `Reading` keys its links by
+site plus domain, name, and qualifiers. Effects follow the
 declared timing, and a node that fails applies no following effects.
 
 A bound node yields the item its role names; every diagnostic is an

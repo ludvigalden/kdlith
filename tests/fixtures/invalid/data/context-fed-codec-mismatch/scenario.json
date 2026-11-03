@@ -1,0 +1,21 @@
+{
+  "binary": "kdlith",
+  "description": "A context-fed value the receiving field's codec rejects is a type mismatch at the bound node, as an explicit supply is: the shelf slot holds Fiction, which ShelfName does not match, so Book.shelf fails KDLITH-BND003 at the book and no record is emitted; the slot's own String type admitted the value, so only the field's decode catches it",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/context-fed-reference/schema.kdl",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": [
+      "error[KDLITH-BND003]: book.shelf expects optional<ShelfRef>, found string \"Fiction\"",
+      "--> input.kdl:4:1"
+    ],
+    "stdout-not-contains": [
+      "\"item\":\"record\""
+    ]
+  }
+}

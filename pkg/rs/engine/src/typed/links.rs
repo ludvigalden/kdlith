@@ -17,6 +17,7 @@ pub struct Ref<T> {
     name: Vec<String>,
     written: String,
     qualifiers: Vec<(String, String)>,
+    context: Option<Box<str>>,
     site: Location,
     target: PhantomData<fn() -> T>,
 }
@@ -42,6 +43,13 @@ impl<T> Ref<T> {
         &self.qualifiers
     }
 
+    /// The qualifier context in effect where the reference was bound,
+    /// for a type whose qualification may come from context; `None`
+    /// for an explicitly qualified type.
+    pub fn context(&self) -> Option<&str> {
+        self.context.as_deref()
+    }
+
     /// Where the reference was written.
     pub fn site(&self) -> Location {
         self.site
@@ -55,6 +63,7 @@ impl<T> Clone for Ref<T> {
             name: self.name.clone(),
             written: self.written.clone(),
             qualifiers: self.qualifiers.clone(),
+            context: self.context.clone(),
             site: self.site,
             target: PhantomData,
         }
@@ -68,6 +77,7 @@ impl<T> fmt::Debug for Ref<T> {
             .field("name", &self.name)
             .field("written", &self.written)
             .field("qualifiers", &self.qualifiers)
+            .field("context", &self.context)
             .field("site", &self.site)
             .finish()
     }
@@ -79,6 +89,7 @@ impl<T> PartialEq for Ref<T> {
             && self.name == other.name
             && self.written == other.written
             && self.qualifiers == other.qualifiers
+            && self.context == other.context
             && self.site == other.site
     }
 }
@@ -95,6 +106,7 @@ impl<T> Ord for Ref<T> {
             .then_with(|| self.name.cmp(&other.name))
             .then_with(|| self.written.cmp(&other.written))
             .then_with(|| self.qualifiers.cmp(&other.qualifiers))
+            .then_with(|| self.context.cmp(&other.context))
             .then_with(|| site_key(self.site).cmp(&site_key(other.site)))
     }
 }
@@ -127,6 +139,7 @@ pub fn reference_value<T>(value: &Value, domain: &str) -> Result<Ref<T>, Mismatc
             name: reference.name.0.clone(),
             written: reference.written.clone(),
             qualifiers: reference.qualifiers.clone(),
+            context: reference.context.clone(),
             site: reference.site,
             target: PhantomData,
         }),

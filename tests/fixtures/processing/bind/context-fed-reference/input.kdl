@@ -1,0 +1,7 @@
+room "attic"
+shelf "fiction"
+shelf "poetry"
+spot "fiction"
+defaults shelf="fiction"
+book "Dune"
+book "Odes" shelf="poetry"

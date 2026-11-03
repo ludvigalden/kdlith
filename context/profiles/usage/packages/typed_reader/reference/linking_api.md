@@ -25,3 +25,13 @@ outcome and the namespaces that hid a match — never a default value.
 
 A generated reference type holds its reference as `.0`, so
 `reading.resolve(&record.target.0)` resolves a record's field.
+
+A reference carries what it was bound with: `written()` (the spelling),
+`name()` and `qualifiers()` (the codec's segments and captured
+qualifiers), `site()`, and `context()` — for a reference type whose
+qualification may come from context, the qualifier value in effect
+where it was bound (the system a bare code resolves under), `None`
+otherwise. A reference a context slot or a literal fallback fed is
+bound at the node it fed, so several can share one site; `resolve`
+and `link_of` tell them apart by site together with domain, name, and
+qualifiers.

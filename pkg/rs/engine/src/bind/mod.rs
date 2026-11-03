@@ -737,6 +737,43 @@ impl<'d, 's> Binder<'d, 's> {
             .is_some_and(|sensitivity| self.policy_for(sensitivity) != OutputPolicy::Emit)
     }
 
+    /// Decode a context- or fallback-fed value against field `at`'s own
+    /// type, as an explicit supply is; a `list<T>` field fed one `T`
+    /// holds it as its one element.
+    fn fed(
+        &mut self,
+        cx: &mut Cx<'_>,
+        owner: NodeDeclId,
+        at: usize,
+        info: &FieldInfo,
+        value: Value,
+        span: ByteSpan,
+    ) -> Option<Value> {
+        let Some(ty) = info.ty.clone() else {
+            return Some(value);
+        };
+        let what = self.field_label(owner, at);
+        let how = CheckAs {
+            conceal: self.conceals(owner, at),
+            qualify: info.qualify,
+        };
+        let mut bare = &ty;
+        while let TypeExpr::Optional(inner) | TypeExpr::Nullable(inner) = bare {
+            bare = inner;
+        }
+        match (bare, &value) {
+            (TypeExpr::List(_), Value::List(_)) => {
+                self.check_as(cx, Some(ty), &what, value, span, how)
+            }
+            (TypeExpr::List(inner), _) => {
+                let inner = Some(inner.as_ref().clone());
+                self.check_as(cx, inner, &what, value, span, how)
+                    .map(|element| Value::List(vec![element]))
+            }
+            _ => self.check_as(cx, Some(ty), &what, value, span, how),
+        }
+    }
+
     /// Decode one scalar of a node's syntax and hand it to its field.
     fn take(
         &mut self,
@@ -908,10 +945,20 @@ impl<'d, 's> Binder<'d, 's> {
                         continue;
                     }
                     match held {
-                        Some(held) => (
-                            Some(held.value),
-                            Trace::derived(Derivation::Context, site, vec![held.trace]),
-                        ),
+                        Some(held) => {
+                            match self.fed(cx, owner, at, &info, held.value, frame.span) {
+                                Some(value) => (
+                                    Some(value),
+                                    Trace::derived(Derivation::Context, site, vec![held.trace]),
+                                ),
+                                None => {
+                                    frame.rejected.push(at);
+                                    values.push(None);
+                                    traces.push(Trace::default());
+                                    continue;
+                                }
+                            }
+                        }
                         None => (None, Trace::default()),
                     }
                 }
@@ -951,10 +998,21 @@ impl<'d, 's> Binder<'d, 's> {
                 }
             }
             let mut resolved = None;
-            let value = match value
-                .or_else(|| derived.as_ref().map(|(value, _)| value.clone()))
-                .or(info.fallback.clone())
-            {
+            let value = value.or_else(|| derived.as_ref().map(|(value, _)| value.clone()));
+            let value = match value {
+                Some(value) => Some(value),
+                None => match info.fallback.clone() {
+                    Some(fallback) => {
+                        let fed = self.fed(cx, owner, at, &info, fallback, frame.span);
+                        if fed.is_none() {
+                            frame.rejected.push(at);
+                        }
+                        fed
+                    }
+                    None => None,
+                },
+            };
+            let value = match value {
                 Some(value) => Some(value),
                 None => match self.resolve_value(cx, frame, at, &info) {
                     Resolution::Resolved(value, origin) => {
