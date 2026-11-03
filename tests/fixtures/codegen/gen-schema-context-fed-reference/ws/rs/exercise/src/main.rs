@@ -5,15 +5,18 @@
 //! fields hold — a context-fed one, a one-element list fed one value, a
 //! contextual one carrying the context it was bound under — and what
 //! each resolves to through the reading. No book is dropped for a
-//! context-fed value. Every name the exercise spells comes from the
-//! generated crate alone.
+//! context-fed value. It then builds a document through the KDL writer
+//! the generated crate re-exports, renders it, and reads the text back
+//! with the parser, printing every event, so a writer that loses a
+//! character or writes text the parser reads differently fails.
 
 use std::path::PathBuf;
 
 use shelf_proc::types::{Book, Shelf, Spot};
+use kdlith_parse::{Event, Parser, Value, is_bare_string};
 use shelf_proc::{
-    CheckScope, DiagnosticRecord, Extensions, ItemVariant, Reading, Ref, Resolved, TypedItem, load,
-    reader,
+    CheckScope, DiagnosticRecord, Extensions, ItemVariant, Reading, Ref, Resolved, TypedItem,
+    WriteDocument, WriteNode, WriteValue, load, reader,
 };
 
 fn main() {
@@ -83,6 +86,67 @@ fn main() {
             book.title,
             tags.join(",")
         );
+    }
+    writer_roundtrip();
+}
+
+/// Render a document through the writer and read it back.
+fn writer_roundtrip() {
+    println!("--- writer");
+    let mut doc = WriteDocument::new();
+    doc.comment("written by the writer exercise\nsecond comment line");
+    doc.node(
+        WriteNode::new("system")
+            .arg("ICD10_SE")
+            .prop("kind", WriteValue::identifier("classification"))
+            .prop("label", WriteValue::identifier("needs quotes"))
+            .prop("count", 3u64)
+            .prop("active", true)
+            .prop("retired", false)
+            .child(WriteNode::new("name").arg("sv").arg("Diagnos \"A\" \\ B"))
+            .child(WriteNode::new("note").arg("line one\nline two\ttab"))
+            .comment("an empty and an odd string follow")
+            .child(WriteNode::new("empty").arg(""))
+            .child(WriteNode::new("odd").arg("bidi\u{200E}nbsp\u{A0}end")),
+    );
+    doc.node(
+        WriteNode::new("123")
+            .prop("true", "x=y")
+            .prop("has space", "#z"),
+    );
+    doc.node(WriteNode::new("leaf").block());
+    let text = doc.render();
+    print!("{text}");
+    println!("--- events");
+    for event in Parser::new(&text) {
+        match event {
+            Ok(spanned) => match spanned.item {
+                Event::Node { name, .. } => println!("node {name:?}"),
+                Event::Entry(entry) => {
+                    let value = match entry.value {
+                        Value::String(text) => format!("string {text:?}"),
+                        Value::Number(number) => format!("number {}", number.text()),
+                        Value::Bool(flag) => format!("bool {flag}"),
+                        Value::Null => "null".to_owned(),
+                        _ => "other".to_owned(),
+                    };
+                    match entry.name {
+                        Some(name) => println!("prop {name:?} {value}"),
+                        None => println!("arg {value}"),
+                    }
+                }
+                Event::Children => println!("children"),
+                Event::End => println!("end"),
+                _ => println!("other"),
+            },
+            Err(error) => println!("error {error}"),
+        }
+    }
+    println!("--- bare");
+    for word in [
+        "ICD10_SE", "123", "-1", ".5", "true", "inf", "a=b", "x y", "", "Ä",
+    ] {
+        println!("{word:?} {}", is_bare_string(word));
     }
 }
 

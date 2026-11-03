@@ -5,4 +5,5 @@ edition = "2024"
 rust-version = "1.85"
 
 [dependencies]
+kdlith-parse = { path = "../parse" }
 shelf-proc = { path = "../shelf-proc" }
