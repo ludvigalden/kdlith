@@ -282,6 +282,7 @@ impl Emission<'_> {
                 names(&[
                     "Asset",
                     "CheckScope",
+                    "Definition",
                     "Extensions",
                     "FromValue",
                     "ItemVariant",
@@ -303,6 +304,9 @@ impl Emission<'_> {
                     "TypedReader",
                     "UnmetQualifier",
                     "Value",
+                    "WriteDocument",
+                    "WriteNode",
+                    "WriteValue",
                     "matches_line",
                 ]),
             ));

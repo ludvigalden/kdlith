@@ -11,6 +11,16 @@ published yet.
 
 ### Added
 
+- `kdlith-parse` writes KDL v2: `WriteDocument` and `WriteNode` build a
+  document node by node (arguments, properties, children, `//` comment
+  lines, an explicit empty block) and `render` it as text the parser
+  reads back to the same structure. String values are quoted, with
+  quote, backslash, and control characters escaped and every character
+  a quoted string cannot hold written as a unicode escape, unless built
+  with `WriteValue::identifier`, which writes bare when it can;
+  node and property names are bare only when the bare spelling reads
+  back as the same name (`is_bare_string`); numbers keep their
+  spelling. A tool generating documents needs no hand-rolled escaping.
 - Cargo workspace with the library crates `kdlith`, `kdlith-parse`,
   `kdlith-model`, `kdlith-runtime`, `kdlith-diagnostic`,
   `kdlith-engine`, `kdlith-codegen`, `kdlith-superproc`, and
@@ -512,6 +522,20 @@ path=…; pinned "sha256:…" }`, whose pin is optional. kdlith never
 
 ### Fixed
 
+- A value a context slot or a literal `fallback` feeds a field now
+  decodes against the field's own type at the bound node, as an
+  explicit value does. Before, it reached the field raw: a
+  reference-typed field fed a string held the string, and a
+  `list<T>` field fed one `T` held the bare value, so the generated
+  typed handlers rejected the whole item (`KDLITH-GEN003`) and the
+  link stage never saw the reference. A fed reference is now decoded
+  through its codec (qualified, for a contextual reference type, from
+  the context in effect at the node) and links like a written one; a
+  fed `T` fills a `list<T>` field as one element; a fed value the
+  field's type rejects is `KDLITH-BND003`. A typed `Reading` keys its
+  links by site together with domain, name, and qualifiers, since fed
+  references share their node's site, and `Ref::context()` exposes the
+  qualifier context a reference was bound under.
 - A schema whose record and declaration of different types would read
   as one item variant no longer fails generation with `KDLITH-GEN004`:
   each such item keys its own variant by node, suffixed with its role
