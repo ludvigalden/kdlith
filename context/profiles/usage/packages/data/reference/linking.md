@@ -12,13 +12,13 @@ type's, else the `namespace` slot.
 
 ## Link codes
 
-| Code            | Failure                                                                     |
-| --------------- | --------------------------------------------------------------------------- |
-| `KDLITH-REF001` | no declaration matches; names the alias namespace when gating hid the match |
-| `KDLITH-REF002` | two declarations compose one identity in one domain and namespace           |
-| `KDLITH-REF003` | the policy derives more than one candidate (ambiguous)                      |
-| `KDLITH-REF004` | the one candidate fails a required qualifier                                |
-| `KDLITH-REF005` | a pending payload does not fit the declaration its reference resolved to    |
+| Code            | Failure                                                                                                                    |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `KDLITH-REF001` | no declaration matches; the message names the holding `node.field` site, and the alias namespace when gating hid the match |
+| `KDLITH-REF002` | two declarations compose one identity in one domain and namespace                                                          |
+| `KDLITH-REF003` | the policy derives more than one candidate (ambiguous)                                                                     |
+| `KDLITH-REF004` | the one candidate fails a required qualifier                                                                               |
+| `KDLITH-REF005` | a pending payload does not fit the declaration its reference resolved to                                                   |
 
 Aliased imports gate visibility: a document imported `as=NAME`
 resolves its own declarations unqualified, while every other document

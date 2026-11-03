@@ -1,0 +1,30 @@
+// The field-naming scenario's own schema: one record node holding two
+// reference fields of one shared reference type, so each unresolved
+// reference's REF001 names the field that holds it.
+schema fieldnaming version="1" {
+    types {
+        object EndpointDef {
+            field name String
+        }
+        object LinkDef {
+            field source EndpointRef
+            field target EndpointRef
+        }
+        codec EndpointName output=String {
+            match #"(?<name>[a-z0-9-]+)"#
+            capture name String
+        }
+    }
+    node endpoint role=declaration type=EndpointDef {
+        field name arg=0
+        identity {
+            domain endpoints
+            compose qualified-name name
+        }
+    }
+    node link role=record type=LinkDef {
+        field source arg=0
+        field target arg=1
+    }
+    reference EndpointRef target=EndpointDef codec=EndpointName lookup=endpoints qualification=explicit
+}

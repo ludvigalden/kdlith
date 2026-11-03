@@ -1,0 +1,6 @@
+error[KDLITH-REF001]: reference missing-one in endpoints held by link.target does not resolve
+  --> data.kdl:2:12
+  help: Declare the target or import the document that declares it
+error[KDLITH-REF001]: reference missing-two in endpoints held by link.source does not resolve
+  --> data.kdl:3:6
+  help: Declare the target or import the document that declares it

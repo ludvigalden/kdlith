@@ -42,8 +42,9 @@ confinement and alias faults.
 
 ## REF — linking
 
-`REF001` unresolved (naming the alias namespace when gating hid the
-match); `REF002` duplicate identity; `REF003` ambiguous; `REF004`
+`REF001` unresolved (naming the holding `node.field` site, and the
+alias namespace when gating hid the match); `REF002` duplicate
+identity; `REF003` ambiguous; `REF004`
 unmet required qualifier; `REF005` a pending payload that does not
 fit its declaration.
 

@@ -22,7 +22,7 @@
       "{\"code\":\"KDLITH-REF001\""
     ],
     "stderr-contains": [
-      "error[KDLITH-REF001]: reference region in config-vars does not resolve"
+      "error[KDLITH-REF001]: reference region in config-vars held by pin.target does not resolve"
     ],
     "stdout-golden": "stdout.golden",
     "stderr-golden": "stderr.golden"

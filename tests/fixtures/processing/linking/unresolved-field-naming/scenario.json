@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "REF001 names the holding node and field: one record type's two reference fields of one shared reference type each fail with a message naming its own field, so the two unresolved sites are told apart by their messages alone",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 1,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

@@ -213,6 +213,9 @@ pub fn index_identities(
 #[non_exhaustive]
 pub struct BoundReference {
     pub reference: Reference,
+    /// The record or declaration node holding the reference; `None`
+    /// for a contribution's target.
+    pub node: Option<String>,
     /// The record or declaration field holding the reference; `None`
     /// for a contribution's target.
     pub field: Option<String>,
@@ -245,6 +248,7 @@ pub fn bind_references(definition: &Definition, items: &[Item]) -> Vec<BoundRefe
             if let Some(decl) = named.or_else(|| domain_reference_type(definition, reference)) {
                 bound.push(BoundReference {
                     reference: reference.clone(),
+                    node: held.node.map(str::to_owned),
                     field: held.field.map(str::to_owned),
                     key: held.key,
                     declared: decl.clone(),
@@ -418,6 +422,9 @@ impl LinkOutcome {
 #[non_exhaustive]
 pub struct Link {
     pub reference: Reference,
+    /// The record or declaration node holding the reference; `None`
+    /// for a contribution's target.
+    pub node: Option<String>,
     /// The record or declaration field holding the reference; `None`
     /// for a contribution's target.
     pub field: Option<String>,
@@ -850,6 +857,7 @@ pub fn link(
         };
         let link = Link {
             reference: bound.reference,
+            node: bound.node,
             field: bound.field,
             key: bound.key,
             candidates,
@@ -1102,6 +1110,8 @@ fn references_of(item: &Item) -> Vec<&Reference> {
 
 /// One reference an item holds.
 struct Held<'i> {
+    /// The record or declaration node holding it.
+    node: Option<&'i str>,
     /// The record or declaration field holding it.
     field: Option<&'i str>,
     /// It is the key of an entry of the field's map.
@@ -1113,40 +1123,60 @@ struct Held<'i> {
 /// before its value.
 fn held_references(item: &Item) -> Vec<Held<'_>> {
     let mut held = Vec::new();
-    let fields = match item {
-        Item::Record(record) => record.fields.as_slice(),
-        Item::Declaration(declaration) => declaration.fields.as_slice(),
+    let (node, fields) = match item {
+        Item::Record(record) => (
+            (!record.node_name.is_empty()).then_some(record.node_name.as_str()),
+            record.fields.as_slice(),
+        ),
+        Item::Declaration(declaration) => (
+            (!declaration.node_name.is_empty()).then_some(declaration.node_name.as_str()),
+            declaration.fields.as_slice(),
+        ),
         Item::Contribution(contribution) => {
-            collect(None, &contribution.value, false, &mut held);
+            collect(None, None, &contribution.value, false, &mut held);
             return held;
         }
         _ => return held,
     };
     for field in fields {
-        collect(Some(field.name.as_str()), &field.value, false, &mut held);
+        collect(
+            node,
+            Some(field.name.as_str()),
+            &field.value,
+            false,
+            &mut held,
+        );
     }
     held
 }
 
-fn collect<'v>(field: Option<&'v str>, value: &'v Value, key: bool, held: &mut Vec<Held<'v>>) {
+fn collect<'v>(
+    node: Option<&'v str>,
+    field: Option<&'v str>,
+    value: &'v Value,
+    key: bool,
+    held: &mut Vec<Held<'v>>,
+) {
     match value {
         Value::Reference(reference) => held.push(Held {
+            node,
             field,
             key,
             reference,
         }),
         Value::List(values) => values
             .iter()
-            .for_each(|value| collect(field, value, key, held)),
+            .for_each(|value| collect(node, field, value, key, held)),
         Value::Map(entries) => entries.iter().for_each(|entry| {
             if let Some(reference) = &entry.reference {
                 held.push(Held {
+                    node,
                     field,
                     key: true,
                     reference,
                 });
             }
-            collect(field, &entry.value, key, held);
+            collect(node, field, &entry.value, key, held);
         }),
         _ => {}
     }
@@ -1194,15 +1224,24 @@ fn duplicate_record(
 
 fn link_records(link: &Link, documents: &BTreeMap<SourceId, String>) -> Vec<DiagnosticRecord> {
     let reference = &link.reference;
-    let name = format!("{} in {}", reference.written, reference.domain);
-    let name = match (&link.field, link.key) {
-        (Some(field), true) => format!("{name} as a key of {field}"),
-        _ => name,
-    };
     let at = Some(reference.site);
+    // The site every failed outcome names the reference by: a map-key
+    // reference names the map's field; REF001 below additionally names
+    // the holding node and field, as a type mismatch does.
+    let site = match (&link.field, link.key) {
+        (Some(field), true) => format!(" as a key of {field}"),
+        _ => String::new(),
+    };
+    let name = format!("{} in {}{}", reference.written, reference.domain, site);
     match &link.outcome {
         LinkOutcome::Resolved | LinkOutcome::External => Vec::new(),
         LinkOutcome::Unresolved => {
+            let held = match (&link.node, &link.field, link.key) {
+                (Some(node), Some(field), true) => format!(" as a key of {node}.{field}"),
+                (Some(node), Some(field), false) => format!(" held by {node}.{field}"),
+                _ => site,
+            };
+            let name = format!("{} in {}{}", reference.written, reference.domain, held);
             let name = match link.gated.as_slice() {
                 [] => name,
                 gated => format!(

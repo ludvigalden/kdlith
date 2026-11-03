@@ -1,0 +1,3 @@
+endpoint "api"
+link "api" "missing-one"
+link "missing-two" "api"

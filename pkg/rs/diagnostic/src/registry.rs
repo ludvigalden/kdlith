@@ -970,7 +970,7 @@ pub const CODES: &[CodeDefinition] = &[
         label: "unresolved-reference",
         severity: Severity::Error,
         exit_class: 1,
-        trigger: "a reference names no declaration in the processed graph",
+        trigger: "a reference names no declaration in the processed graph; the message names the holding node and field, and the alias namespace when gating hid the match",
         message_template: "reference <name> does not resolve",
         correction: "Declare the target or import the document that declares it",
         retired: false,
