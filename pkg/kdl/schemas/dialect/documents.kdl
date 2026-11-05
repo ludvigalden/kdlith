@@ -282,20 +282,28 @@ dialect kdlith version="0" {
         }
 
         // How a reference qualifies its target: explicitly in its
-        // spelling, explicitly or from context, or from imports or
-        // context.
+        // spelling, explicitly or from context, from imports or
+        // context, or explicitly or from a sibling field of the same
+        // record.
         enum Qualification {
             member explicit description="The reference spells its qualification completely"
             member explicit-or-context description="The reference may take missing qualifiers from context"
             member imported-or-context description="The reference may resolve through an import namespace or context"
+            member explicit-or-sibling description="The reference may take missing qualifiers from a sibling field of the same record"
         }
 
-        // One required qualifier of a reference: its name, its type, and
-        // whether a reference must carry it. A declared qualifier is
-        // required unless it says otherwise.
+        // One qualifier of a reference: its name, its type or the
+        // record field a sibling-qualified reference takes its
+        // qualifying segments from, and whether a reference must carry
+        // it. A declared qualifier is required unless it says
+        // otherwise.
         object QualifierRule {
             field name FieldName
-            field type TypeExpression
+            field type "optional<TypeExpression>"
+            // The record field a sibling-qualified reference takes its
+            // qualifying segments from; exactly one of type and
+            // from-field.
+            field from-field "optional<FieldName>"
             field required "optional<Bool>"
         }
 
@@ -605,6 +613,7 @@ dialect kdlith version="0" {
     node qualifier type=QualifierRule parent=reference {
         field name arg=0
         field type arg=1
+        field from-field property=from-field
         field required property=required
     }
 

@@ -534,7 +534,12 @@ pub struct OpenWorldInput {
 #[derive(Clone, Debug)]
 pub struct QualifierInput {
     pub name: String,
-    pub ty: String,
+    /// The qualifier's declared type; absent when the qualifier names a
+    /// sibling field instead.
+    pub ty: Option<String>,
+    /// The record field a sibling-qualified reference takes its
+    /// qualifying segments from; exactly one of `ty` and `from_field`.
+    pub from_field: Option<String>,
     pub required: bool,
 }
 

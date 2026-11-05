@@ -1850,12 +1850,45 @@ fn reference(cx: &mut Cx<'_>, site: Site, input: &ReferenceInput) {
             cx.mistyped(site, "the name of qualifier", "FieldName", &found);
             continue;
         }
-        let Some(ty) = cx.type_expr(site, &qualifier.ty) else {
+        if let Some(field) = qualifier.from_field.as_deref()
+            && !field_name(field)
+        {
+            let found = found(&Value::String(field.to_owned()));
+            cx.mistyped(site, "the from-field of qualifier", "FieldName", &found);
             continue;
-        };
+        }
+        // A qualifier declares exactly one of a type and a from-field.
+        if qualifier.ty.is_some() && qualifier.from_field.is_some() {
+            cx.malformed(
+                site,
+                &label,
+                "declares a qualifier naming both a type and a from-field; one qualifier declares exactly one",
+            );
+            continue;
+        }
+        let ty = qualifier
+            .ty
+            .as_deref()
+            .and_then(|ty| cx.type_expr(site, ty));
+        if qualifier.ty.is_some() && ty.is_none() {
+            // The type expression's own diagnostic reported it.
+            continue;
+        }
+        if ty.is_none() && qualifier.from_field.is_none() {
+            cx.malformed(
+                site,
+                &label,
+                "declares a qualifier naming neither a type nor a from-field",
+            );
+            continue;
+        }
         qualifiers.push(QualifierDecl {
             name: cx.names.intern(&qualifier.name),
             ty,
+            from_field: qualifier
+                .from_field
+                .as_deref()
+                .map(|field| cx.names.intern(field)),
             required: qualifier.required,
             site,
         });
@@ -1935,7 +1968,7 @@ pub(crate) fn open_world_arms(cx: &mut Cx<'_>, bindings: &BindingCatalog) {
                 .qualifiers
                 .iter()
                 .find(|qualifier| qualifier.name == system_field)
-                .map(|qualifier| &qualifier.ty)
+                .and_then(|qualifier| qualifier.ty.as_ref())
             && let Some(holder) = system_member_type(cx, target, system_field, qualifiers)
             && let Some(reason) = member_reason(cx, holder, &arm)
         {
@@ -2011,6 +2044,219 @@ fn names_reference(symbols: &SymbolCatalog, ty: &TypeExpr) -> bool {
         TypeExpr::Ref(inner) => matches!(inner.as_ref(), TypeExpr::Named(_)),
         TypeExpr::Named(name) => symbols.reference(*name).is_some(),
         _ => false,
+    }
+}
+
+/// Every sibling qualifier of every reference: a `from-field` qualifier
+/// belongs to an `explicit-or-sibling` reference (which declares at
+/// least one), names the next leading identity field of its target's
+/// composition in declaration order, and names a field every object
+/// type holding the reference declares as a reference — never the
+/// field holding the qualified reference itself. The combined
+/// contribution must exactly cover the target's leading identity
+/// fields, so a qualifier naming a later or unknown field is rejected,
+/// never silently re-ordered.
+pub(crate) fn sibling_qualifiers(
+    cx: &mut Cx<'_>,
+    bindings: &BindingCatalog,
+    symbols: &SymbolCatalog,
+) {
+    for index in 0..cx.references.len() {
+        let (name, qualification, target, site) = {
+            let reference = &cx.references[index];
+            (
+                reference.name,
+                reference.qualification,
+                reference.target,
+                reference.site,
+            )
+        };
+        let construct = format!("reference {}", cx.names.resolve(name));
+        let from_fields: Vec<(Sym, Sym)> = cx.references[index]
+            .qualifiers
+            .iter()
+            .filter_map(|qualifier| qualifier.from_field.map(|field| (qualifier.name, field)))
+            .collect();
+        if from_fields.is_empty() {
+            if qualification == Qualification::ExplicitOrSibling {
+                cx.malformed(
+                    site,
+                    &construct,
+                    "qualifies from a sibling field but declares no qualifier with from-field",
+                );
+            }
+            continue;
+        }
+        if qualification != Qualification::ExplicitOrSibling {
+            cx.malformed(
+                site,
+                &construct,
+                "declares a from-field qualifier under a qualification that takes no sibling field",
+            );
+            continue;
+        }
+        let holders: Vec<Sym> = holding_types(cx, name);
+        for holder in holders {
+            for (_, field) in &from_fields {
+                let spelled = cx.names.resolve(*field).to_owned();
+                let ty_name = cx.names.resolve(holder).to_owned();
+                let what = format!("the from-field {spelled} of type {ty_name}");
+                let Some(ty) = object_field(cx, holder, *field) else {
+                    let reason = format!("{what} is not declared by the holding type");
+                    cx.malformed(site, &construct, &reason);
+                    continue;
+                };
+                if names_this(ty, name) {
+                    let reason = format!("{what} holds the qualified reference itself");
+                    cx.malformed(site, &construct, &reason);
+                    continue;
+                }
+                if !names_reference(symbols, ty) {
+                    let reason = format!("{what} is not a reference field");
+                    cx.malformed(site, &construct, &reason);
+                }
+            }
+        }
+        sibling_tiling(cx, bindings, site, &construct, target, &from_fields);
+    }
+}
+
+/// Every object type declaring a field of one reference type, through
+/// any optional, nullable, or list wrapper.
+fn holding_types(cx: &Cx<'_>, reference: Sym) -> Vec<Sym> {
+    cx.types
+        .iter()
+        .filter_map(|(_, decl)| {
+            let TypeKind::Object(object) = &decl.kind else {
+                return None;
+            };
+            object
+                .fields
+                .iter()
+                .any(|def| names_this(&def.ty, reference))
+                .then_some(decl.name)
+        })
+        .collect()
+}
+
+/// Whether a type expression, through any optional, nullable, or list
+/// wrapper, names one reference type.
+fn names_this(ty: &TypeExpr, reference: Sym) -> bool {
+    match ty {
+        TypeExpr::Optional(inner) | TypeExpr::Nullable(inner) | TypeExpr::List(inner) => {
+            names_this(inner, reference)
+        }
+        TypeExpr::Named(name) => *name == reference,
+        _ => false,
+    }
+}
+
+/// The ordered from-field qualifiers must exactly tile the leading
+/// identity fields of the target's composition: qualifier `i` names
+/// the field the earlier contributions reach.
+fn sibling_tiling(
+    cx: &mut Cx<'_>,
+    bindings: &BindingCatalog,
+    site: Site,
+    construct: &str,
+    target: Sym,
+    from_fields: &[(Sym, Sym)],
+) {
+    let compositions: Vec<Vec<Sym>> = identity_compositions(bindings, target);
+    let target_name = cx.names.resolve(target).to_owned();
+    if compositions.is_empty() {
+        let reason = format!(
+            "names target {target_name}, which composes no identity a sibling qualifier could fill"
+        );
+        cx.malformed(site, construct, &reason);
+        return;
+    }
+    let arities: Vec<Option<usize>> = from_fields
+        .iter()
+        .map(|&(_, field)| sibling_arity(cx, bindings, field))
+        .collect();
+    let fits = |composition: &[Sym]| -> bool {
+        let mut at = 0usize;
+        for (position, &(qualifier, _)) in from_fields.iter().enumerate() {
+            match arities[position] {
+                None => return composition.contains(&qualifier),
+                Some(arity) => {
+                    if at + arity > composition.len() || composition[at] != qualifier {
+                        return false;
+                    }
+                    at += arity;
+                }
+            }
+        }
+        true
+    };
+    if compositions.iter().any(|composition| fits(composition)) {
+        return;
+    }
+    let first = cx.names.resolve(from_fields[0].0).to_owned();
+    let reason = if compositions
+        .iter()
+        .all(|composition| !composition.contains(&from_fields[0].0))
+    {
+        format!("the qualifier {first} names no identity field of target {target_name}")
+    } else {
+        let declared: Vec<String> = compositions
+            .first()
+            .map(|composition| {
+                composition
+                    .iter()
+                    .map(|field| cx.names.resolve(*field).to_owned())
+                    .collect()
+            })
+            .unwrap_or_default();
+        format!(
+            "the qualifier {first} does not name the next leading identity field of target {target_name} (composed of {})",
+            declared.join(", ")
+        )
+    };
+    cx.malformed(site, construct, &reason);
+}
+
+/// The identity compositions of the declaration nodes of one type, in
+/// binding order.
+fn identity_compositions(bindings: &BindingCatalog, target: Sym) -> Vec<Vec<Sym>> {
+    bindings
+        .iter()
+        .filter_map(|(_, node)| {
+            let identity = node.identity.as_ref()?;
+            (!identity.fields.is_empty() && node.ty == Some(target))
+                .then(|| identity.fields.clone())
+        })
+        .collect()
+}
+
+/// How many identity segments the reference a from-field names
+/// contributes: its reference target's composition length, when a node
+/// type declaring the field and a declaration of that target pin one.
+fn sibling_arity(cx: &Cx<'_>, bindings: &BindingCatalog, field: Sym) -> Option<usize> {
+    let target = bindings.iter().find_map(|(_, node)| {
+        let ty = node.ty?;
+        let field = object_field(cx, ty, field)?;
+        let TypeExpr::Named(name) = through_wrappers(field) else {
+            return None;
+        };
+        cx.references
+            .iter()
+            .find(|reference| reference.name == *name)
+            .map(|reference| reference.target)
+    })?;
+    identity_compositions(bindings, target)
+        .first()
+        .map(Vec::len)
+}
+
+/// A type expression through any optional, nullable, or list wrapper.
+fn through_wrappers(ty: &TypeExpr) -> &TypeExpr {
+    match ty {
+        TypeExpr::Optional(inner) | TypeExpr::Nullable(inner) | TypeExpr::List(inner) => {
+            through_wrappers(inner)
+        }
+        ty => ty,
     }
 }
 

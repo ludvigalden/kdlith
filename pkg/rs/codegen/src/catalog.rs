@@ -204,6 +204,10 @@ pub(crate) fn field_comment(ty: &str, field: &str) -> Option<&'static [&'static 
         ("QualifierRule", "required") => {
             &["A declared qualifier is required unless it says otherwise."]
         }
+        ("QualifierRule", "from-field") => &[
+            "The record field a sibling-qualified reference takes its",
+            "qualifying segments from; exactly one of type and from-field.",
+        ],
         ("ReferenceDef", "qualify-from") => &[
             "The context slot an unqualified reference's qualifier comes from;",
             "absent is the `namespace` slot.",
@@ -699,7 +703,11 @@ const REFERENCE_DEF_ARM: &str = r##"        Item::ReferenceDef(ReferenceDef {
                 .iter()
                 .map(|qualifier| QualifierInput {
                     name: qualifier.name.as_str().to_owned(),
-                    ty: qualifier.ty.as_str().to_owned(),
+                    ty: qualifier.ty.as_ref().map(|ty| ty.as_str().to_owned()),
+                    from_field: qualifier
+                        .from_field
+                        .as_ref()
+                        .map(|field| field.as_str().to_owned()),
                     // A declared qualifier is required unless it says
                     // otherwise.
                     required: qualifier.required.unwrap_or(true),

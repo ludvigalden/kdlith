@@ -283,13 +283,17 @@ enum_type! {
         "explicit" => Explicit,
         "explicit-or-context" => ExplicitOrContext,
         "imported-or-context" => ImportedOrContext,
+        "explicit-or-sibling" => ExplicitOrSibling,
     }
 }
 
 object_type! {
     pub struct QualifierRule {
         "name" => name: FieldName,
-        "type" => ty: TypeExpression,
+        "type" => ty: Option<TypeExpression>,
+        // The record field a sibling-qualified reference takes its
+        // qualifying segments from; exactly one of type and from-field.
+        "from-field" => from_field: Option<FieldName>,
         // A declared qualifier is required unless it says otherwise.
         "required" => required: Option<bool>,
     }

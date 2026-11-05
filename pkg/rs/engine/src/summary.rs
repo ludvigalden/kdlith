@@ -95,14 +95,22 @@ impl Definition {
         for reference in &self.references {
             let codec = reference.codec.map_or("-", |c| n.resolve(c));
             let lookup = reference.lookup.map_or("-", |l| n.resolve(l));
+            // A from-field qualifier renders its sibling source; a typed
+            // one its type. Only a declaration naming one renders at all,
+            // so a definition not using sibling qualification digests
+            // byte-identically to before.
             let qualifiers: Vec<String> = reference
                 .qualifiers
                 .iter()
                 .map(|qualifier| {
+                    let source = match (&qualifier.ty, qualifier.from_field) {
+                        (_, Some(field)) => format!("from={}", n.resolve(field)),
+                        (Some(ty), None) => format!(":{}", expr(n, ty)),
+                        (None, None) => "-".to_owned(),
+                    };
                     format!(
-                        "{}:{} required={}",
+                        "{}{source} required={}",
                         n.resolve(qualifier.name),
-                        expr(n, &qualifier.ty),
                         qualifier.required
                     )
                 })

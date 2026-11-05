@@ -1015,6 +1015,16 @@ pub const CODES: &[CodeDefinition] = &[
         correction: "Write the payload as the referenced declaration's member type declares it: a list member takes zero or more values, any other member exactly one, and an optional member none or one",
         retired: false,
     },
+    CodeDefinition {
+        code: "KDLITH-REF006",
+        label: "sibling-qualifier-disagreement",
+        severity: Severity::Error,
+        exit_class: 1,
+        trigger: "a sibling-qualified reference's spelling pins an identity segment its resolved sibling field supplies a different value for",
+        message_template: "reference <name> in <domain>: the explicit spelling <written> disagrees with the sibling field <field> (resolves to <sibling>)",
+        correction: "Spell the reference to agree with the sibling field, or correct one of the two",
+        retired: false,
+    },
     // GEN
     CodeDefinition {
         code: "KDLITH-GEN001",

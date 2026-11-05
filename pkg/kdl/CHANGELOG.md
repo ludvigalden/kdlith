@@ -431,6 +431,21 @@ path=…; pinned "sha256:…" }`, whose pin is optional. kdlith never
   declare fails definition compile, and a payload outside the named
   set fails `KDLITH-REF005` at link. This changes the canonical
   dialect digest.
+- A reference type may qualify from a sibling field of the same
+  record: `qualification=explicit-or-sibling` with `qualifier
+  <identity-field> from-field=<record-field>` children, in declaration
+  order, each filling the next leading identity segments of the target
+  with the resolved identity of the reference the named field holds;
+  the combined contribution must exactly cover the leading segments,
+  and a bare name with no resolved sibling resolves nothing. Every
+  misuse — no `from-field` qualifier, a `from-field` under another
+  qualification, a qualifier naming both a type and a `from-field`, a
+  non-leading or unknown identity field, a from-field the holding
+  type lacks or does not declare as a reference, or the field holding
+  the reference itself — fails definition compile. A spelling that
+  pins a segment a resolved sibling supplies otherwise is the new
+  `KDLITH-REF006`, never a silent override. This changes the canonical
+  dialect digest.
 
 ### Changed
 

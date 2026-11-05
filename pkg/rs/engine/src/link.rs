@@ -23,6 +23,7 @@ const DUPLICATE: &str = "KDLITH-REF002";
 const AMBIGUOUS: &str = "KDLITH-REF003";
 const UNMET_QUALIFIER: &str = "KDLITH-REF004";
 const PAYLOAD_TYPE: &str = "KDLITH-REF005";
+const SIBLING_DISAGREEMENT: &str = "KDLITH-REF006";
 const ORIGIN: &str = "data-document";
 /// The codec name a path-typed payload's item carries: never a
 /// reference, never validated at link.
@@ -324,6 +325,38 @@ pub struct Lookup {
     /// The namespaces holding a declaration the reference would
     /// match if namespaced visibility did not gate it, in name order.
     pub gated: Vec<String>,
+    /// The sibling contributions a sibling-qualified reference
+    /// derived, when its declaration names from-field qualifiers and
+    /// at least one resolved.
+    pub sibling: Option<SiblingFill>,
+}
+
+/// What a sibling-qualified reference derived from its record's sibling
+/// fields: each contributing qualifier's identity-segment window, in
+/// declaration order, and the qualified spelling the reference
+/// attempted when the contributions and its spelling together
+/// determined every segment.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct SiblingFill {
+    /// One contributing qualifier's window, in declaration order.
+    pub windows: Vec<SiblingWindow>,
+    /// The qualified spelling the reference attempted, segments joined
+    /// by `.`; `None` when the contributions left a segment open.
+    pub attempt: Option<String>,
+}
+
+/// The leading identity segments one sibling field contributed, and
+/// where they fill.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct SiblingWindow {
+    /// The identity position the contribution fills from.
+    pub start: usize,
+    /// The record field the contribution came from.
+    pub field: String,
+    /// The resolved identity of the reference the field holds.
+    pub segments: Vec<String>,
 }
 
 /// Stage three, lookup policy: derive each reference's candidates under
@@ -338,41 +371,54 @@ pub struct Lookup {
 /// declarations. `imported-or-context` also admits a namespace as
 /// the name's first segment. A declaration under a namespace is reachable
 /// by its unqualified name from its own document only; every other
-/// document reaches it through the namespace or not at all.
+/// document reaches it through the namespace or not at all. A
+/// sibling-qualified reference fills its leading open segments from
+/// its resolved sibling fields' identities and leaves nothing open,
+/// so a segment nothing covers matches no declaration.
 pub fn derive_candidates(index: &IdentityIndex, bound: &[BoundReference]) -> Vec<Lookup> {
     bound
         .iter()
-        .map(|bound| {
-            let reference = &bound.reference;
-            let policy = bound.declared.qualification;
-            let segments = &reference.name.0;
-            let mut candidates = Vec::new();
-            let mut gated = BTreeSet::new();
-            for entry in index.domain(&reference.domain) {
-                let plain = matches(entry, segments, reference, policy);
-                match &entry.namespace {
-                    None if plain => candidates.push(entry.clone()),
-                    None => {}
-                    Some(_) if plain && own_document(entry, reference) => {
-                        candidates.push(entry.clone());
-                    }
-                    Some(namespace) => {
-                        let prefixed = through_namespace(entry, reference, policy).is_some();
-                        if prefixed && policy == Qualification::ImportedOrContext {
-                            candidates.push(entry.clone());
-                        } else if prefixed || plain {
-                            gated.insert(namespace.clone());
-                        }
-                    }
+        .map(|bound| lookup_of(index, bound, None))
+        .collect()
+}
+
+/// One bound reference's lookup under its reference type's
+/// qualification and, for a sibling-qualified reference, the
+/// contributions its resolved sibling fields supply.
+fn lookup_of(
+    index: &IdentityIndex,
+    bound: &BoundReference,
+    sibling: Option<&SiblingFill>,
+) -> Lookup {
+    let reference = &bound.reference;
+    let policy = bound.declared.qualification;
+    let segments = &reference.name.0;
+    let mut candidates = Vec::new();
+    let mut gated = BTreeSet::new();
+    for entry in index.domain(&reference.domain) {
+        let plain = matches(entry, segments, reference, policy, sibling);
+        match &entry.namespace {
+            None if plain => candidates.push(entry.clone()),
+            None => {}
+            Some(_) if plain && own_document(entry, reference) => {
+                candidates.push(entry.clone());
+            }
+            Some(namespace) => {
+                let prefixed = through_namespace(entry, reference, policy, sibling).is_some();
+                if prefixed && policy == Qualification::ImportedOrContext {
+                    candidates.push(entry.clone());
+                } else if prefixed || plain {
+                    gated.insert(namespace.clone());
                 }
             }
-            Lookup {
-                bound: bound.clone(),
-                candidates,
-                gated: gated.into_iter().collect(),
-            }
-        })
-        .collect()
+        }
+    }
+    Lookup {
+        bound: bound.clone(),
+        candidates,
+        gated: gated.into_iter().collect(),
+        sibling: sibling.cloned(),
+    }
 }
 
 /// A required qualifier the resolved declaration does not meet.
@@ -430,6 +476,10 @@ pub struct Link {
     pub field: Option<String>,
     /// The reference is the key of an entry of `field`'s map.
     pub key: bool,
+    /// The qualified spelling a sibling-qualified reference attempted,
+    /// when its resolved sibling fields and its spelling together
+    /// determined every segment; an unqualified failure names it.
+    pub attempt: Option<String>,
     pub candidates: Vec<IndexedDeclaration>,
     pub gated: Vec<String>,
     pub outcome: LinkOutcome,
@@ -837,6 +887,7 @@ pub fn link(
             bound,
             candidates,
             gated,
+            sibling,
         } = lookup;
         let outcome = match candidates.as_slice() {
             [] => bound
@@ -846,7 +897,7 @@ pub fn link(
                 .and_then(|arm| external(definition, index, &bound, arm))
                 .unwrap_or(LinkOutcome::Unresolved),
             [target] => {
-                let unmet = unmet_qualifiers(definition, &bound, target);
+                let unmet = unmet_qualifiers(definition, &bound, target, sibling.as_ref());
                 if unmet.is_empty() {
                     LinkOutcome::Resolved
                 } else {
@@ -862,6 +913,7 @@ pub fn link(
             key: bound.key,
             candidates,
             gated,
+            attempt: sibling.as_ref().and_then(|fill| fill.attempt.clone()),
             outcome,
         };
         diagnostics.extend(link_records(&link, documents));
@@ -877,17 +929,352 @@ pub fn link(
     }
 }
 
-/// Link one reading: index its identities, bind and look up its
-/// references, link them, then validate its pending payloads. Every
-/// consumer that links a reading runs this one composition, so the
-/// command line and a typed reading decide each outcome alike.
+/// Link one reading: index its identities, bind its references, derive
+/// each sibling-qualified reference's contributions after the sibling
+/// fields holding them resolve, look up and link every reference, then
+/// validate its pending payloads. Every consumer that links a reading
+/// runs this one composition, so the command line and a typed reading
+/// decide each outcome alike.
 pub fn link_reading(definition: &Definition, inputs: &LinkInputs) -> LinkReport {
     let index = index_identities(definition, &inputs.items, &inputs.namespaces);
     let bound = bind_references(definition, &inputs.items);
-    let lookups = derive_candidates(&index, &bound);
+    let (lookups, disagreements) =
+        sibling_pass(definition, &index, &inputs.items, &inputs.documents, bound);
     let mut report = link(definition, &index, lookups, &inputs.documents);
+    report.diagnostics.extend(disagreements);
     report.validate_pending(definition, &inputs.items, &inputs.documents, &index);
     report
+}
+
+/// Derive every bound reference's lookup, each sibling-qualified
+/// reference's `from-field` qualifiers resolved first: a sibling
+/// resolves before the reference it qualifies, chains included.
+fn sibling_pass(
+    definition: &Definition,
+    index: &IdentityIndex,
+    items: &[Item],
+    documents: &BTreeMap<SourceId, String>,
+    bound: Vec<BoundReference>,
+) -> (Vec<Lookup>, Vec<DiagnosticRecord>) {
+    let mut pass = Siblings {
+        definition,
+        index,
+        items,
+        documents,
+        bound,
+        // One bound reference per item field, first held first.
+        held_at: BTreeMap::new(),
+        item_of: Vec::new(),
+        lookups: Vec::new(),
+        fills: Vec::new(),
+        active: Vec::new(),
+        done: Vec::new(),
+        disagreements: Vec::new(),
+    };
+    pass.pair();
+    for at in 0..pass.bound.len() {
+        pass.resolve(at);
+    }
+    let Siblings {
+        bound,
+        lookups,
+        disagreements,
+        ..
+    } = pass;
+    let lookups = lookups
+        .into_iter()
+        .zip(&bound)
+        .map(|(lookup, held)| lookup.unwrap_or_else(|| lookup_of(index, held, None)))
+        .collect();
+    (lookups, disagreements)
+}
+
+/// The sibling-resolution state of one link pass.
+struct Siblings<'a> {
+    definition: &'a Definition,
+    index: &'a IdentityIndex,
+    items: &'a [Item],
+    documents: &'a BTreeMap<SourceId, String>,
+    bound: Vec<BoundReference>,
+    /// The first bound reference held in one item's field, by item
+    /// position and field name.
+    held_at: BTreeMap<(usize, String), usize>,
+    /// The item each bound reference was held by.
+    item_of: Vec<Option<usize>>,
+    lookups: Vec<Option<Lookup>>,
+    fills: Vec<Option<SiblingFill>>,
+    active: Vec<bool>,
+    done: Vec<bool>,
+    disagreements: Vec<DiagnosticRecord>,
+}
+
+impl Siblings<'_> {
+    /// Pair each bound reference with the item and field holding it, so
+    /// a sibling is a reference of the same record, never a same-named
+    /// field of another.
+    fn pair(&mut self) {
+        let count = self.bound.len();
+        let mut used = vec![false; count];
+        self.item_of = vec![None; count];
+        self.lookups = vec![None; count];
+        self.fills = vec![None; count];
+        self.active = vec![false; count];
+        self.done = vec![false; count];
+        for (at, item) in self.items.iter().enumerate() {
+            for held in held_references(item) {
+                let Some(field) = held.field else {
+                    continue;
+                };
+                let field = field.to_owned();
+                let Some(position) = self
+                    .bound
+                    .iter()
+                    .enumerate()
+                    .find(|(at_bound, bound)| {
+                        !used[*at_bound]
+                            && bound.field.as_deref() == Some(field.as_str())
+                            && bound.reference == *held.reference
+                    })
+                    .map(|(at_bound, _)| at_bound)
+                else {
+                    continue;
+                };
+                used[position] = true;
+                self.held_at.insert((at, field), position);
+                self.item_of[position] = Some(at);
+            }
+        }
+    }
+
+    /// Resolve one bound reference's lookup, its sibling contributions
+    /// first; a reference still being resolved contributes nothing, so
+    /// a cycle degrades instead of looping.
+    fn resolve(&mut self, at: usize) {
+        if self.done[at] || self.active[at] {
+            return;
+        }
+        self.active[at] = true;
+        let bound = self.bound[at].clone();
+        let fill = self
+            .fill_for(&bound, at)
+            .filter(|fill| !fill.windows.is_empty());
+        if let Some(fill) = &fill {
+            self.disagree(&bound, fill);
+        }
+        let lookup = lookup_of(self.index, &bound, fill.as_ref());
+        self.fills[at] = fill;
+        self.lookups[at] = Some(lookup);
+        self.done[at] = true;
+        self.active[at] = false;
+    }
+
+    /// One dependent's sibling contributions, in qualifier declaration
+    /// order, each resolved sibling filling the leading identity
+    /// segments its target composes.
+    fn fill_for(&mut self, bound: &BoundReference, at: usize) -> Option<SiblingFill> {
+        if bound.declared.qualification != Qualification::ExplicitOrSibling {
+            return None;
+        }
+        let names = &self.definition.names;
+        let qualifiers: Vec<(Sym, Sym)> = bound
+            .declared
+            .qualifiers
+            .iter()
+            .filter_map(|rule| rule.from_field.map(|field| (rule.name, field)))
+            .collect();
+        if qualifiers.is_empty() {
+            return None;
+        }
+        let labels = target_labels(self.definition, &bound.declared);
+        let item = self.item_of[at]?;
+        let mut windows = Vec::new();
+        let mut start = 0usize;
+        let mut contributed = 0usize;
+        for (_, field) in &qualifiers {
+            let field = names.resolve(*field).to_owned();
+            let sibling = self.held_at.get(&(item, field.clone())).copied();
+            let resolved = sibling
+                .filter(|sibling| *sibling != at)
+                .inspect(|sibling| self.resolve(*sibling))
+                .and_then(|sibling| self.resolved_identity(sibling));
+            match resolved {
+                Some(segments) => {
+                    windows.push(SiblingWindow {
+                        start,
+                        field,
+                        segments: segments.clone(),
+                    });
+                    start += segments.len();
+                    contributed += 1;
+                }
+                None => {
+                    // An absent sibling contributes nothing, but its
+                    // window still advances by the arity its target
+                    // composes, so a later qualifier fills its own
+                    // leading segments.
+                    let declared = sibling
+                        .map(|sibling| self.bound[sibling].declared.target)
+                        .or_else(|| {
+                            let item = self.items.get(item)?;
+                            field_reference_decl(self.definition, item, &field)
+                        });
+                    let Some(target) = declared else {
+                        break;
+                    };
+                    match composition_len(self.definition, target) {
+                        Some(len) => start += len,
+                        None => break,
+                    }
+                }
+            }
+        }
+        let attempt = (contributed == qualifiers.len()
+            && !labels.is_empty()
+            && start + bound.reference.name.0.len() == labels.len())
+        .then(|| {
+            windows
+                .iter()
+                .flat_map(|window| window.segments.iter().cloned())
+                .chain(bound.reference.name.0.iter().cloned())
+                .collect::<Vec<_>>()
+                .join(".")
+        });
+        Some(SiblingFill { windows, attempt })
+    }
+
+    /// The identity one bound reference resolved to: exactly one
+    /// candidate, meeting every required qualifier.
+    fn resolved_identity(&self, at: usize) -> Option<Vec<String>> {
+        let lookup = self.lookups.get(at)?.as_ref()?;
+        let [target] = lookup.candidates.as_slice() else {
+            return None;
+        };
+        let sibling = self.fills.get(at)?.as_ref();
+        let unmet = unmet_qualifiers(self.definition, &self.bound[at], target, sibling);
+        unmet.is_empty().then(|| target.identity.name.0.clone())
+    }
+
+    /// The REF006 disagreements of one dependent's contributions
+    /// against the values its spelling pins.
+    fn disagree(&mut self, bound: &BoundReference, fill: &SiblingFill) {
+        let labels = target_labels(self.definition, &bound.declared);
+        if labels.is_empty() {
+            return;
+        }
+        let reference = &bound.reference;
+        let mut spelled: Vec<Option<&str>> = vec![None; labels.len()];
+        for (name, value) in &reference.qualifiers {
+            if let Some(at) = labels.iter().position(|label| label == name) {
+                spelled[at] = Some(value);
+            }
+        }
+        let open: Vec<usize> = (0..labels.len())
+            .filter(|at| spelled[*at].is_none())
+            .collect();
+        let Some(missing) = open.len().checked_sub(reference.name.0.len()) else {
+            return;
+        };
+        for (at, segment) in open[missing..].iter().zip(&reference.name.0) {
+            spelled[*at] = Some(segment);
+        }
+        for window in &fill.windows {
+            let Some(found) = window
+                .segments
+                .iter()
+                .enumerate()
+                .find_map(|(offset, segment)| {
+                    let held = spelled.get(window.start + offset).copied().flatten()?;
+                    (held != segment.as_str()).then_some(held)
+                })
+            else {
+                continue;
+            };
+            let sibling = window.segments.join(".");
+            let values = [
+                reference.written.as_str(),
+                reference.domain.as_str(),
+                found,
+                window.field.as_str(),
+                sibling.as_str(),
+            ];
+            let at = Some(reference.site);
+            self.disagreements.push(located(
+                record(SIBLING_DISAGREEMENT, &values, ORIGIN),
+                at,
+                self.documents,
+            ));
+        }
+    }
+}
+
+/// The identity-field labels of a reference declaration's target
+/// composition, when a declaration node of the target type composes
+/// one.
+fn target_labels(definition: &Definition, declared: &ReferenceDecl) -> Vec<String> {
+    let names = &definition.names;
+    definition
+        .bindings
+        .iter()
+        .find(|(_, node)| {
+            node.ty == Some(declared.target)
+                && node
+                    .identity
+                    .as_ref()
+                    .is_some_and(|identity| !identity.fields.is_empty())
+        })
+        .and_then(|(_, node)| node.identity.as_ref())
+        .map(|identity| {
+            identity
+                .fields
+                .iter()
+                .map(|field| names.resolve(*field).to_owned())
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// How many identity segments one target type composes.
+fn composition_len(definition: &Definition, target: Sym) -> Option<usize> {
+    definition
+        .bindings
+        .iter()
+        .find(|(_, node)| {
+            node.ty == Some(target)
+                && node
+                    .identity
+                    .as_ref()
+                    .is_some_and(|identity| !identity.fields.is_empty())
+        })
+        .and_then(|(_, node)| node.identity.as_ref())
+        .map(|identity| identity.fields.len())
+}
+
+/// The reference declaration an item's field is declared with, when
+/// its type names one.
+fn field_reference_decl(definition: &Definition, item: &Item, field: &str) -> Option<Sym> {
+    let type_name = match item {
+        Item::Record(record) => &record.type_name,
+        Item::Declaration(declaration) => &declaration.type_name,
+        _ => return None,
+    };
+    let names = &definition.names;
+    let ty = definition.types.lookup(names.get(type_name)?)?;
+    let TypeKind::Object(object) = &definition.types.get(ty)?.kind else {
+        return None;
+    };
+    let field = names.get(field)?;
+    let mut ty = &object.fields.iter().find(|def| def.name == field)?.ty;
+    loop {
+        match ty {
+            TypeExpr::Named(name) => {
+                return definition.symbols.reference(*name).map(|decl| decl.target);
+            }
+            TypeExpr::Optional(inner) | TypeExpr::Nullable(inner) | TypeExpr::List(inner) => {
+                ty = inner;
+            }
+            _ => return None,
+        }
+    }
 }
 
 /// The domains linking covers: every identity block's, every declared
@@ -983,8 +1370,9 @@ fn matches(
     segments: &[String],
     reference: &Reference,
     policy: Qualification,
+    sibling: Option<&SiblingFill>,
 ) -> bool {
-    derive(entry, segments, reference, policy).is_some()
+    derive(entry, segments, reference, policy, sibling).is_some()
 }
 
 /// Whether a reference is written in the document that holds a
@@ -1000,11 +1388,12 @@ fn through_namespace<'r>(
     entry: &IndexedDeclaration,
     reference: &'r Reference,
     policy: Qualification,
+    sibling: Option<&SiblingFill>,
 ) -> Option<&'r [String]> {
     let (first, rest) = reference.name.0.split_first()?;
     (entry.namespace.as_ref() == Some(first)
         && !rest.is_empty()
-        && matches(entry, rest, reference, policy))
+        && matches(entry, rest, reference, policy, sibling))
     .then_some(rest)
 }
 
@@ -1016,6 +1405,7 @@ fn derive<'r>(
     segments: &'r [String],
     reference: &'r Reference,
     policy: Qualification,
+    sibling: Option<&'r SiblingFill>,
 ) -> Option<Vec<Option<&'r str>>> {
     let declared = &entry.identity.name.0;
     let mut slots: Vec<Option<&str>> = vec![None; declared.len()];
@@ -1032,8 +1422,36 @@ fn derive<'r>(
     for (at, segment) in open[missing..].iter().zip(segments) {
         slots[*at] = Some(segment);
     }
+    if let Some(fill) = sibling {
+        // Sibling mode: the windows fill the leading open slots, the
+        // spelling has filled the innermost, and every slot must be
+        // filled — nothing is inferred and no segment stays open. A
+        // slot the spelling already pins keeps its spelled value; the
+        // disagreement is a link diagnostic, never a silent override.
+        for window in &fill.windows {
+            for (offset, segment) in window.segments.iter().enumerate() {
+                let slot = slots.get_mut(window.start + offset)?;
+                if slot.is_none() {
+                    *slot = Some(segment.as_str());
+                }
+            }
+        }
+        if slots.iter().any(|slot| slot.is_none()) {
+            return None;
+        }
+        return slots
+            .iter()
+            .zip(declared)
+            .all(|(slot, segment)| slot.is_some_and(|supplied| supplied == segment))
+            .then_some(slots);
+    }
     if missing > 0 {
-        if policy == Qualification::Explicit {
+        // Sibling mode reaches here only when no sibling contributed:
+        // the bare name then matches nothing, exactly as `explicit`.
+        if matches!(
+            policy,
+            Qualification::Explicit | Qualification::ExplicitOrSibling
+        ) {
             return None;
         }
         if let Some(context) = reference.context.as_deref() {
@@ -1049,26 +1467,33 @@ fn derive<'r>(
 
 /// The required qualifiers its resolved target fails: the reference
 /// supplies each, spelled or derived into the identity field of that
-/// name, and the target declares the same value.
+/// name, and the target declares the same value. A `from-field`
+/// qualifier is satisfied by its sibling's own resolution, checked as a
+/// disagreement when both spell, so it never fails here.
 fn unmet_qualifiers(
     definition: &Definition,
     bound: &BoundReference,
     target: &IndexedDeclaration,
+    sibling: Option<&SiblingFill>,
 ) -> Vec<UnmetQualifier> {
     let reference = &bound.reference;
     let policy = bound.declared.qualification;
     let plain = reference.name.0.as_slice();
-    let unqualified = own_document(target, reference) && matches(target, plain, reference, policy);
+    let unqualified =
+        own_document(target, reference) && matches(target, plain, reference, policy, sibling);
     let segments = match &target.namespace {
-        Some(_) if !unqualified => through_namespace(target, reference, policy).unwrap_or_default(),
+        Some(_) if !unqualified => {
+            through_namespace(target, reference, policy, sibling).unwrap_or_default()
+        }
         _ => plain,
     };
-    let derived = derive(target, segments, reference, policy).unwrap_or_default();
+    let derived = derive(target, segments, reference, policy, sibling).unwrap_or_default();
     bound
         .declared
         .qualifiers
         .iter()
         .filter(|rule| rule.required)
+        .filter(|rule| rule.from_field.is_none())
         .filter_map(|rule| {
             let name = definition.names.resolve(rule.name);
             let spelled = reference
@@ -1236,12 +1661,16 @@ fn link_records(link: &Link, documents: &BTreeMap<SourceId, String>) -> Vec<Diag
     match &link.outcome {
         LinkOutcome::Resolved | LinkOutcome::External => Vec::new(),
         LinkOutcome::Unresolved => {
+            // A sibling-qualified reference that derived contributions
+            // names the qualified spelling it attempted, never the
+            // bare one it wrote.
+            let written = link.attempt.as_deref().unwrap_or(&reference.written);
             let held = match (&link.node, &link.field, link.key) {
                 (Some(node), Some(field), true) => format!(" as a key of {node}.{field}"),
                 (Some(node), Some(field), false) => format!(" held by {node}.{field}"),
                 _ => site,
             };
-            let name = format!("{} in {}{}", reference.written, reference.domain, held);
+            let name = format!("{} in {}{}", written, reference.domain, held);
             let name = match link.gated.as_slice() {
                 [] => name,
                 gated => format!(

@@ -728,6 +728,9 @@ pub enum Qualification {
     ExplicitOrContext,
     /// The reference may resolve through an import namespace or context.
     ImportedOrContext,
+    /// The reference may take missing qualifiers from a sibling field
+    /// of the same record.
+    ExplicitOrSibling,
 }
 
 impl Qualification {
@@ -736,6 +739,7 @@ impl Qualification {
             "explicit" => Qualification::Explicit,
             "explicit-or-context" => Qualification::ExplicitOrContext,
             "imported-or-context" => Qualification::ImportedOrContext,
+            "explicit-or-sibling" => Qualification::ExplicitOrSibling,
             _ => return None,
         })
     }
@@ -745,6 +749,7 @@ impl Qualification {
             Qualification::Explicit => "explicit",
             Qualification::ExplicitOrContext => "explicit-or-context",
             Qualification::ImportedOrContext => "imported-or-context",
+            Qualification::ExplicitOrSibling => "explicit-or-sibling",
         }
     }
 }
@@ -754,7 +759,12 @@ impl Qualification {
 #[non_exhaustive]
 pub struct QualifierDecl {
     pub name: Sym,
-    pub ty: TypeExpr,
+    /// The qualifier's declared type; `None` when the qualifier names a
+    /// sibling field instead. Exactly one of `ty` and `from_field`.
+    pub ty: Option<TypeExpr>,
+    /// The record field a sibling-qualified reference takes its
+    /// qualifying segments from.
+    pub from_field: Option<Sym>,
     /// A declared qualifier is required unless it says otherwise.
     pub required: bool,
     pub site: Site,

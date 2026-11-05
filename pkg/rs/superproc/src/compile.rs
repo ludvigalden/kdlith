@@ -611,7 +611,11 @@ fn declaration(value: Item) -> Option<Construct> {
                 .iter()
                 .map(|qualifier| QualifierInput {
                     name: qualifier.name.as_str().to_owned(),
-                    ty: qualifier.ty.as_str().to_owned(),
+                    ty: qualifier.ty.as_ref().map(|ty| ty.as_str().to_owned()),
+                    from_field: qualifier
+                        .from_field
+                        .as_ref()
+                        .map(|field| field.as_str().to_owned()),
                     // A declared qualifier is required unless it says
                     // otherwise.
                     required: qualifier.required.unwrap_or(true),
