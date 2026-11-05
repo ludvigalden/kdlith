@@ -1,0 +1,13 @@
+work w-one {
+    part piano
+    part cello
+}
+work w-two {
+    part piano
+}
+render r work=w-one {
+    parts piano
+}
+render s work=w-two {
+    parts piano
+}

@@ -253,6 +253,10 @@ object_type! {
         "target" => target: TypeName,
         "codec" => codec: Option<TypeName>,
         "lookup" => lookup: Option<DomainName>,
+        // How the reference qualifies its target: explicitly in its
+        // spelling, explicitly or from context, from imports or
+        // context, or explicitly or from a sibling field of the same
+        // record.
         "qualification" => qualification: Qualification,
         // The context slot an unqualified reference's qualifier comes from;
         // absent is the `namespace` slot.

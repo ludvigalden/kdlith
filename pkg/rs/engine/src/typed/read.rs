@@ -463,6 +463,18 @@ impl<T> Reading<T> {
         self.report.as_ref()?.types.get(kind)?.links.get(at)
     }
 
+    /// The fully qualified identity `reference` resolved to — the one
+    /// declaration's composed name segments, outermost qualifier first
+    /// — when the reading was linked and the reference resolved. A
+    /// sibling-qualified reference written bare returns the segments
+    /// its sibling fields contributed together with its own, not the
+    /// spelling it was written with; a reference that did not resolve,
+    /// resolved external, or was read from an unlinked reading holds
+    /// none.
+    pub fn qualified_name<V>(&self, reference: &Ref<V>) -> Option<&[String]> {
+        self.link_of(reference)?.resolved_identity()
+    }
+
     /// The answer for `reference`: the declaration it resolved to,
     /// read as its target type, or — when its reference type's
     /// open-world arm admitted it — an external outcome with no

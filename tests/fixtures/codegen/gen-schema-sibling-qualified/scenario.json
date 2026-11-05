@@ -1,0 +1,70 @@
+{
+  "heavy": true,
+  "binary": "kdlith",
+  "kind": "codegen-oracle",
+  "description": "The sibling-qualified reference generation fixture: gen schema generates the committed processing/linking/sibling-qualified schema, whose render records hold a bare PartRef spelling qualified by the WorkRef sibling field of the same record, twice into two scratch trees the harness requires byte-identical; the generated crate compiles inside a scratch workspace materialized from this scenario's committed template, and the compiled processor collects the committed data document as a reading linked under complete scope through its own typed reader. The same part slug is declared in two works and each render still resolves its own part with no cross-work leakage and no diagnostic, and the reading's qualified-name accessor returns the fully qualified identity each reference resolved to (the render's own work, then each bare piano under its own work: w-one.piano and w-two.piano) while Ref::written still carries the bare spelling — the reference's Rust type stays the generated reference_type! newtype, so a tool reads the qualified identity through the generated crate without re-qualifying",
+  "form": "schema",
+  "entrypoint": "{fx-suite}/processing/linking/sibling-qualified/schema.kdl",
+  "crate": "part-proc",
+  "steps": [
+    {
+      "generate": "ws/rs/part-proc"
+    },
+    {
+      "generate": "gen-again"
+    },
+    {
+      "determinism": [
+        "ws/rs/part-proc",
+        "gen-again"
+      ]
+    },
+    {
+      "compile": {
+        "workspace": "ws",
+        "copy": {
+          "crates": [
+            "diagnostic",
+            "engine",
+            "model",
+            "parse",
+            "runtime",
+            "superproc"
+          ]
+        },
+        "command": [
+          "cargo",
+          "build",
+          "--offline",
+          "--manifest-path",
+          "ws/rs/part-proc/Cargo.toml"
+        ]
+      }
+    },
+    {
+      "exercise": {
+        "command": [
+          "cargo",
+          "run",
+          "--offline",
+          "--quiet",
+          "--manifest-path",
+          "ws/rs/exercise/Cargo.toml",
+          "--",
+          "processing/linking/sibling-qualified/schema.kdl",
+          "processing/linking/sibling-qualified/input.kdl"
+        ],
+        "stdout-contains": [
+          "schema ok digest=7394aed87d16f717\n",
+          "read failed=false renders=2 diagnostics=0\n",
+          "render r work=w-one->w-one parts=[piano->w-one.piano]\n",
+          "render s work=w-two->w-two parts=[piano->w-two.piano]\n"
+        ],
+        "stdout-not-contains": [
+          "diag ",
+          "error "
+        ]
+      }
+    }
+  ]
+}

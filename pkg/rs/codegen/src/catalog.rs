@@ -208,6 +208,12 @@ pub(crate) fn field_comment(ty: &str, field: &str) -> Option<&'static [&'static 
             "The record field a sibling-qualified reference takes its",
             "qualifying segments from; exactly one of type and from-field.",
         ],
+        ("ReferenceDef", "qualification") => &[
+            "How the reference qualifies its target: explicitly in its",
+            "spelling, explicitly or from context, from imports or",
+            "context, or explicitly or from a sibling field of the same",
+            "record.",
+        ],
         ("ReferenceDef", "qualify-from") => &[
             "The context slot an unqualified reference's qualifier comes from;",
             "absent is the `namespace` slot.",

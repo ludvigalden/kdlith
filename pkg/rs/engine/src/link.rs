@@ -485,6 +485,23 @@ pub struct Link {
     pub outcome: LinkOutcome,
 }
 
+impl Link {
+    /// The fully qualified identity the reference resolved to — the
+    /// one declaration's composed name segments, outermost qualifier
+    /// first — when it resolved. `None` for every other outcome: an
+    /// external one resolved to no declaration in the reading, and a
+    /// failed one has no identity to name. A sibling-qualified
+    /// reference that resolved under segments its sibling fields
+    /// contributed returns that qualified identity, not the spelling
+    /// it was written with.
+    pub fn resolved_identity(&self) -> Option<&[String]> {
+        match (&self.outcome, self.candidates.as_slice()) {
+            (LinkOutcome::Resolved, [target]) => Some(target.identity.name.0.as_slice()),
+            _ => None,
+        }
+    }
+}
+
 /// Every reference one declared reference type looks up.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
