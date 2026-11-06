@@ -1,0 +1,101 @@
+// Two ordered sibling qualifiers: each render's bare or partly spelled
+// part reference takes its leading identity segments, in declaration
+// order, from the work and section references the same record holds,
+// and a spelling that pins those segments must agree with them.
+schema parts version="1" {
+    types {
+        string Slug {
+            format kebab-case
+        }
+        codec SlugName output=String {
+            match "(?<name>[a-z][a-z0-9-]*)"
+            capture name String
+        }
+        codec WorkSectionPart output=String {
+            match "(?:(?<work>[a-z][a-z0-9-]*)\\.)?(?:(?<section>[a-z][a-z0-9-]*)\\.)?(?<name>[a-z][a-z0-9-]*)"
+            capture work String
+            capture section String
+            capture name String
+        }
+        object Work {
+            field id Slug
+            field sections "list<Section>"
+            field parts "list<Part>"
+        }
+        object Section {
+            field work Slug
+            field id Slug
+        }
+        object Part {
+            field work Slug
+            field section Slug
+            field id Slug
+        }
+        object Render {
+            field id Slug
+            field work WorkRef
+            field section SectionRef
+            field parts "list<PartRef>"
+        }
+    }
+    reference WorkRef target=Work codec=SlugName lookup=works qualification=explicit
+    reference SectionRef target=Section codec=SlugName lookup=sections qualification=explicit
+    reference PartRef target=Part codec=WorkSectionPart lookup=parts qualification=explicit-or-sibling {
+        qualifier work from-field=work
+        qualifier section from-field=section
+    }
+    node work root=#true role=declaration type=Work {
+        identity {
+            domain works
+            compose qualified-name id
+        }
+        field id arg=0
+        field sections {
+            from {
+                children section
+            }
+        }
+        field parts {
+            from {
+                children part
+            }
+        }
+    }
+    node section role=declaration type=Section parent=work {
+        identity {
+            domain sections
+            compose qualified-name id
+        }
+        field id arg=0
+        field work {
+            from {
+                parent id
+            }
+        }
+    }
+    node part role=declaration type=Part parent=work {
+        identity {
+            domain parts
+            compose qualified-name work section id
+        }
+        field id arg=0
+        field work {
+            from {
+                parent id
+            }
+        }
+        field section property=section
+    }
+    node render root=#true role=record type=Render {
+        field id arg=0
+        field work property=work
+        field section property=section
+        field parts {
+            from {
+                child parts {
+                    args
+                }
+            }
+        }
+    }
+}

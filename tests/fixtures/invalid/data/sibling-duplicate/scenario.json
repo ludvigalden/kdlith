@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "Sibling qualification does not loosen the duplicate rule: two parts composing one identity in one work are REF002 exactly as before",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/linking/sibling-qualified/schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

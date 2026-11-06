@@ -94,5 +94,8 @@ joins with the value-resolution hook; `BND010` with reference-keyed
 maps (its link failure names the map field); `BND011`–`BND014` with
 constraints, bounds, exclusivity, and case shapes; `SCH016`–`SCH019`
 with conditional bounds (minted once per offending rule at compile).
+`REF006` joins with the sibling-field reference qualifier (one
+diagnostic per disagreeing qualifier window); its declaration-time
+misuses reuse `DLC005`.
 The shipped resolver adds `DLC010` (a resolver refusal), leaving
 `DLC006` the not-installed and no-policy cases.

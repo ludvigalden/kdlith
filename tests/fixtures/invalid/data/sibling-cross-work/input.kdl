@@ -1,0 +1,9 @@
+work w-one {
+    part piano
+}
+work w-two {
+    part voice
+}
+render r work=w-two {
+    parts piano
+}

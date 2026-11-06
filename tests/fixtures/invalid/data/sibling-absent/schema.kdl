@@ -1,0 +1,66 @@
+// A sibling-qualified reference whose holding record leaves the
+// sibling field unset (an optional work): the contribution is
+// nothing, the bare name stays bare, and lookup fails as REF001.
+schema parts version="1" {
+    types {
+        string Slug {
+            format kebab-case
+        }
+        codec SlugName output=String {
+            match "(?<name>[a-z][a-z0-9-]*)"
+            capture name String
+        }
+        object Work {
+            field id Slug
+            field instruments "list<Part>"
+        }
+        object Part {
+            field work Slug
+            field id Slug
+        }
+        object Render {
+            field id Slug
+            field work "optional<WorkRef>"
+            field parts "list<PartRef>"
+        }
+    }
+    reference WorkRef target=Work codec=SlugName lookup=works qualification=explicit
+    reference PartRef target=Part codec=SlugName lookup=parts qualification=explicit-or-sibling {
+        qualifier work from-field=work
+    }
+    node work root=#true role=declaration type=Work {
+        identity {
+            domain works
+            compose qualified-name id
+        }
+        field id arg=0
+        field instruments {
+            from {
+                children part
+            }
+        }
+    }
+    node part role=declaration type=Part parent=work {
+        identity {
+            domain parts
+            compose qualified-name work id
+        }
+        field id arg=0
+        field work {
+            from {
+                parent id
+            }
+        }
+    }
+    node render root=#true role=record type=Render {
+        field id arg=0
+        field work property=work
+        field parts {
+            from {
+                child parts {
+                    args
+                }
+            }
+        }
+    }
+}

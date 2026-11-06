@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A bare part name under a render that names its work takes its leading identity segment from the work reference the same record holds: the same part slug declared in two works resolves inside each render's own work with no cross-work leakage and no diagnostic",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/linking/sibling-qualified/schema.kdl",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "Two ordered sibling qualifiers compose a three-segment identity: a render's bare part name takes work then section from the references its own fields hold, and a fully explicit spelling of the same reference resolves too, because agreement with the siblings is not an error",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/linking/sibling-qualified-multi/schema.kdl",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

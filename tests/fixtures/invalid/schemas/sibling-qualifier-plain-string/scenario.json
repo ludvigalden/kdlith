@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "The sibling-qualifier declaration is checked at schema compile and refused as KDLITH-DLC005",
+  "args": [
+    "vet",
+    "schema",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

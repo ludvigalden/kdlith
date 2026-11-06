@@ -1,0 +1,13 @@
+work w-one {
+    section s-one
+    section s-two
+    part piano section=s-one
+    part cello section=s-two
+}
+work w-two {
+    section s-three
+    part violin section=s-three
+}
+render r work=w-one section=s-one {
+    parts piano w-one.s-one.piano
+}

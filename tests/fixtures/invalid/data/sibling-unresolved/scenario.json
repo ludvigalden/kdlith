@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A bare part name qualified by its render's work still fails REF001 when no part of that name is declared in that work; the message names the qualified attempt w-one.violin",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/linking/sibling-qualified/schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

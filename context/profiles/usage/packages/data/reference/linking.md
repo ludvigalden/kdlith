@@ -8,7 +8,14 @@ is one — is looked up among the reading's declarations under that
 reference type's qualification policy. An unqualified reference's
 missing qualifier is filled at bind time from the context slot its
 field chose: the field binding's `qualify-from=`, else its reference
-type's, else the `namespace` slot.
+type's, else the `namespace` slot. A reference whose type declares
+`qualification=explicit-or-sibling` instead takes its leading identity
+segments, in the declaration order of its `qualifier … from-field=`
+children, from the resolved identities of the references the holding
+record's named fields hold; the contribution exactly covers the
+target's leading identity fields, an unset sibling contributes
+nothing, and a sibling that itself fails to resolve reports its own
+diagnostic beside the dependent's.
 
 ## Link codes
 
@@ -19,6 +26,7 @@ type's, else the `namespace` slot.
 | `KDLITH-REF003` | the policy derives more than one candidate (ambiguous)                                                                     |
 | `KDLITH-REF004` | the one candidate fails a required qualifier                                                                               |
 | `KDLITH-REF005` | a pending payload does not fit the declaration its reference resolved to                                                   |
+| `KDLITH-REF006` | a spelling pins an identity segment a resolved sibling qualifier supplies otherwise (one per disagreeing window)           |
 
 Aliased imports gate visibility: a document imported `as=NAME`
 resolves its own declarations unqualified, while every other document

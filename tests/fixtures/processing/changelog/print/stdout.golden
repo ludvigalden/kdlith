@@ -433,7 +433,7 @@ path=…; pinned "sha256:…" }`, whose pin is optional. kdlith never
   dialect digest.
 - A reference type may qualify from a sibling field of the same
   record: `qualification=explicit-or-sibling` with `qualifier
-  <identity-field> from-field=<record-field>` children, in declaration
+<identity-field> from-field=<record-field>` children, in declaration
   order, each filling the next leading identity segments of the target
   with the resolved identity of the reference the named field holds;
   the combined contribution must exactly cover the leading segments,
@@ -444,8 +444,11 @@ path=…; pinned "sha256:…" }`, whose pin is optional. kdlith never
   type lacks or does not declare as a reference, or the field holding
   the reference itself — fails definition compile. A spelling that
   pins a segment a resolved sibling supplies otherwise is the new
-  `KDLITH-REF006`, never a silent override. This changes the canonical
-  dialect digest.
+  `KDLITH-REF006`, never a silent override. The qualified identity a
+  reference resolved to is readable through the typed reading surface
+  (`Reading::qualified_name`), reachable through a generated crate's
+  re-exports while the reference's Rust type stays the generated
+  newtype. This changes the canonical dialect digest.
 
 ### Changed
 

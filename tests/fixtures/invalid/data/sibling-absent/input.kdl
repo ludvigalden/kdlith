@@ -1,0 +1,6 @@
+work w-one {
+    part piano
+}
+render r {
+    parts piano
+}

@@ -1,0 +1,69 @@
+// A sibling-qualified reference declaring no qualifier with
+// from-field is refused at schema compile.
+// A sibling-qualified reference: each render's bare part name takes
+// its leading identity segment from the work reference the same
+// record holds, so the same part slug may live in two works and each
+// render still resolves its own part, with no cross-work leakage; the
+// qualified identity the reading resolved is readable through the
+// typed reading surface.
+schema parts version="1" {
+    types {
+        string Slug {
+            format kebab-case
+        }
+        codec SlugName output=String {
+            match "(?<name>[a-z][a-z0-9-]*)"
+            capture name String
+        }
+        object Work {
+            field id Slug
+            field instruments "list<Part>"
+        }
+        object Part {
+            field work Slug
+            field id Slug
+        }
+        object Render {
+            field id Slug
+            field work WorkRef
+            field parts "list<PartRef>"
+        }
+    }
+    reference WorkRef target=Work codec=SlugName lookup=works qualification=explicit
+    reference PartRef target=Part codec=SlugName lookup=parts qualification=explicit-or-sibling
+    node work root=#true role=declaration type=Work {
+        identity {
+            domain works
+            compose qualified-name id
+        }
+        field id arg=0
+        field instruments {
+            from {
+                children part
+            }
+        }
+    }
+    node part role=declaration type=Part parent=work {
+        identity {
+            domain parts
+            compose qualified-name work id
+        }
+        field id arg=0
+        field work {
+            from {
+                parent id
+            }
+        }
+    }
+    node render root=#true role=record type=Render {
+        field id arg=0
+        field work property=work
+        field parts {
+            from {
+                child parts {
+                    args
+                }
+            }
+        }
+    }
+}

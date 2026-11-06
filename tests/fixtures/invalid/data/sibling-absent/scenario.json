@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A record whose sibling field is unset contributes nothing: the bare part name stays bare and fails REF001 as a bare lookup, with no segment inferred",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

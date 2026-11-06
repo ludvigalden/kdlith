@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A sibling reference that itself fails to resolve contributes nothing and its own diagnostic is never suppressed: the render's work reports REF001 on w-three and the dependent bare piano reports its own REF001, both in one run",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/linking/sibling-qualified/schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

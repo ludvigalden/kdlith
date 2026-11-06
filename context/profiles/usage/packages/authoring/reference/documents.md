@@ -72,7 +72,7 @@ public constant per fact.
 A declaration may carry an `identity { domain NAME compose
 qualified-name FIELD FIELD }` block composing its qualified symbol
 from bound fields, and `reference NAME target=TYPE codec=…
-qualification=explicit|explicit-or-context|imported-or-context
+qualification=explicit|explicit-or-context|imported-or-context|explicit-or-sibling
 qualify-from=SLOT` declares how reference values spell and resolve.
 The optional `qualify-from` names the context slot an unqualified
 reference of that type takes its qualifier from; absent is the
@@ -85,3 +85,24 @@ when case dispatch retypes it, while a declaration without one
 registers under the type the case selected. Data fields typed
 with a declared reference type bind structured references that
 linking resolves — see the `data` package's linking reference.
+
+Under `qualification=explicit-or-sibling` the reference declaration
+instead carries `qualifier <identity-field> from-field=<record-field>`
+children: a bare or partly spelled reference takes its leading
+identity segments, in the children's declaration order, from the
+resolved identities of the references the holding record's named
+fields hold. The ordered qualifiers must exactly cover the target's
+leading identity fields — each names the next leading field, and
+nothing is inferred beyond them — so a record naming a work in one
+field may spell its parts as bare per-work slugs while the same slug
+lives in several works. An explicit spelling, where the codec admits
+one, must agree with what the siblings supply: a pinned segment that
+disagrees is `KDLITH-REF006`, never a silent override. An unset
+sibling field contributes nothing (the name stays bare), a sibling
+that itself fails to resolve reports its own diagnostic beside the
+dependent's, and `KDLITH-REF001`/`KDLITH-REF002` behave on the
+qualified name exactly as before. Every declaration-time misuse — no
+`from-field` qualifier, one under another qualification, a qualifier
+naming a non-leading or unknown identity field, or a `from-field` the
+holding type does not declare as a reference field — fails schema
+compile with `KDLITH-DLC005`.

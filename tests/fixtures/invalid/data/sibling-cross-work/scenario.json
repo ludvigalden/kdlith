@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A render naming work w-two resolves its bare piano only among w-two's parts: a piano declared only in w-one is REF001 under the qualified attempt w-two.piano, with no cross-work leakage",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/linking/sibling-qualified/schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

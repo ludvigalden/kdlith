@@ -38,14 +38,14 @@ even when the member's declared type is known. Under complete scope,
 linking reads the member's value from the resolved declaration and
 maps it:
 
-| Kind value          | The payload must be                                                     |
-| ------------------- | ----------------------------------------------------------------------- |
-| `flag`              | one `Bool`                                                              |
-| `number`            | one `U64`                                                               |
-| `text`              | one `String`                                                            |
+| Kind value          | The payload must be                                                                                                            |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `flag`              | one `Bool`                                                                                                                     |
+| `number`            | one `U64`                                                                                                                      |
+| `text`              | one `String`                                                                                                                   |
 | `choice`            | one scalar equal to one value of the declaration's choice set: the bound `choices` field, or the field the against block names |
-| no value or `#null` | nothing fits: `KDLITH-REF005`, naming the member                        |
-| any other value     | nothing fits: `KDLITH-REF005`, naming the kind the codec does not bind  |
+| no value or `#null` | nothing fits: `KDLITH-REF005`, naming the member                                                                               |
+| any other value     | nothing fits: `KDLITH-REF005`, naming the kind the codec does not bind                                                         |
 
 A scalar arm takes exactly one value and never promotes it to a list.
 Choice equality compares spellings, as case dispatch does; a `choice`

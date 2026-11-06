@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "An explicit spelling that pins a segment a resolved sibling supplies otherwise is REF006, never a silent override: one render disagreeing on both windows reports one REF006 per disagreeing window, and one disagreeing only on the second window shows the check chaining per qualifier while the agreeing first window stays silent",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/linking/sibling-qualified-multi/schema.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}
