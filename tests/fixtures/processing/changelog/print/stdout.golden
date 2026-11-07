@@ -452,6 +452,14 @@ path=…; pinned "sha256:…" }`, whose pin is optional. kdlith never
 
 ### Changed
 
+- Breaking: generated crates spell every field identifier in
+  snake_case, translated from the KDL field spelling (a new word at
+  each lowercase-to-uppercase transition, at the end of an uppercase
+  run, and after a digit; a letter run keeps its trailing digits, and
+  acronyms split at both edges), with the keyword rule applied after
+  the translation (`type` stays `ty`). The KDL spelling remains the
+  binding key; consumers regenerate and update field accesses. The
+  canonical dialect digest is unchanged.
 - Breaking: an asset `digest` is the SHA-256 of a file's bytes, or a
   directory's canonical tree digest, written `sha256:<hex>`, in place
   of the interim `fnv1a64:` digest.

@@ -1,0 +1,35 @@
+{
+  "heavy": true,
+  "binary": "kdlith",
+  "kind": "codegen-oracle",
+  "description": "gen schema spells every field identifier of a generated crate in snake_case: a committed schema whose object fields carry camelCase words, digit boundaries (both a letter run keeping its trailing digits and a digit run starting a new word), an acronym flanked by lowercase words, a kebab spelling, an already-snake spelling, and a keyword-prefixed spelling generates twice into scratch trees the harness requires byte-identical, the generated crate compiles inside a scratch workspace materialized from this scenario's committed template, and the compiled processor loads its own schema with the digest the reference CLI reports and reads a committed data document through its own typed reader, printing every field through its snake_case identifier (q_start, q2_start, player1_score, addr2_line, parse_json_data, http_url, primary_label, max_depth, fn_x) — the KDL spelling stays the binding key, so the same data document vets green unchanged",
+  "form": "schema",
+  "entrypoint": "inputs/snakefields.kdl",
+  "crate": "snakefields-proc",
+  "steps": [
+    { "generate": { "out": "ws/rs/snakefields-proc", "args": ["--kdlith-path", ".."] } },
+    { "generate": { "out": "gen-again", "args": ["--kdlith-path", ".."] } },
+    { "determinism": ["ws/rs/snakefields-proc", "gen-again"] },
+    {
+      "compile": {
+        "workspace": "ws",
+        "copy": {
+          "crates": ["diagnostic", "engine", "model", "parse", "runtime", "superproc"]
+        },
+        "command": ["cargo", "build", "--offline", "--manifest-path", "ws/rs/snakefields-proc/Cargo.toml"]
+      }
+    },
+    {
+      "exercise": {
+        "command": ["cargo", "run", "--offline", "--quiet", "--manifest-path", "ws/rs/exercise/Cargo.toml", "--", "inputs/snakefields.kdl", "inputs/data.kdl"],
+        "stdout-contains": [
+          "schema ok digest=07333332bcc426b4\n",
+          "read ok jobs=1\n",
+          "job q_start=07 q2_start=23 player1_score=4\n",
+          "job addr2_line=floor-2 parse_json_data=ping:1 http_url=https://example.org\n",
+          "job primary_label=day max_depth=9 fn_x=held\n"
+        ]
+      }
+    }
+  ]
+}

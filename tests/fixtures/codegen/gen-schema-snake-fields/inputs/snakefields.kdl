@@ -1,0 +1,33 @@
+// A schema whose field spellings exercise the generated-identifier
+// naming contract: camelCase words, digit boundaries, an acronym, a
+// kebab spelling, an already-snake spelling, and a keyword-prefixed
+// spelling all render as snake_case field identifiers in the generated
+// crate (q_start, q2_start, player1_score, addr2_line, parse_json_data,
+// http_url, primary_label, max_depth, fn_x) while the KDL spelling
+// stays the binding key.
+schema snakefields version="1" {
+    types {
+        object Job {
+            field qStart String
+            field q2start String
+            field player1Score String
+            field addr2Line String
+            field parseJSONData String
+            field httpURL String
+            field primary-label String
+            field max_depth String
+            field fnX String
+        }
+    }
+    node job role=record type=Job {
+        field qStart arg=0
+        field q2start arg=1
+        field player1Score arg=2
+        field addr2Line arg=3
+        field parseJSONData arg=4
+        field httpURL arg=5
+        field primary-label arg=6
+        field max_depth arg=7
+        field fnX arg=8
+    }
+}

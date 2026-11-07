@@ -1,0 +1,16 @@
+// A schema whose two distinct field spellings render one snake_case
+// identifier: qStart translates to q_start, colliding with the field
+// already spelled q_start, so generation fails closed while the schema
+// itself vets green.
+schema collide version="1" {
+    types {
+        object Thing {
+            field qStart String
+            field q_start String
+        }
+    }
+    node thing role=record type=Thing {
+        field qStart arg=0
+        field q_start arg=1
+    }
+}

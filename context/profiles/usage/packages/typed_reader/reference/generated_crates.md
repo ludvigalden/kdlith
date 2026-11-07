@@ -114,6 +114,24 @@ Generic instances generate under mangled names
 instantiations spelling one mangled name fail closed the same way.
 Such a definition still vets: the limit is the generated crate's.
 
+A field's Rust identifier is the snake_case translation of its KDL
+spelling, which stays the binding key — documents bind the KDL
+spelling, and only the generated field identifiers change. Each word
+boundary in the spelling starts a new word: lowercase to uppercase
+(`qStart` renders `q_start`), the last letter of an uppercase run
+before a lowercase one (`parseJSONData` renders `parse_json_data`,
+`httpURL` renders `http_url`), and the first letter after a digit
+(`q2start` renders `q2_start`, `player1Score` renders
+`player1_score`); a letter run keeps its trailing digits
+(`addr2Line` renders `addr2_line`), and an already-snake or kebab
+spelling passes through (`max_depth`, `primary-label` renders
+`primary_label`). Keywords are applied after the translation: `type`
+keeps its `ty` spelling, a whole translated word that spells another
+Rust keyword takes the raw form (`fn` renders `r#fn`), and a
+translated word that merely contains one needs nothing (`fnX`
+renders `fn_x`). Two distinct spellings that translate to one
+identifier (`qStart` beside `q_start`) fail closed as a collision.
+
 A type may take the name of a trait the generated code derives
 (`Hash`, `Clone`, `Debug`, `Default`, `PartialEq`, `Eq`): every derive,
 macro, and trait is spelled by its full path. Each record or

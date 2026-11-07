@@ -12,6 +12,26 @@ two of one declaration's spellings collide; a document's module name
 is no identifier; or a declared, reference, or node-local type is
 named `Self`.
 
+A field key's snake_case spelling is a translation of its KDL
+spelling (`render.rs::field_name`), and the KDL spelling stays the
+binding key — only the generated field identifiers change. The
+translation splits at each word boundary: lowercase to uppercase
+(`qStart` renders `q_start`), the last letter of an uppercase run
+before a lowercase one (acronyms split at both edges:
+`parseJSONData` renders `parse_json_data`, `httpURL` renders
+`http_url`), and the first letter after a digit (`q2start` renders
+`q2_start`, `player1Score` renders `player1_score`); a letter run
+keeps its trailing digits (`addr2Line` renders `addr2_line`), and an
+already-snake or kebab spelling passes through. The keyword test runs
+after the translation, so `type` keeps `ty`, a whole translated word
+spelling a keyword takes the raw form (`fn` renders `r#fn`), and
+`fnX` renders `fn_x` needing none. Post-translation collisions —
+`qStart` beside `q_start`, both rendering `q_start` — fail closed by
+the same variants guard that compares rendered identifiers; the
+generated crate's fields are snake_case-valid by construction, so a
+generated crate is clippy-clean on field spellings
+(`codegen/gen-schema-snake-fields`).
+
 A schema crate spells every prelude and engine name by path
 (`::core::option::Option`, `::std::vec::Vec`,
 `::kdlith_engine::Ref`), so a schema may declare types named

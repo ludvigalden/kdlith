@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "gen schema refuses an object whose two distinct field spellings translate to one snake_case identifier — qStart renders q_start beside a field already spelled q_start — naming the colliding field and the reason, exit 1, writing nothing. Like every codegen refusal the line carries no registered code, so the pinned expectation is the one-line refusal itself, and the scratch check proves nothing was written into the output directory",
+  "args": ["gen", "schema", "schema.kdl", "--crate", "things-proc", "--out", "out"],
+  "expect": {
+    "exit": 1,
+    "stdout-not-contains": ["out"],
+    "stderr-contains": [
+      "kdlith: gen schema: the field `q_start` of `Thing` has no Rust spelling in a generated crate: another one in the same declaration spells the same identifier\n"
+    ],
+    "scratch-check": {
+      "plant": [{ "path": "planted-foreign.txt", "kind": "file" }]
+    }
+  }
+}

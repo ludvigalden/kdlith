@@ -22,18 +22,58 @@ pub fn pascal(name: &str) -> String {
     spelled
 }
 
-/// A field key as a Rust field name: dashes to underscores, `type`
-/// spelled `ty` as the declaration tables do, other Rust keywords as raw
-/// identifiers.
+/// A field key as a Rust field name: the snake_case translation of
+/// [`snake_case`] (dashes to underscores, every word boundary starting
+/// a new word), `type` spelled `ty` as the declaration tables do, and
+/// a whole translated word that spells a Rust keyword taken raw. The
+/// KDL spelling stays the binding key; only this identifier changes.
 pub fn field_name(key: &str) -> String {
     if key == "type" {
         return "ty".to_owned();
     }
-    let snake = key.replace('-', "_");
+    let snake = snake_case(key);
     if is_keyword(&snake) {
         format!("r#{snake}")
     } else {
         snake
+    }
+}
+
+/// The snake_case form of a key: word separators stay, a letter run
+/// keeps its trailing digits, and the first letter after a digit, a
+/// lower-to-upper transition, and an uppercase run's end before a
+/// lowercase one each start a new word.
+fn snake_case(key: &str) -> String {
+    let characters: Vec<char> = key.chars().collect();
+    let mut spelled = String::with_capacity(key.len() + 4);
+    for (index, &character) in characters.iter().enumerate() {
+        if character == '-' || character == '_' {
+            spelled.push('_');
+            continue;
+        }
+        if index > 0
+            && starts_word(
+                characters[index - 1],
+                character,
+                characters.get(index + 1).copied(),
+            )
+        {
+            spelled.push('_');
+        }
+        spelled.extend(character.to_lowercase());
+    }
+    spelled
+}
+
+fn starts_word(previous: char, character: char, next: Option<char>) -> bool {
+    match character {
+        _ if character.is_uppercase() => {
+            previous.is_lowercase()
+                || previous.is_ascii_digit()
+                || previous.is_uppercase() && next.is_some_and(|next| next.is_lowercase())
+        }
+        _ if character.is_lowercase() => previous.is_ascii_digit(),
+        _ => false,
     }
 }
 
