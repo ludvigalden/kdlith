@@ -452,6 +452,10 @@ path=…; pinned "sha256:…" }`, whose pin is optional. kdlith never
 
 ### Changed
 
+- The `KDLITH-GEN008` refusal now carries the contract in its
+  message: the default sibling packaging only resolves beside the
+  kdlith crates, and generation anywhere else passes `--kdlith-path`
+  to point at them.
 - Breaking: generated crates spell every field identifier in
   snake_case, translated from the KDL field spelling (a new word at
   each lowercase-to-uppercase transition, at the end of an uppercase

@@ -6,7 +6,7 @@
     "exit": 1,
     "stdout-not-contains": ["ok: generated"],
     "stderr-contains": [
-      "error[KDLITH-GEN008]: the default sibling packaging writes kdlith-diagnostic at diagnostic, which does not resolve to a crate"
+      "error[KDLITH-GEN008]: the default sibling packaging writes kdlith-diagnostic at diagnostic, which does not resolve to a crate: the default sibling packaging only resolves beside the kdlith crates, so pass --kdlith-path to point at them"
     ],
     "scratch-check": {
       "plant": [{ "path": "planted-foreign.txt", "kind": "file" }]

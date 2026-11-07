@@ -31,7 +31,12 @@ the three flags are mutually exclusive. Without any, the manifest
 keeps sibling paths, and a writing run requires each sibling
 directory beside `--out` to hold a kdlith crate — an unresolvable
 one refuses the write with `KDLITH-GEN008` before any file lands,
-so a manifest of broken path dependencies is never written.
+so a manifest of broken path dependencies is never written. The
+flagless default is a contract, not a fallback: it resolves only
+when `--out` sits beside the kdlith crates themselves (generation
+inside the kdlith repository); a consumer generating out of that
+tree passes `--kdlith-path` to point at the crates — the
+`KDLITH-GEN008` message names this.
 
 Every generated manifest carries registry metadata — the package
 name, a version, and a `description` naming the definition the crate

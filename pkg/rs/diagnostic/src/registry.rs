@@ -1102,7 +1102,7 @@ pub const CODES: &[CodeDefinition] = &[
         severity: Severity::Error,
         exit_class: 1,
         trigger: "a writing generation run under the default sibling packaging finds a kdlith dependency directory with no crate beside the output crate",
-        message_template: "the default sibling packaging writes <crate> at <path>, which does not resolve to a crate",
+        message_template: "the default sibling packaging writes <crate> at <path>, which does not resolve to a crate: the default sibling packaging only resolves beside the kdlith crates, so pass --kdlith-path to point at them",
         correction: "Generate beside the kdlith crates, or name the packaging with --kdlith-path, --kdlith-version, or --kdlith-workspace",
         retired: false,
     },
