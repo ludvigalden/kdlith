@@ -7,8 +7,8 @@
   "entrypoint": "schema.kdl",
   "crate": "pairs-proc",
   "steps": [
-    { "generate": "ws/rs/pairs-proc" },
-    { "generate": "gen-again" },
+    { "generate": { "out": "ws/rs/pairs-proc", "args": ["--kdlith-path", ".."] } },
+    { "generate": { "out": "gen-again", "args": ["--kdlith-path", ".."] } },
     { "determinism": ["ws/rs/pairs-proc", "gen-again"] },
     {
       "compile": {

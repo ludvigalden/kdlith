@@ -56,7 +56,8 @@ undeclared slot or namespace, `CTX006` a slot duplicate under
 invocation bound); cache faults (`CAC002` an unusable owned entry);
 generation faults (`GEN001` unowned overwrite, `GEN002` drift,
 `GEN006` a workspace dependency missing, different, or local, `GEN007`
-a source that cannot pin the kdlith crates);
+a source that cannot pin the kdlith crates, `GEN008` a default
+sibling packaging that resolves to no kdlith crate beside the output);
 argument faults (`CLI001`–`CLI004`, exit 2, before any document is
 read); syntax faults (`SYN…` from the KDL parser); export faults
 (`EXP002` provisional delivery).

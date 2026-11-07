@@ -7,8 +7,8 @@
   "entrypoint": "{fx-suite}/processing/bind/reference-field/schema.kdl",
   "crate": "config-proc",
   "steps": [
-    { "generate": "ws/rs/config-proc" },
-    { "generate": "gen-again" },
+    { "generate": { "out": "ws/rs/config-proc", "args": ["--kdlith-path", ".."] } },
+    { "generate": { "out": "gen-again", "args": ["--kdlith-path", ".."] } },
     { "determinism": ["ws/rs/config-proc", "gen-again"] },
     {
       "compile": {

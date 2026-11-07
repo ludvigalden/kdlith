@@ -8,10 +8,10 @@
   "crate": "tree-proc",
   "steps": [
     {
-      "generate": "ws/rs/tree-proc"
+      "generate": { "out": "ws/rs/tree-proc", "args": ["--kdlith-path", ".."] }
     },
     {
-      "generate": "gen-again"
+      "generate": { "out": "gen-again", "args": ["--kdlith-path", ".."] }
     },
     {
       "determinism": [

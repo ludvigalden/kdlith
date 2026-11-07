@@ -7,8 +7,8 @@
   "entrypoint": "inputs/settings.kdl",
   "crate": "settings-proc",
   "steps": [
-    { "generate": "ws/rs/settings-proc" },
-    { "generate": "gen-again" },
+    { "generate": { "out": "ws/rs/settings-proc", "args": ["--kdlith-path", ".."] } },
+    { "generate": { "out": "gen-again", "args": ["--kdlith-path", ".."] } },
     { "determinism": ["ws/rs/settings-proc", "gen-again"] },
     {
       "compile": {

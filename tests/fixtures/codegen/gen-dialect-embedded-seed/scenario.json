@@ -6,7 +6,7 @@
   "entrypoint": "{fx-suite}/../../pkg/kdl/dialect.kdl",
   "crate": "demo",
   "steps": [
-    { "generate": "out" },
+    { "generate": { "out": "out", "args": ["--kdlith-path", ".."] } },
     {
       "compare": {
         "generated": "out/src/dialect",

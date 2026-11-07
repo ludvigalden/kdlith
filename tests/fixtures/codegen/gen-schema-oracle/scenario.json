@@ -7,8 +7,8 @@
   "entrypoint": "inputs/shelf.kdl",
   "crate": "shelf-proc",
   "steps": [
-    { "generate": "ws/rs/shelf-proc" },
-    { "generate": "gen-again" },
+    { "generate": { "out": "ws/rs/shelf-proc", "args": ["--kdlith-path", ".."] } },
+    { "generate": { "out": "gen-again", "args": ["--kdlith-path", ".."] } },
     { "determinism": ["ws/rs/shelf-proc", "gen-again"] },
     {
       "compile": {

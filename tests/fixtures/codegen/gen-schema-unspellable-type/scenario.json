@@ -7,8 +7,8 @@
   "entrypoint": "schema.kdl",
   "crate": "shadow-proc",
   "steps": [
-    { "generate": "ws/rs/shadow-proc" },
-    { "generate": "gen-again" },
+    { "generate": { "out": "ws/rs/shadow-proc", "args": ["--kdlith-path", ".."] } },
+    { "generate": { "out": "gen-again", "args": ["--kdlith-path", ".."] } },
     { "determinism": ["ws/rs/shadow-proc", "gen-again"] },
     {
       "exercise": {

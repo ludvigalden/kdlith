@@ -8,10 +8,10 @@
   "crate": "derived-proc",
   "steps": [
     {
-      "generate": "ws/rs/derived-proc"
+      "generate": { "out": "ws/rs/derived-proc", "args": ["--kdlith-path", ".."] }
     },
     {
-      "generate": "gen-again"
+      "generate": { "out": "gen-again", "args": ["--kdlith-path", ".."] }
     },
     {
       "determinism": [

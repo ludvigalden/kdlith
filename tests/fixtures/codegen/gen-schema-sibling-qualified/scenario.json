@@ -8,10 +8,10 @@
   "crate": "part-proc",
   "steps": [
     {
-      "generate": "ws/rs/part-proc"
+      "generate": { "out": "ws/rs/part-proc", "args": ["--kdlith-path", ".."] }
     },
     {
-      "generate": "gen-again"
+      "generate": { "out": "gen-again", "args": ["--kdlith-path", ".."] }
     },
     {
       "determinism": [

@@ -7,8 +7,8 @@
   "entrypoint": "inputs/schema.kdl",
   "crate": "provenance-proc",
   "steps": [
-    { "generate": "ws/rs/provenance-proc" },
-    { "generate": "gen-again" },
+    { "generate": { "out": "ws/rs/provenance-proc", "args": ["--kdlith-path", ".."] } },
+    { "generate": { "out": "gen-again", "args": ["--kdlith-path", ".."] } },
     { "determinism": ["ws/rs/provenance-proc", "gen-again"] },
     {
       "compile": {

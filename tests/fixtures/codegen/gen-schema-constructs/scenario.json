@@ -7,8 +7,8 @@
   "entrypoint": "{fx-suite}/schemas/inspect/constructs/schema.kdl",
   "crate": "constructs-proc",
   "steps": [
-    { "generate": "ws/rs/constructs-proc" },
-    { "generate": "gen-again" },
+    { "generate": { "out": "ws/rs/constructs-proc", "args": ["--kdlith-path", ".."] } },
+    { "generate": { "out": "gen-again", "args": ["--kdlith-path", ".."] } },
     { "determinism": ["ws/rs/constructs-proc", "gen-again"] },
     {
       "compile": {

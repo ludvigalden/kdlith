@@ -7,8 +7,8 @@
   "entrypoint": "{fx-suite}/schemas/vet/catalog/schema.kdl",
   "crate": "catalog-proc",
   "steps": [
-    { "generate": "ws/rs/catalog-proc" },
-    { "generate": "gen-again" },
+    { "generate": { "out": "ws/rs/catalog-proc", "args": ["--kdlith-path", ".."] } },
+    { "generate": { "out": "gen-again", "args": ["--kdlith-path", ".."] } },
     { "determinism": ["ws/rs/catalog-proc", "gen-again"] },
     {
       "compile": {

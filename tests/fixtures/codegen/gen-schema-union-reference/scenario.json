@@ -7,8 +7,8 @@
   "entrypoint": "inputs/schema.kdl",
   "crate": "union-ref-proc",
   "steps": [
-    { "generate": "ws/rs/union-ref-proc" },
-    { "generate": "gen-again" },
+    { "generate": { "out": "ws/rs/union-ref-proc", "args": ["--kdlith-path", ".."] } },
+    { "generate": { "out": "gen-again", "args": ["--kdlith-path", ".."] } },
     { "determinism": ["ws/rs/union-ref-proc", "gen-again"] },
     {
       "compile": {

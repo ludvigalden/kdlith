@@ -8,10 +8,10 @@
   "crate": "vault-proc",
   "steps": [
     {
-      "generate": "ws/rs/vault-proc"
+      "generate": { "out": "ws/rs/vault-proc", "args": ["--kdlith-path", ".."] }
     },
     {
-      "generate": "gen-again"
+      "generate": { "out": "gen-again", "args": ["--kdlith-path", ".."] }
     },
     {
       "determinism": [

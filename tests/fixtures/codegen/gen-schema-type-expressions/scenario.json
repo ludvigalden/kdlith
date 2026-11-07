@@ -7,8 +7,8 @@
   "entrypoint": "inputs/schema.kdl",
   "crate": "expressions-proc",
   "steps": [
-    { "generate": "ws/rs/expressions-proc" },
-    { "generate": "gen-again" },
+    { "generate": { "out": "ws/rs/expressions-proc", "args": ["--kdlith-path", ".."] } },
+    { "generate": { "out": "gen-again", "args": ["--kdlith-path", ".."] } },
     { "determinism": ["ws/rs/expressions-proc", "gen-again"] },
     {
       "compile": {

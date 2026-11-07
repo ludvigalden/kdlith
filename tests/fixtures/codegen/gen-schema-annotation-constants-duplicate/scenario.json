@@ -7,8 +7,8 @@
   "entrypoint": "inputs/schema.kdl",
   "crate": "panels-proc",
   "steps": [
-    { "generate": "ws/rs/panels-proc" },
-    { "generate": "gen-again" },
+    { "generate": { "out": "ws/rs/panels-proc", "args": ["--kdlith-path", ".."] } },
+    { "generate": { "out": "gen-again", "args": ["--kdlith-path", ".."] } },
     { "determinism": ["ws/rs/panels-proc", "gen-again"] },
     {
       "compile": {

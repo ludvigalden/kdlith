@@ -1096,6 +1096,16 @@ pub const CODES: &[CodeDefinition] = &[
         correction: "Declare the source as an origin of the kdlith repository root with git= and a full commit rev=",
         retired: false,
     },
+    CodeDefinition {
+        code: "KDLITH-GEN008",
+        label: "sibling-packaging-unresolvable",
+        severity: Severity::Error,
+        exit_class: 1,
+        trigger: "a writing generation run under the default sibling packaging finds a kdlith dependency directory with no crate beside the output crate",
+        message_template: "the default sibling packaging writes <crate> at <path>, which does not resolve to a crate",
+        correction: "Generate beside the kdlith crates, or name the packaging with --kdlith-path, --kdlith-version, or --kdlith-workspace",
+        retired: false,
+    },
     // EXP
     CodeDefinition {
         code: "KDLITH-EXP001",

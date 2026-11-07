@@ -8,10 +8,10 @@
   "crate": "path-value-proc",
   "steps": [
     {
-      "generate": "ws/rs/path-value-proc"
+      "generate": { "out": "ws/rs/path-value-proc", "args": ["--kdlith-path", ".."] }
     },
     {
-      "generate": "gen-again"
+      "generate": { "out": "gen-again", "args": ["--kdlith-path", ".."] }
     },
     {
       "determinism": [

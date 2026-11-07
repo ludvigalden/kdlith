@@ -7,8 +7,8 @@
   "entrypoint": "inputs/jobs.kdl",
   "crate": "jobs-proc",
   "steps": [
-    { "generate": "ws/rs/jobs-proc" },
-    { "generate": "gen-again" },
+    { "generate": { "out": "ws/rs/jobs-proc", "args": ["--kdlith-path", ".."] } },
+    { "generate": { "out": "gen-again", "args": ["--kdlith-path", ".."] } },
     { "determinism": ["ws/rs/jobs-proc", "gen-again"] },
     {
       "compile": {

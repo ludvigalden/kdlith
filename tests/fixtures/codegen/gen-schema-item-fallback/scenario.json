@@ -7,8 +7,8 @@
   "entrypoint": "{fx-suite}/processing/bind/schema.kdl",
   "crate": "bind-proc",
   "steps": [
-    { "generate": "ws/rs/bind-proc" },
-    { "generate": "gen-again" },
+    { "generate": { "out": "ws/rs/bind-proc", "args": ["--kdlith-path", ".."] } },
+    { "generate": { "out": "gen-again", "args": ["--kdlith-path", ".."] } },
     { "determinism": ["ws/rs/bind-proc", "gen-again"] },
     {
       "exercise": {

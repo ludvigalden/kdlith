@@ -7,8 +7,8 @@
   "entrypoint": "inputs/settings.kdl",
   "crate": "put-proc",
   "steps": [
-    { "generate": "ws/rs/put-proc" },
-    { "generate": "gen-again" },
+    { "generate": { "out": "ws/rs/put-proc", "args": ["--kdlith-path", ".."] } },
+    { "generate": { "out": "gen-again", "args": ["--kdlith-path", ".."] } },
     { "determinism": ["ws/rs/put-proc", "gen-again"] },
     {
       "compile": {

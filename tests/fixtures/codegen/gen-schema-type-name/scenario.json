@@ -7,8 +7,8 @@
   "entrypoint": "inputs/typename.kdl",
   "crate": "prop-proc",
   "steps": [
-    { "generate": "ws/rs/prop-proc" },
-    { "generate": "gen-again" },
+    { "generate": { "out": "ws/rs/prop-proc", "args": ["--kdlith-path", ".."] } },
+    { "generate": { "out": "gen-again", "args": ["--kdlith-path", ".."] } },
     { "determinism": ["ws/rs/prop-proc", "gen-again"] },
     {
       "compile": {

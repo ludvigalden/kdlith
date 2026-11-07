@@ -7,8 +7,8 @@
   "entrypoint": "{fx-suite}/processing/bind/import-projection/schema.kdl",
   "crate": "imports-proc",
   "steps": [
-    { "generate": "ws/rs/imports-proc" },
-    { "generate": "gen-again" },
+    { "generate": { "out": "ws/rs/imports-proc", "args": ["--kdlith-path", ".."] } },
+    { "generate": { "out": "gen-again", "args": ["--kdlith-path", ".."] } },
     { "determinism": ["ws/rs/imports-proc", "gen-again"] },
     {
       "compile": {

@@ -8,10 +8,10 @@
   "crate": "survey-proc",
   "steps": [
     {
-      "generate": "ws/rs/survey-proc"
+      "generate": { "out": "ws/rs/survey-proc", "args": ["--kdlith-path", ".."] }
     },
     {
-      "generate": "gen-again"
+      "generate": { "out": "gen-again", "args": ["--kdlith-path", ".."] }
     },
     {
       "determinism": [

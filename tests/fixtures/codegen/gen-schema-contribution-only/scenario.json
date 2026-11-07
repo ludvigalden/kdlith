@@ -7,8 +7,8 @@
   "entrypoint": "inputs/only.kdl",
   "crate": "only-proc",
   "steps": [
-    { "generate": "ws/rs/only-proc" },
-    { "generate": "gen-again" },
+    { "generate": { "out": "ws/rs/only-proc", "args": ["--kdlith-path", ".."] } },
+    { "generate": { "out": "gen-again", "args": ["--kdlith-path", ".."] } },
     { "determinism": ["ws/rs/only-proc", "gen-again"] },
     {
       "compile": {

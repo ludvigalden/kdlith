@@ -7,8 +7,8 @@
   "entrypoint": "inputs/probes.kdl",
   "crate": "probes-proc",
   "steps": [
-    { "generate": "ws/rs/probes-proc" },
-    { "generate": "gen-again" },
+    { "generate": { "out": "ws/rs/probes-proc", "args": ["--kdlith-path", ".."] } },
+    { "generate": { "out": "gen-again", "args": ["--kdlith-path", ".."] } },
     { "determinism": ["ws/rs/probes-proc", "gen-again"] },
     {
       "compile": {

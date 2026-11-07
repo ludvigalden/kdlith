@@ -7,8 +7,8 @@
   "entrypoint": "inputs/schema.kdl",
   "crate": "case-union-proc",
   "steps": [
-    { "generate": "ws/rs/case-union-proc" },
-    { "generate": "gen-again" },
+    { "generate": { "out": "ws/rs/case-union-proc", "args": ["--kdlith-path", ".."] } },
+    { "generate": { "out": "gen-again", "args": ["--kdlith-path", ".."] } },
     { "determinism": ["ws/rs/case-union-proc", "gen-again"] },
     {
       "compile": {

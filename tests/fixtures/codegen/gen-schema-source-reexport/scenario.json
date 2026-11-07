@@ -9,10 +9,10 @@
   "sources": ["lib=inputs/lib"],
   "steps": [
     {
-      "generate": "ws/rs/catalog-proc"
+      "generate": { "out": "ws/rs/catalog-proc", "args": ["--kdlith-path", ".."] }
     },
     {
-      "generate": "gen-again"
+      "generate": { "out": "gen-again", "args": ["--kdlith-path", ".."] }
     },
     {
       "determinism": [

@@ -8,10 +8,10 @@
   "crate": "multiname-proc",
   "steps": [
     {
-      "generate": "ws/rs/multiname-proc"
+      "generate": { "out": "ws/rs/multiname-proc", "args": ["--kdlith-path", ".."] }
     },
     {
-      "generate": "gen-again"
+      "generate": { "out": "gen-again", "args": ["--kdlith-path", ".."] }
     },
     {
       "determinism": [

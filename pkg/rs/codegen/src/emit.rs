@@ -28,6 +28,11 @@ pub struct GeneratedTree {
     /// The advisory diagnostics the definition's compilation raised;
     /// they shape no file.
     pub(crate) notes: Vec<DiagnosticRecord>,
+    /// Which authoring level the definition belongs to: it decides the
+    /// kdlith crates the manifest names.
+    pub(crate) kind: DefinitionKind,
+    /// How the manifest names the kdlith crates it depends on.
+    pub(crate) packaging: Packaging,
 }
 
 impl GeneratedTree {
@@ -163,6 +168,8 @@ impl Emission<'_> {
         Ok(GeneratedTree {
             files,
             notes: Vec::new(),
+            kind: self.kind,
+            packaging: self.packaging,
         })
     }
 

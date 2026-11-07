@@ -8,10 +8,10 @@
   "crate": "openworld-proc",
   "steps": [
     {
-      "generate": "ws/rs/openworld-proc"
+      "generate": { "out": "ws/rs/openworld-proc", "args": ["--kdlith-path", ".."] }
     },
     {
-      "generate": "gen-again"
+      "generate": { "out": "gen-again", "args": ["--kdlith-path", ".."] }
     },
     {
       "determinism": [

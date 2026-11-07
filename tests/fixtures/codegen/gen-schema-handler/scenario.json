@@ -21,10 +21,10 @@
       }
     },
     {
-      "generate": { "out": "ws/rs/stamp-proc", "args": ["--handler", "copy-fields"] }
+      "generate": { "out": "ws/rs/stamp-proc", "args": ["--handler", "copy-fields", "--kdlith-path", ".."] }
     },
     {
-      "generate": { "out": "gen-again", "args": ["--handler", "copy-fields"] }
+      "generate": { "out": "gen-again", "args": ["--handler", "copy-fields", "--kdlith-path", ".."] }
     },
     { "determinism": ["ws/rs/stamp-proc", "gen-again"] },
     {

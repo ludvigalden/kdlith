@@ -7,8 +7,8 @@
   "entrypoint": "inputs/schema.kdl",
   "crate": "render-proc",
   "steps": [
-    { "generate": "ws/rs/render-proc" },
-    { "generate": "gen-again" },
+    { "generate": { "out": "ws/rs/render-proc", "args": ["--kdlith-path", ".."] } },
+    { "generate": { "out": "gen-again", "args": ["--kdlith-path", ".."] } },
     { "determinism": ["ws/rs/render-proc", "gen-again"] },
     {
       "compile": {

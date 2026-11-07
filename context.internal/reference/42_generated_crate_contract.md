@@ -82,7 +82,12 @@ carries no `license` key):
 by default the kdlith dependencies are sibling paths, `--kdlith-path PATH`
 re-roots them, and `--kdlith-version VER` writes registry
 dependencies — both forms, values verbatim, flags mutually exclusive,
-empty or non-UTF-8 values failing closed. `--kdlith-workspace`
+empty or non-UTF-8 values failing closed. The default is guarded at
+write time: under sibling packaging every dependency directory the
+manifest names must hold a crate beside `--out`, or the write refuses
+with one `KDLITH-GEN008` record per unresolvable dependency and
+nothing lands — the flag spellings are never existence-checked, so
+their bytes stay exactly as spelled. `--kdlith-workspace`
 (both forms, exclusive with the other two) writes
 `{ workspace = true }` dependencies, `[lints] workspace = true`, and
 `license.workspace = true`, so the bytes stay a pure function of the

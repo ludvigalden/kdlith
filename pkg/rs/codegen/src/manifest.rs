@@ -1,7 +1,6 @@
-//! The output manifest and the ownership it proves: the writer that
-//! refuses unowned overwrites (`KDLITH-GEN001`) and the drift check
-//! that classifies missing, changed, and stale files
-//! (`KDLITH-GEN002`). Generation never deletes anything.
+//! The output manifest, the ownership it proves (`KDLITH-GEN001`), the
+//! drift check (`KDLITH-GEN002`), and the sibling-packaging write guard
+//! (`KDLITH-GEN008`). Generation never deletes anything.
 
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
@@ -9,6 +8,7 @@ use std::path::{Path, PathBuf};
 use kdlith_diagnostic::DiagnosticRecord;
 use kdlith_diagnostic::registry::{lookup, render};
 
+use crate::Packaging;
 use crate::emit::GeneratedTree;
 
 /// The output manifest's file name, directly under the output root.
@@ -18,6 +18,9 @@ pub const MANIFEST_NAME: &str = "kdlith-manifest";
 pub(crate) const UNOWNED: &str = "KDLITH-GEN001";
 /// The diagnostic the drift check classifies findings with.
 pub(crate) const DRIFT: &str = "KDLITH-GEN002";
+/// The diagnostic the writer refuses an unresolvable default
+/// packaging with.
+pub(crate) const UNRESOLVABLE: &str = "KDLITH-GEN008";
 /// The provenance every generation diagnostic carries.
 const ORIGIN: &str = "codegen";
 
@@ -25,8 +28,9 @@ const ORIGIN: &str = "codegen";
 #[derive(Debug)]
 #[non_exhaustive]
 pub enum WriteError {
-    /// One `KDLITH-GEN001` record per unowned path that exists; nothing
-    /// was written.
+    /// One refusal record per reason (`KDLITH-GEN001` for an unowned
+    /// path, `KDLITH-GEN008` for an unresolvable sibling dependency);
+    /// nothing was written.
     Refused(Vec<DiagnosticRecord>),
     /// The output manifest exists but does not parse: ownership cannot
     /// be established, so nothing is written.
@@ -117,7 +121,11 @@ fn owned_paths(out: &Path) -> Result<BTreeSet<String>, WriteError> {
 
 /// Write the tree under `out`, through the ownership guard: an
 /// existing file the manifest does not own refuses the whole write
-/// with one `KDLITH-GEN001` record per path. Nothing is deleted.
+/// with one `KDLITH-GEN001` record per path. Under the default
+/// sibling packaging, every kdlith dependency directory the manifest
+/// names must hold a crate beside `out`, or the write refuses with one
+/// `KDLITH-GEN008` record per unresolvable dependency — a manifest of
+/// broken path dependencies is never written. Nothing is deleted.
 pub fn write(tree: &GeneratedTree, out: &Path) -> Result<(), WriteError> {
     let owned = owned_paths(out)?;
     let mut refusals = Vec::new();
@@ -129,6 +137,23 @@ pub fn write(tree: &GeneratedTree, out: &Path) -> Result<(), WriteError> {
     }
     if !refusals.is_empty() {
         return Err(WriteError::Refused(refusals));
+    }
+    if tree.packaging == Packaging::Sibling {
+        // The manifest writes `../<dir>` path dependencies, resolved
+        // lexically against the output crate's parent so an `out` that
+        // does not exist yet still checks the layout it will land in.
+        let sibling_root = out.parent().unwrap_or(Path::new(""));
+        for dir in crate::dependency_dirs(tree.kind) {
+            let crate_dir = sibling_root.join(dir);
+            if !crate_dir.join("Cargo.toml").is_file() {
+                let name = format!("kdlith-{dir}");
+                let shown = crate_dir.display().to_string();
+                refusals.push(record(UNRESOLVABLE, &[&name, &shown]));
+            }
+        }
+        if !refusals.is_empty() {
+            return Err(WriteError::Refused(refusals));
+        }
     }
     for (path, content) in &tree.files {
         let target = out.join(path);

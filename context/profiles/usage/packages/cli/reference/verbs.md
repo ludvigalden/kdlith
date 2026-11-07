@@ -59,7 +59,11 @@ the two modes exclude each other. A write over a path the run's
 manifest does not own is refused (`KDLITH-GEN001`). Both forms take
 the packaging flags `--kdlith-path PATH` / `--kdlith-version VER`
 (mutually exclusive) and `--kdlith-workspace`, which excludes the
-other two. `gen schema` additionally takes `--root`, `--source`, and
+other two; with no packaging flag the manifest names the kdlith
+crates as sibling paths beside `--out`, and a writing run whose
+sibling layout resolves to no kdlith crate is refused before
+anything is written (`KDLITH-GEN008`, one record per unresolvable
+dependency). `gen schema` additionally takes `--root`, `--source`, and
 `--handler`.
 
 `gen workspace --sources FILE [--root DIR] [--kdlith-source NAME]`

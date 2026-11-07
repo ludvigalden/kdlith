@@ -204,11 +204,14 @@ fn recursive_type(types: &str, edge: &str) -> String {
 /// How the generated manifest names the kdlith crates it depends on.
 /// Every value is written verbatim: generation never inspects the
 /// filesystem, so the manifest stays a pure function of its inputs.
+/// The default [`Packaging::Sibling`] alone is guarded at write time
+/// (`KDLITH-GEN008`); the flag spellings are taken exactly as given.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Packaging {
     /// Path dependencies on the sibling crates (`../<crate>`), the
-    /// in-checkout layout the oracles pin.
+    /// in-checkout layout the oracles pin; a writing run requires each
+    /// sibling directory beside the output root to hold a crate.
     Sibling,
     /// Path dependencies rooted at the given directory; each kdlith
     /// crate hangs off it by its directory name.

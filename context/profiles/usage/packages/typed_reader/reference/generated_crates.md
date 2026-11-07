@@ -28,7 +28,10 @@ dependencies, and `--kdlith-workspace` writes each as
 `{ workspace = true }` and replaces the crate's own `[lints.clippy]`
 table with `[lints] workspace = true`. Values are written verbatim;
 the three flags are mutually exclusive. Without any, the manifest
-keeps sibling paths.
+keeps sibling paths, and a writing run requires each sibling
+directory beside `--out` to hold a kdlith crate — an unresolvable
+one refuses the write with `KDLITH-GEN008` before any file lands,
+so a manifest of broken path dependencies is never written.
 
 Every generated manifest carries registry metadata — the package
 name, a version, and a `description` naming the definition the crate

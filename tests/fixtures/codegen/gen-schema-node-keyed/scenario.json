@@ -7,8 +7,8 @@
   "entrypoint": "{fx-suite}/processing/list/schema.kdl",
   "crate": "shop-proc",
   "steps": [
-    { "generate": "ws/rs/shop-proc" },
-    { "generate": "gen-again" },
+    { "generate": { "out": "ws/rs/shop-proc", "args": ["--kdlith-path", ".."] } },
+    { "generate": { "out": "gen-again", "args": ["--kdlith-path", ".."] } },
     { "determinism": ["ws/rs/shop-proc", "gen-again"] },
     {
       "compile": {

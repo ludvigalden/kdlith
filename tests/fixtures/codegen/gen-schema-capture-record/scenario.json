@@ -8,10 +8,10 @@
   "crate": "capture-proc",
   "steps": [
     {
-      "generate": "ws/rs/capture-proc"
+      "generate": { "out": "ws/rs/capture-proc", "args": ["--kdlith-path", ".."] }
     },
     {
-      "generate": "gen-again"
+      "generate": { "out": "gen-again", "args": ["--kdlith-path", ".."] }
     },
     {
       "determinism": [

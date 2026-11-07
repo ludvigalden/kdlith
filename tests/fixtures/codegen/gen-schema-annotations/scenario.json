@@ -7,8 +7,8 @@
   "entrypoint": "inputs/schema.kdl",
   "crate": "annotated-proc",
   "steps": [
-    { "generate": "ws/rs/annotated-proc" },
-    { "generate": "gen-again" },
+    { "generate": { "out": "ws/rs/annotated-proc", "args": ["--kdlith-path", ".."] } },
+    { "generate": { "out": "gen-again", "args": ["--kdlith-path", ".."] } },
     { "determinism": ["ws/rs/annotated-proc", "gen-again"] },
     {
       "compile": {

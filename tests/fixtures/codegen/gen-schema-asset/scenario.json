@@ -8,10 +8,10 @@
   "crate": "asset-proc",
   "steps": [
     {
-      "generate": "ws/rs/asset-proc"
+      "generate": { "out": "ws/rs/asset-proc", "args": ["--kdlith-path", ".."] }
     },
     {
-      "generate": "gen-again"
+      "generate": { "out": "gen-again", "args": ["--kdlith-path", ".."] }
     },
     {
       "determinism": [

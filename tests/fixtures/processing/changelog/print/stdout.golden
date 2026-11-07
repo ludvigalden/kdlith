@@ -537,6 +537,15 @@ path=…; pinned "sha256:…" }`, whose pin is optional. kdlith never
   the manifest carries no `license` key, and the consumer's own
   manifest or publisher supplies one. Before, every generated manifest
   hard-coded `license = "MIT"`.
+- `gen dialect` and `gen schema` fail loudly again when the default
+  sibling packaging cannot resolve: a writing run requires every kdlith
+  dependency directory (`diagnostic`, `engine`, `model`, `runtime`,
+  `superproc`, by kind) to hold a crate beside the output crate, and an
+  unresolvable directory is `KDLITH-GEN008` naming it — nothing is
+  written. The `--kdlith-path` and `--kdlith-version` spellings are
+  never existence-checked and keep working exactly as before. Before,
+  a flagless run into an unresolved layout exited 0 having written a
+  manifest with broken `../<dir>` dependencies.
 
 ### Fixed
 

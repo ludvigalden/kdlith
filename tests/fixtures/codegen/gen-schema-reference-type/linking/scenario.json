@@ -7,8 +7,8 @@
   "entrypoint": "{fx-suite}/processing/linking/schema.kdl",
   "crate": "linking-proc",
   "steps": [
-    { "generate": "ws/rs/linking-proc" },
-    { "generate": "gen-again" },
+    { "generate": { "out": "ws/rs/linking-proc", "args": ["--kdlith-path", ".."] } },
+    { "generate": { "out": "gen-again", "args": ["--kdlith-path", ".."] } },
     { "determinism": ["ws/rs/linking-proc", "gen-again"] },
     {
       "compile": {

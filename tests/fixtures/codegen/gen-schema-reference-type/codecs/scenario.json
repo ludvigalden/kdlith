@@ -7,8 +7,8 @@
   "entrypoint": "{fx-suite}/processing/bind/codecs/schema.kdl",
   "crate": "timing-proc",
   "steps": [
-    { "generate": "ws/rs/timing-proc" },
-    { "generate": "gen-again" },
+    { "generate": { "out": "ws/rs/timing-proc", "args": ["--kdlith-path", ".."] } },
+    { "generate": { "out": "gen-again", "args": ["--kdlith-path", ".."] } },
     { "determinism": ["ws/rs/timing-proc", "gen-again"] },
     {
       "compile": {

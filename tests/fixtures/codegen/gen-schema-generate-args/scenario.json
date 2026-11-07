@@ -9,7 +9,7 @@
     {
       "generate": {
         "out": "ws/rs/stamp-proc",
-        "args": ["--handler", "copy-fields"]
+        "args": ["--handler", "copy-fields", "--kdlith-path", ".."]
       }
     },
     {

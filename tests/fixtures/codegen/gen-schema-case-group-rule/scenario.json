@@ -8,10 +8,10 @@
   "crate": "casegrouprule-proc",
   "steps": [
     {
-      "generate": "ws/rs/casegrouprule-proc"
+      "generate": { "out": "ws/rs/casegrouprule-proc", "args": ["--kdlith-path", ".."] }
     },
     {
-      "generate": "gen-again"
+      "generate": { "out": "gen-again", "args": ["--kdlith-path", ".."] }
     },
     {
       "determinism": [

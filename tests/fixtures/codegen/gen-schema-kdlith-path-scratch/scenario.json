@@ -1,0 +1,9 @@
+{
+  "binary": "kdlith",
+  "description": "gen schema --kdlith-path keeps writing exactly where the flagless default now refuses: the same scratch copy with no kdlith crate beside the output directory takes the flag's value verbatim (no existence check), exits 0 with the summary, and writes the manifest whose four dependency lines carry the flag's value — the negative control invalid/codegen/packaging-unresolvable pins the flagless refusal over the same layout",
+  "args": ["gen", "schema", "schema.kdl", "--crate", "parts-proc", "--out", "out", "--kdlith-path", "../pkg/rs"],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": ["ok: generated schema crate parts-proc at out"]
+  }
+}

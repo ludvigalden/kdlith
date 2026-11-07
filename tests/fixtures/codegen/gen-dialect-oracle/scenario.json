@@ -7,8 +7,8 @@
   "entrypoint": "{fx-suite}/../../pkg/kdl/dialect.kdl",
   "crate": "oracle-proc",
   "steps": [
-    { "generate": "ws/rs/oracle-proc" },
-    { "generate": "gen-again" },
+    { "generate": { "out": "ws/rs/oracle-proc", "args": ["--kdlith-path", ".."] } },
+    { "generate": { "out": "gen-again", "args": ["--kdlith-path", ".."] } },
     { "determinism": ["ws/rs/oracle-proc", "gen-again"] },
     {
       "compare": {

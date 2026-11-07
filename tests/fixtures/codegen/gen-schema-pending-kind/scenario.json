@@ -7,8 +7,8 @@
   "entrypoint": "inputs/settings.kdl",
   "crate": "kind-proc",
   "steps": [
-    { "generate": "ws/rs/kind-proc" },
-    { "generate": "gen-again" },
+    { "generate": { "out": "ws/rs/kind-proc", "args": ["--kdlith-path", ".."] } },
+    { "generate": { "out": "gen-again", "args": ["--kdlith-path", ".."] } },
     { "determinism": ["ws/rs/kind-proc", "gen-again"] },
     {
       "compile": {

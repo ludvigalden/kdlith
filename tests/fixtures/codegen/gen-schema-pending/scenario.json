@@ -7,8 +7,8 @@
   "entrypoint": "inputs/deps.kdl",
   "crate": "deps-proc",
   "steps": [
-    { "generate": "ws/rs/deps-proc" },
-    { "generate": "gen-again" },
+    { "generate": { "out": "ws/rs/deps-proc", "args": ["--kdlith-path", ".."] } },
+    { "generate": { "out": "gen-again", "args": ["--kdlith-path", ".."] } },
     { "determinism": ["ws/rs/deps-proc", "gen-again"] },
     {
       "compile": {
