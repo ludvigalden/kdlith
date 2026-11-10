@@ -9,7 +9,8 @@ schema_version = 1
 # committed context trees (context/ for consumers, context.internal/ for
 # development), the Cargo
 # manifests, the root TOML formatter config (taplo.toml), README.md,
-# the LICENSE, and the repository map (map/). The repository configuration
+# the LICENSE, the repository map (map/), and the changelog records
+# (changelog/). The repository configuration
 # (.config/) is committed too: its TOML files are hand-authored inputs
 # (project.toml's [environments] block excepted -- sync refreshes it),
 # so the managed-goes-gitignored rule never bites and the directory
@@ -47,6 +48,7 @@ patterns = [
   "README.md",
   "LICENSE",
   "map/**",
+  "changelog/**",
 ]
 
 [gitignore]

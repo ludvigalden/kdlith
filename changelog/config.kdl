@@ -1,0 +1,11 @@
+changelog {
+    import "$relmap/profiles/core/changelog.kdl"
+
+    // Tests, refactors, formatting, build plumbing and repository
+    // configuration change no behaviour a kdlith user sees.
+    exempt test subject="test: " scoped=#true
+    exempt refactor subject="refactor: " scoped=#true
+    exempt style subject="style: " scoped=#true
+    exempt build subject="build: " scoped=#true
+    exempt config subject="config: " scoped=#true
+}
