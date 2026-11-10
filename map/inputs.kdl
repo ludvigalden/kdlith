@@ -1,0 +1,23 @@
+repo kdlith {
+    // The harness reads the fixture corpus.
+    input fixtures kind=data {
+        path "tests/fixtures"
+        consumers "tests/tools/kdlith-fixtures"
+    }
+    // The superproc crate's dialect snapshot and generated code must equal
+    // what dialect generation makes of these; fixture scenarios read them.
+    input dialect kind=data {
+        path "pkg/kdl/dialect.kdl" "pkg/kdl/schemas/dialect"
+        consumers "pkg/rs/superproc" "tests/tools/kdlith-fixtures"
+    }
+    // The sources-manifest schema; fixture scenarios vet against it.
+    input sources-schema kind=data {
+        path "pkg/kdl/schemas/sources"
+        consumers "tests/tools/kdlith-fixtures"
+    }
+    // The CLI embeds the changelog archive.
+    input changelog-archive kind=data {
+        path "pkg/kdl/CHANGELOG.md"
+        consumers "pkg/rs/cli"
+    }
+}

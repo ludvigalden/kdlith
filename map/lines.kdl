@@ -1,0 +1,10 @@
+repo kdlith {
+    // One version for the whole Cargo workspace; the fixture harness
+    // stays outside it and is never released.
+    line kdlith {
+        components "tools/kdlith" "pkg/rs/*"
+        version-file "Cargo.toml" toml="workspace.package.version"
+        tag "v{version}"
+        channels stable
+    }
+}
