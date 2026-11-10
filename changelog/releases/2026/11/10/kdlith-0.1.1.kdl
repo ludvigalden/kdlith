@@ -1,0 +1,9 @@
+release kdlith version="0.1.1" channel=stable {
+    summary "Generator provenance moves into the manifest"
+    paragraph "Generated crates no longer repeat the kdlith version in every file: the output manifest records how the crate was generated, and gen --check ignores the generator version, so a kdlith upgrade alone leaves consumers' checks green."
+    includes codegen-manifest-provenance
+    section changed {
+        item "Record the generator provenance in the manifest, not in every file" covers=codegen-manifest-provenance
+    }
+    sealed at="19f3e40bd00c05560a1bcad08aefe276f1972465"
+}

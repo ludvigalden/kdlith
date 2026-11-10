@@ -1,0 +1,8 @@
+change codegen-manifest-provenance {
+    summary "Record the generator provenance in the manifest, not in every file"
+    category changed
+    impact public
+    touches "pkg/rs/codegen" "input:fixtures" "Cargo.toml" "Cargo.lock"
+    commit "19f3e40bd00c05560a1bcad08aefe276f1972465"
+    detail "Generated files open with a marker that names no version. The output manifest records the generator version, the form, the crate, the definition and the packaging on #@ comment lines, and gen --check treats the generator version as no drift, so upgrading kdlith alone no longer fails the check. Files carrying the earlier versioned marker stay owned."
+}
