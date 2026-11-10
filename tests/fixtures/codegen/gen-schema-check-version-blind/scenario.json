@@ -1,0 +1,33 @@
+{
+  "binary": "kdlith",
+  "kind": "codegen-oracle",
+  "description": "gen schema --check ignores the generator version wherever generation writes it, and nothing else: two generations are byte-identical, provenance included, and the unchanged tree is current; a tree whose manifest records another generator version is still current with no finding; and a tree whose Cargo.toml [package] version equals the version that manifest records, not the running generator's, is current too, so a generator upgrade alone never fails the check",
+  "form": "schema",
+  "entrypoint": "inputs/schema.kdl",
+  "crate": "parts-proc",
+  "steps": [
+    { "generate": { "out": "out", "args": ["--kdlith-workspace"] } },
+    { "generate": { "out": "again", "args": ["--kdlith-workspace"] } },
+    { "determinism": ["out", "again"] },
+    {
+      "exercise": {
+        "command": ["sh", "-c", "\"$KDLITH_FX_KDLITH\" gen schema inputs/schema.kdl --crate parts-proc --out out --kdlith-workspace --check; echo \"exit=$?\""],
+        "stdout-contains": ["ok: schema crate parts-proc at out is current (11 owned files)\nexit=0\n"]
+      }
+    },
+    {
+      "exercise": {
+        "command": ["sh", "-c", "sed -i 's/^#@ generator kdlith version=\"[^\"]*\"$/#@ generator kdlith version=\"0.0.9\"/' out/kdlith-manifest && grep -c '^#@ generator kdlith version=\"0.0.9\"$' out/kdlith-manifest && \"$KDLITH_FX_KDLITH\" gen schema inputs/schema.kdl --crate parts-proc --out out --kdlith-workspace --check 2>&1; echo \"exit=$?\""],
+        "stdout-contains": ["1\nok: schema crate parts-proc at out is current (11 owned files)\nexit=0\n"],
+        "stdout-not-contains": ["KDLITH-GEN002"]
+      }
+    },
+    {
+      "exercise": {
+        "command": ["sh", "-c", "sed -i '0,/^version = \"[^\"]*\"$/s//version = \"0.0.9\"/' out/Cargo.toml && grep -c '^version = \"0.0.9\"$' out/Cargo.toml && \"$KDLITH_FX_KDLITH\" gen schema inputs/schema.kdl --crate parts-proc --out out --kdlith-workspace --check 2>&1; echo \"exit=$?\""],
+        "stdout-contains": ["1\nok: schema crate parts-proc at out is current (11 owned files)\nexit=0\n"],
+        "stdout-not-contains": ["KDLITH-GEN002"]
+      }
+    }
+  ]
+}

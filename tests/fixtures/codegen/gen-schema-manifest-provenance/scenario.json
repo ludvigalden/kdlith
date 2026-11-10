@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "gen schema records the generator provenance in the output manifest and nowhere else: after the marker, which names no version, and the two header comments, one #@-prefixed line each names the generator and its version, the form, the crate, the definition with its declared version, and the packaging, before the sorted owned paths; the lines are comments to any manifest reader, carry no path or time, and the written manifest is pinned byte for byte",
+  "args": ["gen", "schema", "schema.kdl", "--crate", "parts-proc", "--out", "out", "--kdlith-workspace"],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": ["ok: generated schema crate parts-proc at out (11 owned files)\n"],
+    "files": {
+      "out/kdlith-manifest": "manifest.golden"
+    }
+  }
+}

@@ -1,0 +1,7 @@
+[workspace.dependencies] of Cargo.toml for source kdlith:
+kdlith-diagnostic = { git = "https://github.com/ludvigalden/kdlith", rev = "0123456789abcdef0123456789abcdef01234567" }
+kdlith-engine = { git = "https://github.com/ludvigalden/kdlith", rev = "0123456789abcdef0123456789abcdef01234567" }
+kdlith-model = { git = "https://github.com/ludvigalden/kdlith", rev = "0123456789abcdef0123456789abcdef01234567" }
+kdlith-superproc = { git = "https://github.com/ludvigalden/kdlith", rev = "0123456789abcdef0123456789abcdef01234567" }
+ok: wrote .cargo/config.toml (marker only, no override)
+note: with an empty cargo git cache and an unreachable origin, seed it once from a local checkout: GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=url.<checkout>.insteadOf GIT_CONFIG_VALUE_0=https://github.com/ludvigalden/kdlith CARGO_NET_GIT_FETCH_WITH_CLI=true cargo generate-lockfile

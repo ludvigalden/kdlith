@@ -1,0 +1,28 @@
+{
+  "binary": "kdlith",
+  "kind": "codegen-oracle",
+  "description": "the version-blind check swallows no real drift: a manifest provenance line other than the generator version (here the crate) differing is KDLITH-GEN002 changed for the manifest, and one changed byte of a generated source file is changed for that file, each exiting 1",
+  "form": "schema",
+  "entrypoint": "inputs/schema.kdl",
+  "crate": "parts-proc",
+  "steps": [
+    { "generate": { "out": "out", "args": ["--kdlith-workspace"] } },
+    {
+      "exercise": {
+        "command": ["sh", "-c", "sed -i 's/^#@ crate parts-proc$/#@ crate other-proc/' out/kdlith-manifest && \"$KDLITH_FX_KDLITH\" gen schema inputs/schema.kdl --crate parts-proc --out out --kdlith-workspace --check; echo \"exit=$?\""],
+        "stdout-contains": ["exit=1\n"],
+        "stdout-not-contains": ["is current"],
+        "stderr-contains": ["error[KDLITH-GEN002]: kdlith-manifest is changed\n"]
+      }
+    },
+    { "generate": { "out": "out", "args": ["--kdlith-workspace"] } },
+    {
+      "exercise": {
+        "command": ["sh", "-c", "printf '\\n' >> out/src/lib.rs && \"$KDLITH_FX_KDLITH\" gen schema inputs/schema.kdl --crate parts-proc --out out --kdlith-workspace --check; echo \"exit=$?\""],
+        "stdout-contains": ["exit=1\n"],
+        "stdout-not-contains": ["is current"],
+        "stderr-contains": ["error[KDLITH-GEN002]: src/lib.rs is changed\n"]
+      }
+    }
+  ]
+}

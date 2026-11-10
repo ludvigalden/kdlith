@@ -1,0 +1,11 @@
+{
+  "binary": "kdlith",
+  "description": "gen dialect records the same provenance lines as the schema form, naming the dialect form, the canonical dialect definition and its declared version, and the path packaging; every other generated file opens with the version-free marker, and the written manifest is pinned byte for byte",
+  "args": ["gen", "dialect", "{fx-suite}/../../pkg/kdl/dialect.kdl", "--crate", "demo", "--out", "out", "--kdlith-path", "../pkg/rs"],
+  "expect": {
+    "exit": 0,
+    "files": {
+      "out/kdlith-manifest": "manifest.golden"
+    }
+  }
+}

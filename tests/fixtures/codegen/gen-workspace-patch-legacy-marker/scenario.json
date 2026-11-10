@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "an existing .cargo/config.toml whose first line is the versioned marker an earlier kdlith wrote stays owned: gen workspace with no override rewrites it, with no KDLITH-GEN001, to the version-free marker alone; the negative control codegen/gen-workspace-patch-unowned pins the refusal of a first line that is neither marker",
+  "args": ["gen", "workspace", "--sources", "sources.kdl"],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden",
+    "files": {
+      ".cargo/config.toml": "config-toml.golden",
+      "Cargo.toml": "Cargo.toml"
+    }
+  }
+}

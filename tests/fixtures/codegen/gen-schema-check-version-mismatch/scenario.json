@@ -1,0 +1,27 @@
+{
+  "binary": "kdlith",
+  "kind": "codegen-oracle",
+  "description": "the negative control of codegen/gen-schema-check-version-blind: a Cargo.toml [package] version is ignored only while it equals the generator version the manifest records, so a hand-edited version matching neither that version nor the running generator's is KDLITH-GEN002 changed and exits 1, both against a manifest naming the running generator and against one naming an earlier version",
+  "form": "schema",
+  "entrypoint": "inputs/schema.kdl",
+  "crate": "parts-proc",
+  "steps": [
+    { "generate": { "out": "out", "args": ["--kdlith-workspace"] } },
+    {
+      "exercise": {
+        "command": ["sh", "-c", "sed -i '0,/^version = \"[^\"]*\"$/s//version = \"0.0.8\"/' out/Cargo.toml && \"$KDLITH_FX_KDLITH\" gen schema inputs/schema.kdl --crate parts-proc --out out --kdlith-workspace --check; echo \"exit=$?\""],
+        "stdout-contains": ["exit=1\n"],
+        "stdout-not-contains": ["is current"],
+        "stderr-contains": ["error[KDLITH-GEN002]: Cargo.toml is changed\n"]
+      }
+    },
+    {
+      "exercise": {
+        "command": ["sh", "-c", "sed -i 's/^#@ generator kdlith version=\"[^\"]*\"$/#@ generator kdlith version=\"0.0.9\"/' out/kdlith-manifest && \"$KDLITH_FX_KDLITH\" gen schema inputs/schema.kdl --crate parts-proc --out out --kdlith-workspace --check; echo \"exit=$?\""],
+        "stdout-contains": ["exit=1\n"],
+        "stdout-not-contains": ["is current"],
+        "stderr-contains": ["error[KDLITH-GEN002]: Cargo.toml is changed\n"]
+      }
+    }
+  ]
+}

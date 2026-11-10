@@ -64,9 +64,32 @@ impl std::fmt::Display for WriteError {
 
 impl std::error::Error for WriteError {}
 
-/// The manifest text for the owned paths, sorted, each listed once —
-/// the manifest itself included by its caller.
-pub(crate) fn manifest_text<'a>(paths: impl Iterator<Item = &'a str>) -> String {
+/// The prefix of a provenance line: a comment to every manifest
+/// reader, so a reader that predates provenance skips it, and a key
+/// line to this one.
+const PROVENANCE: &str = "#@ ";
+
+/// The provenance line naming the generator, up to its version value.
+const GENERATOR_LINE: &str = "#@ generator kdlith version=";
+
+/// What a generated output records about how it was generated: the
+/// generator version and the invocation, never a path or a time, so two
+/// runs over the same inputs write the same bytes.
+pub(crate) struct Provenance<'a> {
+    pub(crate) form: &'a str,
+    pub(crate) crate_name: &'a str,
+    pub(crate) definition: &'a str,
+    pub(crate) definition_version: &'a str,
+    pub(crate) packaging: &'a Packaging,
+}
+
+/// The manifest text: the marker, the header comments, the provenance
+/// lines, then the owned paths, sorted, each listed once — the manifest
+/// itself included by its caller.
+pub(crate) fn manifest_text<'a>(
+    provenance: &Provenance<'_>,
+    paths: impl Iterator<Item = &'a str>,
+) -> String {
     let mut owned: BTreeSet<&str> = paths.collect();
     owned.insert(MANIFEST_NAME);
     let mut text = String::new();
@@ -75,11 +98,110 @@ pub(crate) fn manifest_text<'a>(paths: impl Iterator<Item = &'a str>) -> String 
     text.push_str(
         "# Generator-owned paths under this root, sorted; the writer refuses\n# to overwrite a path this list does not own.\n",
     );
+    let packaging = match provenance.packaging {
+        Packaging::Sibling => "sibling",
+        Packaging::Path(_) => "path",
+        Packaging::Registry(_) => "registry",
+        Packaging::Workspace => "workspace",
+    };
+    for line in [
+        format!("{GENERATOR_LINE}{}", quoted(crate::GENERATOR_VERSION)),
+        format!("{PROVENANCE}form {}", provenance.form),
+        format!("{PROVENANCE}crate {}", provenance.crate_name),
+        format!(
+            "{PROVENANCE}definition {} version={}",
+            quoted(provenance.definition),
+            quoted(provenance.definition_version)
+        ),
+        format!("{PROVENANCE}packaging {packaging}"),
+    ] {
+        text.push_str(&line);
+        text.push('\n');
+    }
     for path in owned {
         text.push_str(path);
         text.push('\n');
     }
     text
+}
+
+/// A KDL string: quoted, with its quotes and backslashes escaped.
+fn quoted(value: &str) -> String {
+    format!("\"{}\"", value.replace('\\', "\\\\").replace('"', "\\\""))
+}
+
+/// The generator version a manifest's provenance records, if it records
+/// one: the value of its first generator line.
+fn recorded_version(manifest: &str) -> Option<String> {
+    let value = manifest
+        .lines()
+        .find_map(|line| line.strip_prefix(GENERATOR_LINE))?;
+    let inner = value.strip_prefix('"')?.strip_suffix('"')?;
+    Some(inner.replace("\\\"", "\"").replace("\\\\", "\\"))
+}
+
+/// `text` with its first line starting `prefix` replaced by `line`;
+/// `text` unchanged when no line starts so.
+fn replace_line(text: &str, prefix: &str, line: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut replaced = false;
+    for piece in text.split_inclusive('\n') {
+        if !replaced && piece.starts_with(prefix) {
+            out.push_str(line);
+            if piece.ends_with('\n') {
+                out.push('\n');
+            }
+            replaced = true;
+        } else {
+            out.push_str(piece);
+        }
+    }
+    out
+}
+
+/// An existing file's bytes as the drift check compares them: the
+/// generator version reads as the running generator's, in the manifest
+/// and, while it equals the recorded version, in `Cargo.toml`.
+fn version_blind(path: &str, existing: &[u8], recorded: Option<&str>) -> Vec<u8> {
+    let Ok(text) = std::str::from_utf8(existing) else {
+        return existing.to_vec();
+    };
+    let current = format!("{GENERATOR_LINE}{}", quoted(crate::GENERATOR_VERSION));
+    if path == MANIFEST_NAME {
+        return replace_line(text, GENERATOR_LINE, &current).into_bytes();
+    }
+    if path == "Cargo.toml"
+        && let Some(recorded) = recorded
+    {
+        let stale = format!("version = {}", quoted(recorded));
+        let fresh = format!("version = {}", quoted(crate::GENERATOR_VERSION));
+        return package_version(text, &stale, &fresh).into_bytes();
+    }
+    existing.to_vec()
+}
+
+/// `text` with the `[package]` table's `stale` version line replaced by
+/// `fresh`; a version line anywhere else is left alone.
+fn package_version(text: &str, stale: &str, fresh: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut in_package = false;
+    let mut replaced = false;
+    for piece in text.split_inclusive('\n') {
+        let line = piece.trim_end_matches('\n');
+        if line.starts_with('[') {
+            in_package = line == "[package]";
+        }
+        if in_package && !replaced && line == stale {
+            out.push_str(fresh);
+            if piece.ends_with('\n') {
+                out.push('\n');
+            }
+            replaced = true;
+        } else {
+            out.push_str(piece);
+        }
+    }
+    out
 }
 
 /// The paths an existing manifest owns, or the reason it cannot be
@@ -174,16 +296,22 @@ pub fn write(tree: &GeneratedTree, out: &Path) -> Result<(), WriteError> {
 /// Compare the tree against `out` without writing: a generated path
 /// that is absent is *missing*, one whose bytes differ is *changed*,
 /// and a manifest-owned path the tree no longer generates is *stale*.
+/// The generator version alone is never a difference: the manifest's
+/// recorded version, and a `Cargo.toml` `[package]` version equal to
+/// it, compare as the running generator's.
 /// Each finding is one `KDLITH-GEN002` record; unowned files are
 /// ignored.
 pub fn check(tree: &GeneratedTree, out: &Path) -> Result<Vec<DiagnosticRecord>, WriteError> {
     let owned = owned_paths(out)?;
+    let recorded = std::fs::read_to_string(out.join(MANIFEST_NAME))
+        .ok()
+        .and_then(|manifest| recorded_version(&manifest));
     let mut findings = Vec::new();
     let classified: BTreeSet<&str> = tree.paths().collect();
     for (path, content) in &tree.files {
         let target = out.join(path);
         match std::fs::read(&target) {
-            Ok(bytes) if bytes != content.as_bytes() => {
+            Ok(bytes) if version_blind(path, &bytes, recorded.as_deref()) != content.as_bytes() => {
                 findings.push(record(DRIFT, &[path, "changed"]));
             }
             Ok(_) => {}

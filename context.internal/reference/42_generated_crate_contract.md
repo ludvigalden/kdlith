@@ -94,7 +94,15 @@ refuses unowned overwrites (`KDLITH-GEN001`, nothing written);
 generation never deletes anything. `--dry-run` prints the plan;
 `--check` reports missing, changed, and stale paths, each
 `KDLITH-GEN002`, exiting 1 on any finding; the modes exclude each
-other. The generated `Cargo.toml` is standalone and carries registry
+other. The per-file markers name no version; the manifest records the
+provenance on `#@` comment lines (generator version, form, crate,
+definition and version, packaging) between its header comments and
+the owned paths, and `--check` compares the manifest's generator line,
+and a `Cargo.toml` `[package]` version equal to the version that line
+records, as the running generator's, so a generator upgrade alone is
+no drift. The ownership reader skips every `#` line, which keeps
+manifests from earlier versions owned and current manifests readable
+by earlier versions. The generated `Cargo.toml` is standalone and carries registry
 metadata (name, version, and a `description` naming the definition;
 no license is claimed for the consumer — under workspace packaging the
 manifest inherits the consuming workspace's license, otherwise it
@@ -132,8 +140,9 @@ of a sources manifest (an origin at the repository root with a 40-hex
 `[workspace.dependencies]` line by line (`KDLITH-GEN006` missing,
 different, or local; the root manifest is never written, and kdlith
 links no TOML library), and owns `.cargo/config.toml` by its first-line
-marker: a `[patch."<git>"]` over the schema reader's transitive kdlith
-closure when the source is overridden, the marker alone otherwise. The
+marker (the current one, or the versioned one earlier versions wrote):
+a `[patch."<git>"]` over the schema reader's transitive kdlith closure
+when the source is overridden, the marker alone otherwise. The
 closure is a codegen constant (`SCHEMA_CLOSURE`); the
 `codegen/gen-workspace-oracle` fixture compares it with the
 repository's own `cargo metadata` resolve graph, since a partial patch

@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "kind": "codegen-oracle",
+  "description": "provenance is read only from #-prefixed lines: a manifest carrying a provenance line as a bare data line is no list of owned paths, so ownership cannot be established and both a writing run and --check refuse it as unreadable, exit 1, the manifest left as it was",
+  "form": "schema",
+  "entrypoint": "inputs/schema.kdl",
+  "crate": "parts-proc",
+  "steps": [
+    { "generate": { "out": "out", "args": ["--kdlith-workspace"] } },
+    {
+      "exercise": {
+        "command": ["sh", "-c", "sed -i 's/^#@ generator /generator /' out/kdlith-manifest && cp out/kdlith-manifest before; \"$KDLITH_FX_KDLITH\" gen schema inputs/schema.kdl --crate parts-proc --out out --kdlith-workspace; echo \"write=$?\"; \"$KDLITH_FX_KDLITH\" gen schema inputs/schema.kdl --crate parts-proc --out out --kdlith-workspace --check; echo \"check=$?\"; cmp -s before out/kdlith-manifest && echo unchanged"],
+        "stdout-contains": ["write=1\ncheck=1\nunchanged\n"],
+        "stdout-not-contains": ["ok: "],
+        "stderr-contains": ["is unreadable: the path entry `generator kdlith version=\""]
+      }
+    }
+  ]
+}

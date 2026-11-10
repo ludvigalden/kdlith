@@ -9,7 +9,7 @@ use kdlith_engine::{DefinitionKind, Names, ReferenceDecl, Role, TypeDecl, TypeEx
 
 use crate::catalog;
 use crate::layout::{Expr, assignment, use_list, version_order};
-use crate::manifest::{MANIFEST_NAME, manifest_text};
+use crate::manifest::{MANIFEST_NAME, Provenance, manifest_text};
 use crate::model::{Document, Emission, InlineUnion, ItemNode, kind_name};
 use crate::render::{
     Spelling, engine_names, field_name, inline_union_name, named_references, pascal, rust_type,
@@ -160,9 +160,19 @@ impl Emission<'_> {
                 files.push((format!("src/dialect/{file_name}"), text.clone()));
             }
         }
+        let provenance = Provenance {
+            form: match self.kind {
+                DefinitionKind::Dialect => "dialect",
+                _ => "schema",
+            },
+            crate_name: &self.crate_name,
+            definition: &self.name,
+            definition_version: &self.version,
+            packaging: &self.packaging,
+        };
         files.push((
             MANIFEST_NAME.to_owned(),
-            manifest_text(files.iter().map(|(path, _)| path.as_str())),
+            manifest_text(&provenance, files.iter().map(|(path, _)| path.as_str())),
         ));
         files.sort_by(|(one, _), (other, _)| one.cmp(other));
         Ok(GeneratedTree {
@@ -183,7 +193,7 @@ impl Emission<'_> {
         out.blank();
         out.line("[package]");
         out.line(&format!("name = \"{}\"", self.crate_name));
-        out.line(&format!("version = \"{}\"", env!("CARGO_PKG_VERSION")));
+        out.line(&format!("version = \"{}\"", crate::GENERATOR_VERSION));
         // Registry metadata: name, version, and description. The
         // license is the consumer's, never the generator's: workspace
         // packaging inherits it like the lints, other packagings omit
