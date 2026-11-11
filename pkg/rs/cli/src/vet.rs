@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 use kdlith_engine::{
     CheckScope, DataReader, Definition, EntryContext, Extensions, Handlers, LAYERED, Layered,
-    LinkInputs, LinkReport, ReadOptions, SharedResolver, SourceTree, link_reading,
+    LinkInputs, LinkReport, ReadOptions, SharedResolver, SourceTree, check_reading, link_reading,
 };
 use kdlith_model::{Item, SourceId};
 use kdlith_superproc::{load_dialect, load_schema_with, seed};
@@ -458,7 +458,7 @@ pub(crate) fn stream_data_then(
     let mut written = true;
     let gating = options.scope == CheckScope::Complete;
     let linking = gating || report_links;
-    let mut inputs = LinkInputs::new();
+    let mut inputs = LinkInputs::new(&definition);
     let mut sink = |item: Item| {
         if let Item::Diagnostic(record) = &item {
             records.push((**record).clone());
@@ -470,7 +470,15 @@ pub(crate) fn stream_data_then(
     };
     let read = reader.read_entry_contexts(entries, &options.read_options(), &mut sink);
     drop(out);
-    let report = (linking && read.is_ok()).then(|| link_reading(&definition, &inputs));
+    // Only a consumer of the report itself needs every link; the
+    // verdict needs the failed ones alone.
+    let report = (linking && read.is_ok()).then(|| {
+        if report_links {
+            link_reading(&inputs)
+        } else {
+            check_reading(&inputs)
+        }
+    });
     let mut ungated: &[DiagnosticRecord] = &[];
     if let Some(report) = &report {
         if gating {

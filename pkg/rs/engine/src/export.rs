@@ -12,7 +12,7 @@ use kdlith_parse::{Event, Parser};
 use kdlith_runtime::{Delivery, ExportWriter, SourceRevisions, export_line};
 
 use crate::documents::read_text;
-use crate::link::{LinkInputs, link_reading};
+use crate::link::{LinkInputs, check_reading};
 use crate::{CheckScope, DataReader, Definition, OutputPolicy, ReadOptions, TypeKind};
 
 const ORIGIN: &str = "export";
@@ -158,7 +158,7 @@ pub fn export_read(
     let mut records: Vec<DiagnosticRecord> = Vec::new();
     let mut write_failed = false;
     let mut revisions = SourceRevisions::new();
-    let mut inputs = LinkInputs::new();
+    let mut inputs = LinkInputs::new(def);
     let read = {
         let mut sink = |item: Item| {
             inputs.observe(&item);
@@ -208,7 +208,7 @@ pub fn export_read(
     };
     let processing_failed = match read {
         Ok(failed) => {
-            let report = link_reading(def, &inputs);
+            let report = check_reading(&inputs);
             if scope == CheckScope::Complete {
                 let failed = failed || report.has_errors();
                 outcome.records.extend(report.diagnostics.iter().cloned());
