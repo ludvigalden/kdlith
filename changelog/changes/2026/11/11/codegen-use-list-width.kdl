@@ -1,0 +1,8 @@
+change codegen-use-list-width {
+    summary "Lay out generated use lists exactly as rustfmt does"
+    category fixed
+    impact public
+    touches "pkg/rs/codegen" "input:fixtures"
+    commit "818a127d4369fa7edd30ca841ad6ef3fd23ec636"
+    detail "A generated use list that fits one wrapped row may now reach 100 columns, as rustfmt keeps it, instead of breaking at 99. Before, a generated crate holding such an import failed either gen --check or a rustfmt check, never passing both. Every other row still stops at 99 columns and a one-line list at 98. The dialect entry point now shares the same layout."
+}
