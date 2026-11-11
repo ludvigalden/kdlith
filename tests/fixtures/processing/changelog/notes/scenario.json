@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "kind": "codegen-oracle",
+  "description": "changelog prints the release notes the build embedded and exits 0 with stderr empty, or, in a binary built without relmap, fails closed with KDLITH-CHG001 (exit 1, stdout empty). No generate step runs (the entrypoint and crate keys the kind requires go unused); the one exercise step runs check.sh in the scratch copy, which judges the build path the run declares: KDLITH_FX_CHANGELOG=absent for a binary built without relmap, anything else for one built with it. With relmap the notes open with a release heading and carry the 0.1.0 release's heading, summary and paragraph exactly; the remaining bytes are relmap's rendering of the changelog records and are not pinned here",
+  "entrypoint": "unused.kdl",
+  "crate": "unused",
+  "steps": [
+    {
+      "exercise": {
+        "command": ["sh", "check.sh"],
+        "stdout-contains": ["as declared\n"]
+      }
+    }
+  ]
+}

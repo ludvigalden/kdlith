@@ -22,7 +22,7 @@ kdlith is a single binary with eight verbs, all implemented:
 - `read data` — read one record, optionally from a cached snapshot
 - `cache refresh` — cache bound results and context snapshots for a
   state directory
-- `changelog` — print the embedded changelog archive
+- `changelog` — print the release notes embedded at build time
 - `help` — verb help
 
 Definitions and data are KDL v2 documents. `vet` and `inspect` print

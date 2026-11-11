@@ -80,12 +80,26 @@ owned `.cargo/config.toml`. `--dry-run` and `--check` behave as on the
 other forms; see the typed reader's generated-crates reference for the
 patch file and the one-time cache seed.
 
+## changelog and --version
+
+`kdlith changelog` prints the release notes the binary embedded when
+it was built, and `kdlith --version` prints the version it presents.
+The build asks relmap for both when it finds relmap (`RELMAP_BIN`, or
+`relmap` on `PATH`; `RELMAP_BIN=` set empty builds without it): the
+notes are relmap's markdown rendering of the repository's
+`changelog/` records, the same text as the root `CHANGELOG.md`, and
+the version is what `relmap version tools/kdlith` reports. A build
+without relmap still succeeds: `--version` prints the Cargo version,
+and `changelog` fails with `KDLITH-CHG001` (exit 1). A relmap that is
+found but fails fails the build.
+
 ## Exit strata
 
 - 0 — success, including warnings-only runs (a warning fails the run
   under `--warnings-as-errors`; a note never does)
 - 1 — a diagnostic or gate failure the run reports (binding, link,
-  export delivery, drift check, generation refusal, cache fault)
+  export delivery, drift check, generation refusal, cache fault,
+  changelog data unavailable)
 - 2 — an argument fault (`KDLITH-CLI001` through `KDLITH-CLI004`),
   reported before any document is read
 

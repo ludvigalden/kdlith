@@ -15,9 +15,4 @@ repo kdlith {
         path "pkg/kdl/schemas/sources"
         consumers "tests/tools/kdlith-fixtures"
     }
-    // The CLI embeds the changelog archive.
-    input changelog-archive kind=data {
-        path "pkg/kdl/CHANGELOG.md"
-        consumers "pkg/rs/cli"
-    }
 }

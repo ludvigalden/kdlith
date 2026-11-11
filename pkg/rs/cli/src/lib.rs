@@ -36,7 +36,7 @@ pub use vet::{DataOptions, VetTarget, vet, vet_data};
     name = "kdlith",
     bin_name = "kdlith",
     about = "Read typed KDL, validate definitions, and generate Rust processors",
-    version,
+    version = changelog::PRESENTED_VERSION,
     disable_help_subcommand = true
 )]
 struct Cli {
@@ -68,7 +68,7 @@ enum Command {
     /// integrity of the trees the store holds, or every source with its
     /// digest
     Sources(SourcesArgs),
-    /// Show the embedded changelog archive
+    /// Print the release notes embedded when this binary was built
     Changelog,
     /// Print help for a command
     Help(HelpArgs),

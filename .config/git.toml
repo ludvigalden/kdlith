@@ -8,9 +8,10 @@ schema_version = 1
 # authored schemas and the dialect-generation entrypoint (pkg/kdl/), the
 # committed context trees (context/ for consumers, context.internal/ for
 # development), the Cargo
-# manifests, the root TOML formatter config (taplo.toml), README.md,
-# the LICENSE, the repository map (map/), and the changelog records
-# (changelog/). The repository configuration
+# manifests, the CLI crate's build script, the root TOML formatter
+# config (taplo.toml), README.md, the LICENSE, the repository map
+# (map/), the changelog records (changelog/), and the CHANGELOG.md
+# rendered from them. The repository configuration
 # (.config/) is committed too: its TOML files are hand-authored inputs
 # (project.toml's [environments] block excepted -- sync refreshes it),
 # so the managed-goes-gitignored rule never bites and the directory
@@ -32,6 +33,7 @@ patterns = [
   "Cargo.lock",
   ".cargo/config.toml",
   "pkg/rs/*/Cargo.toml",
+  "pkg/rs/cli/build.rs",
   "pkg/rs/*/src/**",
   "pkg/kdl/**",
   "context/**",
@@ -46,6 +48,7 @@ patterns = [
   "tests/fixtures/**",
   "taplo.toml",
   "README.md",
+  "CHANGELOG.md",
   "LICENSE",
   "map/**",
   "changelog/**",

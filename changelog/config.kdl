@@ -1,6 +1,8 @@
 changelog {
     import "$relmap/profiles/core/changelog.kdl"
 
+    markdown path="CHANGELOG.md"
+
     // Tests, refactors, formatting, build plumbing and repository
     // configuration change no behaviour a kdlith user sees.
     exempt test subject="test: " scoped=#true

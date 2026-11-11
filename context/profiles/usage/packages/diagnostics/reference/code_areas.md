@@ -48,7 +48,7 @@ identity; `REF003` ambiguous; `REF004`
 unmet required qualifier; `REF005` a pending payload that does not
 fit its declaration.
 
-## CTX, SRC, CAC, GEN, CLI, SYN, EXP — the rest
+## CTX, SRC, CAC, GEN, CLI, SYN, EXP, CHG — the rest
 
 Context faults (`CTX004` snapshot mismatch, `CTX005` an effect on an
 undeclared slot or namespace, `CTX006` a slot duplicate under
@@ -60,4 +60,5 @@ a source that cannot pin the kdlith crates, `GEN008` a default
 sibling packaging that resolves to no kdlith crate beside the output);
 argument faults (`CLI001`–`CLI004`, exit 2, before any document is
 read); syntax faults (`SYN…` from the KDL parser); export faults
-(`EXP002` provisional delivery).
+(`EXP002` provisional delivery); changelog faults (`CHG001` a binary
+built without changelog data).

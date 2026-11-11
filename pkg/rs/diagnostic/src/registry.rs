@@ -129,6 +129,11 @@ pub const AREAS: &[AreaDefinition] = &[
         owner: "runtime",
         scope: "derived processing state: the explicit state directory, its owned entries, foreign entries",
     },
+    AreaDefinition {
+        name: "CHG",
+        owner: "cli",
+        scope: "the changelog a binary embeds when it is built",
+    },
 ];
 
 /// The registered codes, grouped by area in [`AREAS`] order and
@@ -1166,6 +1171,17 @@ pub const CODES: &[CodeDefinition] = &[
         trigger: "the state directory or one of its entries cannot be read, created, written, or removed",
         message_template: "cannot <action> <path>: <reason>",
         correction: "Check the state path and its permissions",
+        retired: false,
+    },
+    // CHG
+    CodeDefinition {
+        code: "KDLITH-CHG001",
+        label: "changelog-unavailable",
+        severity: Severity::Error,
+        exit_class: 1,
+        trigger: "the changelog verb runs in a binary built without changelog data",
+        message_template: "changelog data is unavailable: <reason>",
+        correction: "Rebuild the binary where its changelog data can be generated",
         retired: false,
     },
 ];
