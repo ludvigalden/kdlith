@@ -1,0 +1,8 @@
+change changelog-from-relmap {
+    summary "Print the changelog and version from relmap at build time"
+    category changed
+    impact public
+    touches "pkg/rs/cli" "pkg/rs/diagnostic" "input:fixtures"
+    commit "98e483611e3cdce598f49fb9ec59e908e4926c17"
+    detail "When relmap is available at build time, kdlith changelog prints the release notes relmap renders from the changelog records, the same text as the root CHANGELOG.md, and kdlith --version presents the version relmap computes. Without relmap the build still succeeds, kdlith changelog fails with KDLITH-CHG001, and the Cargo version is presented. The hand-kept pkg/kdl/CHANGELOG.md archive is gone."
+}
