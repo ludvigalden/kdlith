@@ -397,7 +397,7 @@ pub(crate) fn stream_data(
     schema: Option<&Path>,
     entries: &[&Path],
     options: &DataOptions,
-    render: impl FnMut(&mut std::io::StdoutLock<'static>, &Item) -> std::io::Result<()>,
+    render: impl FnMut(&mut Out, &Item) -> std::io::Result<()>,
 ) -> ExitStatus {
     stream_data_then(
         schema,
@@ -429,7 +429,7 @@ pub(crate) fn stream_data_then(
     entries: &[&Path],
     options: &DataOptions,
     report_links: bool,
-    mut render: impl FnMut(&mut std::io::StdoutLock<'static>, &Item) -> std::io::Result<()>,
+    mut render: impl FnMut(&mut Out, &Item) -> std::io::Result<()>,
     finish: impl FnOnce(
         Option<&Definition>,
         &[EntryContext],
@@ -454,7 +454,7 @@ pub(crate) fn stream_data_then(
     };
     let reader = options.reader(&definition);
     let mut records: Vec<DiagnosticRecord> = Vec::new();
-    let mut out = std::io::stdout().lock();
+    let mut out = stdout();
     let mut written = true;
     let gating = options.scope == CheckScope::Complete;
     let linking = gating || report_links;
@@ -469,6 +469,8 @@ pub(crate) fn stream_data_then(
         written &= render(&mut out, &item).is_ok();
     };
     let read = reader.read_entry_contexts(entries, &options.read_options(), &mut sink);
+    // Every item reaches stdout before any diagnostic reaches stderr.
+    written &= std::io::Write::flush(&mut out).is_ok();
     drop(out);
     // Only a consumer of the report itself needs every link; the
     // verdict needs the failed ones alone.
@@ -506,6 +508,18 @@ pub(crate) fn stream_data_then(
     });
     let status = finish(Some(&definition), &contexts, linked, status);
     schema_hint::on_failure(schema, entries, status)
+}
+
+/// Standard output for an item stream: locked for the run and written
+/// in blocks, never a line at a time. The stream's writer flushes it
+/// before anything is reported on standard error.
+pub(crate) type Out = std::io::BufWriter<std::io::StdoutLock<'static>>;
+
+/// How many bytes an item stream gathers between writes.
+const OUT_BYTES: usize = 1 << 16;
+
+pub(crate) fn stdout() -> Out {
+    std::io::BufWriter::with_capacity(OUT_BYTES, std::io::stdout().lock())
 }
 
 pub(crate) fn write_item(out: &mut impl std::io::Write, item: &Item) -> std::io::Result<()> {

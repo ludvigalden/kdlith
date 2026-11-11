@@ -242,7 +242,7 @@ fn inspect_view(
         Err(records) => return report_all(&records),
     };
     let mut records: Vec<DiagnosticRecord> = Vec::new();
-    let mut out = std::io::stdout().lock();
+    let mut out = crate::vet::stdout();
     let mut written = true;
     let mut sink = |item: TypedItem<Item>| {
         if let TypedItem::Diagnostic(record) = &item {
@@ -253,6 +253,7 @@ fn inspect_view(
         }
     };
     let read = reader.read(entries, &mut sink);
+    written &= std::io::Write::flush(&mut out).is_ok();
     drop(out);
     match read {
         Ok(_) if written => {
@@ -774,7 +775,7 @@ fn node_decl<'d>(def: &'d Definition, node: &kdlith_engine::NodeEntry) -> Option
 /// Print each value as one JSON line; a failed write fails the run.
 pub(crate) fn write_lines(lines: &[serde_json::Value]) -> ExitStatus {
     use std::io::Write as _;
-    let mut out = std::io::stdout().lock();
+    let mut out = crate::vet::stdout();
     for line in lines {
         if serde_json::to_writer(&mut out, line).is_err() || out.write_all(b"\n").is_err() {
             return ExitStatus::Failure;
