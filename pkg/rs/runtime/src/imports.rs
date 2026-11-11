@@ -2,6 +2,7 @@
 //! projection-only contexts so mutations never escape, cycles found on
 //! the active stack, and repeats handled by policy (reject by default).
 
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 pub use kdlith_model::Repeated;
@@ -262,6 +263,9 @@ pub enum ImportFailure {
 #[derive(Debug)]
 pub struct Invocations {
     invocations: Vec<Invocation>,
+    /// The first invocation of each resolved path, so a repeat is found
+    /// without scanning every invocation.
+    first: HashMap<PathBuf, InvocationId>,
     active: Vec<InvocationId>,
     /// The most invocations the session admits, entries included.
     limit: usize,
@@ -277,6 +281,7 @@ impl Default for Invocations {
     fn default() -> Self {
         Self {
             invocations: Vec::new(),
+            first: HashMap::new(),
             active: Vec::new(),
             limit: MAX_INVOCATIONS,
             schema: 0,
@@ -499,10 +504,7 @@ impl Invocations {
     }
 
     fn find(&self, path: &Path) -> Option<InvocationId> {
-        self.invocations
-            .iter()
-            .position(|invocation| invocation.path == path)
-            .map(index)
+        self.first.get(path).copied()
     }
 
     fn push(
@@ -523,6 +525,9 @@ impl Invocations {
         let schema = self.schema;
         let profiles = self.profiles;
         let id = index(self.invocations.len());
+        if !self.first.contains_key(&path) {
+            self.first.insert(path.clone(), id);
+        }
         self.invocations.push(Invocation {
             path,
             shown,
