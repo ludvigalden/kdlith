@@ -2,7 +2,7 @@
 //! definition and executes their imports as invocations, under the
 //! identity and cache rules the runtime records.
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
@@ -257,7 +257,8 @@ pub struct BoundResult {
     /// entrypoint, the document, and its importer, as the reading
     /// showed them, in reading order.
     pub derivations: Vec<Derivation>,
-    pub items: Vec<Item>,
+    /// The result's items, shared with the reading's own replay cache.
+    pub items: Rc<Vec<Item>>,
     /// The source-set fingerprint of the reading that bound it: the
     /// named sources the reading used, each with the identity of the
     /// tree it read. `None` when it used none.
@@ -422,7 +423,7 @@ impl<'d> DataReader<'d> {
         sides: Sides<'_, '_, '_>,
         follow: bool,
     ) -> Result<bool, ReadError> {
-        self.read_inner(entries, options, sink, sides, follow, follow)
+        self.read_inner(entries, options, sink, sides, Mode::plain(follow))
             .map(|outcome| outcome.failed)
     }
 
@@ -436,7 +437,7 @@ impl<'d> DataReader<'d> {
         options: &ReadOptions,
         sink: &mut dyn FnMut(Item),
     ) -> Result<bool, ReadError> {
-        self.read_scoped(entries, options, sink, true)
+        self.read_scoped(entries, options, sink, Mode::plain(true))
             .map(|outcome| outcome.failed)
     }
 
@@ -459,7 +460,7 @@ impl<'d> DataReader<'d> {
                 text: &source.text,
             })
             .collect();
-        self.read_inner(&entries, options, sink, Sides::none(), true, true)
+        self.read_inner(&entries, options, sink, Sides::none(), Mode::plain(true))
             .map(|outcome| outcome.failed)
     }
 
@@ -471,20 +472,30 @@ impl<'d> DataReader<'d> {
         options: &ReadOptions,
         sink: &mut dyn FnMut(Item),
     ) -> Result<(bool, Vec<BoundResult>), ReadError> {
-        self.read_scoped(entries, options, sink, true)
+        let mode = Mode {
+            results: true,
+            ..Mode::plain(true)
+        };
+        self.read_scoped(entries, options, sink, mode)
             .map(|outcome| (outcome.failed, outcome.results))
     }
 
     /// Read as [`DataReader::read`] does, and also return the context
     /// each entry document's root invocation left, in entry order. An
-    /// entry whose document could not be read has none.
+    /// entry whose document could not be read has none. The contexts
+    /// carry no records: only a reading made for the snapshot store
+    /// keeps the context every record bound under.
     pub fn read_entry_contexts(
         &self,
         entries: &[&Path],
         options: &ReadOptions,
         sink: &mut dyn FnMut(Item),
     ) -> Result<(bool, Vec<EntryContext>), ReadError> {
-        self.read_scoped(entries, options, sink, true)
+        let mode = Mode {
+            contexts: true,
+            ..Mode::plain(true)
+        };
+        self.read_scoped(entries, options, sink, mode)
             .map(|outcome| (outcome.failed, outcome.contexts))
     }
 
@@ -496,7 +507,13 @@ impl<'d> DataReader<'d> {
         options: &ReadOptions,
         sink: &mut dyn FnMut(Item),
     ) -> Result<(bool, Vec<BoundResult>, Vec<EntryContext>), ReadError> {
-        self.read_scoped(entries, options, sink, true)
+        let mode = Mode {
+            results: true,
+            contexts: true,
+            records: true,
+            ..Mode::plain(true)
+        };
+        self.read_scoped(entries, options, sink, mode)
             .map(|outcome| (outcome.failed, outcome.results, outcome.contexts))
     }
 
@@ -617,7 +634,11 @@ impl<'d> DataReader<'d> {
             .iter()
             .map(|entry| EntrySource::Path(entry))
             .collect();
-        let before = self.read_inner(&earlier, options, &mut tap, Sides::none(), true, false)?;
+        let mode = Mode {
+            resolving: false,
+            ..Mode::plain(true)
+        };
+        let before = self.read_inner(&earlier, options, &mut tap, Sides::none(), mode)?;
         let source = SourceId(u32::try_from(before.entered).unwrap_or(u32::MAX));
         let Some((scope, enclosing)) = dispatch_scope(def, &text, record.node) else {
             return Ok(Restored::Miss);
@@ -691,7 +712,7 @@ impl<'d> DataReader<'d> {
         options: &ReadOptions,
         sink: &mut dyn FnMut(Item),
     ) -> Result<bool, ReadError> {
-        self.read_scoped(entries, options, sink, false)
+        self.read_scoped(entries, options, sink, Mode::plain(false))
             .map(|outcome| outcome.failed)
     }
 
@@ -700,28 +721,27 @@ impl<'d> DataReader<'d> {
         entries: &[&Path],
         options: &ReadOptions,
         sink: &mut dyn FnMut(Item),
-        follow: bool,
+        mode: Mode,
     ) -> Result<Outcome, ReadError> {
         let entries: Vec<EntrySource> = entries
             .iter()
             .map(|entry| EntrySource::Path(entry))
             .collect();
-        self.read_inner(&entries, options, sink, Sides::none(), follow, follow)
+        self.read_inner(&entries, options, sink, Sides::none(), mode)
     }
 
-    /// [`DataReader::read_scoped`], with contribution resolution chosen
-    /// separately: a reading of only some of an invocation's entries
-    /// would resolve a partial picture.
+    /// One reading under `mode`: what it follows, resolves, and keeps
+    /// beyond its item stream.
     fn read_inner(
         &self,
         entries: &[EntrySource<'_>],
         options: &ReadOptions,
         sink: &mut dyn FnMut(Item),
         sides: Sides<'_, '_, '_>,
-        follow: bool,
-        resolving: bool,
+        mode: Mode,
     ) -> Result<Outcome, ReadError> {
         let def = self.def;
+        let resolving = mode.resolving;
         // Definition documents declare their own locations rule, so every
         // entry is scanned before any import runs. A schema definition's
         // entries are confined as data documents are; a dialect
@@ -804,8 +824,10 @@ impl<'d> DataReader<'d> {
             invocations: Invocations::new()
                 .with_limit(options.max_invocations.unwrap_or(MAX_INVOCATIONS))
                 .with_schema_fingerprint(self.schema_fingerprint()),
-            syntax: HashMap::new(),
+            slots: def.plan.context.layout.slots().collect(),
+            mode,
             held: HashMap::new(),
+            seen: HashSet::new(),
             bound: HashMap::new(),
             results: Vec::new(),
             result_of: HashMap::new(),
@@ -819,7 +841,6 @@ impl<'d> DataReader<'d> {
             sink: &mut tap,
             failed: false,
             broken: None,
-            follow,
         };
         let layout = self.def.plan.context.layout.clone();
         for (entry, confined) in entries.iter().zip(confined) {
@@ -933,6 +954,42 @@ impl Sides<'_, '_, '_> {
     }
 }
 
+/// What one reading does beyond streaming its entries' items. Everything
+/// a reading keeps costs memory in proportion to the reading, so a plain
+/// reading keeps nothing: each document's text and items are dropped as
+/// soon as they have streamed.
+#[derive(Clone, Copy, Debug)]
+struct Mode {
+    /// Whether import requests are followed; a local reading gives each
+    /// request as an item and stops there.
+    follow: bool,
+    /// Whether contribution records are routed to the registered
+    /// resolver: a reading of only some of an invocation's entries
+    /// would resolve a partial picture.
+    resolving: bool,
+    /// Whether every bound result is returned, each with its items.
+    results: bool,
+    /// Whether the context each entry's root invocation left is
+    /// returned.
+    contexts: bool,
+    /// Whether each entry's context carries every record its reading
+    /// bound, with the context the record bound under.
+    records: bool,
+}
+
+impl Mode {
+    /// A reading that keeps nothing beyond its stream.
+    fn plain(follow: bool) -> Self {
+        Self {
+            follow,
+            resolving: follow,
+            results: false,
+            contexts: false,
+            records: false,
+        }
+    }
+}
+
 /// What a finished reading returns beyond its item stream.
 struct Outcome {
     failed: bool,
@@ -998,22 +1055,29 @@ struct Reading<'r, 'd> {
     /// when a consumer asked for it.
     entering: Option<Entering<'r>>,
     invocations: Invocations,
-    /// The syntax cache: document text by source revision, so a source
-    /// invoked again under the same revision is read and stored once.
-    syntax: HashMap<u64, Rc<str>>,
-    /// The text of each document held in memory, by its invocation: an
-    /// entry given in memory, or a file of an embedded source. It is
-    /// never read from disk.
+    /// Every slot of the definition, in slot order.
+    slots: Vec<SlotId>,
+    mode: Mode,
+    /// The text of each document held in memory, by its invocation, until
+    /// the invocation binds it: an entry given in memory, or a file of
+    /// an embedded source. It is never read from disk.
     held: HashMap<InvocationId, Rc<str>>,
-    /// The bound-result cache: the items of one invocation by their
-    /// invocation semantics and the active profiles they bound under,
-    /// so a repeated invocation with equal semantics under the same
-    /// selection replays instead of rebinding.
-    bound: HashMap<(InvocationIdentity, Vec<Sym>), Rc<Vec<Item>>>,
+    /// Every invocation semantics the reading has bound without keeping
+    /// its result. A second invocation of the same semantics is kept,
+    /// so a third replays: only a document invoked repeatedly ever costs
+    /// the memory of its items.
+    seen: HashSet<ResultKey>,
+    /// The bound-result cache: the items of one invocation, under the
+    /// canonical source identity, by their invocation semantics and the
+    /// active profiles they bound under, so a repeated invocation with
+    /// equal semantics under the same selection replays instead of
+    /// rebinding. A reading returning its results keeps every result;
+    /// any other keeps one from its second invocation on.
+    bound: HashMap<ResultKey, Rc<Vec<Item>>>,
     /// Every result the bound-result cache took, in insertion order.
     results: Vec<BoundResult>,
     /// The position of each cached identity's result in `results`.
-    result_of: HashMap<(InvocationIdentity, Vec<Sym>), usize>,
+    result_of: HashMap<ResultKey, usize>,
     /// What each cached result's binding left beyond its items — its
     /// context, whether it consulted the value resolver, and its records'
     /// contexts — so a document replayed from the cache reports the same.
@@ -1036,9 +1100,6 @@ struct Reading<'r, 'd> {
     sink: &'r mut dyn FnMut(Item),
     failed: bool,
     broken: Option<ReadError>,
-    /// Whether import requests are followed; a local reading gives each
-    /// request as an item and stops there.
-    follow: bool,
 }
 
 impl Reading<'_, '_> {
@@ -1055,79 +1116,76 @@ impl Reading<'_, '_> {
     }
 
     /// Bind the innermost active invocation's document, following each
-    /// import as its request is read, then leave it.
+    /// import as its request is read, then leave it. Nothing of the
+    /// document outlives its visit but what the reading's mode keeps.
     fn visit(&mut self, id: InvocationId) {
         if let Some(invocation) = self.invocations.get(id) {
             let (path, shown) = (invocation.path.clone(), invocation.shown.clone());
-            let context = invocation.context.project(&self.all_slots());
+            let context = invocation.context.project(&self.slots);
             // A document held in memory reads its own text; every other
             // invocation reads from disk.
-            let read = match self.held.get(&id) {
-                Some(held) => Ok(held.clone()),
-                None => read_text(&path, &shown, "document size", ORIGIN)
-                    .map(|text| Rc::from(text.as_str())),
+            let read = match self.held.remove(&id) {
+                Some(held) => Ok(held),
+                None => read_text(&path, &shown, "document size", ORIGIN).map(Rc::from),
             };
             match read {
-                Ok(text) => {
-                    // A rule written after the import it governs still
-                    // governs it, so a definition document is scanned
-                    // before it binds.
-                    if let Some(declared) = &mut self.declared {
-                        declared.scan(&text);
-                    }
-                    if !matches!(self.places.get(&id).map(|p| &p.home), Some(Home::Named(_))) {
-                        self.local.insert(shown.clone(), bytes_hex(text.as_bytes()));
-                    }
-                    let revision = stable_hash(text.as_bytes());
-                    self.invocations.supply_revision(id, revision);
-                    let text = self.syntax.entry(revision).or_insert_with(|| text).clone();
-                    let identity = self.invocations.get(id).and_then(|i| i.identity());
-                    let digest = revision_digest(revision);
-                    let active = self.selection.members().to_vec();
-                    if let Some(entering) = &mut self.entering {
-                        entering(&entry_values(
-                            self.reader.def,
-                            context.as_ref().ok(),
-                            &shown,
-                        ));
-                    }
-                    if let Some(cached) =
-                        identity.and_then(|k| self.bound.get(&(k, active.clone())))
-                    {
-                        let cached = cached.clone();
-                        let key = identity.map(|k| (k, active));
-                        let mut bound = Vec::new();
-                        if let Some(left) = key.as_ref().and_then(|key| self.left.get(key)) {
-                            let Left {
-                                values,
-                                consulted,
-                                records,
-                                bound: contexts,
-                            } = left.clone();
-                            bound = contexts;
-                            let source = u32::try_from(id.index()).unwrap_or(u32::MAX);
-                            // A replay re-attributes its records to the
-                            // invocation replaying them, as it does its items.
-                            self.records.extend(records.into_iter().map(|mut record| {
-                                record.source = source;
-                                record
-                            }));
-                            self.consulted |= consulted;
-                            self.capture(id, &shown, values);
-                        }
-                        if let Some(at) = key.and_then(|key| self.result_of.get(&key).copied()) {
-                            let derivation = self.derivation(id);
-                            self.results[at].derivations.push(derivation);
-                        }
-                        self.replay(id, (&shown, &digest), &text, cached, &bound);
-                    } else {
-                        self.bind(id, (&shown, &digest), &text, context.ok(), identity);
-                    }
-                }
+                Ok(text) => self.read(id, &shown, &text, context.ok()),
                 Err(record) => self.diagnose(*record),
             }
         }
+        self.places.remove(&id);
         self.invocations.leave();
+    }
+
+    /// Bind one invocation's text, or replay it from the bound-result
+    /// cache when an invocation of equal semantics is held there.
+    fn read(&mut self, id: InvocationId, shown: &str, text: &str, context: Option<Context>) {
+        // A rule written after the import it governs still governs it,
+        // so a definition document is scanned before it binds.
+        if let Some(declared) = &mut self.declared {
+            declared.scan(text);
+        }
+        if !matches!(self.places.get(&id).map(|p| &p.home), Some(Home::Named(_))) {
+            self.local
+                .insert(shown.to_owned(), bytes_hex(text.as_bytes()));
+        }
+        let revision = stable_hash(text.as_bytes());
+        self.invocations.supply_revision(id, revision);
+        let identity = self.invocations.get(id).and_then(|i| i.identity());
+        let digest = revision_digest(revision);
+        if let Some(entering) = &mut self.entering {
+            entering(&entry_values(self.reader.def, context.as_ref(), shown));
+        }
+        let key = identity.map(|identity| (identity, self.selection.members().to_vec()));
+        let cached = key.as_ref().and_then(|key| self.bound.get(key)).cloned();
+        let Some(cached) = cached else {
+            self.bind(id, (shown, &digest), text, context, key);
+            return;
+        };
+        let mut bound = Vec::new();
+        if let Some(left) = key.as_ref().and_then(|key| self.left.get(key)) {
+            let Left {
+                values,
+                consulted,
+                records,
+                bound: contexts,
+            } = left.clone();
+            bound = contexts;
+            let source = u32::try_from(id.index()).unwrap_or(u32::MAX);
+            // A replay re-attributes its records to the invocation
+            // replaying them, as it does its items.
+            self.records.extend(records.into_iter().map(|mut record| {
+                record.source = source;
+                record
+            }));
+            self.consulted |= consulted;
+            self.capture(id, shown, values);
+        }
+        if let Some(at) = key.and_then(|key| self.result_of.get(&key).copied()) {
+            let derivation = self.derivation(id);
+            self.results[at].derivations.push(derivation);
+        }
+        self.replay(id, (shown, &digest), text, &cached, &bound);
     }
 
     /// Yield a cached invocation's items under its new source identity,
@@ -1137,20 +1195,21 @@ impl Reading<'_, '_> {
         id: InvocationId,
         (shown, digest): (&str, &str),
         text: &str,
-        cached: Rc<Vec<Item>>,
+        cached: &[Item],
         bound: &[Vec<Option<SlotValue>>],
     ) {
         let source = SourceId(u32::try_from(id.index()).unwrap_or(u32::MAX));
         self.document(source, shown, digest, text);
         let mut bound = bound.iter();
-        for item in cached.iter() {
+        for item in cached {
             if let Some(entering) = &mut self.entering
                 && matches!(item, Item::Record(_) | Item::Declaration(_))
                 && let Some(values) = bound.next()
             {
                 entering(values);
             }
-            let mut item = remap(item, source);
+            let mut item = item.clone();
+            remap(&mut item, source);
             let failures = self.assets(id, shown, &mut item);
             (self.sink)(item);
             for failure in failures {
@@ -1188,7 +1247,7 @@ impl Reading<'_, '_> {
         (shown, digest): (&str, &str),
         text: &str,
         context: Option<Context>,
-        identity: Option<InvocationIdentity>,
+        key: Option<ResultKey>,
     ) {
         let def = self.reader.def;
         let source = SourceId(u32::try_from(id.index()).unwrap_or(u32::MAX));
@@ -1210,6 +1269,14 @@ impl Reading<'_, '_> {
         )
         .under_policy(self.output_policy)
         .with_resolver(self.reader.resolver.clone());
+        // The result is kept for replay when the reading returns its
+        // results, or when this is the second invocation of its
+        // semantics; a first invocation only streams.
+        let mut keeping = match &key {
+            Some(key) => self.mode.results || self.seen.contains(key),
+            None => false,
+        };
+        let indexing = self.mode.records;
         let mut own: Vec<Item> = Vec::new();
         let mut records: Vec<RecordContext> = Vec::new();
         let mut bound: Vec<Vec<Option<SlotValue>>> = Vec::new();
@@ -1217,14 +1284,19 @@ impl Reading<'_, '_> {
         while self.broken.is_none() {
             match session.next_item() {
                 Ok(Some(item)) => {
-                    if let kdlith_model::BoundItem::Import(request) = &item {
-                        if self.follow {
+                    if let kdlith_model::BoundItem::Import(request) = item {
+                        if self.mode.follow {
                             // A followed import's items are part of this
                             // document's stream but not of its own bound
                             // result: the imports' revisions are outside
                             // this invocation's identity.
                             cacheable = false;
-                            let mut request = request.clone();
+                            if keeping {
+                                keeping = false;
+                                own = Vec::new();
+                                bound = Vec::new();
+                            }
+                            let mut request = request;
                             let projected = self.projection(&session, &request, shown);
                             let resolved =
                                 projected.map(|context| (context, self.targets(&request)));
@@ -1238,13 +1310,21 @@ impl Reading<'_, '_> {
                             }
                             continue;
                         }
+                        let item = Item::Import(request);
+                        if keeping {
+                            own.push(item.clone());
+                        }
+                        self.emit(item);
+                        continue;
                     }
                     let mut item = Item::from(item);
                     // The bound result keeps assets as written: a replay
                     // resolves them in its own document's source.
-                    let written = cacheable.then(|| item.clone());
+                    if keeping {
+                        own.push(item.clone());
+                    }
                     let failures = self.assets(id, shown, &mut item);
-                    if let Item::Record(record) = &item {
+                    if indexing && let Item::Record(record) = &item {
                         // Records carry no context effects and their
                         // children scope has closed, so the live context is
                         // the one the record bound under.
@@ -1258,11 +1338,10 @@ impl Reading<'_, '_> {
                             validation: validation_status(record.validation),
                             values: session.context().snapshot_values(),
                         };
-                        self.records.push(indexed.clone());
-                        records.push(indexed);
-                    }
-                    if let Some(written) = written {
-                        own.push(written);
+                        if keeping {
+                            records.push(indexed.clone());
+                        }
+                        self.records.push(indexed);
                     }
                     if let Some(entering) = &mut self.entering
                         && matches!(item, Item::Record(_) | Item::Declaration(_))
@@ -1272,7 +1351,9 @@ impl Reading<'_, '_> {
                         // context is the one the item bound under.
                         let values = session.context().snapshot_values();
                         entering(&values);
-                        bound.push(values);
+                        if keeping {
+                            bound.push(values);
+                        }
                     }
                     self.emit(item);
                     for failure in failures {
@@ -1289,51 +1370,69 @@ impl Reading<'_, '_> {
         let consulted = session.consulted_resolver();
         self.consulted |= consulted;
         self.capture(id, shown, left.clone());
+        if !cacheable || failed || self.broken.is_some() {
+            return;
+        }
+        let Some((identity, active)) = key else {
+            return;
+        };
+        if !keeping {
+            // The next invocation of these semantics keeps its result.
+            self.seen.insert((identity, active));
+            return;
+        }
         // Resolved values join the identity, so a changed one misses. A
         // result holding a resolved secret has no cacheable identity:
         // even a fingerprint of a secret on disk is a guessing oracle.
-        let identity = match identity {
-            Some(identity) if consulted => session
-                .resolved_fingerprint()
-                .map(|resolved| identity.with_resolved(resolved)),
-            other => other,
-        };
-        if cacheable && identity.is_some() && self.broken.is_none() {
-            if let Some(identity) = identity.filter(|_| !failed) {
-                let derivation = self.derivation(id);
-                let active = self.selection.members().to_vec();
-                let key = (identity, active);
-                // A result the session lookup could not find before
-                // binding (its resolved values were not yet known) may
-                // equal one already cached: it is one result, derived
-                // twice.
-                if let Some(&at) = self.result_of.get(&key) {
-                    self.results[at].derivations.push(derivation);
-                    return;
-                }
-                self.result_of.insert(key.clone(), self.results.len());
-                let left = Left {
-                    values: left,
-                    consulted,
-                    records,
-                    bound,
-                };
-                self.left.insert(key.clone(), left);
-                self.results.push(BoundResult {
-                    identity,
-                    derivations: vec![derivation],
-                    items: own.iter().map(|item| remap(item, SourceId(0))).collect(),
-                    sources: None,
-                });
-                self.bound.insert(key, Rc::new(own));
+        let identity = if consulted {
+            match session.resolved_fingerprint() {
+                Some(resolved) => identity.with_resolved(resolved),
+                None => return,
             }
+        } else {
+            identity
+        };
+        let derivation = self.derivation(id);
+        let key = (identity, active);
+        // A result the session lookup could not find before binding (its
+        // resolved values were not yet known) may equal one already
+        // cached: it is one result, derived twice.
+        if let Some(&at) = self.result_of.get(&key) {
+            self.results[at].derivations.push(derivation);
+            return;
         }
+        // One copy of the items, under the canonical source identity,
+        // serves both the replay cache and the returned result.
+        for item in &mut own {
+            remap(item, SourceId(0));
+        }
+        let own = Rc::new(own);
+        let left = Left {
+            values: left,
+            consulted,
+            records,
+            bound,
+        };
+        self.left.insert(key.clone(), left);
+        if self.mode.results {
+            self.result_of.insert(key.clone(), self.results.len());
+            self.results.push(BoundResult {
+                identity,
+                derivations: vec![derivation],
+                items: own.clone(),
+                sources: None,
+            });
+        }
+        self.bound.insert(key, own);
     }
 
     /// Keep the context an entry document's root invocation left, with
     /// the records its reading bound; an imported invocation's context
     /// stays its own, and its records wait for its entry's root.
     fn capture(&mut self, id: InvocationId, shown: &str, values: Vec<Option<SlotValue>>) {
+        if !self.mode.contexts {
+            return;
+        }
         if let Some(invocation) = self.invocations.get(id).filter(|i| i.caller.is_none()) {
             let (revision, profiles) =
                 (invocation.revision.unwrap_or_default(), invocation.profiles);
@@ -1495,12 +1594,6 @@ impl Reading<'_, '_> {
         self.sources
             .resolve(&request.expression, importer, rule, ORIGIN)
     }
-
-    /// Every slot of the definition: an invocation's own context is
-    /// already its caller's projection.
-    fn all_slots(&self) -> Vec<SlotId> {
-        self.reader.def.plan.context.layout.slots().collect()
-    }
 }
 
 /// An entry document the invocation stack refused. An entry is named
@@ -1587,39 +1680,30 @@ fn relocate_value(value: &mut kdlith_model::Value, from: SourceId, to: SourceId)
     }
 }
 
-/// An item under a new source identity: the one identity a replay
+/// Move an item to a new source identity: the one identity a replay
 /// changes, so a replayed document's items — and the provenance
 /// locations within that document — attribute to the invocation that
-/// replayed them.
-fn remap(item: &Item, source: SourceId) -> Item {
+/// replays them.
+fn remap(item: &mut Item, source: SourceId) {
     match item {
-        Item::Document(document) => {
-            let mut document = document.clone();
-            document.source = source;
-            Item::Document(document)
-        }
+        Item::Document(document) => document.source = source,
         Item::Record(record) => {
-            let mut record = record.clone();
             let from = record.node.source;
             record.node.source = source;
             if let Some(parent) = &mut record.parent {
                 parent.source = source;
             }
             relocate(&mut record.fields, &mut record.site, from, source);
-            Item::Record(record)
         }
         Item::Declaration(declaration) => {
-            let mut declaration = declaration.clone();
             let from = declaration.node.source;
             declaration.node.source = source;
             if let Some(parent) = &mut declaration.parent {
                 parent.source = source;
             }
             relocate(&mut declaration.fields, &mut declaration.site, from, source);
-            Item::Declaration(declaration)
         }
         Item::Contribution(contribution) => {
-            let mut contribution = contribution.clone();
             let from = contribution.node.source;
             contribution.node.source = source;
             contribution.target.site.relocate(from, source);
@@ -1630,38 +1714,31 @@ fn remap(item: &Item, source: SourceId) -> Item {
                 from,
                 source,
             );
-            Item::Contribution(contribution)
         }
         Item::Import(request) => {
-            let mut request = request.clone();
             let from = request.node.source;
             request.node.source = source;
             request.site.relocate(from, source);
-            Item::Import(request)
         }
         Item::PendingBinding(pending) => {
-            let mut pending = pending.clone();
             let from = pending.node.source;
             pending.node.source = source;
             pending.against.site.relocate(from, source);
             relocate_value(&mut pending.raw, from, source);
-            Item::PendingBinding(pending)
         }
         Item::Expansion(expansion) => {
-            let mut expansion = expansion.clone();
             let from = expansion.node.source;
             expansion.node.source = source;
             expansion.target.site.relocate(from, source);
             expansion.site.relocate(from, source);
-            Item::Expansion(expansion)
         }
-        Item::Diagnostic(record) => Item::Diagnostic(record.clone()),
         Item::ScopeComplete(completion) => {
-            Item::ScopeComplete(kdlith_model::ScopeCompletion::new(source, completion.scope))
+            *completion = kdlith_model::ScopeCompletion::new(source, completion.scope);
         }
-        // An item variant this version's replay does not know keeps its
-        // original identity; it never silently disappears.
-        other => other.clone(),
+        // A diagnostic names its document by path, and an item variant
+        // this version's replay does not know keeps its original
+        // identity; neither silently disappears.
+        _ => {}
     }
 }
 
