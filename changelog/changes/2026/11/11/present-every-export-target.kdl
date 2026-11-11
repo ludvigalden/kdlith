@@ -1,0 +1,8 @@
+change present-every-export-target {
+    summary "Present every relmap export target from kdlith changelog"
+    category changed
+    impact public
+    touches "pkg/rs/cli" "input:fixtures"
+    commit "7f7381d2644ca7190dc3ecc2df436cb2407e8de6"
+    detail "The build exports every relmap target, not only the markdown page, and kdlith changelog --target selects which embedded target to print: markdown (the default, unchanged), ndjson, index, or metadata, each written out byte for byte. A build without relmap still fails closed with KDLITH-CHG001 on every target, and an unknown target is an argument fault."
+}
