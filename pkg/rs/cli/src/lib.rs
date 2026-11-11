@@ -68,8 +68,9 @@ enum Command {
     /// integrity of the trees the store holds, or every source with its
     /// digest
     Sources(SourcesArgs),
-    /// Print the release notes embedded when this binary was built
-    Changelog,
+    /// Print a relmap changelog export target embedded when this
+    /// binary was built
+    Changelog(ChangelogArgs),
     /// Print help for a command
     Help(HelpArgs),
 }
@@ -79,6 +80,14 @@ enum Command {
 struct HelpArgs {
     /// The command to print help for
     command: Vec<String>,
+}
+
+/// `kdlith changelog [--target TARGET]`.
+#[derive(Args)]
+struct ChangelogArgs {
+    /// The relmap export target to print (default: the markdown page)
+    #[arg(long, value_enum, default_value_t = changelog::Target::Markdown)]
+    target: changelog::Target,
 }
 
 /// `kdlith gen dialect|schema|workspace`.
@@ -866,7 +875,7 @@ where
         Command::Read(args) => read::run(&args),
         Command::Cache(args) => cache::run(args.command),
         Command::Sources(args) => sources::run(args.command),
-        Command::Changelog => changelog::run(),
+        Command::Changelog(args) => changelog::run(args.target),
         Command::Help(args) => help(&args.command),
     }
 }
@@ -910,7 +919,7 @@ impl Command {
                 | SourcesCommand::Verify(args)
                 | SourcesCommand::List(args) => &mut args.locations,
             },
-            Command::Changelog | Command::Help(_) => return None,
+            Command::Changelog(_) | Command::Help(_) => return None,
         })
     }
 }

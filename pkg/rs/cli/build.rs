@@ -1,6 +1,6 @@
-//! Embed relmap's markdown changelog and presented version when relmap
-//! is found; without it the build still succeeds on the Cargo version.
-//! A relmap that is found but fails fails the build.
+//! Embed relmap's changelog export targets and presented version when
+//! relmap is found; without it the build still succeeds on the Cargo
+//! version. A relmap that is found but fails fails the build.
 
 use std::env;
 use std::ffi::OsStr;
@@ -47,6 +47,7 @@ fn main() {
     );
     let json = relmap_run(&relmap, &root, &["version", COMPONENT, "--json"]);
     fs::write(&state, json).unwrap_or_else(|e| panic!("cannot write {state:?}: {e}"));
+    // A bare export writes every target, matching relmap's own default.
     relmap_run(
         &relmap,
         &root,
@@ -54,14 +55,19 @@ fn main() {
             OsStr::new("export"),
             OsStr::new("--out"),
             export.as_os_str(),
-            OsStr::new("--target"),
-            OsStr::new("markdown"),
             OsStr::new("--state"),
             state.as_os_str(),
         ],
     );
-    let page = export.join("CHANGELOG.md");
-    assert!(page.is_file(), "relmap export wrote no {page:?}");
+    for name in [
+        "CHANGELOG.md",
+        "changelog.ndjson",
+        "changelog.index.json",
+        "changelog.metadata.json",
+    ] {
+        let path = export.join(name);
+        assert!(path.is_file(), "relmap export wrote no {path:?}");
+    }
 
     println!("cargo::rustc-cfg=kdlith_changelog");
     println!("cargo::rustc-env=KDLITH_PRESENTED_VERSION={presented}");

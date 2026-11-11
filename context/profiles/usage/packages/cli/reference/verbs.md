@@ -82,16 +82,21 @@ patch file and the one-time cache seed.
 
 ## changelog and --version
 
-`kdlith changelog` prints the release notes the binary embedded when
-it was built, and `kdlith --version` prints the version it presents.
-The build asks relmap for both when it finds relmap (`RELMAP_BIN`, or
-`relmap` on `PATH`; `RELMAP_BIN=` set empty builds without it): the
-notes are relmap's markdown rendering of the repository's
-`changelog/` records, the same text as the root `CHANGELOG.md`, and
-the version is what `relmap version tools/kdlith` reports. A build
-without relmap still succeeds: `--version` prints the Cargo version,
-and `changelog` fails with `KDLITH-CHG001` (exit 1). A relmap that is
-found but fails fails the build.
+`kdlith changelog [--target TARGET]` prints one of the relmap export
+targets the binary embedded when it was built, and `kdlith --version`
+prints the version it presents. The build asks relmap for both when it
+finds relmap (`RELMAP_BIN`, or `relmap` on `PATH`; `RELMAP_BIN=` set
+empty builds without it): the embedded targets are relmap's full export
+of the repository's `changelog/` records — `markdown` (the default,
+the same text as the root `CHANGELOG.md`), `ndjson` (one JSON record
+per line), `index` (`changelog.index.json`), and `metadata`
+(`changelog.metadata.json`) — and the version is what
+`relmap version tools/kdlith` reports. Each target is written out
+unchanged, byte for byte. An unknown target is an argument fault
+(exit 2). A build without relmap still succeeds: `--version` prints
+the Cargo version, and `changelog` fails with `KDLITH-CHG001`
+(exit 1) on every target. A relmap that is found but fails fails the
+build.
 
 ## Exit strata
 
