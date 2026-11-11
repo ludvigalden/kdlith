@@ -6,6 +6,7 @@ use std::fmt::Write as _;
 
 use crate::Error;
 use crate::catalog::{self, RECORD_ORDER};
+use crate::layout::use_list;
 use crate::model::Emission;
 
 /// Engine names the compile skeleton uses regardless of which items the
@@ -92,14 +93,14 @@ use std::path::Path;
 use kdlith_diagnostic::{ByteSpan, DiagnosticRecord, Severity};
 "##,
         );
-        out.push_str(&use_statement("kdlith_engine", &engine));
+        out.push_str(&use_list("", "kdlith_engine", &engine));
         out.push_str(
             r##"use kdlith_runtime::Repeated;
 
 use crate::processors::{Item, reader};
 "##,
         );
-        out.push_str(&use_statement("crate::types", &types));
+        out.push_str(&use_list("", "crate::types", &types));
 
         // The seed: a versioned snapshot of every contributing document,
         // embedded through the crate's own `src/dialect/` directory so
@@ -211,38 +212,6 @@ pub const CANONICAL_VERSION: &str = {:?};",
         text.push_str(DECLARATION_TAIL);
         text
     }
-}
-
-/// A `use path::{names};` statement, wrapped like the emitter's lists.
-fn use_statement(path: &str, names: &[String]) -> String {
-    if let [only] = names {
-        return format!("use {path}::{only};\n");
-    }
-    let single = format!("use {}::{{{}}};", path, names.join(", "));
-    // rustfmt keeps a one-line `use` list only up to 98 columns.
-    if single.len() <= 98 {
-        return format!("{single}\n");
-    }
-    let mut text = format!("use {path}::{{\n");
-    let mut buffer = String::new();
-    for name in names {
-        // The line is the four-space indent plus the buffer; adding a
-        // name costs its own width plus ", ". A wrapped line ends in a
-        // trailing comma, so 100 is the one length rustfmt declines.
-        if !buffer.is_empty() && 4 + buffer.len() + 2 + name.len() + 1 > 99 {
-            text.push_str(&format!("    {buffer},\n"));
-            buffer.clear();
-        }
-        if !buffer.is_empty() {
-            buffer.push_str(", ");
-        }
-        buffer.push_str(name);
-    }
-    if !buffer.is_empty() {
-        text.push_str(&format!("    {buffer},\n"));
-    }
-    text.push_str("};\n");
-    text
 }
 
 /// The schema-form entry point: load this schema's documents through

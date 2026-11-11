@@ -242,17 +242,26 @@ pub(crate) fn use_list(prefix: &str, path: &str, names: &[String]) -> String {
         return format!("{prefix}use {path}::{only};\n");
     }
     let single = format!("{prefix}use {path}::{{{}}};", names.join(", "));
-    // The widest one-line list rustfmt keeps, and the widest wrapped
-    // line: both stop short of `max_width`.
+    // rustfmt keeps a one-line list only up to `max_width - 2`.
     if width(&single) <= MAX_WIDTH - 2 {
         return format!("{single}\n");
     }
     let mut text = format!("{prefix}use {path}::{{\n");
     let mut buffer = String::new();
-    for name in &names {
-        if !buffer.is_empty() && TAB + width(&buffer) + 2 + width(name) + 1 > MAX_WIDTH - 1 {
+    let mut wrapped = false;
+    for (index, name) in names.iter().enumerate() {
+        // A list that fits one row is laid out horizontally, where rustfmt
+        // does not charge the trailing comma, so that row may reach
+        // `max_width`; mixed rows stop one short of it.
+        let limit = if index + 1 == names.len() && !wrapped {
+            MAX_WIDTH
+        } else {
+            MAX_WIDTH - 1
+        };
+        if !buffer.is_empty() && TAB + width(&buffer) + 2 + width(name) + 1 > limit {
             text.push_str(&format!("    {buffer},\n"));
             buffer.clear();
+            wrapped = true;
         }
         if !buffer.is_empty() {
             buffer.push_str(", ");

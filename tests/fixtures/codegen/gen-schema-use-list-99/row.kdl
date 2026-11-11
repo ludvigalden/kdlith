@@ -1,0 +1,13 @@
+// Imports two enums whose one wrapped `use` row is 99 columns wide.
+schema widths version="1" {
+    types {
+        object Row {
+            field id String
+            field f0 "optional<RowAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx>"
+            field f1 "optional<RowBxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx>"
+        }
+    }
+    node row role=record type=Row {
+        field id arg=0
+    }
+}

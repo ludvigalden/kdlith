@@ -1,0 +1,22 @@
+{
+  "binary": "kdlith",
+  "description": "gen schema lays out each sibling `use super::{...}` import exactly as rustfmt does at the 99-column boundary: the root document declares enums whose names make the imported documents' imports 99 columns wide as one line, as one wrapped row, and as the last of two wrapped rows after a 95-column row; the 99-column line wraps into one row, because rustfmt keeps a one-line list only up to 98 columns; the 99-column row and the 99-column last row stay whole. The three generated modules are pinned byte for byte against goldens that rustfmt leaves unchanged",
+  "args": [
+    "gen",
+    "schema",
+    "schema.kdl",
+    "--crate",
+    "widths-proc",
+    "--out",
+    "out",
+    "--kdlith-workspace"
+  ],
+  "expect": {
+    "exit": 0,
+    "files": {
+      "out/src/types/line_kdl.rs": "line-kdl.golden",
+      "out/src/types/row_kdl.rs": "row-kdl.golden",
+      "out/src/types/tail_kdl.rs": "tail-kdl.golden"
+    }
+  }
+}

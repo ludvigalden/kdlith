@@ -1,0 +1,13 @@
+// Imports two enums whose one-line `use` is 100 columns wide.
+schema widths version="1" {
+    types {
+        object Line {
+            field id String
+            field f0 "optional<LineAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx>"
+            field f1 "optional<LineBxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx>"
+        }
+    }
+    node line role=record type=Line {
+        field id arg=0
+    }
+}

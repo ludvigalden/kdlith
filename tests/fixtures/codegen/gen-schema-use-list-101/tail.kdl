@@ -1,0 +1,15 @@
+// Imports four enums: a 95-column `use` row, then a 101-column one.
+schema widths version="1" {
+    types {
+        object Tail {
+            field id String
+            field f0 "optional<TailAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx>"
+            field f1 "optional<TailBxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx>"
+            field f2 "optional<TailCxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx>"
+            field f3 "optional<TailDxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx>"
+        }
+    }
+    node tail role=record type=Tail {
+        field id arg=0
+    }
+}

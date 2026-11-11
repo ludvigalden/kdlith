@@ -1,0 +1,34 @@
+// Enums named so that each imported document's sibling import
+// lands at 99 columns: one-line, as one wrapped row, and as the
+// last of two wrapped rows.
+schema widths version="1" {
+    import "line.kdl"
+    import "row.kdl"
+    import "tail.kdl"
+    types {
+        enum LineAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx {
+            member one
+        }
+        enum LineBxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx {
+            member one
+        }
+        enum RowAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx {
+            member one
+        }
+        enum RowBxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx {
+            member one
+        }
+        enum TailAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx {
+            member one
+        }
+        enum TailBxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx {
+            member one
+        }
+        enum TailCxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx {
+            member one
+        }
+        enum TailDxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx {
+            member one
+        }
+    }
+}
