@@ -175,14 +175,55 @@ impl<'s> EntryValue<'s> {
 /// fails closed rather than growing without bound.
 const MAX_PAYLOAD: usize = 32;
 
+/// What binding derives from a compiled definition's catalogs: the
+/// binding tables and the compiled patterns. Built once per definition,
+/// on first use, and shared by every document it binds.
+pub(crate) struct Runtime {
+    pub(crate) tables: Tables,
+    pub(crate) decoder: Decoder,
+}
+
+/// A definition's lazily built [`Runtime`]. It is derived state: it
+/// never takes part in comparing two definitions, and a clone shares it.
+#[derive(Clone, Default)]
+pub(crate) struct RuntimeCell(std::sync::Arc<std::sync::OnceLock<Runtime>>);
+
+impl RuntimeCell {
+    /// The runtime of `def`, the definition holding this cell.
+    pub(crate) fn get(&self, def: &Definition) -> &Runtime {
+        self.0.get_or_init(|| Runtime {
+            tables: tables::build(def),
+            decoder: Decoder::new(&def.types).0.with_references(
+                &def.types,
+                &def.names,
+                def.symbols.references(),
+            ),
+        })
+    }
+}
+
+impl std::fmt::Debug for RuntimeCell {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("RuntimeCell")
+    }
+}
+
+impl PartialEq for RuntimeCell {
+    fn eq(&self, _: &Self) -> bool {
+        true
+    }
+}
+
+impl Eq for RuntimeCell {}
+
 /// A processor binding one data document against a compiled schema
 /// definition. The definition's KDL is never read: every lookup goes
 /// through its catalogs and plan, and through tables built from them
 /// once in [`Binder::new`].
 pub struct Binder<'d, 's> {
     def: &'d Definition,
-    tables: Tables,
-    decoder: Decoder,
+    tables: &'d Tables,
+    decoder: &'d Decoder,
     path: String,
     locator: Locator<'s>,
     source: SourceId,
@@ -325,14 +366,11 @@ impl<'d, 's> Binder<'d, 's> {
             ProfileSelection::Unselected { named } => (named.clone(), false),
             _ => (None, true),
         };
+        let runtime = def.runtime.get(def);
         Self {
             def,
-            tables: tables::build(def),
-            decoder: Decoder::new(&def.types).0.with_references(
-                &def.types,
-                &def.names,
-                def.symbols.references(),
-            ),
+            tables: &runtime.tables,
+            decoder: &runtime.decoder,
             path: path.into(),
             locator: Locator::new(text),
             source,
@@ -1426,7 +1464,7 @@ impl<'d, 's> Binder<'d, 's> {
     /// the same child name.
     fn child_bind(&self, parent: &BindFrame, name: Sym) -> Option<Bind> {
         parent
-            .table(&self.tables)?
+            .table(self.tables)?
             .children_named(name)
             .find(|bind| self.admits_case(parent, *bind))
     }
@@ -1435,7 +1473,7 @@ impl<'d, 's> Binder<'d, 's> {
     /// admitted bind's, else the first bind of its name.
     fn rejected_bind(&self, parent: &BindFrame, name: Sym) -> Option<Bind> {
         self.child_bind(parent, name)
-            .or_else(|| parent.table(&self.tables)?.children_named(name).next())
+            .or_else(|| parent.table(self.tables)?.children_named(name).next())
     }
 
     /// Resolve the supplies parked against a node's case-gated fields:
@@ -3242,7 +3280,7 @@ impl<'d, 's> Binder<'d, 's> {
         // among the owner's members. Every declaring container admits
         // exactly one keyed member group.
         let members = parent
-            .table(&self.tables)
+            .table(self.tables)
             .map(|table| {
                 table
                     .children
@@ -3689,7 +3727,7 @@ impl<'s> Processor for Binder<'_, 's> {
                 }
                 return;
             }
-            match frame.table(&self.tables).and_then(|table| table.arg(at)) {
+            match frame.table(self.tables).and_then(|table| table.arg(at)) {
                 Some(bind) => {
                     if self.parks(frame, bind) {
                         let what = format!("argument {at}");
@@ -3732,7 +3770,7 @@ impl<'s> Processor for Binder<'_, 's> {
             self.diagnose(cx, DUPLICATE_PROPERTY, span, &[&name]);
             return;
         }
-        let bind = sym.and_then(|sym| frame.table(&self.tables)?.prop(sym));
+        let bind = sym.and_then(|sym| frame.table(self.tables)?.prop(sym));
         match (sym, bind) {
             (Some(sym), Some(bind)) => {
                 frame.props.push(sym);
@@ -3755,7 +3793,7 @@ impl<'s> Processor for Binder<'_, 's> {
                     .map(|scope| scope.compact.as_slice())
                     .unwrap_or_default();
                 let bound: Vec<&str> = frame
-                    .table(&self.tables)
+                    .table(self.tables)
                     .map_or(&[][..], |table| table.props.as_slice())
                     .iter()
                     .map(|(sym, _)| *sym)
