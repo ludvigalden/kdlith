@@ -29,7 +29,7 @@ use kdlith_runtime::{
 use crate::bindings::{
     BindingCodec, ChildPlan, ContextPolicy, DependentBinding, NodeDeclId, Role, ScopeId, SetFrom,
 };
-use crate::decode::{self, Decoder, Mismatch};
+use crate::decode::{self, At, Decoded, Decoder, Mismatch};
 use crate::definition::{
     AccumulateOp, Definition, DefinitionKind, MergeDuplicates, ProfileSelection, ProviderDecl,
     SlotDuplicates,
@@ -92,6 +92,20 @@ impl CheckAs {
 /// What a diagnostic shows in place of a value the output policy
 /// withholds.
 const CONCEALED: &str = "a withheld sensitive value";
+
+/// What a checked value is, as a diagnostic names it. A field is
+/// spelled only when a diagnostic is actually reported: checking a
+/// value that fits formats nothing.
+#[derive(Clone, Copy)]
+enum What<'a> {
+    /// The field at this position of a declaration, spelled
+    /// `node.field`.
+    Field(NodeDeclId, usize),
+    /// The key of an entry of the named node.
+    KeyOf(&'a str),
+    /// A spelling the caller already holds.
+    Named(&'a str),
+}
 
 /// What closing a declared node needs beyond its frame: the entries key
 /// it must carry, and its scope's state for the conditional bounds.
@@ -509,7 +523,7 @@ impl<'d, 's> Binder<'d, 's> {
         value: &Value,
         span: ByteSpan,
     ) {
-        self.mismatched_as(cx, ty, what, value, span, false);
+        self.mismatched_as(cx, ty, What::Named(what), value, span, false);
     }
 
     /// Report a value that fails its type; a concealed value never
@@ -518,12 +532,18 @@ impl<'d, 's> Binder<'d, 's> {
         &mut self,
         cx: &mut Cx<'_>,
         ty: &TypeExpr,
-        what: &str,
+        what: What<'_>,
         value: &Value,
         span: ByteSpan,
         conceal: bool,
     ) {
         let def = self.def;
+        let what = match what {
+            What::Field(owner, field) => Cow::Owned(self.field_label(owner, field)),
+            What::KeyOf(node) => Cow::Owned(format!("the key of {node}")),
+            What::Named(what) => Cow::Borrowed(what),
+        };
+        let what: &str = &what;
         let found = if conceal {
             CONCEALED.to_owned()
         } else {
@@ -560,7 +580,7 @@ impl<'d, 's> Binder<'d, 's> {
         self.def.names.resolve(sym)
     }
 
-    fn location(&mut self, span: ByteSpan) -> Location {
+    fn location(&self, span: ByteSpan) -> Location {
         Location::new(self.source, self.locator.locate(span))
     }
 
@@ -661,10 +681,9 @@ impl<'d, 's> Binder<'d, 's> {
 
     /// The type one supplied item decodes as: the field's type, or its
     /// element type when the field collects.
-    fn item_type(&self, owner: NodeDeclId, bind: Bind) -> Option<&'_ TypeExpr> {
-        let mut ty = self.tables.decls[owner.index()].fields[bind.field]
-            .ty
-            .as_ref()?;
+    fn item_type(&self, owner: NodeDeclId, bind: Bind) -> Option<&'d TypeExpr> {
+        let tables: &'d Tables = self.tables;
+        let mut ty = tables.decls[owner.index()].fields[bind.field].ty.as_ref()?;
         while let TypeExpr::Optional(inner) = ty {
             ty = inner;
         }
@@ -689,10 +708,9 @@ impl<'d, 's> Binder<'d, 's> {
     }
 
     /// The key type of a keyed field.
-    fn key_type(&self, owner: NodeDeclId, bind: Bind) -> Option<&'_ TypeExpr> {
-        let mut ty = self.tables.decls[owner.index()].fields[bind.field]
-            .ty
-            .as_ref()?;
+    fn key_type(&self, owner: NodeDeclId, bind: Bind) -> Option<&'d TypeExpr> {
+        let tables: &'d Tables = self.tables;
+        let mut ty = tables.decls[owner.index()].fields[bind.field].ty.as_ref()?;
         while let TypeExpr::Optional(inner) = ty {
             ty = inner;
         }
@@ -716,12 +734,12 @@ impl<'d, 's> Binder<'d, 's> {
     fn check(
         &mut self,
         cx: &mut Cx<'_>,
-        ty: Option<TypeExpr>,
+        ty: Option<&TypeExpr>,
         what: &str,
         value: Value,
         span: ByteSpan,
     ) -> Option<Value> {
-        self.check_as(cx, ty, what, value, span, CheckAs::PLAIN)
+        self.check_as(cx, ty, What::Named(what), value, span, CheckAs::PLAIN)
     }
 
     /// Check a scalar against `ty`; a concealed value's mismatch never
@@ -729,8 +747,8 @@ impl<'d, 's> Binder<'d, 's> {
     fn check_as(
         &mut self,
         cx: &mut Cx<'_>,
-        ty: Option<TypeExpr>,
-        what: &str,
+        ty: Option<&TypeExpr>,
+        what: What<'_>,
         value: Value,
         span: ByteSpan,
         how: CheckAs,
@@ -738,25 +756,34 @@ impl<'d, 's> Binder<'d, 's> {
         let Some(ty) = ty else {
             return Some(value);
         };
-        let site = self.location(span);
-        // The qualifier source in effect at this position, never a later
-        // one: the field's chosen slot, else the definition's default.
-        let qualifier = how
-            .qualify
-            .or(self.tables.namespace)
-            .and_then(|slot| cx.context().get(slot))
-            .and_then(|held| match &held.value {
-                Value::String(text) => Some(text.clone()),
-                _ => None,
-            });
-        let at = (site, qualifier.as_deref());
-        let decoded = self
-            .decoder
-            .decode_at(&self.def.types, &self.def.names, &ty, &value, at);
-        if decoded.is_none() {
-            self.mismatched_as(cx, &ty, what, &value, span, how.conceal);
+        let decoded = {
+            // The qualifier source in effect at this position, never a
+            // later one: the field's chosen slot, else the definition's
+            // default.
+            let qualifier = how
+                .qualify
+                .or(self.tables.namespace)
+                .and_then(|slot| cx.context().get(slot))
+                .and_then(|held| match &held.value {
+                    Value::String(text) => Some(text.as_str()),
+                    _ => None,
+                });
+            let (source, locator) = (self.source, &self.locator);
+            let at = At {
+                site: &|| Location::new(source, locator.locate(span)),
+                context: qualifier,
+            };
+            self.decoder
+                .check(&self.def.types, &self.def.names, ty, &value, at)
+        };
+        match decoded {
+            Some(Decoded::Same) => Some(value),
+            Some(Decoded::Changed(decoded)) => Some(decoded),
+            None => {
+                self.mismatched_as(cx, ty, what, &value, span, how.conceal);
+                None
+            }
         }
-        decoded
     }
 
     /// The policy a sensitive field's value passes on every output
@@ -787,28 +814,26 @@ impl<'d, 's> Binder<'d, 's> {
         value: Value,
         span: ByteSpan,
     ) -> Option<Value> {
-        let Some(ty) = info.ty.clone() else {
+        let Some(ty) = info.ty.as_ref() else {
             return Some(value);
         };
-        let what = self.field_label(owner, at);
+        let what = What::Field(owner, at);
         let how = CheckAs {
             conceal: self.conceals(owner, at),
             qualify: info.qualify,
         };
-        let mut bare = &ty;
+        let mut bare = ty;
         while let TypeExpr::Optional(inner) | TypeExpr::Nullable(inner) = bare {
             bare = inner;
         }
         match (bare, &value) {
             (TypeExpr::List(_), Value::List(_)) => {
-                self.check_as(cx, Some(ty), &what, value, span, how)
+                self.check_as(cx, Some(ty), what, value, span, how)
             }
-            (TypeExpr::List(inner), _) => {
-                let inner = Some(inner.as_ref().clone());
-                self.check_as(cx, inner, &what, value, span, how)
-                    .map(|element| Value::List(vec![element]))
-            }
-            _ => self.check_as(cx, Some(ty), &what, value, span, how),
+            (TypeExpr::List(inner), _) => self
+                .check_as(cx, Some(inner), what, value, span, how)
+                .map(|element| Value::List(vec![element])),
+            _ => self.check_as(cx, Some(ty), what, value, span, how),
         }
     }
 
@@ -822,12 +847,12 @@ impl<'d, 's> Binder<'d, 's> {
         span: ByteSpan,
     ) {
         let owner = frame.owner;
-        let ty = self.item_type(owner, bind).cloned();
-        let what = self.field_label(owner, bind.field);
+        let ty = self.item_type(owner, bind);
+        let what = What::Field(owner, bind.field);
         let conceal = self.conceals(owner, bind.field);
         let qualify = self.tables.decls[owner.index()].fields[bind.field].qualify;
         let how = CheckAs { conceal, qualify };
-        match self.check_as(cx, ty, &what, value, span, how) {
+        match self.check_as(cx, ty, what, value, span, how) {
             Some(value) => self.route(cx, frame, bind, value, span),
             None => frame.rejected.push(bind.field),
         }
@@ -847,13 +872,16 @@ impl<'d, 's> Binder<'d, 's> {
             target.carried.push((bind, value, span));
             return;
         }
-        let label = self.field_label(target.owner, bind.field);
+        let owner = target.owner;
         let node = self.name(target.name);
         let slot = &mut target.fields[bind.field];
         match bind.mode {
             Mode::Single => match slot {
                 None => *slot = Some(Supplied::new(value, span)),
-                Some(_) => self.diagnose(cx, COLLISION, span, &[&label, node]),
+                Some(_) => {
+                    let label = self.field_label(owner, bind.field);
+                    self.diagnose(cx, COLLISION, span, &[&label, node]);
+                }
             },
             Mode::Append => match slot {
                 None => *slot = Some(Supplied::new(Value::List(vec![value]), span)),
@@ -865,7 +893,10 @@ impl<'d, 's> Binder<'d, 's> {
                     items.push(value);
                     more.push(span);
                 }
-                Some(_) => self.diagnose(cx, COLLISION, span, &[&label, node]),
+                Some(_) => {
+                    let label = self.field_label(owner, bind.field);
+                    self.diagnose(cx, COLLISION, span, &[&label, node]);
+                }
             },
             Mode::Keyed => {
                 let Value::Map(mut pair) = value else {
@@ -883,13 +914,17 @@ impl<'d, 's> Binder<'d, 's> {
                     }) => {
                         if entries.iter().any(|held| held.key == entry.key) {
                             let key = entry.key;
+                            let label = self.field_label(owner, bind.field);
                             self.diagnose(cx, DUPLICATE_KEY, span, &[&key, &label]);
                         } else {
                             entries.push(entry);
                             more.push(span);
                         }
                     }
-                    Some(_) => self.diagnose(cx, COLLISION, span, &[&label, node]),
+                    Some(_) => {
+                        let label = self.field_label(owner, bind.field);
+                        self.diagnose(cx, COLLISION, span, &[&label, node]);
+                    }
                 }
             }
         }
@@ -920,7 +955,9 @@ impl<'d, 's> Binder<'d, 's> {
         frame: &mut BindFrame,
     ) -> Vec<Option<Value>> {
         let owner = frame.owner;
-        let count = self.tables.decls[owner.index()].fields.len();
+        let tables: &'d Tables = self.tables;
+        let infos = &tables.decls[owner.index()].fields;
+        let count = infos.len();
         let mut values = Vec::with_capacity(count);
         let mut traces = Vec::with_capacity(count);
         let site = self.location(frame.span);
@@ -930,7 +967,7 @@ impl<'d, 's> Binder<'d, 's> {
         // resolve with it before any gated field finalizes.
         let mut matched: Option<Option<usize>> = None;
         for at in 0..count {
-            let info = self.tables.decls[owner.index()].fields[at].clone();
+            let info = &infos[at];
             if info.case.is_some() && matched.is_none() {
                 matched = Some(self.case_index(frame, &values));
                 self.resolve_parked(cx, frame, matched.flatten());
@@ -941,17 +978,15 @@ impl<'d, 's> Binder<'d, 's> {
                 continue;
             }
             let explicit = frame.fields[at].take();
-            let held = info
-                .context
-                .and_then(|context| cx.context().get(context.slot))
-                .cloned();
+            // The slot's value is copied only where the field takes it.
+            let slot = info.context.map(|context| context.slot);
             let explicit_trace = explicit
                 .as_ref()
                 .map(|supplied| self.supplied_trace(supplied));
             let (value, mut trace) = match (explicit, info.context) {
                 (Some(supplied), Some(context)) => {
                     if context.policy == Some(ContextPolicy::Fixed)
-                        && let Some(held) = &held
+                        && let Some(held) = slot.and_then(|slot| cx.context().get(slot))
                         && held.value != supplied.value
                     {
                         let field = self.field_label(owner, at);
@@ -970,6 +1005,7 @@ impl<'d, 's> Binder<'d, 's> {
                     (Some(supplied.value), explicit_trace.unwrap_or_default())
                 }
                 (None, Some(context)) => {
+                    let held = slot.and_then(|slot| cx.context().get(slot)).cloned();
                     if held.is_none()
                         && context.policy.is_none()
                         && info.required
@@ -983,20 +1019,18 @@ impl<'d, 's> Binder<'d, 's> {
                         continue;
                     }
                     match held {
-                        Some(held) => {
-                            match self.fed(cx, owner, at, &info, held.value, frame.span) {
-                                Some(value) => (
-                                    Some(value),
-                                    Trace::derived(Derivation::Context, site, vec![held.trace]),
-                                ),
-                                None => {
-                                    frame.rejected.push(at);
-                                    values.push(None);
-                                    traces.push(Trace::default());
-                                    continue;
-                                }
+                        Some(held) => match self.fed(cx, owner, at, info, held.value, frame.span) {
+                            Some(value) => (
+                                Some(value),
+                                Trace::derived(Derivation::Context, site, vec![held.trace]),
+                            ),
+                            None => {
+                                frame.rejected.push(at);
+                                values.push(None);
+                                traces.push(Trace::default());
+                                continue;
                             }
-                        }
+                        },
                         None => (None, Trace::default()),
                     }
                 }
@@ -1008,23 +1042,22 @@ impl<'d, 's> Binder<'d, 's> {
             // derived siblings number together; it supplies the field only
             // when neither an explicit supply nor context did.
             let mut derived: Option<(Value, Derivation)> = None;
-            if let Some(spec) = info.derived.clone() {
-                let ordinal = match &spec {
+            if let Some(spec) = &info.derived {
+                let ordinal = match spec {
                     Derived::Ordinal { key } => self.count_ordinal(cx, parent, frame, *key),
                     Derived::Parent { .. } => None,
                 };
                 if defaulted {
-                    let candidate = self.derive_value(cx, parent, frame, spec, ordinal);
+                    let candidate = self.derive_value(cx, parent, frame, spec.clone(), ordinal);
                     if let Some((candidate, how)) = candidate {
-                        let label = self.field_label(owner, at);
                         let how_to_check = CheckAs {
                             conceal: self.conceals(owner, at),
                             qualify: info.qualify,
                         };
                         match self.check_as(
                             cx,
-                            info.ty.clone(),
-                            &label,
+                            info.ty.as_ref(),
+                            What::Field(owner, at),
                             candidate,
                             frame.span,
                             how_to_check,
@@ -1041,7 +1074,7 @@ impl<'d, 's> Binder<'d, 's> {
                 Some(value) => Some(value),
                 None => match info.fallback.clone() {
                     Some(fallback) => {
-                        let fed = self.fed(cx, owner, at, &info, fallback, frame.span);
+                        let fed = self.fed(cx, owner, at, info, fallback, frame.span);
                         if fed.is_none() {
                             frame.rejected.push(at);
                         }
@@ -1052,7 +1085,7 @@ impl<'d, 's> Binder<'d, 's> {
             };
             let value = match value {
                 Some(value) => Some(value),
-                None => match self.resolve_value(cx, frame, at, &info) {
+                None => match self.resolve_value(cx, frame, at, info) {
                     Resolution::Resolved(value, origin) => {
                         resolved = Some(origin);
                         Some(value)
@@ -1076,9 +1109,7 @@ impl<'d, 's> Binder<'d, 's> {
                         .unwrap_or_else(|| Trace::derived(Derivation::Default, site, Vec::new())),
                 };
             }
-            let expands = !self.tables.decls[owner.index()].fields[at]
-                .expand
-                .is_empty();
+            let expands = !info.expand.is_empty();
             let value = match value {
                 Some(Value::Map(entries)) if expands => {
                     let mut entries = entries;
@@ -1160,7 +1191,7 @@ impl<'d, 's> Binder<'d, 's> {
             };
             resolver.resolve(&call)
         };
-        let label = self.field_label(frame.owner, at);
+        let label = What::Field(frame.owner, at);
         match outcome {
             Ok(value) => {
                 let conceal = self.conceals(frame.owner, at);
@@ -1168,7 +1199,7 @@ impl<'d, 's> Binder<'d, 's> {
                     conceal,
                     qualify: info.qualify,
                 };
-                let checked = self.check_as(cx, info.ty.clone(), &label, value, frame.span, how);
+                let checked = self.check_as(cx, info.ty.as_ref(), label, value, frame.span, how);
                 match checked {
                     Some(value) => {
                         if info.sensitivity == Some(Sensitivity::Secret) {
@@ -1186,6 +1217,7 @@ impl<'d, 's> Binder<'d, 's> {
             }
             Err(unresolvable) => {
                 let node = self.name(frame.name);
+                let label = self.field_label(frame.owner, at);
                 let values = [label.as_str(), node, unresolvable.reason()];
                 self.diagnose(cx, UNRESOLVED_VALUE, frame.span, &values);
                 Resolution::Failed
@@ -1895,16 +1927,15 @@ impl<'d, 's> Binder<'d, 's> {
         let what = format!("the payload of {node}");
         match &expected {
             TypeExpr::List(inner) => {
-                let inner = (**inner).clone();
                 for (value, span) in payload {
-                    self.check(cx, Some(inner.clone()), &what, value, span);
+                    self.check(cx, Some(inner), &what, value, span);
                 }
             }
             _ => match payload.len() {
                 0 => {}
                 1 => {
                     let (value, span) = payload.into_iter().next().expect("one payload value");
-                    self.check(cx, Some(expected), &what, value, span);
+                    self.check(cx, Some(&expected), &what, value, span);
                 }
                 count => {
                     let expected = summary::expr(&self.def.names, &expected);
@@ -2125,10 +2156,9 @@ impl<'d, 's> Binder<'d, 's> {
         if structured.is_empty() {
             return match expected {
                 TypeExpr::List(inner) => {
-                    let inner = (**inner).clone();
                     let raw = Self::raw_path_payload(&[], &payload);
                     for (value, span) in payload {
-                        self.check(cx, Some(inner.clone()), &what, value, span);
+                        self.check(cx, Some(inner), &what, value, span);
                     }
                     Some(raw)
                 }
@@ -2136,7 +2166,7 @@ impl<'d, 's> Binder<'d, 's> {
                     0 => Some(Value::Null),
                     1 => {
                         let (value, span) = payload.into_iter().next().expect("one payload value");
-                        self.check(cx, Some(expected.clone()), &what, value, span)
+                        self.check(cx, Some(expected), &what, value, span)
                     }
                     count => {
                         let spelled = summary::expr(&self.def.names, expected);
@@ -2161,7 +2191,7 @@ impl<'d, 's> Binder<'d, 's> {
         let Some(object) = object else {
             return self.check(
                 cx,
-                Some(expected.clone()),
+                Some(expected),
                 &what,
                 Self::raw_path_payload(&structured, &[]),
                 frame.span,
@@ -2170,7 +2200,7 @@ impl<'d, 's> Binder<'d, 's> {
         // Any argument tail beside the structured payload is checked
         // against the resolved object type, where it cannot fit.
         for (value, span) in payload {
-            self.check(cx, Some(expected.clone()), &what, value, span);
+            self.check(cx, Some(expected), &what, value, span);
         }
         let mut entries: Vec<Entry> = Vec::new();
         // Every name the payload supplied, whatever became of its value:
@@ -2198,7 +2228,7 @@ impl<'d, 's> Binder<'d, 's> {
                 continue;
             }
             supplied.push(name.clone());
-            if let Some(decoded) = self.check(cx, Some(field.ty.clone()), &what, value, span) {
+            if let Some(decoded) = self.check(cx, Some(&field.ty), &what, value, span) {
                 entries.push(Entry::new(name, decoded));
             }
         }
@@ -2458,8 +2488,7 @@ impl<'d, 's> Binder<'d, 's> {
                 continue;
             };
             let what = format!("context {}", self.name(info.name));
-            let Some(decoded) =
-                self.check(cx, Some(info.ty.clone()), &what, value.value.clone(), span)
+            let Some(decoded) = self.check(cx, Some(&info.ty), &what, value.value.clone(), span)
             else {
                 continue;
             };
@@ -2766,14 +2795,15 @@ impl<'d, 's> Binder<'d, 's> {
         cx: &mut Cx<'_>,
         frame: &BindFrame,
         role: Role,
-        values: Vec<Option<Value>>,
+        (values, traces): (Vec<Option<Value>>, Vec<Trace>),
         typed_as: Option<Sym>,
         extras: &[(Sym, Value)],
     ) {
         let owner = frame.owner;
         let node = cx.node();
         let origin = OriginId(node.index);
-        let info = &self.tables.decls[owner.index()];
+        let tables: &'d Tables = self.tables;
+        let info = &tables.decls[owner.index()];
         let validation = if info.provisional {
             ValidationState::Provisional
         } else {
@@ -2796,64 +2826,70 @@ impl<'d, 's> Binder<'d, 's> {
             }
             _ => None,
         };
-        let info = &self.tables.decls[owner.index()];
-        let path = text_of(info.path);
-        let repeated = text_of(info.repeated);
-        let namespace = text_of(info.namespace);
-        let layer = text_of(info.layer);
-        // A scope field typed as a declared reference hoists its written
-        // spelling, matching the untyped string form.
-        let scope = match info.scope.and_then(|at| values.get(at)?.as_ref()) {
-            Some(Value::String(text)) => Some(text.clone()),
-            Some(Value::Reference(reference)) => Some(reference.written.clone()),
-            _ => None,
-        };
-        let project: Vec<String> = match info.project.and_then(|at| values.get(at)?.as_ref()) {
-            Some(Value::List(names)) => names
-                .iter()
-                .filter_map(|name| match name {
-                    Value::String(name) => Some(name.clone()),
-                    _ => None,
-                })
-                .collect(),
-            _ => Vec::new(),
-        };
-        // The scope reference is the contribution's metadata, never its
-        // target.
-        let reference = info
-            .references
-            .iter()
-            .filter(|at| Some(**at) != info.scope)
-            .find_map(|at| match values.get(*at) {
-                Some(Some(Value::Reference(reference))) => Some(reference.clone()),
+        // What only one role reads of the node's values is read before
+        // the values move into the item's fields.
+        let import = (role == Role::SourceImport).then(|| {
+            let project: Vec<String> = match info.project.and_then(|at| values.get(at)?.as_ref()) {
+                Some(Value::List(names)) => names
+                    .iter()
+                    .filter_map(|name| match name {
+                        Value::String(name) => Some(name.clone()),
+                        _ => None,
+                    })
+                    .collect(),
+                _ => Vec::new(),
+            };
+            (
+                text_of(info.path),
+                text_of(info.repeated),
+                text_of(info.namespace),
+                project,
+            )
+        });
+        let contribution = (role == Role::Contribution).then(|| {
+            // A scope field typed as a declared reference hoists its
+            // written spelling, matching the untyped string form.
+            let scope = match info.scope.and_then(|at| values.get(at)?.as_ref()) {
+                Some(Value::String(text)) => Some(text.clone()),
+                Some(Value::Reference(reference)) => Some(reference.written.clone()),
                 _ => None,
-            });
-        let fields: Vec<Field> = info
-            .fields
-            .iter()
-            .zip(values)
-            .zip(frame.traces.iter())
-            .filter_map(|((field, value), trace)| {
-                let value = value?;
-                let (value, redacted) = match field.sensitivity {
-                    Some(sensitivity) => {
-                        let policy = self.policy_for(sensitivity);
-                        (policy.apply(value)?, policy == OutputPolicy::Redact)
-                    }
-                    None => (value, false),
-                };
-                Some(
-                    Field::new(self.name(field.name), value, origin)
-                        .with_provenance(trace.clone(), redacted),
-                )
-            })
-            .collect();
+            };
+            // The scope reference is the contribution's metadata, never
+            // its target.
+            let reference = info
+                .references
+                .iter()
+                .filter(|at| Some(**at) != info.scope)
+                .find_map(|at| match values.get(*at) {
+                    Some(Some(Value::Reference(reference))) => Some(reference.clone()),
+                    _ => None,
+                });
+            (text_of(info.layer), scope, reference)
+        });
         let node_site = self.location(frame.span);
         let node_name = self.name(frame.name);
+        let mut fields: Vec<Field> = Vec::with_capacity(values.len() + extras.len());
+        for ((field, value), trace) in info.fields.iter().zip(values).zip(traces) {
+            let Some(value) = value else {
+                continue;
+            };
+            let (value, redacted) = match field.sensitivity {
+                Some(sensitivity) => {
+                    let policy = self.policy_for(sensitivity);
+                    match policy.apply(value) {
+                        Some(value) => (value, policy == OutputPolicy::Redact),
+                        None => continue,
+                    }
+                }
+                None => (value, false),
+            };
+            fields.push(
+                Field::new(self.name(field.name), value, origin).with_provenance(trace, redacted),
+            );
+        }
         // A field only the case-selected type declares rides the payload
         // after the node's own fields, carrying the fallback that
         // supplied it.
-        let mut fields = fields;
         for (name, value) in extras {
             fields.push(
                 Field::new(self.name(*name), value.clone(), origin).with_provenance(
@@ -2884,10 +2920,10 @@ impl<'d, 's> Binder<'d, 's> {
                 )
             }
             Role::Contribution => {
-                let site = self.location(frame.span);
+                let (layer, scope, reference) = contribution.unwrap_or_default();
                 let target = reference.unwrap_or_else(|| {
                     let written = self.name(frame.name);
-                    Reference::new(type_name, QualifiedName(Vec::new()), written, site)
+                    Reference::new(type_name, QualifiedName(Vec::new()), written, node_site)
                 });
                 let value = Value::Map(
                     fields
@@ -2905,7 +2941,7 @@ impl<'d, 's> Binder<'d, 's> {
                 BoundItem::Contribution(Box::new(contribution))
             }
             Role::SourceImport => {
-                let site = self.location(frame.span);
+                let (path, repeated, namespace, project) = import.unwrap_or_default();
                 let expression = path.unwrap_or_default();
                 if !self.literal_import(cx, frame.span, &expression) {
                     return;
@@ -2932,7 +2968,7 @@ impl<'d, 's> Binder<'d, 's> {
                 if let Some(namespace) = &namespace {
                     self.namespaces.push((namespace.clone(), frame.span));
                 }
-                let mut request = ImportRequest::new(node, expression, site, origin);
+                let mut request = ImportRequest::new(node, expression, node_site, origin);
                 request.namespace = namespace;
                 BoundItem::Import(request.with_policy(project, policy))
             }
@@ -3069,13 +3105,10 @@ impl<'d, 's> Binder<'d, 's> {
         // Branch bounds are selected from the values the node holds once
         // every field is resolved — explicit, context-filled, or
         // defaulted — the same values the case dispatch reads.
-        let fields: Vec<Sym> = self.tables.decls[owner.index()]
-            .fields
-            .iter()
-            .map(|info| info.name)
-            .collect();
+        let tables: &'d Tables = self.tables;
+        let infos = &tables.decls[owner.index()].fields;
         let held = |property: Sym| {
-            let at = fields.iter().position(|name| *name == property)?;
+            let at = infos.iter().position(|info| info.name == property)?;
             values.get(at)?.as_ref()
         };
         self.conditional_bounds(cx, frame, closing.state, held);
@@ -3155,7 +3188,8 @@ impl<'d, 's> Binder<'d, 's> {
                 }
             }
             let errors = self.errors;
-            self.emit(cx, frame, role, values, typed_as, &extras);
+            let traces = std::mem::take(&mut frame.traces);
+            self.emit(cx, frame, role, (values, traces), typed_as, &extras);
             // The pending binding follows the item holding its reference;
             // a node rejected while emitting leaves nothing to defer.
             if let Some(pending) = pending.filter(|_| self.errors == errors) {
@@ -3216,9 +3250,8 @@ impl<'d, 's> Binder<'d, 's> {
             });
             let Some(spelled) = spelled else {
                 let what = self.field_label(parent.owner, bind.field);
-                let ty = self.item_type(parent.owner, bind).cloned();
-                let expected =
-                    ty.map_or_else(String::new, |ty| summary::expr(&self.def.names, &ty));
+                let ty = self.item_type(parent.owner, bind);
+                let expected = ty.map_or_else(String::new, |ty| summary::expr(&self.def.names, ty));
                 let found = format!("node {}", self.name(frame.name));
                 self.diagnose(cx, VALUE_TYPE, frame.span, &[&what, &expected, &found]);
                 parent.rejected.push(bind.field);
@@ -3230,30 +3263,29 @@ impl<'d, 's> Binder<'d, 's> {
             let Some((key, span)) = frame.key.take() else {
                 return;
             };
-            let ty = self.key_type(parent.owner, bind).cloned();
-            let what = format!("the key of {}", self.name(frame.name));
+            let ty = self.key_type(parent.owner, bind);
+            let what = What::KeyOf(self.name(frame.name));
             let qualify = self.tables.decls[parent.owner.index()].fields[bind.field].qualify;
             let how = CheckAs {
                 conceal: false,
                 qualify,
             };
-            let entry =
-                match self.check_as(cx, ty.clone(), &what, Value::String(key.clone()), span, how) {
-                    None => return,
-                    Some(Value::String(key)) => Entry::new(key, value),
-                    // The link stage resolves a referenced key like any
-                    // reference a field holds.
-                    Some(Value::Reference(reference)) => Entry::referenced(reference, value),
-                    Some(other) => {
-                        let field = self.field_label(parent.owner, bind.field);
-                        let expected =
-                            ty.map_or_else(String::new, |ty| summary::expr(&self.def.names, &ty));
-                        let found = decode::found(&other);
-                        let values = [key.as_str(), field.as_str(), &expected, &found];
-                        self.diagnose(cx, UNSUPPORTED_KEY, span, &values);
-                        return;
-                    }
-                };
+            let entry = match self.check_as(cx, ty, what, Value::String(key.clone()), span, how) {
+                None => return,
+                Some(Value::String(key)) => Entry::new(key, value),
+                // The link stage resolves a referenced key like any
+                // reference a field holds.
+                Some(Value::Reference(reference)) => Entry::referenced(reference, value),
+                Some(other) => {
+                    let field = self.field_label(parent.owner, bind.field);
+                    let expected =
+                        ty.map_or_else(String::new, |ty| summary::expr(&self.def.names, ty));
+                    let found = decode::found(&other);
+                    let values = [key.as_str(), field.as_str(), &expected, &found];
+                    self.diagnose(cx, UNSUPPORTED_KEY, span, &values);
+                    return;
+                }
+            };
             value = Value::Map(vec![entry]);
         }
         let span = frame.span;

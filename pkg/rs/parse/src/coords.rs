@@ -1,5 +1,7 @@
 //! Source coordinates: byte spans resolved to lines and columns.
 
+use std::cell::{Cell, OnceCell};
+
 use kdlith_diagnostic::ByteSpan;
 use kdlith_model::{Position, Span};
 
@@ -17,56 +19,89 @@ pub fn locate(source: &str, span: ByteSpan) -> Span {
 
 /// [`locate`] for many spans of one source: the source's line starts
 /// are indexed once, on the first lookup, so each later lookup is a
-/// binary search and a count over one line's prefix. Results never
+/// binary search and a count over one line's prefix, and a lookup on
+/// the line of the one before it is the count alone. Results never
 /// depend on call order.
 #[derive(Clone, Debug)]
 pub struct Locator<'s> {
     source: &'s str,
     /// The byte offset each line after the first starts at, ascending;
-    /// `None` until the first lookup.
-    lines: Option<Vec<u32>>,
-    /// The latest lookup: its line's start, its offset, and its column.
-    /// A later lookup further along the same line counts on from it, so
-    /// a source of one very long line still resolves in one pass.
-    last: (usize, usize, u32),
+    /// unset until the first lookup.
+    lines: OnceCell<Vec<u32>>,
+    /// The latest lookup.
+    last: Cell<Last>,
+}
+
+/// One lookup, kept so the next can start from it.
+#[derive(Clone, Copy, Debug)]
+struct Last {
+    /// How many line starts lie at or before the offset.
+    before: usize,
+    /// Where the offset's line starts, and where the next one does.
+    start: usize,
+    end: usize,
+    /// The offset and its column: a later lookup further along the
+    /// line counts on from here, so a source of one very long line
+    /// still resolves in one pass.
+    offset: usize,
+    column: u32,
 }
 
 impl<'s> Locator<'s> {
     pub fn new(source: &'s str) -> Self {
         Self {
             source,
-            lines: None,
-            last: (0, 0, 1),
+            lines: OnceCell::new(),
+            last: Cell::new(Last {
+                before: 0,
+                start: 0,
+                end: 0,
+                offset: 0,
+                column: 1,
+            }),
         }
     }
 
     /// The span's positions, as [`locate`] resolves them.
-    pub fn locate(&mut self, span: ByteSpan) -> Span {
+    pub fn locate(&self, span: ByteSpan) -> Span {
         let start = self.position(span.start as usize);
         let end = self.position(span.end as usize);
         Span::new(start, end)
     }
 
-    fn position(&mut self, at: usize) -> Position {
+    fn position(&self, at: usize) -> Position {
         let source = self.source;
         let at = floor_boundary(source, at.min(source.len()));
-        let lines = self.lines.get_or_insert_with(|| line_starts(source));
-        // The number of line starts at or before `at` is the number of
-        // lines before its own.
-        let before = lines.partition_point(|start| *start as usize <= at);
         let bytes = source.as_bytes();
-        let mut start = before.checked_sub(1).map_or(0, |i| lines[i] as usize);
+        let last = self.last.get();
+        let (before, start, end) = if last.start <= at && at < last.end {
+            (last.before, last.start, last.end)
+        } else {
+            let lines = self.lines.get_or_init(|| line_starts(source));
+            // The number of line starts at or before `at` is the number
+            // of lines before its own.
+            let before = lines.partition_point(|start| *start as usize <= at);
+            let start = before.checked_sub(1).map_or(0, |i| lines[i] as usize);
+            let end = lines.get(before).map_or(usize::MAX, |next| *next as usize);
+            (before, start, end)
+        };
         // A CRLF is one newline whose line starts after the CR; the LF
         // still resets the column.
-        if start > 0 && start < at && bytes[start - 1] == b'\r' && bytes[start] == b'\n' {
-            start += 1;
-        }
-        let (from, column) = match self.last {
-            (line, offset, column) if line == start && offset <= at => (offset, column),
-            _ => (start, 1),
+        let crlf = start > 0 && start < at && bytes[start - 1] == b'\r' && bytes[start] == b'\n';
+        let origin = if crlf { start + 1 } else { start };
+        let (from, column) = if last.start == start && origin <= last.offset && last.offset <= at {
+            (last.offset, last.column)
+        } else {
+            (origin, 1)
         };
         let column = column.saturating_add(scalars(&bytes[from..at]));
-        self.last = (start, at, column);
+        self.last.set(Last {
+            before,
+            start,
+            end,
+            offset: at,
+            column,
+        });
         let line = u32::try_from(before).map_or(u32::MAX, |n| n.saturating_add(1));
         Position::new(offset(at), line, column)
     }

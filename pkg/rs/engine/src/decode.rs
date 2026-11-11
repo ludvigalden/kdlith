@@ -30,9 +30,41 @@ struct ReferenceSyntax {
     /// The lookup domain, else the target's.
     domain: String,
     codec: TypeId,
-    qualifiers: Vec<String>,
+    /// How each of the codec's captures is read, in capture order.
+    captures: Vec<CaptureSyntax>,
     /// The qualification may take a missing qualifier from context.
     contextual: bool,
+}
+
+/// How one capture of a reference's codec is read.
+#[derive(Clone, Copy, Debug)]
+struct CaptureSyntax {
+    /// The capture's group in the codec's pattern, when it has one.
+    group: Option<usize>,
+    /// The capture is a qualifier, not a name segment.
+    qualifier: bool,
+    /// The capture's type is numeric, so its text is a number.
+    numeric: bool,
+}
+
+/// Where a value is checked: its site, resolved only when the decoded
+/// value records it, and the qualifier-context value in effect there —
+/// the value of the slot the reference's binding chose — which a
+/// reference whose qualification may come from context carries.
+#[derive(Clone, Copy)]
+pub(crate) struct At<'a> {
+    pub(crate) site: &'a dyn Fn() -> Location,
+    pub(crate) context: Option<&'a str>,
+}
+
+/// What checking one value against a type came to.
+#[derive(Debug)]
+pub(crate) enum Decoded {
+    /// The value fits as it is.
+    Same,
+    /// The value decodes to another one: a spelling to the reference,
+    /// asset, or codec output it spells.
+    Changed(Value),
 }
 
 /// A string type or codec whose pattern does not compile.
@@ -90,16 +122,36 @@ impl Decoder {
             let Some(codec) = codec.filter(|id| self.codecs.contains_key(id)) else {
                 continue;
             };
+            let qualifiers: Vec<&str> = reference
+                .qualifiers
+                .iter()
+                .map(|q| names.resolve(q.name))
+                .collect();
+            let groups: Vec<Option<&str>> = self
+                .codecs
+                .get(&codec)
+                .map(|regex| regex.capture_names().collect())
+                .unwrap_or_default();
+            let captures = match types.get(codec).map(|decl| &decl.kind) {
+                Some(TypeKind::Codec(decl)) => decl
+                    .captures
+                    .iter()
+                    .map(|capture| CaptureSyntax {
+                        group: groups
+                            .iter()
+                            .position(|group| *group == Some(capture.name.as_str())),
+                        qualifier: qualifiers.contains(&capture.name.as_str()),
+                        numeric: numeric_builtin(types, &capture.ty).is_some(),
+                    })
+                    .collect(),
+                _ => Vec::new(),
+            };
             let syntax = ReferenceSyntax {
                 domain: names
                     .resolve(reference.lookup.unwrap_or(reference.target))
                     .to_owned(),
                 codec,
-                qualifiers: reference
-                    .qualifiers
-                    .iter()
-                    .map(|q| names.resolve(q.name).to_owned())
-                    .collect(),
+                captures,
                 contextual: reference.qualification != Qualification::Explicit,
             };
             self.references.insert(reference.name, syntax);
@@ -119,71 +171,101 @@ impl Decoder {
         value: &Value,
         site: Location,
     ) -> Option<Value> {
-        self.decode_at(types, names, ty, value, (site, None))
+        let at = At {
+            site: &|| site,
+            context: None,
+        };
+        Some(match self.check(types, names, ty, value, at)? {
+            Decoded::Same => value.clone(),
+            Decoded::Changed(decoded) => decoded,
+        })
     }
 
-    /// Decode `value` as `ty` at a bind position: `context` is the
-    /// qualifier-context value in effect there — the value of the slot
-    /// the reference's binding chose — which a reference whose
-    /// qualification may come from context carries.
-    pub(crate) fn decode_at(
+    /// Check `value` against `ty` at a bind position, without copying a
+    /// value that fits as it is: `Some` says whether the value stands or
+    /// what it decodes to, `None` that it does not fit, leaving it to
+    /// the caller's diagnostic.
+    pub(crate) fn check(
         &self,
         types: &TypeCatalog,
         names: &Names,
         ty: &TypeExpr,
         value: &Value,
-        at: (Location, Option<&str>),
-    ) -> Option<Value> {
-        let site = at.0;
+        at: At<'_>,
+    ) -> Option<Decoded> {
         match ty {
-            TypeExpr::Optional(inner) => self.decode_at(types, names, inner, value, at),
+            TypeExpr::Optional(inner) => self.check(types, names, inner, value, at),
             TypeExpr::Nullable(inner) => {
                 if *value == Value::Null {
-                    Some(Value::Null)
+                    Some(Decoded::Same)
                 } else {
-                    self.decode_at(types, names, inner, value, at)
+                    self.check(types, names, inner, value, at)
                 }
             }
             TypeExpr::Ref(inner) => match (inner.as_ref(), value) {
                 (TypeExpr::Named(target), Value::String(text)) => {
                     let name = QualifiedName(vec![text.clone()]);
                     let domain = names.resolve(*target);
-                    let reference = Reference::new(domain, name, text.clone(), site);
-                    Some(Value::Reference(reference))
+                    let reference = Reference::new(domain, name, text.clone(), (at.site)());
+                    Some(Decoded::Changed(Value::Reference(reference)))
                 }
                 (TypeExpr::Named(target), Value::Reference(reference))
                     if reference.domain == names.resolve(*target) =>
                 {
-                    Some(value.clone())
+                    Some(Decoded::Same)
                 }
                 _ => None,
             },
             // Composite values arrive already bound, element by element;
             // checking them again walks the same types.
-            TypeExpr::List(inner) => match value {
-                Value::List(items) => items
-                    .iter()
-                    .map(|item| self.decode_at(types, names, inner, item, at))
-                    .collect::<Option<Vec<_>>>()
-                    .map(Value::List),
-                _ => None,
-            },
-            TypeExpr::Map(key, inner) | TypeExpr::OrderedMap(key, inner) => match value {
-                Value::Map(entries) => entries
-                    .iter()
-                    .map(|entry| {
-                        self.decode_at(types, names, key, &entry.key_value(), at)?;
-                        let mut decoded = entry.clone();
-                        decoded.value = self.decode_at(types, names, inner, &entry.value, at)?;
-                        Some(decoded)
-                    })
-                    .collect::<Option<Vec<_>>>()
-                    .map(Value::Map),
-                _ => None,
-            },
+            TypeExpr::List(inner) => {
+                let Value::List(items) = value else {
+                    return None;
+                };
+                let mut changed: Option<Vec<Value>> = None;
+                for (position, item) in items.iter().enumerate() {
+                    match self.check(types, names, inner, item, at)? {
+                        Decoded::Same => {
+                            if let Some(decoded) = &mut changed {
+                                decoded.push(item.clone());
+                            }
+                        }
+                        Decoded::Changed(element) => changed
+                            .get_or_insert_with(|| items[..position].to_vec())
+                            .push(element),
+                    }
+                }
+                Some(changed.map_or(Decoded::Same, |items| Decoded::Changed(Value::List(items))))
+            }
+            TypeExpr::Map(key, inner) | TypeExpr::OrderedMap(key, inner) => {
+                let Value::Map(entries) = value else {
+                    return None;
+                };
+                let mut changed: Option<Vec<Entry>> = None;
+                for (position, entry) in entries.iter().enumerate() {
+                    self.check(types, names, key, &entry.key_value(), at)?;
+                    match self.check(types, names, inner, &entry.value, at)? {
+                        Decoded::Same => {
+                            if let Some(decoded) = &mut changed {
+                                decoded.push(entry.clone());
+                            }
+                        }
+                        Decoded::Changed(held) => {
+                            let mut decoded = entry.clone();
+                            decoded.value = held;
+                            changed
+                                .get_or_insert_with(|| entries[..position].to_vec())
+                                .push(decoded);
+                        }
+                    }
+                }
+                Some(changed.map_or(Decoded::Same, |entries| {
+                    Decoded::Changed(Value::Map(entries))
+                }))
+            }
             TypeExpr::Union(members) => members
                 .iter()
-                .find_map(|member| self.decode_at(types, names, member, value, at)),
+                .find_map(|member| self.check(types, names, member, value, at)),
             // A surviving instantiation means incomplete checking: fail
             // closed rather than guess the unsubstituted body.
             TypeExpr::Instantiation(_, _) => None,
@@ -203,22 +285,21 @@ impl Decoder {
         names: &Names,
         id: TypeId,
         value: &Value,
-        at: (Location, Option<&str>),
-    ) -> Option<Value> {
-        let site = at.0;
+        at: At<'_>,
+    ) -> Option<Decoded> {
         let decl = types.get(id)?;
         match (&decl.kind, value) {
             (TypeKind::Builtin(builtin), value) => {
-                builtin_accepts(*builtin, value).then(|| value.clone())
+                builtin_accepts(*builtin, value).then_some(Decoded::Same)
             }
             (TypeKind::String(string), Value::String(text)) => {
-                self.string(id, string, text).then(|| value.clone())
+                self.string(id, string, text).then_some(Decoded::Same)
             }
             (TypeKind::Enum(enumeration), Value::String(text)) => enumeration
                 .members
                 .iter()
                 .any(|member| member.name == *text)
-                .then(|| value.clone()),
+                .then_some(Decoded::Same),
             // A prefix selects its variant with no fallback on failure; a
             // scalar no prefix selects binds as the first un-prefixed
             // variant, in declaration order, whose type accepts it.
@@ -231,31 +312,29 @@ impl Decoder {
                             .is_some_and(|prefix| text.starts_with(prefix))
                     })
                 {
-                    return self.decode_at(types, names, &variant.ty, value, at);
+                    return self.check(types, names, &variant.ty, value, at);
                 }
                 union
                     .variants
                     .iter()
                     .filter(|variant| variant.prefix.is_none())
-                    .find_map(|variant| self.decode_at(types, names, &variant.ty, value, at))
+                    .find_map(|variant| self.check(types, names, &variant.ty, value, at))
             }
             // A codec decodes a matching string in the stream; the
             // decoded value carries the output type.
-            (TypeKind::Codec(codec), Value::String(text)) => {
-                self.codec(types, names, id, codec, text, site)
-            }
+            (TypeKind::Codec(codec), Value::String(text)) => self
+                .codec(types, names, id, codec, text, (at.site)())
+                .map(Decoded::Changed),
             // An asset's spelling binds as written; the reading resolves
             // it in the source of the document that wrote it.
-            (TypeKind::Asset(_), Value::String(text)) => Some(Value::Asset(Asset::written(
-                names.resolve(decl.name),
-                text.clone(),
-                site,
+            (TypeKind::Asset(_), Value::String(text)) => Some(Decoded::Changed(Value::Asset(
+                Asset::written(names.resolve(decl.name), text.clone(), (at.site)()),
             ))),
-            (TypeKind::Asset(_), Value::Asset(_)) => Some(value.clone()),
+            (TypeKind::Asset(_), Value::Asset(_)) => Some(Decoded::Same),
             // Object, union, and map values are bound from node structure,
             // which the binding already checked field by field.
             (TypeKind::Object(_) | TypeKind::Union(_) | TypeKind::Map(_), Value::Map(_)) => {
-                Some(value.clone())
+                Some(Decoded::Same)
             }
             _ => None,
         }
@@ -270,12 +349,12 @@ impl Decoder {
         names: &Names,
         syntax: &ReferenceSyntax,
         value: &Value,
-        (site, context): (Location, Option<&str>),
-    ) -> Option<Value> {
+        at: At<'_>,
+    ) -> Option<Decoded> {
         let text = match value {
             Value::String(text) => text,
             Value::Reference(reference) if reference.domain == syntax.domain => {
-                return Some(value.clone());
+                return Some(Decoded::Same);
             }
             _ => return None,
         };
@@ -285,17 +364,23 @@ impl Decoder {
         let captures = self.codecs.get(&syntax.codec)?.captures(text)?;
         let mut segments = Vec::new();
         let mut qualifiers = Vec::new();
-        for capture in &codec.captures {
-            let Some(found) = captures.name(&capture.name) else {
+        for (capture, how) in codec.captures.iter().zip(&syntax.captures) {
+            let Some(found) = how.group.and_then(|group| captures.get(group)) else {
                 continue;
             };
+            // A capture's text decodes as its declared type: a numeric
+            // capture carries its text as the number it spells.
             let raw = found.as_str().to_owned();
-            let typed = match numeric_builtin(types, &capture.ty) {
-                Some(_) => Value::Number(raw.clone()),
-                None => Value::String(raw.clone()),
+            let typed = if how.numeric {
+                Value::Number(raw)
+            } else {
+                Value::String(raw)
             };
-            self.decode(types, names, &capture.ty, &typed, site)?;
-            if syntax.qualifiers.contains(&capture.name) {
+            self.check(types, names, &capture.ty, &typed, at)?;
+            let (Value::Number(raw) | Value::String(raw)) = typed else {
+                return None;
+            };
+            if how.qualifier {
                 qualifiers.push((capture.name.clone(), raw));
             } else {
                 segments.push(raw);
@@ -308,13 +393,13 @@ impl Decoder {
             syntax.domain.clone(),
             QualifiedName(segments),
             text.clone(),
-            site,
+            (at.site)(),
         );
         reference.qualifiers = qualifiers;
         if syntax.contextual {
-            reference.context = context.map(Box::from);
+            reference.context = at.context.map(Box::from);
         }
-        Some(Value::Reference(reference))
+        Some(Decoded::Changed(Value::Reference(reference)))
     }
 
     /// Decode a string through a codec: the whole-string match, each

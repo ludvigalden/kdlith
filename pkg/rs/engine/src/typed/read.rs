@@ -1035,17 +1035,20 @@ impl<'d, T: 'static> TypedReader<'d, T> {
         type_name: &str,
         fields: &[Field],
     ) -> Result<T, Box<DiagnosticRecord>> {
-        let processor = format!(
-            "{} {}",
-            self.declarations.kind.root_name(),
-            self.declarations.name
-        );
-        let subject = format!("{} items of type {type_name}", role.name());
-        let Some(handler) = self.handler(role, node, type_name) else {
-            return Err(Box::new(mismatch(&processor, &subject, "no handler")));
+        // The failure is spelled only when there is one.
+        let failed = |reason: &str| {
+            let processor = format!(
+                "{} {}",
+                self.declarations.kind.root_name(),
+                self.declarations.name
+            );
+            let subject = format!("{} items of type {type_name}", role.name());
+            Box::new(mismatch(&processor, &subject, reason))
         };
-        (handler.read)(Fields::of_item(fields))
-            .map_err(|m| Box::new(mismatch(&processor, &subject, &m.to_string())))
+        let Some(handler) = self.handler(role, node, type_name) else {
+            return Err(failed("no handler"));
+        };
+        (handler.read)(Fields::of_item(fields)).map_err(|m| failed(&m.to_string()))
     }
 }
 
