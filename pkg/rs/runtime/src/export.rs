@@ -11,6 +11,8 @@ use kdlith_diagnostic::registry::{lookup, render};
 use serde::Serialize;
 
 const UNWRITABLE: &str = "KDLITH-EXP001";
+/// How many bytes an atomic file delivery stages between writes.
+const STAGE_BYTES: usize = 1 << 16;
 
 /// When the destination sees results.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -52,6 +54,9 @@ fn unwritable(path: &str, reason: &str) -> Box<DiagnosticRecord> {
 /// delivery contract the run named.
 pub struct ExportWriter {
     dest: Dest,
+    /// The line being encoded: every item reaches its destination as
+    /// one write of one whole line.
+    line: Vec<u8>,
     /// The destination as diagnostics name it: `stdout`, or the output
     /// path as the invoker wrote it.
     label: String,
@@ -64,7 +69,7 @@ enum Dest {
     /// Atomic file: a part file beside the destination, renamed onto it
     /// at commit.
     StagedFile {
-        file: fs::File,
+        file: io::BufWriter<fs::File>,
         part: PathBuf,
         dest: PathBuf,
     },
@@ -83,11 +88,13 @@ impl ExportWriter {
             return Ok(match delivery {
                 Delivery::Atomic => Self {
                     dest: Dest::StagedMemory(Vec::new()),
+                    line: Vec::new(),
                     label: "stdout".to_owned(),
                     emitted: 0,
                 },
                 Delivery::Provisional => Self {
                     dest: Dest::Stdout(io::stdout()),
+                    line: Vec::new(),
                     label: "stdout".to_owned(),
                     emitted: 0,
                 },
@@ -103,7 +110,7 @@ impl ExportWriter {
                 let part = part_path(path);
                 match fs::File::create(&part) {
                     Ok(file) => Dest::StagedFile {
-                        file,
+                        file: io::BufWriter::with_capacity(STAGE_BYTES, file),
                         part,
                         dest: path.to_owned(),
                     },
@@ -113,6 +120,7 @@ impl ExportWriter {
         };
         Ok(Self {
             dest,
+            line: Vec::new(),
             label,
             emitted: 0,
         })
@@ -122,12 +130,20 @@ impl ExportWriter {
     /// line is visible at the destination once this returns. A failed
     /// write is `KDLITH-EXP001` naming the destination.
     pub fn write_item(&mut self, item: &impl Serialize) -> Result<(), Box<DiagnosticRecord>> {
-        let written = match &mut self.dest {
-            Dest::StagedMemory(buffer) => write_ndjson(buffer, item),
-            Dest::StagedFile { file, .. } => write_ndjson(&mut *file, item),
-            Dest::Stdout(out) => write_ndjson(&mut *out, item).and_then(|()| out.flush()),
-            Dest::File(file) => write_ndjson(&mut *file, item).and_then(|()| file.flush()),
-        };
+        self.line.clear();
+        let line = &mut self.line;
+        let written = write_ndjson(line, item).and_then(|()| match &mut self.dest {
+            Dest::StagedMemory(buffer) => {
+                buffer.extend_from_slice(line);
+                Ok(())
+            }
+            Dest::StagedFile { file, .. } => file.write_all(line),
+            Dest::Stdout(out) => {
+                let mut out = out.lock();
+                out.write_all(line).and_then(|()| out.flush())
+            }
+            Dest::File(file) => file.write_all(line),
+        });
         match written {
             Ok(()) => {
                 self.emitted += 1;
@@ -160,6 +176,9 @@ impl ExportWriter {
                 dest,
             } => {
                 let label = dest.display().to_string();
+                let staged = staged
+                    .into_inner()
+                    .map_err(|error| unwritable(&label, &error.error().to_string()))?;
                 staged
                     .sync_all()
                     .map_err(|error| unwritable(&label, &error.to_string()))?;

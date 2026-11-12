@@ -91,7 +91,7 @@ fn items(args: ListItemsArgs) -> ExitStatus {
 
 /// Print each entry as one stdout line; a failed write fails the run.
 fn print_lines<T: Display>(entries: &[T]) -> ExitStatus {
-    let mut out = std::io::stdout().lock();
+    let mut out = crate::vet::stdout();
     for entry in entries {
         if writeln!(out, "{entry}").is_err() {
             return ExitStatus::Failure;
