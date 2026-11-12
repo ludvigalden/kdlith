@@ -1,0 +1,9 @@
+change meta-schema {
+    summary "Replace the kdlith dialect with the schema meta-schema"
+    category breaking
+    impact breaking
+    touches "pkg/rs/engine" "pkg/rs/cli" "pkg/rs/codegen" "pkg/rs/diagnostic" "pkg/rs/model" "pkg/rs/schema-kdl" "input:meta-schema" "tests/tools/kdlith-fixtures" "input:fixtures"
+    commit "1081521572118f614bda31594b799fbdc9cf9d2d"
+    detail "The definition that describes schema definitions is no longer a separate dialect kind: it is a schema named schema. Its documents live in pkg/kdl/schemas/schema, each opening with schema schema, and pkg/kdl/schemas/schema/schema.kdl is the entry that imports them; pkg/kdl/dialect.kdl is gone. A definition is the meta-schema when its root is schema and its name is schema, so the gen, vet and inspect verbs take it through gen schema, vet schema and inspect schema, and a meta-schema root may hold only types, node, context, document and import. The KDLITH-DLC codes keep their identifiers and now speak of the meta-schema."
+    migration "Open meta-schema documents with `schema schema version=\"0\"` instead of `dialect kdlith`, and name `pkg/kdl/schemas/schema/schema.kdl` where `pkg/kdl/dialect.kdl` was named. Use `gen schema`, `vet schema` and `inspect schema` for `gen dialect`, `vet dialect` and `inspect dialect`, and `--meta-schema FILE` for `--dialect FILE`; there are no aliases. In Rust, `compile_dialect*` is `compile_meta_schema*`, `load_dialect*` is `load_meta_schema*`, `generate_dialect` is `generate_meta_schema`, `DIALECT_VERSION` is `META_SCHEMA_VERSION`, `with_dialect` is `with_meta_schema`, `DefinitionKind::Dialect` is `DefinitionKind::MetaSchema`, and the document role and origin `dialect-definition` are `meta-schema-definition`. Regenerate generated readers."
+}

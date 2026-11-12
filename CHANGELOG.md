@@ -1,5 +1,50 @@
 # Changelog
 
+## 0.3.0 (2026-11-12)
+
+The meta-schema is a schema named schema
+
+The kdlith dialect is now the schema meta-schema, read through the schema verbs;
+its crate is kdlith-schema-kdl, built from a kdlith checkout; and generated
+crates take their schema's name. No aliases remain: consumers rename and
+regenerate.
+
+### Breaking
+
+- Replace the kdlith dialect with the schema meta-schema: `dialect kdlith`
+  documents become `schema schema`, `gen|vet|inspect dialect` become
+  `gen|vet|inspect schema`, and `--dialect` becomes `--meta-schema`
+- Rename `kdlith-superproc` to `kdlith-schema-kdl`, which reads the canonical
+  documents from its kdlith checkout at build time and so builds only as a git
+  or path dependency
+
+### Changed
+
+- Name a generated crate `<schema>-kdl` when `--crate` is not given
+
+### Migration
+
+- `codegen::generate` and its siblings take the crate name as an `Option<&str>`;
+  `None` selects the default name. Consumers that regenerate without `--crate`
+  get the `<schema>-kdl` name.
+- Open meta-schema documents with `schema schema version="0"` instead of
+  `dialect kdlith`, and name `pkg/kdl/schemas/schema/schema.kdl` where
+  `pkg/kdl/dialect.kdl` was named. Use `gen schema`, `vet schema` and
+  `inspect schema` for `gen dialect`, `vet dialect` and `inspect dialect`, and
+  `--meta-schema FILE` for `--dialect FILE`; there are no aliases. In Rust,
+  `compile_dialect*` is `compile_meta_schema*`, `load_dialect*` is
+  `load_meta_schema*`, `generate_dialect` is `generate_meta_schema`,
+  `DIALECT_VERSION` is `META_SCHEMA_VERSION`, `with_dialect` is
+  `with_meta_schema`, `DefinitionKind::Dialect` is `DefinitionKind::MetaSchema`,
+  and the document role and origin `dialect-definition` are
+  `meta-schema-definition`. Regenerate generated readers.
+- Depend on `kdlith-schema-kdl` and use `kdlith_schema_kdl` where
+  `kdlith-superproc` and `kdlith_superproc` were named; there is no alias. The
+  crate builds only from a kdlith checkout, through a git or path dependency:
+  its build script reads `../../kdl/schemas/schema` and fails with a message
+  naming that path when it is absent, so `cargo vendor` and registry packaging
+  of the crate are not supported.
+
 ## 0.2.0 (2026-11-12)
 
 Readings that scale with the tree
@@ -75,13 +120,6 @@ generator version, so a kdlith upgrade alone leaves consumers' checks green.
 ## 0.1.0 (2026-11-07)
 
 Baseline of the first kdlith development line
-
-kdlith provides typed, streaming KDL processing in Rust: dialect and schema
-definitions describe families of KDL documents, which kdlith processes directly
-or turns into generated Rust processors. This pre-1.0 baseline is documented as
-unstable.
-
-### Added
 
 - `kdlith-parse` writes KDL v2: `WriteDocument` and `WriteNode` build a document
   node by node (arguments, properties, children, `//` comment lines, an explicit
@@ -477,9 +515,6 @@ document|source; patterns #true; digest #true }` declares a field whose value is
   (`Reading::qualified_name`), reachable through a generated crate's re-exports
   while the reference's Rust type stays the generated newtype. This changes the
   canonical dialect digest.
-
-### Changed
-
 - The `KDLITH-GEN008` refusal now carries the contract in its message: the
   default sibling packaging only resolves beside the kdlith crates, and
   generation anywhere else passes `--kdlith-path` to point at them.
@@ -575,9 +610,6 @@ document|source; patterns #true; digest #true }` declares a field whose value is
   `--kdlith-version` spellings are never existence-checked and keep working
   exactly as before. Before, a flagless run into an unresolved layout exited 0
   having written a manifest with broken `../<dir>` dependencies.
-
-### Fixed
-
 - A value a context slot or a literal `fallback` feeds a field now decodes
   against the field's own type at the bound node, as an explicit value does.
   Before, it reached the field raw: a reference-typed field fed a string held

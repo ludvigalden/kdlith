@@ -1,0 +1,9 @@
+change generated-crate-names {
+    summary "Name a generated crate after its schema by default"
+    category changed
+    impact public
+    touches "pkg/rs/cli" "pkg/rs/codegen" "input:fixtures"
+    commit "170e770feb3a2cd0184204d5d60f400a151b594f"
+    detail "gen schema no longer requires --crate: a generated crate is named <schema>-kdl after the schema's name, so a schema named parts generates parts-kdl. An explicit --crate is still accepted as given."
+    migration "`codegen::generate` and its siblings take the crate name as an `Option<&str>`; `None` selects the default name. Consumers that regenerate without `--crate` get the `<schema>-kdl` name."
+}

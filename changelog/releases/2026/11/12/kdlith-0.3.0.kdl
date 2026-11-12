@@ -1,0 +1,13 @@
+release kdlith version="0.3.0" channel=stable {
+    summary "The meta-schema is a schema named schema"
+    paragraph "The kdlith dialect is now the schema meta-schema, read through the schema verbs; its crate is kdlith-schema-kdl, built from a kdlith checkout; and generated crates take their schema's name. No aliases remain: consumers rename and regenerate."
+    includes meta-schema schema-kdl-crate generated-crate-names
+    section breaking {
+        item "Replace the kdlith dialect with the schema meta-schema: `dialect kdlith` documents become `schema schema`, `gen|vet|inspect dialect` become `gen|vet|inspect schema`, and `--dialect` becomes `--meta-schema`" covers=meta-schema
+        item "Rename `kdlith-superproc` to `kdlith-schema-kdl`, which reads the canonical documents from its kdlith checkout at build time and so builds only as a git or path dependency" covers=schema-kdl-crate
+    }
+    section changed {
+        item "Name a generated crate `<schema>-kdl` when `--crate` is not given" covers=generated-crate-names
+    }
+    sealed at="4ae6dd4599e2ca711ba101164ce8f00b241f5799"
+}

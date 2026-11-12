@@ -1,0 +1,10 @@
+change schema-kdl-crate {
+    summary "Rename the meta-schema crate to kdlith-schema-kdl"
+    category breaking
+    impact breaking
+    touches "pkg/rs/schema-kdl" "pkg/rs/codegen" "pkg/rs/cli" "tests/tools/kdlith-fixtures" "input:fixtures"
+    commit "06e97b1474cf84724d531f32003542d6f7a12a87"
+    commit "9ea0ca54bfad653f3755997d30991a178a1d636d"
+    detail "The generated crate that compiles the meta-schema was kdlith-superproc; it is now kdlith-schema-kdl, in pkg/rs/schema-kdl. It no longer carries a committed copy of the canonical schema documents: its build script copies them from pkg/kdl/schemas/schema in the same kdlith checkout and the crate includes them from the build output, so the embedded documents cannot drift from the canonical ones. Generated readers depend on kdlith-schema-kdl in place of kdlith-superproc."
+    migration "Depend on `kdlith-schema-kdl` and use `kdlith_schema_kdl` where `kdlith-superproc` and `kdlith_superproc` were named; there is no alias. The crate builds only from a kdlith checkout, through a git or path dependency: its build script reads `../../kdl/schemas/schema` and fails with a message naming that path when it is absent, so `cargo vendor` and registry packaging of the crate are not supported."
+}
