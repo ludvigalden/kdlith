@@ -471,7 +471,7 @@ fn reference_lines(linked: &Linked<'_>) -> Vec<serde_json::Value> {
                             json!({"name": name, "value": value})
                         }).collect::<Vec<_>>(),
                         "context": reference.context,
-                        "field": link.field,
+                        "field": link.field.as_deref(),
                         "site": site(&reference.site),
                         "candidates": link.candidates.iter().map(|candidate| json!({
                             "identity": {
@@ -479,7 +479,7 @@ fn reference_lines(linked: &Linked<'_>) -> Vec<serde_json::Value> {
                                 "name": candidate.identity.name.0,
                             },
                             "namespace": candidate.namespace,
-                            "labels": candidate.labels,
+                            "labels": &candidate.labels[..],
                             "site": candidate.site.as_ref().map(site),
                         })).collect::<Vec<_>>(),
                         "gated": link.gated,

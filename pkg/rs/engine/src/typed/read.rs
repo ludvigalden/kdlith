@@ -843,7 +843,9 @@ impl<'d, T: 'static> TypedReader<'d, T> {
         let mut imports = ImportNamespaces::default();
         let mut mismatched = false;
         let mut unsupported = false;
-        let mut inputs = self.linking.map(|_| LinkInputs::new());
+        let mut inputs = self
+            .linking
+            .map(|_| LinkInputs::new(self.reader.definition()));
         let mut typing = |item: Item| {
             if unsupported {
                 return;
@@ -896,7 +898,7 @@ impl<'d, T: 'static> TypedReader<'d, T> {
         if unsupported {
             return Err(ReadError::UnsupportedItem);
         }
-        let report = inputs.map(|inputs| link_reading(self.reader.definition(), &inputs));
+        let report = inputs.map(|inputs| link_reading(&inputs));
         Ok((failed || mismatched, report))
     }
 

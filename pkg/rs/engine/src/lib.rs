@@ -93,8 +93,8 @@ pub use kdlith_runtime::{
 };
 pub use link::{
     BoundReference, DuplicateDeclaration, IdentityIndex, IndexedDeclaration, Link, LinkInputs,
-    LinkOutcome, LinkReport, Lookup, ReferenceLinks, SiblingFill, SiblingWindow, UnmetQualifier,
-    bind_references, derive_candidates, index_identities, link, link_reading,
+    LinkOutcome, LinkReport, ReferenceLinks, SiblingFill, SiblingWindow, UnmetQualifier,
+    check_reading, link_reading,
 };
 pub use list::{
     IndexEntry, IndexKind, ItemIndex, NodeEntry, ProfileEntry, TypeEntry, index_items, list_nodes,
