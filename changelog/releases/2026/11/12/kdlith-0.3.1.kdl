@@ -1,0 +1,9 @@
+release kdlith version="0.3.1" channel=stable {
+    summary "Generated enum variants follow Rust camel case"
+    paragraph "An enum value containing underscores now names its variant by its words, as a dashed value always did: not_assessed reads as NotAssessed, the KDL value stays the binding key, and two values spelling one variant remain a generation refusal."
+    includes enum-variants-camel-case
+    section changed {
+        item "Spell a generated enum variant in UpperCamelCase from the value's words, split at underscores and dashes, so `not_assessed` reads as `NotAssessed` while parsing and serialization keep the exact value strings" covers=enum-variants-camel-case
+    }
+    sealed at="5b88118b332ccb0f66ed0b258a74a260665debd5"
+}

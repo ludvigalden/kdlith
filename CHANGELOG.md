@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.3.1 (2026-11-12)
+
+Generated enum variants follow Rust camel case
+
+An enum value containing underscores now names its variant by its words, as a
+dashed value always did: not_assessed reads as NotAssessed, the KDL value stays
+the binding key, and two values spelling one variant remain a generation
+refusal.
+
+### Changed
+
+- Spell a generated enum variant in UpperCamelCase from the value's words, split
+  at underscores and dashes, so `not_assessed` reads as `NotAssessed` while
+  parsing and serialization keep the exact value strings
+
+### Migration
+
+- Schemas whose enum values contain only single words, dashes, or already-camel
+  spellings generate byte-identical crates. A schema whose values contain
+  underscores regenerates with renamed variants; code that names such a variant
+  updates with the regeneration.
+
 ## 0.3.0 (2026-11-12)
 
 The meta-schema is a schema named schema
@@ -108,12 +130,6 @@ threads.
 ## 0.1.1 (2026-11-10)
 
 Generator provenance moves into the manifest
-
-Generated crates no longer repeat the kdlith version in every file: the output
-manifest records how the crate was generated, and gen --check ignores the
-generator version, so a kdlith upgrade alone leaves consumers' checks green.
-
-### Changed
 
 - Record the generator provenance in the manifest, not in every file
 

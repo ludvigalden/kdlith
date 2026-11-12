@@ -1,0 +1,9 @@
+change enum-variants-camel-case {
+    summary "Spell generated enum variants in UpperCamelCase"
+    category changed
+    impact public
+    touches "pkg/rs/codegen" "input:fixtures"
+    commit "4d55680ed8fde65bdf930bff5a71f8242f25e4c7"
+    detail "A generated enum now names its variants by the words of the KDL value, split at underscores and dashes as well as whitespace, each capitalized and joined: not_assessed reads as NotAssessed, exactly as not-assessed already did. The KDL spelling stays the binding key, so parsing and serialization keep the exact value strings and the same data documents vet green unchanged. Two members of one enum whose values spell one variant remain a generation refusal, as they already were for on and On."
+    migration "Schemas whose enum values contain only single words, dashes, or already-camel spellings generate byte-identical crates. A schema whose values contain underscores regenerates with renamed variants; code that names such a variant updates with the regeneration."
+}
