@@ -30,9 +30,9 @@ fi
 status=$?
 test "$status" -eq 0 || { echo "exit $status, expected 0:"; cat err; exit 1; }
 test ! -s err || { echo "stderr is not empty:"; cat err; exit 1; }
-printf '## ' > want
-head -c 3 out | cmp -s want - || { echo "notes do not open with a release heading"; exit 1; }
-printf '## 0.1.0 (2026-11-07)\n\nBaseline of the first kdlith development line\n\nkdlith provides typed, streaming KDL processing in Rust: dialect and schema definitions describe families of KDL documents, which kdlith processes directly or turns into generated Rust processors. This pre-1.0 baseline is documented as unstable.\n\n### Added\n' > want
+printf '# Changelog\n\n## ' > want
+head -c 16 out | cmp -s want - || { echo "notes do not open with the title and a release heading"; exit 1; }
+printf '## 0.1.0 (2026-11-07)\n\nBaseline of the first kdlith development line\n\nkdlith provides typed, streaming KDL processing in Rust: dialect and schema\ndefinitions describe families of KDL documents, which kdlith processes directly\nor turns into generated Rust processors. This pre-1.0 baseline is documented as\nunstable.\n\n### Added\n' > want
 sed -n '/^## 0\.1\.0 (2026-11-07)$/,/^### Added$/p' out | cmp -s want - || { echo "the 0.1.0 notes do not open with its summary and paragraph"; exit 1; }
 
 # --target markdown names the same page as the default.
