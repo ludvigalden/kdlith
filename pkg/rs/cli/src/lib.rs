@@ -112,9 +112,10 @@ enum GenCommand {
 
 #[derive(Args)]
 struct GenFormArgs {
-    /// The crate name the generated package publishes as
-    #[arg(long = "crate", value_name = "NAME", required = true)]
-    crate_name: String,
+    /// The crate name the generated package publishes as (default: the
+    /// schema's name with the -kdl suffix)
+    #[arg(long = "crate", value_name = "NAME")]
+    crate_name: Option<String>,
     /// The directory the generated crate is written to
     #[arg(long, value_name = "DIR", required = true)]
     out: PathBuf,

@@ -32,7 +32,7 @@ pub(crate) fn run(command: GenCommand) -> ExitStatus {
             generate(
                 target,
                 &entries,
-                (&args.form.crate_name, &args.form.out),
+                (args.form.crate_name.as_deref(), &args.form.out),
                 mode_of(args.form.dry_run, args.form.check),
                 args.locations.read_options(),
                 &definition_extensions().with_installed_handlers(&registry(&args.handlers)),
@@ -213,7 +213,7 @@ pub enum GenMode {
 pub fn generate(
     target: GenTarget,
     entries: &[&Path],
-    (crate_name, out): (&str, &Path),
+    (crate_name, out): (Option<&str>, &Path),
     mode: GenMode,
     options: ReadOptions,
     extensions: &Extensions,
@@ -234,6 +234,7 @@ pub fn generate(
         Err(codegen::Error::DefinitionRejected { records }) => return report_all(&records),
         Err(error) => return failed(form, &error),
     };
+    let crate_name = tree.crate_name();
     let noted = report_all(tree.notes());
     if noted != ExitStatus::Success {
         return noted;

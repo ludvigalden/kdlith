@@ -1,6 +1,6 @@
 error[KDLITH-CLI002]: the argument '--check' cannot be used with '--dry-run'
 
-Usage: kdlith gen schema --crate <NAME> --out <DIR> --check <FILES>...
+Usage: kdlith gen schema --out <DIR> --crate <NAME> --check <FILES>...
 
 For more information, try '--help'.
   help: Drop one of the conflicting options

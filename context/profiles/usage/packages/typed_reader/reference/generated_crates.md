@@ -2,9 +2,10 @@
 
 ## Generating
 
-`gen schema` requires `--crate NAME` (the
-published package name) and `--out DIR`, before the definition
-documents. A writing run records every path it owns in
+`gen schema` requires `--out DIR` before the definition documents.
+`--crate NAME` is the published package name; without it the crate
+is named after the schema with the `-kdl` suffix (the `parts` schema
+generates `parts-kdl`). A writing run records every path it owns in
 `DIR/kdlith-manifest` and refuses to overwrite an existing file the
 manifest does not own (`KDLITH-GEN001`, nothing written);
 generation never deletes anything.
@@ -56,7 +57,7 @@ generated, then the owned paths follow, one per line.
 # to overwrite a path this list does not own.
 #@ generator kdlith version="0.2.0"
 #@ form schema
-#@ crate parts-proc
+#@ crate parts-kdl
 #@ definition "parts" version="1"
 #@ packaging workspace
 Cargo.toml

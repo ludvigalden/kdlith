@@ -33,6 +33,9 @@ pub struct GeneratedTree {
     pub(crate) kind: DefinitionKind,
     /// How the manifest names the kdlith crates it depends on.
     pub(crate) packaging: Packaging,
+    /// The package name the generated crate publishes as: the given
+    /// `--crate`, or the definition's default.
+    pub(crate) crate_name: String,
 }
 
 impl GeneratedTree {
@@ -55,6 +58,11 @@ impl GeneratedTree {
     }
 
     /// How many files the tree holds.
+    /// The package name the generated crate publishes as.
+    pub fn crate_name(&self) -> &str {
+        &self.crate_name
+    }
+
     pub fn file_count(&self) -> usize {
         self.files.len()
     }
@@ -178,6 +186,7 @@ impl Emission<'_> {
             notes: Vec::new(),
             kind: self.kind,
             packaging: self.packaging,
+            crate_name: self.crate_name.clone(),
         })
     }
 

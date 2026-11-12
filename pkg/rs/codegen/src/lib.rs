@@ -235,16 +235,28 @@ pub(crate) fn dependency_dirs(kind: DefinitionKind) -> Vec<&'static str> {
     dirs
 }
 
+/// The package name a definition's crate defaults to: the definition's
+/// name with the `-kdl` suffix. A convention, not an enforced one —
+/// kdlith's own `kdlith-schema-kdl` and `kdlith-sources-kdl` carry the
+/// prefix.
+pub fn default_crate_name(definition: &Definition) -> String {
+    format!("{}-kdl", definition.name)
+}
+
 /// Generate the processor crate for `definition`, published as
-/// `crate_name`, its manifest naming the kdlith crates by `packaging`:
-/// deterministic bytes, nothing from the working tree. Write it with
-/// [`write`] or compare it with [`check`].
+/// `crate_name`, or under its [`default_crate_name`] when `None`; the
+/// manifest names the kdlith crates by `packaging`: deterministic
+/// bytes, nothing from the working tree. Write it with [`write`] or
+/// compare it with [`check`].
 pub fn generate(
     definition: &Definition,
-    crate_name: &str,
+    crate_name: Option<&str>,
     packaging: Packaging,
 ) -> Result<GeneratedTree, Error> {
-    let mut tree = model::Emission::new(definition, crate_name, packaging)?.emit()?;
+    let name = crate_name
+        .map(str::to_owned)
+        .unwrap_or_else(|| default_crate_name(definition));
+    let mut tree = model::Emission::new(definition, &name, packaging)?.emit()?;
     tree.notes.clone_from(&definition.notes);
     Ok(tree)
 }
@@ -255,7 +267,7 @@ pub fn generate(
 pub fn generate_meta_schema(
     entries: &[&Path],
     extensions: &Extensions,
-    crate_name: &str,
+    crate_name: Option<&str>,
     packaging: Packaging,
 ) -> Result<GeneratedTree, Error> {
     let definition = kdlith_schema_kdl::load_meta_schema(entries, extensions, CheckScope::Complete)
@@ -269,7 +281,7 @@ pub fn generate_meta_schema(
 pub fn generate_schema(
     entries: &[&Path],
     extensions: &Extensions,
-    crate_name: &str,
+    crate_name: Option<&str>,
     options: ReadOptions,
     packaging: Packaging,
 ) -> Result<GeneratedTree, Error> {

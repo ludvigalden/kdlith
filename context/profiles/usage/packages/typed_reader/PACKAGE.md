@@ -9,7 +9,7 @@ binds_to_depth: main...
 
 # The typed reader
 
-`kdlith gen schema --crate NAME --out DIR schema.kdl` writes a Rust
+`kdlith gen schema --out DIR schema.kdl` writes a Rust
 crate whose typed reader runs the same data reading `vet data`
 performs — imports, profiles, handlers, output policy, and the
 bound-result cache are decided by the engine's one data reader. A

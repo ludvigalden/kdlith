@@ -482,7 +482,7 @@ exercises. The keys beyond `binary` and `description`:
 Each entry of `steps` is an object carrying exactly one step kind:
 
 - `{ "generate": "out" }` or `{ "generate": { "out": "...", "args": [...] } }`
-  — run `kdlith gen <form> <entrypoint> --crate <crate> --out <out>`,
+  — run `kdlith gen schema <entrypoint> --crate <crate> --out <out>`,
   plus `--source NAME=DIR` for each `sources` entry; the object form's
   `args` (optional, never empty, strings only) append after that pinned
   argument shape in declared order, placeholders allowed, so a gen flag

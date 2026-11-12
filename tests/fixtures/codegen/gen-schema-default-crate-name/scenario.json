@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "gen schema without --crate names the generated package after the schema with the -kdl suffix: the parts schema generates the parts-kdl crate, and the written manifest records that crate name",
+  "args": ["gen", "schema", "schema.kdl", "--out", "out", "--kdlith-workspace"],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": ["ok: generated schema crate parts-kdl at out (11 owned files)\n"],
+    "files": {
+      "out/kdlith-manifest": "manifest.golden"
+    }
+  }
+}

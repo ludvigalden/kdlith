@@ -1,0 +1,9 @@
+{
+  "binary": "kdlith",
+  "description": "The committed sources-manifest schema, named kdlith-sources, takes the default crate name kdlith-sources-kdl when generated without --crate; the dry run writes nothing",
+  "args": ["gen", "schema", "--dry-run", "--out", "out", "{fx-suite}/../../pkg/kdl/schemas/sources/sources.kdl"],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": ["plan: schema crate kdlith-sources-kdl -> out ("]
+  }
+}

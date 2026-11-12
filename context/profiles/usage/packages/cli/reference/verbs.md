@@ -58,8 +58,9 @@ the tree's `digest`. `sources list` prints every source with its
 
 ## gen
 
-`gen schema` requires `--crate NAME` and
-`--out DIR` before the definition documents. `--dry-run` prints the
+`gen schema` requires `--out DIR` before the definition documents;
+`--crate NAME` names the published package and defaults to the
+schema's name with the `-kdl` suffix. `--dry-run` prints the
 plan and writes nothing; `--check` compares the generated tree
 against `--out` and reports drift (`KDLITH-GEN002`) without writing;
 the two modes exclude each other. A write over a path the run's
