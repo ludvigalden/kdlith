@@ -274,6 +274,7 @@ fn finish<'d>(
         document_rule: cx.document_rule,
         scope: cx.scope,
         notes: cx.diags.take_notes(),
+        runtime: crate::bind::RuntimeCell::default(),
     };
     if cx.scope == CheckScope::Complete {
         let describing = governing.unwrap_or(&definition);

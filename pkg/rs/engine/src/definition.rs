@@ -109,6 +109,9 @@ pub struct Definition {
     /// The advisory diagnostics its compilation raised, in detection
     /// order. They never fail a compilation and stay out of the digest.
     pub notes: Vec<DiagnosticRecord>,
+    /// What binding derives from the catalogs above, built on first use
+    /// and shared by every document the definition binds.
+    pub(crate) runtime: crate::bind::RuntimeCell,
 }
 
 impl Definition {
