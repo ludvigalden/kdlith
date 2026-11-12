@@ -7,7 +7,7 @@ Reading and linking now cost time and memory in proportion to the tree: linking 
 ### Breaking
 
 - Link a reading through a hashed identity index: `LinkInputs::new` takes the definition, `link_reading` and `check_reading` take the inputs alone, and a link's candidates are shared index entries
-- Keep nothing of a reading beyond its stream: `read_entry_contexts` returns no records, and a bound result's items are shared
+- Keep nothing of a reading beyond its stream: `read_entry_contexts` returns each entry's context without its records
 
 ### Added
 
@@ -22,6 +22,7 @@ Reading and linking now cost time and memory in proportion to the tree: linking 
 ### Fixed
 
 - Lay out generated use lists exactly as rustfmt does
+- Replay a repeated invocation exactly as binding gives it: its own source-context values, provenance, and container nodes
 
 ### Performance
 
@@ -36,7 +37,7 @@ Reading and linking now cost time and memory in proportion to the tree: linking 
 ### Migration
 
 - `LinkInputs::new` takes the definition, and `link_reading` and `check_reading` take the inputs alone; `index_identities`, `bind_references`, `derive_candidates`, `link`, and `Lookup` are gone. A link's candidates and a duplicate's declarations are `Arc<IndexedDeclaration>`, shared with the index; an indexed declaration keeps only the fields linking reads, and its labels are a shared slice. `Link::node`, `Link::field`, and their `BoundReference` twins are `Option<Arc<str>>`, and `BoundReference::declared` is the reference type's position among the definition's reference types. `IdentityIndex::domain` yields an iterator and `IdentityIndex::domains` the domain names.
-- `DataReader::read_entry_contexts` returns each entry's context without its records: only `cache refresh`'s reading indexes them. `BoundResult::items` is an `Rc<Vec<Item>>` shared with the reading's replay cache.
+- `DataReader::read_entry_contexts` returns each entry's context without its records: only `cache refresh`'s reading indexes them.
 
 ## 0.1.1 (2026-11-10)
 
