@@ -30,8 +30,8 @@ directory named `<case>`:
   string, comment, or children block left open at the end of input
   (`unterminated_empty_node_fail` only), and `KDLITH-SYN001` otherwise.
 
-At the pinned commit the suite holds 338 cases: 243 positive and 95 negative.
-All of them are imported.
+Every case of the suite at the pinned commit is imported, positive and
+negative alike.
 
 ## Declared elisions
 

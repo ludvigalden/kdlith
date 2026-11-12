@@ -14,8 +14,8 @@ The map is hand-maintained, and two invariants keep it honest:
    `kdlith-fixtures --fx-list` for the committed suite. A name that names
    no real scenario is a bug in this file.
 2. Every non-parse scenario in `--fx-list` output must appear somewhere in
-   the census tables below. `parse/kdl-spec` (243 scenarios, one per
-   upstream KDL v2 positive case) is covered as a single row: the official
+   the census tables below. `parse/kdl-spec` (one scenario per upstream
+   KDL v2 positive case) is covered as a single row: the official
    KDL v2 suite, traced in `parse/kdl-spec/PROVENANCE.md`. The upstream
    negative cases live one-per-scenario under `invalid/kdl-spec/` and are
    named individually in the code census.
@@ -36,8 +36,7 @@ are citations, not census entries; the reverse direction skips them. If
 the census is ever automated, its tokenizer must tell such paths from
 scenario names.
 
-Suite state at the time of writing: 1442 scenarios — 243 `parse/kdl-spec`,
-1199 others — all green. 50 of them are heavy (the codegen scenarios whose
+Every scenario is green. Some are heavy (the codegen scenarios whose
 steps compile a scratch workspace, marked `"heavy": true` in their
 manifests): a default harness run excludes them and prints the count it
 skipped, and they run deliberately through `--fx-heavy` or an explicit

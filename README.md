@@ -90,8 +90,8 @@ Heavy scenarios — the codegen family's scratch-workspace compiles, marked
 `--fx-heavy` (or name them with an explicit `--fx-filter`) to run them
 deliberately.
 
-The suite holds 1442 scenarios: the 243 positive cases of the official KDL v2
-test suite and 1199 kdlith scenarios. There are no unit tests.
+The suite holds over 1000 scenarios: every positive case of the official KDL
+v2 test suite and the kdlith scenarios. There are no unit tests.
 [`tests/fixtures/COVERAGE.md`](tests/fixtures/COVERAGE.md) maps every
 construct, diagnostic code, and command contract to the scenarios that
 cover it.
