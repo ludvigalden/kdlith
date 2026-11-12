@@ -1,0 +1,8 @@
+change replay-exact {
+    summary "Replay a repeated invocation exactly as binding gives it"
+    category fixed
+    impact public
+    touches "pkg/rs/engine" "input:fixtures"
+    commit "c86573297783bc15e968fc6fc56d91a5fb5ccc66"
+    detail "A reading replays a kept result for a later invocation of the same identity, but an identity left out three things an item shows. Documents of one text under different names replayed the first one's source-context values: three entries each holding the same node bound under the first file's locale. The values a document's own path supplies now join the context it is identified by, so each binds under its own, and cache refresh keys them apart. A replay showed the first invocation's provenance for the values its context fed it; the replay cache is now keyed by where the entered context's values came from as well, so the origins view traces each invocation to its own importer. A replayed scope completion named its container as a node of the first invocation's source; the container now moves with the completion. Whether an invocation binds or replays is no longer observable in any stream or view."
+}

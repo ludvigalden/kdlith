@@ -1,10 +1,10 @@
 release kdlith version="0.2.0" channel=stable {
     summary "Readings that scale with the tree"
     paragraph "Reading and linking now cost time and memory in proportion to the tree: linking is hash-indexed, a reading keeps only what it returns, and values are checked in place. A reading can also bind on demand, or bind import targets on several threads."
-    includes link-identity-index reading-keeps-nothing read-on-demand bind-ahead-threads changelog-from-relmap present-every-export-target codegen-use-list-width locate-line-index binding-tables-once invocation-path-index stream-output-blocks check-values-in-place scan-byte-runs typed-links-by-site
+    includes link-identity-index reading-keeps-nothing read-on-demand bind-ahead-threads changelog-from-relmap present-every-export-target codegen-use-list-width locate-line-index binding-tables-once invocation-path-index stream-output-blocks check-values-in-place scan-byte-runs typed-links-by-site replay-exact
     section breaking {
         item "Link a reading through a hashed identity index: `LinkInputs::new` takes the definition, `link_reading` and `check_reading` take the inputs alone, and a link's candidates are shared index entries" covers=link-identity-index
-        item "Keep nothing of a reading beyond its stream: `read_entry_contexts` returns no records, and a bound result's items are shared" covers=reading-keeps-nothing
+        item "Keep nothing of a reading beyond its stream: `read_entry_contexts` returns each entry's context without its records" covers=reading-keeps-nothing
     }
     section added {
         item "Read on demand with `ReadOptions::with_demand`, the typed reader's `demanding`, and `export --lazy`: bind only the nodes the wanted record types can come from" covers=read-on-demand
@@ -16,6 +16,7 @@ release kdlith version="0.2.0" channel=stable {
     }
     section fixed {
         item "Lay out generated use lists exactly as rustfmt does" covers=codegen-use-list-width
+        item "Replay a repeated invocation exactly as binding gives it: its own source-context values, provenance, and container nodes" covers=replay-exact
     }
     section performance {
         item "Locate spans through a line-start index" covers=locate-line-index
