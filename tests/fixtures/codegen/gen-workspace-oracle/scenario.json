@@ -72,7 +72,8 @@
             "parse",
             "runtime",
             "schema-kdl"
-          ]
+          ],
+          "documents": ["schemas/schema"]
         },
         "command": [
           "cargo",
@@ -125,7 +126,7 @@
         "command": [
           "sh",
           "-c",
-          "set -e; cargo metadata --offline --locked --format-version 1 --manifest-path \"$KDLITH_FX_REPO/Cargo.toml\" | jq -r '. as $m | ($m.packages | map({key: .id, value: .name}) | from_entries) as $name | ($m.resolve.nodes | map({key: .id, value: [.deps[] | select(any(.dep_kinds[]; .kind == null)) | .pkg]}) | from_entries) as $deps | [$m.packages[] | select(.name | IN(\"kdlith-diagnostic\", \"kdlith-engine\", \"kdlith-model\", \"kdlith-schema-kdl\")) | .id] as $start | {seen: $start, todo: $start} | until(.todo | length == 0; ([.todo[] | $deps[.][]] | unique) as $next | ($next - .seen) as $new | .seen += $new | .todo = $new) | .seen[] | $name[.] | select(startswith(\"kdlith-\"))' | sort > closure.txt; sed -n 's/^\\(kdlith-[a-z]*\\) = .*/\\1/p' consumer/.cargo/config.toml | sort > patched.txt; cat closure.txt; diff closure.txt patched.txt && echo closure-match"
+          "set -e; cargo metadata --offline --locked --format-version 1 --manifest-path \"$KDLITH_FX_REPO/Cargo.toml\" | jq -r '. as $m | ($m.packages | map({key: .id, value: .name}) | from_entries) as $name | ($m.resolve.nodes | map({key: .id, value: [.deps[] | select(any(.dep_kinds[]; .kind == null)) | .pkg]}) | from_entries) as $deps | [$m.packages[] | select(.name | IN(\"kdlith-diagnostic\", \"kdlith-engine\", \"kdlith-model\", \"kdlith-schema-kdl\")) | .id] as $start | {seen: $start, todo: $start} | until(.todo | length == 0; ([.todo[] | $deps[.][]] | unique) as $next | ($next - .seen) as $new | .seen += $new | .todo = $new) | .seen[] | $name[.] | select(startswith(\"kdlith-\"))' | sort > closure.txt; sed -n 's/^\\(kdlith-[a-z-]*\\) = .*/\\1/p' consumer/.cargo/config.toml | sort > patched.txt; cat closure.txt; diff closure.txt patched.txt && echo closure-match"
         ],
         "stdout-contains": [
           "kdlith-diagnostic\nkdlith-engine\nkdlith-model\nkdlith-parse\nkdlith-runtime\nkdlith-schema-kdl\nclosure-match\n"

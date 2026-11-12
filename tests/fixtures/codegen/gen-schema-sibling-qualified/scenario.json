@@ -30,7 +30,8 @@
             "parse",
             "runtime",
             "schema-kdl"
-          ]
+          ],
+          "documents": ["schemas/schema"]
         },
         "command": [
           "cargo",

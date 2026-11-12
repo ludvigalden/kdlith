@@ -14,7 +14,8 @@
       "compile": {
         "workspace": "ws",
         "copy": {
-          "crates": ["diagnostic", "engine", "model", "parse", "runtime", "schema-kdl"]
+          "crates": ["diagnostic", "engine", "model", "parse", "runtime", "schema-kdl"],
+          "documents": ["schemas/schema"]
         },
         "command": ["cargo", "build", "--offline", "--manifest-path", "ws/rs/expressions-proc/Cargo.toml"]
       }
