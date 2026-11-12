@@ -3,7 +3,10 @@
 
 use std::borrow::Cow;
 
-use crate::chars::{is_disallowed, is_identifier, is_newline, is_number_like, is_space};
+use crate::chars::{
+    blank_run, identifier_run, is_disallowed, is_identifier, is_newline, is_number_like, is_space,
+    space_run, string_run, text_run,
+};
 use crate::error::{Construct, ErrorKind, Limit, ParseError};
 use crate::event::{Number, NumberKind, Value};
 use crate::limits::Limits;
@@ -57,7 +60,24 @@ impl<'src> Scanner<'src> {
     }
 
     pub(crate) fn peek(&self) -> Option<char> {
+        let first = *self.src.as_bytes().get(self.at)?;
+        if first < 0x80 {
+            return Some(char::from(first));
+        }
         self.src[self.at..].chars().next()
+    }
+
+    /// The source from the cursor on, cut where a token begun at
+    /// `start` would pass the token limit: a run scanned over it stops
+    /// one byte past the limit at most, where [`Scanner::check_token`]
+    /// fails it exactly as a scan one code point at a time would.
+    fn within_token(&self, start: usize) -> &'src [u8] {
+        let bytes = self.src.as_bytes();
+        let stop = start
+            .saturating_add(self.limits.max_token_bytes)
+            .saturating_add(1)
+            .clamp(self.at, bytes.len());
+        &bytes[self.at..stop]
     }
 
     fn starts_with(&self, text: &str) -> bool {
@@ -128,6 +148,7 @@ impl<'src> Scanner<'src> {
     /// `single-line-comment` after its `//`, through its newline.
     pub(crate) fn line_comment(&mut self) -> Result<()> {
         loop {
+            self.at += text_run(&self.src.as_bytes()[self.at..]);
             match self.peek() {
                 None => return Ok(()),
                 Some(ch) if is_newline(ch) => {
@@ -206,6 +227,7 @@ impl<'src> Scanner<'src> {
     pub(crate) fn node_space(&mut self) -> Result<bool> {
         let start = self.at;
         loop {
+            self.at += space_run(&self.src.as_bytes()[self.at..]);
             match self.peek() {
                 Some(ch) if is_space(ch) => self.bump(ch),
                 Some('\\') => {
@@ -225,6 +247,8 @@ impl<'src> Scanner<'src> {
     /// `line-space*`.
     pub(crate) fn line_space(&mut self) -> Result<()> {
         loop {
+            // A CRLF is one newline, and either half is blank here.
+            self.at += blank_run(&self.src.as_bytes()[self.at..]);
             match self.peek() {
                 Some(ch) if is_space(ch) => self.bump(ch),
                 Some(ch) if is_newline(ch) => {
@@ -309,12 +333,16 @@ impl<'src> Scanner<'src> {
     }
 
     fn identifier(&mut self, start: usize) -> Result<&'src str> {
-        while let Some(ch) = self.peek() {
-            if !is_identifier(ch) {
-                break;
-            }
-            self.bump(ch);
+        loop {
+            self.at += identifier_run(self.within_token(start));
             self.check_token(start)?;
+            match self.peek() {
+                Some(ch) if !ch.is_ascii() && is_identifier(ch) => {
+                    self.bump(ch);
+                    self.check_token(start)?;
+                }
+                _ => break,
+            }
         }
         Ok(&self.src[start..self.at])
     }
@@ -395,6 +423,14 @@ impl<'src> Scanner<'src> {
         let mut decoded: Option<String> = None;
         loop {
             self.check_token(start)?;
+            let run = string_run(self.within_token(start));
+            if run > 0 {
+                if let Some(decoded) = &mut decoded {
+                    decoded.push_str(&self.src[self.at..self.at + run]);
+                }
+                self.at += run;
+                continue;
+            }
             match self.peek() {
                 None => return Err(self.unterminated(start)),
                 Some('"') if self.closes(1, hashes) => {
@@ -514,6 +550,15 @@ impl<'src> Scanner<'src> {
             let mut written = false;
             loop {
                 self.check_token(start)?;
+                let run = string_run(self.within_token(start));
+                if run > 0 {
+                    written = true;
+                    if !self.skip {
+                        decoded.push_str(&self.src[self.at..self.at + run]);
+                    }
+                    self.at += run;
+                    continue;
+                }
                 match self.peek() {
                     None => return Err(self.unterminated(start)),
                     Some('"') if self.closes(3, hashes) => {

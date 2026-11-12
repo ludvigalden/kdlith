@@ -120,13 +120,17 @@ fn line_starts(source: &str) -> Vec<u32> {
     let bytes = source.as_bytes();
     let mut starts = Vec::new();
     let mut at = 0;
-    while at < bytes.len() {
+    // Only these bytes begin a newline: the ASCII newlines, and the
+    // lead bytes of U+0085, U+2028, and U+2029.
+    let breaks = |byte: &u8| matches!(byte, 0x0A..=0x0D | 0xC2 | 0xE2);
+    while let Some(next) = bytes[at..].iter().position(breaks) {
+        at += next;
         let width = match bytes[at] {
             b'\n' if at > 0 && bytes[at - 1] == b'\r' => {
                 at += 1;
                 continue;
             }
-            b'\n' | b'\r' | 0x0B | 0x0C => 1,
+            0x0A..=0x0D => 1,
             // U+0085.
             0xC2 if bytes.get(at + 1) == Some(&0x85) => 2,
             // U+2028 and U+2029.

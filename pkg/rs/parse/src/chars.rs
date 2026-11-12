@@ -29,6 +29,95 @@ pub(crate) fn is_newline(ch: char) -> bool {
     matches!(ch, '\u{A}'..='\u{D}' | '\u{85}' | '\u{2028}' | '\u{2029}')
 }
 
+/// What an ASCII byte is to the scanner's hot loops, by its code. A
+/// byte at or above `0x80` starts a longer code point, which the
+/// code-point classes above decide.
+const ASCII: [u8; 128] = ascii_classes();
+
+/// A space or a tab.
+const SPACE: u8 = 1;
+/// A newline code point.
+const NEWLINE: u8 = 2;
+/// A disallowed literal code point.
+const DISALLOWED: u8 = 4;
+/// A code point no identifier holds besides the classes above.
+const PUNCTUATION: u8 = 8;
+/// A string delimiter or escape: `"` or `\`.
+const QUOTING: u8 = 16;
+
+const fn ascii_classes() -> [u8; 128] {
+    let mut classes = [0_u8; 128];
+    let mut code = 0;
+    while code < 128 {
+        let byte = code as u8;
+        let mut class = 0;
+        if matches!(byte, 0x09 | 0x20) {
+            class |= SPACE;
+        }
+        if matches!(byte, 0x0A..=0x0D) {
+            class |= NEWLINE;
+        }
+        if matches!(byte, 0x00..=0x08 | 0x0E..=0x1F | 0x7F) {
+            class |= DISALLOWED;
+        }
+        if matches!(
+            byte,
+            b'\\' | b'/' | b'(' | b')' | b'{' | b'}' | b';' | b'[' | b']' | b'"' | b'#' | b'='
+        ) {
+            class |= PUNCTUATION;
+        }
+        if matches!(byte, b'"' | b'\\') {
+            class |= QUOTING;
+        }
+        classes[code] = class;
+        code += 1;
+    }
+    classes
+}
+
+/// How many leading bytes of `bytes` are ASCII holding none of the
+/// classes in `stop`.
+fn ascii_run(bytes: &[u8], stop: u8) -> usize {
+    bytes
+        .iter()
+        .position(|byte| *byte >= 0x80 || ASCII[*byte as usize] & stop != 0)
+        .unwrap_or(bytes.len())
+}
+
+/// The leading ASCII identifier characters of `bytes`.
+pub(crate) fn identifier_run(bytes: &[u8]) -> usize {
+    ascii_run(bytes, SPACE | NEWLINE | DISALLOWED | PUNCTUATION)
+}
+
+/// The leading ASCII characters of `bytes` a single-line string holds
+/// as written: neither a delimiter, an escape, a newline, nor a
+/// disallowed code point.
+pub(crate) fn string_run(bytes: &[u8]) -> usize {
+    ascii_run(bytes, NEWLINE | DISALLOWED | QUOTING)
+}
+
+/// The leading ASCII characters of `bytes` a comment or a multi-line
+/// string line holds: neither a newline nor a disallowed code point.
+pub(crate) fn text_run(bytes: &[u8]) -> usize {
+    ascii_run(bytes, NEWLINE | DISALLOWED)
+}
+
+/// The leading spaces and tabs of `bytes`.
+pub(crate) fn space_run(bytes: &[u8]) -> usize {
+    bytes
+        .iter()
+        .position(|byte| !matches!(byte, 0x09 | 0x20))
+        .unwrap_or(bytes.len())
+}
+
+/// The leading spaces, tabs, and ASCII newlines of `bytes`.
+pub(crate) fn blank_run(bytes: &[u8]) -> usize {
+    bytes
+        .iter()
+        .position(|byte| !matches!(byte, 0x09..=0x0D | 0x20))
+        .unwrap_or(bytes.len())
+}
+
 /// `identifier-char`.
 pub(crate) fn is_identifier(ch: char) -> bool {
     !(is_disallowed(ch)
