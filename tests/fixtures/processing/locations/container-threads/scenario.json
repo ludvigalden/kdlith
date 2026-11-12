@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "--threads over documents holding containers: a document bound ahead of its turn gives its scope completion under its invocation's source, the container included, byte for byte the stream container-pattern pins on one thread",
+  "args": [
+    "vet",
+    "data",
+    "--threads",
+    "4",
+    "--schema",
+    "{fx-suite}/processing/locations/container-scope.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

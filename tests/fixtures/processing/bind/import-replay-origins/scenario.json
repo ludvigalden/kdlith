@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "A document instantiated four times under one projected context shows, in the origins view, the same provenance each time: its projected locale traces to the literal the importer wrote, in the importer (source 0), and its sources list names the importer beside itself, whether the invocation bound or replayed a kept result",
+  "args": [
+    "inspect",
+    "data",
+    "--view",
+    "origins",
+    "--schema",
+    "{fx-suite}/processing/bind/import-projection/schema.kdl",
+    "root.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

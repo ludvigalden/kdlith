@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A document holding a container, instantiated four times: each invocation's scope completion names the container as a node of that invocation's own source (1 through 4), whether the invocation bound or replayed a kept result",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/locations/container-scope.kdl",
+    "rep.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

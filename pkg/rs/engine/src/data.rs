@@ -310,8 +310,7 @@ pub struct BoundResult {
     /// entrypoint, the document, and its importer, as the reading
     /// showed them, in reading order.
     pub derivations: Vec<Derivation>,
-    /// The result's items, shared with the reading's own replay cache.
-    pub items: Rc<Vec<Item>>,
+    pub items: Vec<Item>,
     /// The source-set fingerprint of the reading that bound it: the
     /// named sources the reading used, each with the identity of the
     /// tree it read. `None` when it used none.
@@ -1295,9 +1294,33 @@ impl Outcome {
     }
 }
 
-/// A cached result's key: its invocation identity and the active
+/// A returned result's key: its invocation identity and the active
 /// profiles it bound under.
 type ResultKey = (InvocationIdentity, Vec<Sym>);
+
+/// A replayable result's key: its [`ResultKey`] and the provenance of
+/// the context it bound under. Provenance is not semantics, so it is no
+/// part of an invocation's identity, but an item carries the trace of
+/// every value its context fed it: only an invocation entered under
+/// the same values from the same places replays as binding it would.
+type ReplayKey = (InvocationIdentity, Vec<Sym>, u64);
+
+/// The provenance of the context one invocation enters under: where
+/// each slot's value came from, in slot order.
+fn provenance(context: Option<&Context>, slots: &[SlotId]) -> u64 {
+    use std::hash::{Hash, Hasher};
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    for slot in slots {
+        match context.and_then(|context| context.get(*slot)) {
+            Some(held) => {
+                held.origin.hash(&mut hasher);
+                held.trace.origins().hash(&mut hasher);
+            }
+            None => 0_u8.hash(&mut hasher),
+        }
+    }
+    hasher.finish()
+}
 
 /// What a cached result's binding left beyond its items.
 #[derive(Clone)]
@@ -1356,14 +1379,14 @@ struct Reading<'r, 'd> {
     /// its result. A second invocation of the same semantics is kept,
     /// so a third replays: only a document invoked repeatedly ever costs
     /// the memory of its items.
-    seen: HashSet<ResultKey>,
+    seen: HashSet<ReplayKey>,
     /// The bound-result cache: the items of one invocation, under the
     /// canonical source identity, by their invocation semantics and the
     /// active profiles they bound under, so a repeated invocation with
     /// equal semantics under the same selection replays instead of
     /// rebinding. A reading returning its results keeps every result;
     /// any other keeps one from its second invocation on.
-    bound: HashMap<ResultKey, Rc<Vec<Item>>>,
+    bound: HashMap<ReplayKey, Rc<Vec<Item>>>,
     /// Every result the bound-result cache took, in insertion order.
     results: Vec<BoundResult>,
     /// The position of each cached identity's result in `results`.
@@ -1371,7 +1394,7 @@ struct Reading<'r, 'd> {
     /// What each cached result's binding left beyond its items — its
     /// context, whether it consulted the value resolver, and its records'
     /// contexts — so a document replayed from the cache reports the same.
-    left: HashMap<ResultKey, Left>,
+    left: HashMap<ReplayKey, Left>,
     /// The records the entry document being read and its imports bound
     /// or replayed so far, and whether any of their bindings consulted
     /// the value resolver; taken when the entry's root completes.
@@ -1449,12 +1472,32 @@ impl Reading<'_, '_> {
             self.local.insert(shown.to_owned(), sha);
         }
         self.invocations.supply_revision(id, revision);
-        let identity = self.invocations.get(id).and_then(|i| i.identity());
+        let def = self.reader.def;
+        let identity = self
+            .invocations
+            .get(id)
+            .and_then(|i| i.identity())
+            .map(|mut identity| {
+                // A source-context value is derived from the document's
+                // own path and set before its first node binds: it is
+                // part of the context the document binds under, so two
+                // documents of one text under different names are two
+                // identities.
+                if def.source_context.is_some() {
+                    let mut entered = context
+                        .clone()
+                        .unwrap_or_else(|| Context::new(def.plan.context.layout.clone()));
+                    let _ = crate::source_context::apply(def, &mut entered, shown);
+                    identity.context = entered.fingerprint();
+                }
+                identity
+            });
         let digest = revision_digest(revision);
         if let Some(entering) = &mut self.entering {
             entering(&entry_values(self.reader.def, context.as_ref(), shown));
         }
-        let key = identity.map(|identity| (identity, self.selection.members().to_vec()));
+        let entered = provenance(context.as_ref(), &self.slots);
+        let key = identity.map(|identity| (identity, self.selection.members().to_vec(), entered));
         let cached = key.as_ref().and_then(|key| self.bound.get(key)).cloned();
         let Some(cached) = cached else {
             let document = (shown, digest.as_str(), text);
@@ -1483,7 +1526,9 @@ impl Reading<'_, '_> {
             self.consulted |= consulted;
             self.capture(id, shown, values);
         }
-        if let Some(at) = key.and_then(|key| self.result_of.get(&key).copied()) {
+        let returned =
+            key.and_then(|(identity, active, _)| self.result_of.get(&(identity, active)).copied());
+        if let Some(at) = returned {
             let derivation = self.derivation(id);
             self.results[at].derivations.push(derivation);
         }
@@ -1550,7 +1595,7 @@ impl Reading<'_, '_> {
         id: InvocationId,
         (shown, digest, text): (&str, &str, &str),
         context: Option<Context>,
-        key: Option<ResultKey>,
+        key: Option<ReplayKey>,
     ) {
         let def = self.reader.def;
         let context = context.unwrap_or_else(|| Context::new(def.plan.context.layout.clone()));
@@ -1611,7 +1656,7 @@ impl Reading<'_, '_> {
         id: InvocationId,
         (shown, digest, text): (&str, &str, &str),
         bound: Bound,
-        key: Option<ResultKey>,
+        key: Option<ReplayKey>,
     ) {
         let mut binding = self.begin(id, (shown, digest, text), key.as_ref());
         for (item, values) in bound.items {
@@ -1638,7 +1683,7 @@ impl Reading<'_, '_> {
         &mut self,
         id: InvocationId,
         (shown, digest, text): (&str, &str, &str),
-        key: Option<&ResultKey>,
+        key: Option<&ReplayKey>,
     ) -> Binding {
         let source = SourceId(u32::try_from(id.index()).unwrap_or(u32::MAX));
         let revision = self
@@ -1719,7 +1764,7 @@ impl Reading<'_, '_> {
 
     /// Close one document's binding: capture what its root left and,
     /// when its result is kept, cache it for replay.
-    fn finish(&mut self, binding: Binding, shown: &str, key: Option<ResultKey>, left: Leaving) {
+    fn finish(&mut self, binding: Binding, shown: &str, key: Option<ReplayKey>, left: Leaving) {
         let failed = self.failed || left.failed;
         self.failed = failed;
         let consulted = left.consulted;
@@ -1728,12 +1773,12 @@ impl Reading<'_, '_> {
         if !binding.cacheable || failed || self.broken.is_some() {
             return;
         }
-        let Some((identity, active)) = key else {
+        let Some((identity, active, entered)) = key else {
             return;
         };
         if !binding.keeping {
             // The next invocation of these semantics keeps its result.
-            self.seen.insert((identity, active));
+            self.seen.insert((identity, active, entered));
             return;
         }
         // Resolved values join the identity, so a changed one misses. A
@@ -1747,22 +1792,45 @@ impl Reading<'_, '_> {
         } else {
             identity
         };
-        let derivation = self.derivation(binding.id);
-        let key = (identity, active);
-        // A result the session lookup could not find before binding (its
-        // resolved values were not yet known) may equal one already
-        // cached: it is one result, derived twice.
-        if let Some(&at) = self.result_of.get(&key) {
-            self.results[at].derivations.push(derivation);
+        if self.mode.results {
+            let derivation = self.derivation(binding.id);
+            match self.result_of.get(&(identity, active.clone())) {
+                // A result the session lookup could not find before
+                // binding (its resolved values were not yet known, or
+                // its context came from other places) may equal one
+                // already returned: it is one result, derived twice.
+                Some(&at) => self.results[at].derivations.push(derivation),
+                None => {
+                    self.result_of
+                        .insert((identity, active.clone()), self.results.len());
+                    // The returned result holds its items under one
+                    // canonical source identity, so equal semantics give
+                    // equal items wherever the invocation sat.
+                    let items = binding
+                        .own
+                        .iter()
+                        .map(|item| {
+                            let mut item = item.clone();
+                            remap(&mut item, SourceId(0));
+                            item
+                        })
+                        .collect();
+                    self.results.push(BoundResult {
+                        identity,
+                        derivations: vec![derivation],
+                        items,
+                        sources: None,
+                    });
+                }
+            }
+        }
+        // The replay cache keeps the items under the source they bound
+        // as: a replay moves exactly the locations in that source, and
+        // leaves those its context brought from another.
+        let key = (identity, active, entered);
+        if self.bound.contains_key(&key) {
             return;
         }
-        // One copy of the items, under the canonical source identity,
-        // serves both the replay cache and the returned result.
-        let mut own = binding.own;
-        for item in &mut own {
-            remap(item, SourceId(0));
-        }
-        let own = Rc::new(own);
         let left = Left {
             values: left.values,
             consulted,
@@ -1770,16 +1838,7 @@ impl Reading<'_, '_> {
             bound: binding.bound,
         };
         self.left.insert(key.clone(), left);
-        if self.mode.results {
-            self.result_of.insert(key.clone(), self.results.len());
-            self.results.push(BoundResult {
-                identity,
-                derivations: vec![derivation],
-                items: own.clone(),
-                sources: None,
-            });
-        }
-        self.bound.insert(key, own);
+        self.bound.insert(key, Rc::new(binding.own));
     }
 
     /// Keep the context an entry document's root invocation left, with
@@ -2121,7 +2180,15 @@ fn remap(item: &mut Item, source: SourceId) {
             expansion.site.relocate(from, source);
         }
         Item::ScopeComplete(completion) => {
-            *completion = kdlith_model::ScopeCompletion::new(source, completion.scope);
+            // The container whose scope completed is a node of the same
+            // document.
+            let scope = completion.scope.map(|mut node| {
+                if node.source == completion.source {
+                    node.source = source;
+                }
+                node
+            });
+            *completion = kdlith_model::ScopeCompletion::new(source, scope);
         }
         // A diagnostic names its document by path, and an item variant
         // this version's replay does not know keeps its original

@@ -1,0 +1,27 @@
+schema found version="1" {
+    types {
+        object Part {
+            field id String
+        }
+    }
+    locations {
+        patterns star=#true
+    }
+    node part role=record type=Part {
+        field id arg=0
+    }
+    node inner role=record type=Part parent=box {
+        field id arg=0
+    }
+    node box role=container {
+        children inner
+    }
+    node use role=source-import {
+        field path String arg=0
+        field repeated "optional<String>" property=repeated
+        field namespace "optional<String>" property=as
+    }
+    document {
+        following part use box
+    }
+}

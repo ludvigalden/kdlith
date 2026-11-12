@@ -1,0 +1,10 @@
+{"item":"document","data":{"source":0,"path":"sv-se.kdl"}}
+{"item":"record","data":{"node":{"source":0,"index":0},"type_name":"Entry","fields":[{"name":"id","value":{"kind":"string","value":"x"},"origin":0},{"name":"locale","value":{"kind":"string","value":"sv-se"},"origin":0}],"origin":0,"validation":"valid"}}
+{"item":"scope-complete","data":{"source":0,"scope":null}}
+{"item":"document","data":{"source":1,"path":"en-gb.kdl"}}
+{"item":"record","data":{"node":{"source":1,"index":0},"type_name":"Entry","fields":[{"name":"id","value":{"kind":"string","value":"x"},"origin":0},{"name":"locale","value":{"kind":"string","value":"en-gb"},"origin":0}],"origin":0,"validation":"valid"}}
+{"item":"scope-complete","data":{"source":1,"scope":null}}
+{"item":"document","data":{"source":2,"path":"fr-fr.kdl"}}
+{"item":"record","data":{"node":{"source":2,"index":0},"type_name":"Entry","fields":[{"name":"id","value":{"kind":"string","value":"x"},"origin":0},{"name":"locale","value":{"kind":"string","value":"fr-fr"},"origin":0}],"origin":0,"validation":"valid"}}
+{"item":"scope-complete","data":{"source":2,"scope":null}}
+{"item":"sources","data":{"sources":[{"name":null,"kind":"local","identity":"sha256:785245c55a18b55ae919b194260b440c16ebd38cf20bcfdca4bd91b061d84e74","overridden":false}]}}
