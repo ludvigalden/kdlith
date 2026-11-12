@@ -302,35 +302,18 @@ pub struct Reading<T> {
     report: Option<LinkReport>,
     diagnostics: Vec<DiagnosticRecord>,
     failed: bool,
-    /// Each linked reference's link, by its site and what it names:
-    /// references a slot or fallback feeds share their node's site, so
-    /// the site alone does not tell them apart.
-    sites: HashMap<LinkKey, (usize, usize)>,
+    /// Each linked reference's link, by its site: the first link made
+    /// at a site, as its reference type's position and its own among
+    /// that type's links.
+    sites: HashMap<Location, (u32, u32)>,
+    /// The further links made at one site: references a slot or
+    /// fallback feeds share their node's site, so the site alone does
+    /// not tell them apart, and what each names does.
+    shared: HashMap<Location, Vec<(u32, u32)>>,
     /// Each typed declaration's item, by node.
     declarations: HashMap<NodeId, usize>,
     /// The source set the reading resolved its assets against.
     assets: Option<AssetSet>,
-}
-
-/// What names one linked reference of a reading: where it was bound,
-/// and the domain, name segments, and qualifiers it looks up.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-struct LinkKey {
-    site: Location,
-    domain: String,
-    name: Vec<String>,
-    qualifiers: Vec<(String, String)>,
-}
-
-impl LinkKey {
-    fn new(site: Location, domain: &str, name: &[String], qualifiers: &[(String, String)]) -> Self {
-        Self {
-            site,
-            domain: domain.to_owned(),
-            name: name.to_vec(),
-            qualifiers: qualifiers.to_vec(),
-        }
-    }
 }
 
 impl<T> Reading<T> {
@@ -355,18 +338,22 @@ impl<T> Reading<T> {
                 _ => {}
             }
         }
-        let mut sites = HashMap::new();
+        let mut sites: HashMap<Location, (u32, u32)> = HashMap::new();
+        let mut shared: HashMap<Location, Vec<(u32, u32)>> = HashMap::new();
         if let Some(report) = &report {
             diagnostics.extend(report.diagnostics.iter().cloned());
+            let position = |at: usize| u32::try_from(at).unwrap_or(u32::MAX);
             for (kind, entry) in report.types.iter().enumerate() {
                 for (at, link) in entry.links.iter().enumerate() {
-                    let key = LinkKey::new(
-                        link.reference.site,
-                        &link.reference.domain,
-                        &link.reference.name.0,
-                        &link.reference.qualifiers,
-                    );
-                    sites.entry(key).or_insert((kind, at));
+                    let held = (position(kind), position(at));
+                    match sites.entry(link.reference.site) {
+                        std::collections::hash_map::Entry::Vacant(first) => {
+                            first.insert(held);
+                        }
+                        std::collections::hash_map::Entry::Occupied(_) => {
+                            shared.entry(link.reference.site).or_default().push(held);
+                        }
+                    }
                 }
             }
         }
@@ -379,6 +366,7 @@ impl<T> Reading<T> {
             diagnostics,
             failed: failed || gated,
             sites,
+            shared,
             declarations,
             assets,
         }
@@ -459,14 +447,18 @@ impl<T> Reading<T> {
     /// namespaces that hid a match; `resolve` reports them only on
     /// failure, so a resolved reference's gate list is read here.
     pub fn link_of<V>(&self, reference: &Ref<V>) -> Option<&Link> {
-        let key = LinkKey::new(
-            reference.site(),
-            reference.domain(),
-            reference.name(),
-            reference.qualifiers(),
-        );
-        let (kind, at) = *self.sites.get(&key)?;
-        self.report.as_ref()?.types.get(kind)?.links.get(at)
+        let site = reference.site();
+        let report = self.report.as_ref()?;
+        let first = self.sites.get(&site)?;
+        let further = self.shared.get(&site).map_or(&[][..], Vec::as_slice);
+        std::iter::once(first)
+            .chain(further)
+            .filter_map(|(kind, at)| report.types.get(*kind as usize)?.links.get(*at as usize))
+            .find(|link| {
+                link.reference.domain == reference.domain()
+                    && link.reference.name.0 == reference.name()
+                    && link.reference.qualifiers == reference.qualifiers()
+            })
     }
 
     /// The fully qualified identity `reference` resolved to — the one
