@@ -1,0 +1,9 @@
+change link-identity-index {
+    summary "Link a reading through a hashed identity index"
+    category breaking
+    impact breaking
+    touches "pkg/rs/engine" "pkg/rs/cli"
+    commit "9ed45107dbb30cc957ff97e139c8897e5f1b9f17"
+    detail "Linking found duplicates and candidates by scanning each identity domain, paired references by scanning every reference, and kept a copy of every declaration and every item holding a reference, so its cost grew with the square of the reading: vet data over a tree of 3,434 documents and 239,000 declarations did not finish in ten minutes and now links in under a second, with the same diagnostics byte for byte. LinkInputs reads each item as it streams and keeps one compact index entry per declaration and one bound reference per reference; the identity index hashes each domain by composed name, and a lookup probes for the identity its reference determines, narrowing by the innermost determined segment when one stays open. check_reading reports the verdict with the failed links alone, which vet data and export use; link_reading reports every link."
+    migration "`LinkInputs::new` takes the definition, and `link_reading` and `check_reading` take the inputs alone; `index_identities`, `bind_references`, `derive_candidates`, `link`, and `Lookup` are gone. A link's candidates and a duplicate's declarations are `Arc<IndexedDeclaration>`, shared with the index; an indexed declaration keeps only the fields linking reads, and its labels are a shared slice. `Link::node`, `Link::field`, and their `BoundReference` twins are `Option<Arc<str>>`, and `BoundReference::declared` is the reference type's position among the definition's reference types. `IdentityIndex::domain` yields an iterator and `IdentityIndex::domains` the domain names."
+}

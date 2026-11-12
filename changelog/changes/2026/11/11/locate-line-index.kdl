@@ -1,0 +1,8 @@
+change locate-line-index {
+    summary "Locate spans through a line-start index"
+    category performance
+    impact public
+    touches "pkg/rs/parse"
+    commit "69263d07901523031a89f0adc677c2e0bce0575f"
+    detail "Resolving a span's line and column rescanned the document from a checkpoint for every span that lay before the previous one, and a binder locates each node's spans out of order, so locating cost time quadratic in a document's size and half of a reading's time. The locator now indexes the document's line starts once, on its first lookup; each later lookup is a binary search and a count over one line's prefix, and a lookup on the line of the one before it is the count alone."
+}

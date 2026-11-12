@@ -1,0 +1,8 @@
+change stream-output-blocks {
+    summary "Write item streams and exports in blocks"
+    category performance
+    impact public
+    touches "pkg/rs/cli" "pkg/rs/runtime"
+    commit "1e8404ee133f4f25c5177924badc20ba241be53f"
+    detail "vet data, inspect, and list wrote their item streams through the line-buffered standard output, a write for every kilobyte, and export to a file took a write for every token its encoder produced. Item streams are gathered in 64 KiB blocks and flushed before anything is reported on standard error, so the order of the two streams is unchanged; an export encodes each line once and writes it whole, so provisional delivery still shows every completed line as soon as it is written."
+}

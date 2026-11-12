@@ -1,3 +1,43 @@
+## 0.2.0 (2026-11-12)
+
+Readings that scale with the tree
+
+Reading and linking now cost time and memory in proportion to the tree: linking is hash-indexed, a reading keeps only what it returns, and values are checked in place. A reading can also bind on demand, or bind import targets on several threads.
+
+### Breaking
+
+- Link a reading through a hashed identity index: `LinkInputs::new` takes the definition, `link_reading` and `check_reading` take the inputs alone, and a link's candidates are shared index entries
+- Keep nothing of a reading beyond its stream: `read_entry_contexts` returns no records, and a bound result's items are shared
+
+### Added
+
+- Read on demand with `ReadOptions::with_demand`, the typed reader's `demanding`, and `export --lazy`: bind only the nodes the wanted record types can come from
+- Bind the documents an import fans out to on several threads with `ReadOptions::with_threads` and `--threads N`, with the same stream
+
+### Changed
+
+- Print the changelog and version from relmap at build time
+- Present every relmap export target from `kdlith changelog`
+
+### Fixed
+
+- Lay out generated use lists exactly as rustfmt does
+
+### Performance
+
+- Locate spans through a line-start index
+- Build binding tables and patterns once per definition
+- Find a repeated invocation by its path
+- Write item streams and exports in blocks
+- Check bound values without copying them
+- Scan runs of plain bytes at once
+- Find a typed reading's links by site
+
+### Migration
+
+- `LinkInputs::new` takes the definition, and `link_reading` and `check_reading` take the inputs alone; `index_identities`, `bind_references`, `derive_candidates`, `link`, and `Lookup` are gone. A link's candidates and a duplicate's declarations are `Arc<IndexedDeclaration>`, shared with the index; an indexed declaration keeps only the fields linking reads, and its labels are a shared slice. `Link::node`, `Link::field`, and their `BoundReference` twins are `Option<Arc<str>>`, and `BoundReference::declared` is the reference type's position among the definition's reference types. `IdentityIndex::domain` yields an iterator and `IdentityIndex::domains` the domain names.
+- `DataReader::read_entry_contexts` returns each entry's context without its records: only `cache refresh`'s reading indexes them. `BoundResult::items` is an `Rc<Vec<Item>>` shared with the reading's replay cache.
+
 ## 0.1.1 (2026-11-10)
 
 Generator provenance moves into the manifest

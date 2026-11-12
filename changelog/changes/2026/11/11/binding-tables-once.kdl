@@ -1,0 +1,8 @@
+change binding-tables-once {
+    summary "Build binding tables and patterns once per definition"
+    category performance
+    impact public
+    touches "pkg/rs/engine"
+    commit "2285cb1491614fb4872c90f63fa17e66dd21b37b"
+    detail "Each document's binder rebuilt the definition's binding tables and recompiled every declared pattern, which dominated a reading of many small documents. A compiled definition now holds both as derived state, built on first use and shared by every document it binds, on any thread."
+}

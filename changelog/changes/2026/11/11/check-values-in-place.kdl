@@ -1,0 +1,8 @@
+change check-values-in-place {
+    summary "Check bound values without copying them"
+    category performance
+    impact public
+    touches "pkg/rs/engine" "pkg/rs/parse"
+    commit "894c5b8d4dc8affad0f4f68d1a43231847efd5ed"
+    detail "For every value, the binder cloned its field's whole table entry and type expression, spelled its node.field label, resolved its line and column, and copied the context's qualifier, and the decoder returned a fresh copy of each value it accepted. A check now borrows the definition's tables, says whether the value stands as it is or what it decodes to, resolves the site only when the decoded value records it, and spells the label only when a diagnostic is reported; a reference's codec captures are read by group position; and an item takes its traces and reads only what its role needs. Binding allocates about half as often."
+}
