@@ -1,6 +1,6 @@
 //! Demand-driven reading: bind only the nodes a wanted record type
 //! can come from; skip the rest to their end. Nodes with sibling
-//! effects, imports, and ancestors of demanded nodes stay bound.
+//! effects, imports, descendant-counted nodes, and their ancestors stay.
 
 use std::collections::HashSet;
 
@@ -22,13 +22,23 @@ pub(crate) fn skips(def: &Definition, demand: &[String]) -> Result<Vec<bool>, St
             .ok_or_else(|| name.clone())?;
         wanted.insert(declared);
     }
+    // A descendant rule counts the nodes of one name anywhere below its
+    // owner, so a node of a counted name is never passed over, nor is
+    // anything it is written inside.
+    let counted: HashSet<Sym> = def
+        .bindings
+        .iter()
+        .flat_map(|(_, decl)| decl.descendants.iter().map(|rule| rule.name))
+        .collect();
     // A node is live when its own item is demanded, when it is an import
-    // or leaves effects, or when a live node can be written inside it.
+    // or leaves effects, when a rule counts it wherever it is written,
+    // or when a live node can be written inside it.
     let mut live: Vec<bool> = def
         .bindings
         .iter()
         .map(|(id, decl)| {
             decl.role == Some(Role::SourceImport)
+                || counted.contains(&decl.name)
                 || binds_as(decl).any(|ty| wanted.contains(&ty))
                 || def.plan.node(id).is_some_and(|plan| {
                     !plan.children_effects.steps.is_empty()

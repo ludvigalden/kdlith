@@ -1,0 +1,22 @@
+{
+  "binary": "kdlith",
+  "description": "--lazy keeps bound every node a descendant rule counts: box requires at least one thing anywhere below it, written inside mid, so mid and its thing bind although only Other is emitted, the rule is met, and the one Other record exports as the full export writes it",
+  "args": [
+    "export",
+    "--schema",
+    "schema.kdl",
+    "--emit",
+    "Other",
+    "--format",
+    "ndjson",
+    "--scope",
+    "local",
+    "--lazy",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}
