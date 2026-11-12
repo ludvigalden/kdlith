@@ -302,6 +302,9 @@ pub struct Binder<'d, 's> {
     /// (parent node, node name, key value), counted in close order within
     /// this document.
     ordinals: HashMap<(Option<NodeId>, Sym, String), u64>,
+    /// Under a demand, the node declarations whose nodes are skipped
+    /// where they open, by declaration.
+    skips: Option<std::sync::Arc<[bool]>>,
     errors: u64,
 }
 
@@ -406,6 +409,7 @@ impl<'d, 's> Binder<'d, 's> {
             window: None,
             window_parent: None,
             ordinals: HashMap::new(),
+            skips: None,
             resolved_secret: false,
             errors: 0,
         }
@@ -966,8 +970,7 @@ impl<'d, 's> Binder<'d, 's> {
         // every case field, and the supplies parked against gated fields
         // resolve with it before any gated field finalizes.
         let mut matched: Option<Option<usize>> = None;
-        for at in 0..count {
-            let info = &infos[at];
+        for (at, info) in infos.iter().enumerate() {
             if info.case.is_some() && matched.is_none() {
                 matched = Some(self.case_index(frame, &values));
                 self.resolve_parked(cx, frame, matched.flatten());
@@ -3681,6 +3684,17 @@ impl<'s> Processor for Binder<'_, 's> {
                 return Disposition::Skip;
             }
         }
+        // Under a demand, a node nothing demanded can come from is
+        // admitted and counted where it stands, then passed over, its
+        // nodes numbered so every later node keeps its number.
+        if let Kind::Declared { decl, .. } = kind
+            && self
+                .skips
+                .as_ref()
+                .is_some_and(|skips| skips.get(decl.index()).copied().unwrap_or(false))
+        {
+            return Disposition::Pass;
+        }
         if node.annotated {
             self.diagnose(
                 cx,
@@ -4258,6 +4272,16 @@ impl<'d, 's> BindingSession<'d, 's> {
     #[must_use]
     pub fn under_policy(mut self, output_policy: Option<OutputPolicy>) -> Self {
         self.session.processor_mut().output_policy = output_policy;
+        self
+    }
+
+    /// The session skipping, where they open, the nodes of every node
+    /// declaration `skips` marks: a reading's demand, as
+    /// [`crate::ReadOptions::with_demand`] derives it. Set before the
+    /// first item is taken.
+    #[must_use]
+    pub(crate) fn skipping(mut self, skips: Option<std::sync::Arc<[bool]>>) -> Self {
+        self.session.processor_mut().skips = skips;
         self
     }
 

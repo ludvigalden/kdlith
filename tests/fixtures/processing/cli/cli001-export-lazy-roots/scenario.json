@@ -1,0 +1,25 @@
+{
+  "binary": "kdlith",
+  "description": "--lazy with --emit roots is an argument fault: there is no type whose nodes alone to bind; exit 2 under KDLITH-CLI001, nothing is read",
+  "args": [
+    "export",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "entry.kdl",
+    "--emit",
+    "roots",
+    "--scope",
+    "local",
+    "--format",
+    "ndjson",
+    "--lazy"
+  ],
+  "expect": {
+    "exit": 2,
+    "stderr-contains": [
+      "error[KDLITH-CLI001]"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

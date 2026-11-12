@@ -1,0 +1,22 @@
+{
+  "binary": "kdlith",
+  "description": "--lazy binds only the nodes the emitted type can come from: the section holding the items and the import still bind, the group declaration and the setting record are passed over unread, and the three items stream byte for byte as the same export without --lazy streams them (emit-type), each under the node index a full reading gives it",
+  "args": [
+    "export",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "entry.kdl",
+    "--emit",
+    "Item",
+    "--format",
+    "ndjson",
+    "--scope",
+    "local",
+    "--lazy"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

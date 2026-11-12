@@ -1,0 +1,8 @@
+locale sv-se
+group imported {
+    label i "Imported"
+}
+section "Other" {
+    public
+    item three kind=book
+}

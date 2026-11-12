@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "--threads binds the documents an import fans out to ahead of their turn on other threads and gives their items in the order one thread gives them: the same pattern import as pattern-local streams byte for byte what it streams there, each part under its own source in portable-path-byte order",
+  "args": [
+    "vet",
+    "data",
+    "--threads",
+    "4",
+    "--schema",
+    "{fx-suite}/processing/locations/schema.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

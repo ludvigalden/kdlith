@@ -29,6 +29,14 @@ pub(crate) fn run(args: ExportArgs) -> ExitStatus {
         SensitiveArg::Omit => OutputPolicy::Omit,
         SensitiveArg::Redact => OutputPolicy::Redact,
     });
+    // A lazy export binds what one type can come from and links nothing:
+    // it has a type to follow and no reference to resolve.
+    if args.lazy && (args.emit == "roots" || !matches!(args.scope, crate::ScopeArg::Local)) {
+        return crate::usage::report_invalid_argument(
+            "the argument '--lazy' requires '--emit <TYPE>' and '--scope local'",
+        );
+    }
+    let lazy = args.lazy;
     let options = match args
         .profiles
         .data_options(args.locations, args.handlers)
@@ -40,13 +48,13 @@ pub(crate) fn run(args: ExportArgs) -> ExitStatus {
         Ok(options) => options,
         Err(status) => return status,
     };
-    export(
+    export_with(
         &args.schema,
         &paths(&args.files),
         &emit,
         (delivery, policy),
         args.output.as_deref(),
-        &options,
+        (&options, lazy),
     )
 }
 
@@ -70,9 +78,22 @@ pub fn export(
     schema: &Path,
     entries: &[&Path],
     emit: &Emit,
-    (delivery, policy): (Delivery, Option<OutputPolicy>),
+    delivery: (Delivery, Option<OutputPolicy>),
     output: Option<&Path>,
     options: &DataOptions,
+) -> ExitStatus {
+    export_with(schema, entries, emit, delivery, output, (options, false))
+}
+
+/// [`export`], lazily when `lazy`: the reading demands the emitted type
+/// alone, binding only the nodes it can come from and linking nothing.
+fn export_with(
+    schema: &Path,
+    entries: &[&Path],
+    emit: &Emit,
+    (delivery, policy): (Delivery, Option<OutputPolicy>),
+    output: Option<&Path>,
+    (options, lazy): (&DataOptions, bool),
 ) -> ExitStatus {
     let extensions = options.extensions();
     let definition = match options.load_schema(schema, &extensions) {
@@ -82,6 +103,9 @@ pub fn export(
     let mut read_options = options.read_options();
     if let Some(policy) = policy {
         read_options = read_options.with_output_policy(policy);
+    }
+    if let (true, Emit::Type(name)) = (lazy, emit) {
+        read_options = read_options.with_demand([name.clone()]);
     }
     let reader = options.reader(&definition);
     let outcome = export_read(

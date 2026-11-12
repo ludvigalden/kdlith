@@ -1,0 +1,11 @@
+locale en-gb
+group shelf {
+    label a "First"
+}
+section "Main" {
+    public
+    item one kind=book
+    item two kind=film
+}
+setting shelf "on"
+use "imported.kdl"

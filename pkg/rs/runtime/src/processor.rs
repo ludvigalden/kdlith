@@ -18,6 +18,11 @@ pub enum Disposition<F> {
     /// Ignore the node and its whole subtree; no further callbacks run
     /// for it and it requests no effects.
     Skip,
+    /// Pass over the node and its whole subtree as [`Disposition::Skip`]
+    /// does, numbering every node inside it as binding them would: the
+    /// nodes after it keep the numbers a session that bound it gives
+    /// them.
+    Pass,
 }
 
 /// How a bound node ended.

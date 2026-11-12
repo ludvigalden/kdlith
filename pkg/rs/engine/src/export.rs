@@ -207,6 +207,9 @@ pub fn export_read(
         ..ExportOutcome::default()
     };
     let processing_failed = match read {
+        // A reading under a demand bound only part of its declarations:
+        // there is no whole to link its references against.
+        Ok(failed) if options.demands() => failed,
         Ok(failed) => {
             let report = check_reading(&inputs);
             if scope == CheckScope::Complete {

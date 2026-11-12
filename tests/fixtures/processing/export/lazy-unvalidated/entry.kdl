@@ -1,0 +1,6 @@
+locale en-gb
+section "Main" {
+    public
+    item one kind=book
+}
+setting shelf "on" stray=#true

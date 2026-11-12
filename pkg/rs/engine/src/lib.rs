@@ -9,6 +9,7 @@ mod compile;
 mod data;
 mod decode;
 mod definition;
+mod demand;
 mod diag;
 mod digest;
 mod documents;

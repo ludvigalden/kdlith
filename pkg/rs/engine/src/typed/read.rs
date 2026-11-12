@@ -169,6 +169,9 @@ pub enum ReadError {
     /// [`TypedReader::provenance`] surfaced a profile the reading's
     /// options name that the definition does not declare.
     UnknownProfile(String),
+    /// [`ReadOptions::with_demand`] named a type the definition declares
+    /// no record type for.
+    UnknownType(String),
 }
 
 impl std::fmt::Display for ReadError {
@@ -182,6 +185,9 @@ impl std::fmt::Display for ReadError {
             ReadError::NoProfiles => f.write_str("the definition declares no profiles"),
             ReadError::UnknownProfile(name) => {
                 write!(f, "the definition declares no profile {name}")
+            }
+            ReadError::UnknownType(name) => {
+                write!(f, "the definition declares no record type {name}")
             }
         }
     }
@@ -626,6 +632,16 @@ impl<'d, T: 'static> TypedReader<'d, T> {
     #[must_use]
     pub fn with_profile(mut self, profile: impl Into<String>) -> Self {
         self.options = self.options.with_profile(profile);
+        self
+    }
+
+    /// Read only what the record types `types` name can come from, as
+    /// [`ReadOptions::with_demand`] does: every other record,
+    /// declaration, and contribution is skipped unbound, and so
+    /// unvalidated.
+    #[must_use]
+    pub fn demanding(mut self, types: &[&str]) -> Self {
+        self.options = self.options.with_demand(types.iter().copied());
         self
     }
 

@@ -1,0 +1,23 @@
+{
+  "binary": "kdlith",
+  "description": "--lazy under the default complete scope is an argument fault: a lazy export binds only what one type can come from and has no whole to link against, so it requires --scope local; exit 2 under KDLITH-CLI001, nothing is read",
+  "args": [
+    "export",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "entry.kdl",
+    "--emit",
+    "Item",
+    "--format",
+    "ndjson",
+    "--lazy"
+  ],
+  "expect": {
+    "exit": 2,
+    "stderr-contains": [
+      "error[KDLITH-CLI001]"
+    ],
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

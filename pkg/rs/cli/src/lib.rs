@@ -363,6 +363,12 @@ struct ProfileArgs {
     /// imports together (default 1024)
     #[arg(long, value_name = "N", value_parser = clap::value_parser!(u32).range(1..))]
     max_invocations: Option<u32>,
+    /// Bind on N threads in place of one: the documents an import fans
+    /// out to are bound ahead of their turn and their items given in
+    /// the same order, so the output is the same. Worth it only under
+    /// an allocator that scales across threads
+    #[arg(long, value_name = "N", value_parser = clap::value_parser!(u32).range(1..))]
+    threads: Option<u32>,
 }
 
 impl ProfileArgs {
@@ -392,7 +398,8 @@ impl ProfileArgs {
             .apply(DataOptions::new(self.profile, handlers))
             .with_profiles(set)
             .with_resolver(resolver)
-            .with_max_invocations(self.max_invocations))
+            .with_max_invocations(self.max_invocations)
+            .with_threads(self.threads))
     }
 }
 
@@ -822,6 +829,12 @@ struct ExportArgs {
     /// not resolve to exactly one declaration (complete)
     #[arg(long, value_enum, default_value_t = ScopeArg::Complete)]
     scope: ScopeArg,
+    /// Bind only the nodes the emitted type can come from: every other
+    /// record and declaration is passed over unread, so it is neither
+    /// validated nor there to link against. Requires `--emit TYPE` and
+    /// `--scope local`
+    #[arg(long)]
+    lazy: bool,
     /// Also write every diagnostic of the run to stdout as one compact
     /// JSON line per record, beside the unchanged stderr text
     #[arg(long = "diagnostics", value_enum, value_name = "FORMAT")]
