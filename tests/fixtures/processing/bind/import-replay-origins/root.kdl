@@ -1,0 +1,13 @@
+locale en-gb
+use "part.kdl" repeated=instantiate {
+    project locale
+}
+use "part.kdl" repeated=instantiate {
+    project locale
+}
+use "part.kdl" repeated=instantiate {
+    project locale
+}
+use "part.kdl" repeated=instantiate {
+    project locale
+}

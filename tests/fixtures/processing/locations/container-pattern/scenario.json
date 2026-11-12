@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A pattern import of four documents each holding a container: each document's scope completion names the container as a node of that document's own source; the oracle for container-threads",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/locations/container-scope.kdl",
+    "data.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

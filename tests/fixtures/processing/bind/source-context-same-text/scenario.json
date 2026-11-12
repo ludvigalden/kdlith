@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "Three entry documents of one text bind under three source contexts: the locale a document's own path stem supplies is part of the context it binds under, so no document replays another's result and each entry carries its own file's locale (sv-se, en-gb, fr-fr), never the first's",
+  "args": [
+    "vet",
+    "data",
+    "--schema",
+    "{fx-suite}/processing/bind/source-context-per-file/schema.kdl",
+    "sv-se.kdl",
+    "en-gb.kdl",
+    "fr-fr.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}
