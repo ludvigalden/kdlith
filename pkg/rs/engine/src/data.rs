@@ -1357,12 +1357,9 @@ struct Reading<'r, 'd> {
     /// so a third replays: only a document invoked repeatedly ever costs
     /// the memory of its items.
     seen: HashSet<ResultKey>,
-    /// The bound-result cache: the items of one invocation, under the
-    /// canonical source identity, by their invocation semantics and the
-    /// active profiles they bound under, so a repeated invocation with
-    /// equal semantics under the same selection replays instead of
-    /// rebinding. A reading returning its results keeps every result;
-    /// any other keeps one from its second invocation on.
+    /// The bound-result cache: one invocation's items by semantics and
+    /// active profiles, so an equal repeat replays. A returning reading
+    /// keeps every result; others keep one from its second invocation.
     bound: HashMap<ResultKey, Rc<Vec<Item>>>,
     /// Every result the bound-result cache took, in insertion order.
     results: Vec<BoundResult>,

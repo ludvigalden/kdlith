@@ -1,13 +1,6 @@
-//! The link stage: identity indexing, reference binding, lookup policy,
-//! and linking over the symbol catalog's declared surface and a
-//! reading's items.
-//!
-//! A reading is linked from what its item stream leaves behind, never
-//! from the items themselves: each declaration leaves one compact index
-//! entry, each reference one bound reference, and nothing else of an
-//! item is kept. The index answers a lookup through a hash of the
-//! identity the reference determines, so linking costs time
-//! proportional to the reading, not to its square.
+//! The link stage: index each declaration by a hash of its identity,
+//! bind each reference, and look references up through that index, so
+//! linking costs time proportional to the reading, not its square.
 
 use std::cell::OnceCell;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
@@ -207,13 +200,9 @@ impl<'d> LinkInputs<'d> {
         }
     }
 
-    /// Stage one, identity construction: index one declaration by its
-    /// composed identity. Only domains an identity block, a declared
-    /// reference type, or a dependent binding's target names are
-    /// indexed. A declaration from a document a namespaced import loaded
-    /// registers under that namespace, which gates every other
-    /// document's view of it. Two declarations composing one identity in
-    /// one domain and namespace are a duplicate; the first stays indexed.
+    /// Stage one: index a declaration by composed identity, only in
+    /// linked domains, under the namespace its import loaded it into.
+    /// A second declaration of one identity is a duplicate; the first stays.
     fn declare(&mut self, declaration: &BoundDeclaration) {
         let identity = &declaration.identity;
         if identity.name.0.is_empty() || !self.plan.linked.contains(identity.domain.as_str()) {
@@ -236,16 +225,9 @@ impl<'d> LinkInputs<'d> {
         });
     }
 
-    /// Stage two, reference binding: every reference value one record,
-    /// declaration, or contribution holds, with the declared reference
-    /// type looking it up. A reference whose domain no declared
-    /// reference type looks up is left to its own mechanism.
-    ///
-    /// The reference type the holding field's declared type names binds
-    /// the reference, so its qualification is the one the author chose.
-    /// Where no field type names one (a contribution's target), the
-    /// first reference type of the domain in declaration order whose
-    /// qualifiers cover the reference's spelled qualifiers binds it.
+    /// Stage two: bind each reference an item holds with the reference
+    /// type its field's type names, else the domain's first reference type
+    /// whose qualifiers cover the spelled ones. Other domains are skipped.
     fn bind(&mut self, item: &Item) {
         let held = held_references(item);
         if held.is_empty() {
@@ -581,25 +563,9 @@ impl IdentityIndex {
         found
     }
 
-    /// Stage three, lookup policy: derive one reference's candidates
-    /// under its reference type's qualification and, for a
-    /// sibling-qualified reference, the contributions its resolved
-    /// sibling fields supply.
-    ///
-    /// A spelled qualifier named after an identity field pins that
-    /// field's segment; the written name segments fill the innermost
-    /// remaining segments. `explicit` requires every segment spelled.
-    /// The context policies fill the innermost still-missing segment
-    /// from the namespace context captured where the reference bound,
-    /// and leave any further missing segment open, so a partial name may
-    /// match several declarations. `imported-or-context` also admits a
-    /// namespace as the name's first segment. A declaration under a
-    /// namespace is reachable by its unqualified name from its own
-    /// document only; every other document reaches it through the
-    /// namespace or not at all. A sibling-qualified reference fills its
-    /// leading open segments from its resolved sibling fields'
-    /// identities and leaves nothing open, so a segment nothing covers
-    /// matches no declaration.
+    /// Stage three: a reference's candidates. Qualifiers pin segments,
+    /// names fill the innermost, context fills one more; a namespaced
+    /// declaration is reachable unqualified only from its own document.
     fn lookup(
         &self,
         reference: &Reference,
@@ -1486,16 +1452,9 @@ impl<'a, 'd> Linking<'a, 'd> {
         }
     }
 
-    /// Validate each pending typed binding, in stream order, against
-    /// the one declaration its reference names — its member type, under
-    /// `from-kind` the shape its member value selects, or under
-    /// `from-type-name` the declared type its member names — appending
-    /// a `KDLITH-REF005` for each payload that does not fit. Linking
-    /// resolved the reference first; a reference with a link that did
-    /// not resolve already has its link's diagnostic and is not
-    /// validated. Only a reference no declared reference type covers
-    /// falls back to the identity index, which resolves it by name
-    /// under the namespace carve-out. Nothing executes a payload.
+    /// Validate each pending typed binding against the declaration its
+    /// resolved reference names, appending `KDLITH-REF005` per misfit.
+    /// Unresolved links keep their own diagnostic; nothing executes.
     fn validate_pending(
         &self,
         settled: &[Option<(usize, Option<u32>)>],
@@ -1711,11 +1670,8 @@ fn pattern<'r>(
         slots[*at] = Some(segment);
     }
     if let Some(fill) = sibling {
-        // Sibling mode: the windows fill the leading open slots, the
-        // spelling has filled the innermost, and every slot must be
-        // filled — nothing is inferred and no segment stays open. A
-        // slot the spelling already pins keeps its spelled value; the
-        // disagreement is a link diagnostic, never a silent override.
+        // Sibling mode: windows fill the leading slots and every slot must
+        // fill; a spelled slot keeps its value and a mismatch is a diagnostic.
         for window in &fill.windows {
             for (offset, segment) in window.segments.iter().enumerate() {
                 let slot = slots.get_mut(window.start + offset)?;

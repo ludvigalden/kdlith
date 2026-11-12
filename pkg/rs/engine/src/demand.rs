@@ -1,13 +1,6 @@
-//! Demand-driven reading: which nodes a reading that wants only some
-//! record types leaves unbound.
-//!
-//! A reading with a demand binds a node only when something the demand
-//! names can come from it. Every other item-yielding node is skipped
-//! where it opens: its text is scanned for its end, nothing in it is
-//! decoded or validated, and it yields no item. What a node leaves for
-//! the nodes after it never depends on a skipped one: a node whose
-//! effects reach its siblings, an import, and every node on the way
-//! down to a demanded one stay bound.
+//! Demand-driven reading: bind only the nodes a wanted record type
+//! can come from; skip the rest to their end. Nodes with sibling
+//! effects, imports, and ancestors of demanded nodes stay bound.
 
 use std::collections::HashSet;
 
