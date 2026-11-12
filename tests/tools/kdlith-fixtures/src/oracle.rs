@@ -45,7 +45,7 @@ fn locate_repo(suite: &Path) -> Result<PathBuf, String> {
             Ok(root)
         } else {
             Err(format!(
-                "{ENV_REPO} names {}, which is not a repository root holding Cargo.toml and pkg/rs/superproc/Cargo.toml",
+                "{ENV_REPO} names {}, which is not a repository root holding Cargo.toml and pkg/rs/schema-kdl/Cargo.toml",
                 root.display()
             ))
         };
@@ -69,7 +69,7 @@ fn is_repo_root(dir: &Path) -> bool {
         && dir
             .join("pkg")
             .join("rs")
-            .join("superproc")
+            .join("schema-kdl")
             .join("Cargo.toml")
             .is_file()
 }

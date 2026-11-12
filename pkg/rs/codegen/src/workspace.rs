@@ -29,7 +29,7 @@ const SCHEMA_CLOSURE: [&str; 6] = [
     "model",
     "parse",
     "runtime",
-    "superproc",
+    "schema-kdl",
 ];
 
 /// The cargo source of the kdlith crates: the git repository and the

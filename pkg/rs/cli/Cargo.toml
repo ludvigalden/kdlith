@@ -15,5 +15,5 @@ kdlith-diagnostic = { path = "../diagnostic" }
 kdlith-engine = { path = "../engine" }
 kdlith-model = { path = "../model" }
 kdlith-parse = { path = "../parse" }
-kdlith-superproc = { path = "../superproc" }
+kdlith-schema-kdl = { path = "../schema-kdl" }
 serde_json = { workspace = true }

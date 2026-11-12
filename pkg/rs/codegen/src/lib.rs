@@ -229,7 +229,7 @@ pub(crate) fn dependency_dirs(kind: DefinitionKind) -> Vec<&'static str> {
     let mut dirs = vec!["diagnostic", "engine"];
     match kind {
         DefinitionKind::Dialect => dirs.push("runtime"),
-        DefinitionKind::Schema => dirs.extend(["model", "superproc"]),
+        DefinitionKind::Schema => dirs.extend(["model", "schema-kdl"]),
         _ => {}
     }
     dirs
@@ -258,7 +258,7 @@ pub fn generate_dialect(
     crate_name: &str,
     packaging: Packaging,
 ) -> Result<GeneratedTree, Error> {
-    let definition = kdlith_superproc::load_dialect(entries, extensions, CheckScope::Complete)
+    let definition = kdlith_schema_kdl::load_dialect(entries, extensions, CheckScope::Complete)
         .map_err(|records| Error::DefinitionRejected { records })?;
     generate(&definition, crate_name, packaging)
 }
@@ -273,11 +273,11 @@ pub fn generate_schema(
     options: ReadOptions,
     packaging: Packaging,
 ) -> Result<GeneratedTree, Error> {
-    let dialect = kdlith_superproc::seed(extensions)
+    let dialect = kdlith_schema_kdl::seed(extensions)
         .map_err(|records| Error::DefinitionRejected { records })?;
     let scope = CheckScope::Complete;
     let definition =
-        kdlith_superproc::load_schema_with(&dialect, entries, extensions, scope, options)
+        kdlith_schema_kdl::load_schema_with(&dialect, entries, extensions, scope, options)
             .map_err(|records| Error::DefinitionRejected { records })?;
     generate(&definition, crate_name, packaging)
 }

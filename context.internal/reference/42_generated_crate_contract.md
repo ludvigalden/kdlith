@@ -129,7 +129,7 @@ a crate-relative `include_str!` beside the `CANONICAL_VERSION`
 constant naming the version they declare, and the crate reads no file
 outside itself — a published dialect crate is self-contained wherever
 it is built. The reference processor holds the same snapshot shape
-(its copy under `pkg/rs/superproc/src/dialect/` is refreshed by hand
+(its copy under `pkg/rs/schema-kdl/src/dialect/` is refreshed by hand
 when the canonical documents move; the oracle's byte comparison
 catches a stale copy), and the engine's compiled definition carries
 each document's text so generation never re-reads the working tree.

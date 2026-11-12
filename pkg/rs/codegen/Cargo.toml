@@ -11,4 +11,4 @@ workspace = true
 [dependencies]
 kdlith-diagnostic = { path = "../diagnostic" }
 kdlith-engine = { path = "../engine" }
-kdlith-superproc = { path = "../superproc" }
+kdlith-schema-kdl = { path = "../schema-kdl" }

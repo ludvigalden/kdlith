@@ -16,4 +16,4 @@ workspace = true
 kdlith-diagnostic = { workspace = true }
 kdlith-engine = { workspace = true }
 kdlith-model = { workspace = true }
-kdlith-superproc = { workspace = true }
+kdlith-schema-kdl = { workspace = true }

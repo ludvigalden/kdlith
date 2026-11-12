@@ -5,7 +5,7 @@
 # Kept in lockstep with the repository root manifest.
 [workspace]
 resolver = "2"
-members = ["diagnostic", "engine", "exercise", "model", "parse", "runtime", "superproc", "vault-proc"]
+members = ["diagnostic", "engine", "exercise", "model", "parse", "runtime", "schema-kdl", "vault-proc"]
 
 [workspace.package]
 version = "0.1.0"

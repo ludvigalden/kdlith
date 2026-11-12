@@ -15,4 +15,4 @@ all = { level = "warn", priority = -1 }
 kdlith-diagnostic = "0.1.0"
 kdlith-engine = "0.1.0"
 kdlith-model = "0.1.0"
-kdlith-superproc = "0.1.0"
+kdlith-schema-kdl = "0.1.0"

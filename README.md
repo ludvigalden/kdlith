@@ -57,7 +57,7 @@ under [`context/`](context); development-facing design notes live in
 | `pkg/rs/diagnostic`           | `kdlith-diagnostic` | Diagnostic codes, labels, and presentation-neutral structures      |
 | `pkg/rs/engine`               | `kdlith-engine`     | Dialect and schema validation, linking, compiled processing plans  |
 | `pkg/rs/codegen`              | `kdlith-codegen`    | Deterministic Rust crate generation from compiled definitions      |
-| `pkg/rs/superproc`            | `kdlith-superproc`  | Hand-maintained reference processor for schema definitions         |
+| `pkg/rs/schema-kdl`           | `kdlith-schema-kdl` | Hand-maintained reference processor for schema definitions         |
 | `pkg/rs/cli`                  | `kdlith-cli`        | Commands, arguments, and output conventions                        |
 | `tools/kdlith`                | `kdlith-bin`        | Command-line tool                                                  |
 | `tests/tools/kdlith-fixtures` | `kdlith-fixtures`   | Fixture-suite harness                                              |

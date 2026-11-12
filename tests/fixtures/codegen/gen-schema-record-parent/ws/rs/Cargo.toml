@@ -4,7 +4,7 @@
 # pins. Kept in lockstep with the repository root manifest.
 [workspace]
 resolver = "2"
-members = ["diagnostic", "engine", "exercise", "model", "parse", "runtime", "superproc", "tree-proc"]
+members = ["diagnostic", "engine", "exercise", "model", "parse", "runtime", "schema-kdl", "tree-proc"]
 
 [workspace.package]
 version = "0.1.0"

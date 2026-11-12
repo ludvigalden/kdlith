@@ -13,7 +13,7 @@ use kdlith_engine::{
     list_profiles, list_types,
 };
 use kdlith_model::Location;
-use kdlith_superproc::{Item, load_dialect, load_schema_with, reader};
+use kdlith_schema_kdl::{Item, load_dialect, load_schema_with, reader};
 
 use crate::DiagnosticsArg;
 use crate::InspectCommand;

@@ -10,7 +10,7 @@ reasoning can be found again:
 | R1 §n   | Streaming framework: five components, bindings, context transitions, imports, pull parsing                  |
 | R2 §n   | Schema expressions: type expressions, bindings, codecs, defaults, context expressions, plans                |
 | R3 §n   | Roles and declarations: roles, profiles, ordered maps, references, providers, contributions, import sources |
-| F §n    | Framework and repository layout: authoring levels, superproc, fixtures                                      |
+| F §n    | Framework and repository layout: authoring levels, schema-kdl, fixtures                                     |
 
 The committed dialect definition documents under
 `pkg/kdl/schemas/dialect/` are the only authority for the dialect.

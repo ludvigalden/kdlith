@@ -1,5 +1,5 @@
 [package]
-name = "kdlith-superproc"
+name = "kdlith-schema-kdl"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

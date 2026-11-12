@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "gen schema with no packaging flag refuses the write loudly when the default sibling packaging resolves to no kdlith crate beside the output directory: the run exits 1 naming each unresolvable dependency with KDLITH-GEN008 — here kdlith-diagnostic through kdlith-superproc, the schema form's four — before anything is written, and the scratch check proves no manifest landed; its positive twin gen-schema-kdlith-path-scratch runs --kdlith-path over the same layout and succeeds",
+  "description": "gen schema with no packaging flag refuses the write loudly when the default sibling packaging resolves to no kdlith crate beside the output directory: the run exits 1 naming each unresolvable dependency with KDLITH-GEN008 — here kdlith-diagnostic through kdlith-schema-kdl, the schema form's four — before anything is written, and the scratch check proves no manifest landed; its positive twin gen-schema-kdlith-path-scratch runs --kdlith-path over the same layout and succeeds",
   "args": ["gen", "schema", "schema.kdl", "--crate", "parts-proc", "--out", "out"],
   "expect": {
     "exit": 1,

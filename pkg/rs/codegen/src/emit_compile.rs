@@ -246,8 +246,8 @@ pub fn load_with(
     scope: CheckScope,
     options: ReadOptions,
 ) -> Result<Definition, Vec<DiagnosticRecord>> {
-    let dialect = kdlith_superproc::seed(extensions)?;
-    kdlith_superproc::load_schema_with(&dialect, entries, extensions, scope, options)
+    let dialect = kdlith_schema_kdl::seed(extensions)?;
+    kdlith_schema_kdl::load_schema_with(&dialect, entries, extensions, scope, options)
 }
 
 /// Load this schema's definition as [`load`] does, over documents held
@@ -271,8 +271,8 @@ pub fn load_sources_with(
     scope: CheckScope,
     options: ReadOptions,
 ) -> Result<Definition, Vec<DiagnosticRecord>> {
-    let dialect = kdlith_superproc::seed(extensions)?;
-    kdlith_superproc::load_schema_sources_with(&dialect, sources, extensions, scope, options)
+    let dialect = kdlith_schema_kdl::seed(extensions)?;
+    kdlith_schema_kdl::load_schema_sources_with(&dialect, sources, extensions, scope, options)
 }
 "##;
     format!("{}\n\n{}", crate::RUST_MARKER, body)

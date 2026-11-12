@@ -369,7 +369,7 @@ written. The reference-generation oracle is
 `codegen/gen-dialect-oracle`: a multi-step codegen-oracle scenario that
 generates the entrypoint's processor twice into scratch trees the
 harness requires byte-identical, compares the generated
-`src/**/*.rs` against `pkg/rs/superproc` excluding only the
+`src/**/*.rs` against `pkg/rs/schema-kdl` excluding only the
 generated-marker header line, compiles the generated crate in a scratch
 workspace materialized from the scenario's committed template, and
 exercises the compiled processor's schema reading — every step judged

@@ -148,7 +148,7 @@ fails closed (`KDLITH-LOC001`). Data in memory reads through
 `read_sources_local`, and `collect_sources`.
 
 One cycle cannot close: a reader needs a compiled dialect before it
-can read one. `superproc::seed` breaks it the only way possible — the
+can read one. `kdlith_schema_kdl::seed` breaks it the only way possible — the
 engine's seed bootstrap (`compile_dialect`), the one remaining
 hand-written reader of definition syntax, compiles the four canonical
 documents embedded beside the reference processor's declarations. The
@@ -156,9 +156,9 @@ bootstrap compiles nothing else, and the equivalence it exists for is
 fixture-pinned: reading the canonical files through the reader they
 seed reproduces the seed's own digest.
 
-## superproc
+## schema-kdl
 
-The reference processor (`pkg/rs/superproc`) reads schema definitions
+The reference processor (`pkg/rs/schema-kdl`) reads schema definitions
 in this dialect: it reads every canonical file and the entrypoint end
 to end; it holds only the dialect's own type and binding declarations
 plus glue, with every reusable decision in the engine or runtime; it

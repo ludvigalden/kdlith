@@ -240,7 +240,7 @@ dependencies = [
  "kdlith-engine",
  "kdlith-model",
  "kdlith-parse",
- "kdlith-superproc",
+ "kdlith-schema-kdl",
  "serde_json",
 ]
 
@@ -250,7 +250,7 @@ version = "0.2.0"
 dependencies = [
  "kdlith-diagnostic",
  "kdlith-engine",
- "kdlith-superproc",
+ "kdlith-schema-kdl",
 ]
 
 [[package]]
@@ -313,7 +313,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "kdlith-superproc"
+name = "kdlith-schema-kdl"
 version = "0.2.0"
 dependencies = [
  "kdlith-diagnostic",

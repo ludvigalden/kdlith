@@ -13,7 +13,7 @@ use kdlith_engine::{
     LinkInputs, LinkReport, ReadOptions, SharedResolver, SourceTree, check_reading, link_reading,
 };
 use kdlith_model::{Item, SourceId};
-use kdlith_superproc::{load_dialect, load_schema_with, seed};
+use kdlith_schema_kdl::{load_dialect, load_schema_with, seed};
 
 use crate::handlers;
 use crate::report::{mirror_diagnostics_as_json, report_all};

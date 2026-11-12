@@ -15,4 +15,4 @@ all = { level = "warn", priority = -1 }
 kdlith-diagnostic = { path = "../pkg/rs/diagnostic" }
 kdlith-engine = { path = "../pkg/rs/engine" }
 kdlith-model = { path = "../pkg/rs/model" }
-kdlith-superproc = { path = "../pkg/rs/superproc" }
+kdlith-schema-kdl = { path = "../pkg/rs/schema-kdl" }

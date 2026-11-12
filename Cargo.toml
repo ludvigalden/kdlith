@@ -8,7 +8,7 @@ members = [
     "pkg/rs/model",
     "pkg/rs/parse",
     "pkg/rs/runtime",
-    "pkg/rs/superproc",
+    "pkg/rs/schema-kdl",
     "tests/tools/kdlith-fixtures",
     "tools/kdlith",
 ]
