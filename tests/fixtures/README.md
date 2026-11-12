@@ -139,7 +139,8 @@ location reaching anywhere under the project root (`root-reach`), a
 leading `/` from the source's root (`root-absolute`), `--root`
 (`root-flag`), `$name/` locations in a directory-backed source with chained
 relative and root locations inside it (`named-*`), and pattern expansion in
-the local source and in a named one (`pattern-*`). Most share
+the local source and in a named one (`pattern-*`), `pattern-threads`
+pinning that `--threads` streams what `pattern-local` streams. Most share
 `processing/locations/schema.kdl`, whose locations rule admits the star
 pattern.
 
@@ -231,7 +232,9 @@ mid-stream, the `--sensitive` policies, and `--scope`: the reading is
 linked under both scopes, `linked-clean` over a fully-resolved input
 under the default and `scope-local-unresolved` pinning that under
 `local` the unresolved reference's REF001 reaches stderr without
-deciding the exit. Each scenario carries its own input copies, so the
+deciding the exit. `lazy-type` and `lazy-unvalidated` pin `--lazy`: the
+emitted records are byte for byte those of `emit-type`, and a node the
+demand passes over is not validated. Each scenario carries its own input copies, so the
 provenance envelope's source paths and revision digests are stable, and
 pins its streams and written files byte for byte with committed
 goldens. Editing an input changes its revision digest, so regenerate
