@@ -1,7 +1,7 @@
 //! Interned names: every name a definition uses is numbered once at
 //! compile time, so catalog lookups compare integers, not strings.
 
-use std::collections::BTreeMap;
+use std::collections::HashMap;
 
 /// An interned name, numbered by the [`Names`] table of its definition.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -17,7 +17,7 @@ impl Sym {
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Names {
     spelled: Vec<Box<str>>,
-    index: BTreeMap<Box<str>, Sym>,
+    index: HashMap<Box<str>, Sym>,
 }
 
 impl Names {
