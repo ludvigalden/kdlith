@@ -1,4 +1,4 @@
-//! `kdlith gen dialect|schema|workspace`: the invocation surface over
+//! `kdlith gen schema|workspace`: the invocation surface over
 //! the codegen library, which owns emission, the workspace checks,
 //! and the ownership guards.
 
@@ -18,23 +18,20 @@ use crate::{GenCommand, GenWorkspaceArgs};
 /// Run a parsed `gen` subcommand.
 pub(crate) fn run(command: GenCommand) -> ExitStatus {
     match command {
-        GenCommand::Dialect(args) => generate(
-            GenTarget::Dialect,
-            &paths(&args.files),
-            (&args.crate_name, &args.out),
-            mode_of(args.dry_run, args.check),
-            ReadOptions::new(),
-            &definition_extensions(),
-            packaging_of(args.kdlith_path, args.kdlith_version, args.kdlith_workspace),
-        ),
         GenCommand::Workspace(args) => workspace(&args),
         // Generation admits the named handlers' names and never runs
         // them: the generated processor installs its own.
         GenCommand::Schema(args) => {
             let args = *args;
+            let entries = paths(&args.form.files);
+            let target = match crate::vet::definition_target(&entries, None) {
+                Ok(crate::vet::VetTarget::MetaSchema) => GenTarget::MetaSchema,
+                Ok(_) => GenTarget::Schema,
+                Err(status) => return status,
+            };
             generate(
-                GenTarget::Schema,
-                &paths(&args.form.files),
+                target,
+                &entries,
                 (&args.form.crate_name, &args.form.out),
                 mode_of(args.form.dry_run, args.form.check),
                 args.locations.read_options(),
@@ -180,9 +177,9 @@ fn mode_of(dry_run: bool, check: bool) -> GenMode {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum GenTarget {
-    /// A dialect definition: the generated crate embeds its documents
+    /// A meta-schema definition: the generated crate embeds its documents
     /// as the seed of a self-hosting processor.
-    Dialect,
+    MetaSchema,
     /// A schema definition: the generated crate is a data reader that
     /// loads the schema through the reference processor.
     Schema,
@@ -209,7 +206,7 @@ pub enum GenMode {
 /// prints as one `kdlith: gen <form>:` line; a write into an unowned
 /// path refuses with `KDLITH-GEN001`, and check drift reports
 /// `KDLITH-GEN002`, both through the standard diagnostic surface. A
-/// schema's own import locations resolve under `options`; a dialect's
+/// schema's own import locations resolve under `options`; a meta-schema's
 /// imports are literal locations, so it takes none. The definition
 /// loads under `extensions`, and the manifest names the kdlith crates by
 /// `packaging`.
@@ -222,12 +219,12 @@ pub fn generate(
     extensions: &Extensions,
     packaging: Packaging,
 ) -> ExitStatus {
-    let form = match target {
-        GenTarget::Dialect => "dialect",
-        GenTarget::Schema => "schema",
-    };
+    // One verb generates both forms.
+    let form = "schema";
     let tree = match target {
-        GenTarget::Dialect => codegen::generate_dialect(entries, extensions, crate_name, packaging),
+        GenTarget::MetaSchema => {
+            codegen::generate_meta_schema(entries, extensions, crate_name, packaging)
+        }
         GenTarget::Schema => {
             codegen::generate_schema(entries, extensions, crate_name, options, packaging)
         }

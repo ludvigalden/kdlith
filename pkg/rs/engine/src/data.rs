@@ -17,7 +17,7 @@ use kdlith_runtime::{
 
 use crate::bind::{BindingSession, dispatch_scope};
 use crate::definition::{Definition, DefinitionKind, ProfileSelection};
-use crate::diag::{UNRESOLVED_DIALECT, UNRESOLVED_SCHEMA, record};
+use crate::diag::{UNRESOLVED_META_SCHEMA, UNRESOLVED_SCHEMA, record};
 use crate::digest::{bytes_hex, lines_digest};
 use crate::documents::{import_failure, read_text};
 use crate::list::record_identity;
@@ -799,7 +799,7 @@ impl<'d> DataReader<'d> {
             || !mode.follow
             || !self.handlers.is_empty()
             || self.resolver.is_some()
-            || self.def.kind == DefinitionKind::Dialect;
+            || self.def.kind == DefinitionKind::MetaSchema;
         if alone {
             return self.read_with(entries, options, sink, sides, mode, None);
         }
@@ -845,10 +845,10 @@ impl<'d> DataReader<'d> {
         let resolving = mode.resolving;
         // Definition documents declare their own locations rule, so every
         // entry is scanned before any import runs. A schema definition's
-        // entries are confined as data documents are; a dialect
+        // entries are confined as data documents are; a meta-schema
         // definition's are not.
         let mut confined = vec![true; entries.len()];
-        let declared = (def.kind == DefinitionKind::Dialect).then(|| {
+        let declared = (def.kind == DefinitionKind::MetaSchema).then(|| {
             let mut declared = DeclaredLocations::default();
             for (entry, confined) in entries.iter().zip(confined.iter_mut()) {
                 let text = match entry {
@@ -1909,14 +1909,11 @@ impl Reading<'_, '_> {
                 None => {
                     // The code the definition loader reports for the same
                     // projection: by the kind of the importing document,
-                    // which under a dialect may itself be a schema.
-                    let code = match (def.kind, session.root_name()) {
-                        (DefinitionKind::Dialect, Some(root))
-                            if root == DefinitionKind::Dialect.root_name() =>
-                        {
-                            UNRESOLVED_DIALECT
-                        }
-                        _ => UNRESOLVED_SCHEMA,
+                    // which under a meta-schema may itself be a schema.
+                    let code = if def.kind == DefinitionKind::MetaSchema && session.meta_root() {
+                        UNRESOLVED_META_SCHEMA
+                    } else {
+                        UNRESOLVED_SCHEMA
                     };
                     let record = record(code, &["context slot", name], ORIGIN);
                     self.diagnose(at_request(record, shown, request));
@@ -2003,7 +2000,7 @@ impl Reading<'_, '_> {
 
     /// Place an entry document read from disk in its source: the local
     /// source under the project root, else one rooted at its own
-    /// directory; a dialect definition document stays unconfined.
+    /// directory; a meta-schema definition document stays unconfined.
     fn place_entry(&mut self, id: InvocationId, confined: bool) {
         let Some(invocation) = self.invocations.get(id) else {
             return;

@@ -55,16 +55,18 @@ pub use compile::input::{
     QualifierInput, ReferenceInput, ResolutionInput, SequenceInput, SlotInput, SourceContextInput,
     SourceFieldInput, SourceInput, StepInput, TypeInput, ValidatorInput, VariantInput,
 };
-pub use compile::{DIALECT_VERSION, compile_dialect, compile_dialect_input, compile_schema_input};
+pub use compile::{
+    META_SCHEMA_VERSION, compile_meta_schema, compile_meta_schema_input, compile_schema_input,
+};
 pub use data::{
     BoundResult, DataReader, EntryContext, ReadOptions, RecordContext, Restored, Source,
 };
 pub use definition::{
     AccumulateOp, AnnotationDecl, CheckScope, Definition, DefinitionKind, DocumentRule,
-    DuplicateTreatment, ImportDecl, LocationsDecl, MatchKind, MatchRule, MergeDuplicates,
-    MissingRequirement, Patterns, ProfileDecl, ProfileSelection, ProviderDecl, Qualification,
-    QualifierDecl, ReferenceDecl, ResolutionPolicyDecl, ResolutionSelection, SlotDecl,
-    SlotDuplicates, SourceContextDecl, SourceContextMode, SourceFieldDecl, match_path,
+    DuplicateTreatment, ImportDecl, LocationsDecl, META_SCHEMA_NAME, MatchKind, MatchRule,
+    MergeDuplicates, MissingRequirement, Patterns, ProfileDecl, ProfileSelection, ProviderDecl,
+    Qualification, QualifierDecl, ReferenceDecl, ResolutionPolicyDecl, ResolutionSelection,
+    SlotDecl, SlotDuplicates, SourceContextDecl, SourceContextMode, SourceFieldDecl, match_path,
 };
 pub use diag::Site;
 pub use digest::tree_digest;

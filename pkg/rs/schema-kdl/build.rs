@@ -5,7 +5,7 @@ use std::ffi::OsString;
 use std::path::PathBuf;
 
 /// The canonical documents' directory, relative to this crate.
-const CANONICAL_DIR: &str = "../../kdl/schemas/dialect";
+const CANONICAL_DIR: &str = "../../kdl/schemas/schema";
 
 /// The documents the crate embeds, in contribution order.
 const DOCUMENTS: [&str; 4] = ["types.kdl", "bindings.kdl", "context.kdl", "documents.kdl"];

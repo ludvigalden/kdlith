@@ -5,7 +5,7 @@ This directory is the committed fixture suite for kdlith. The
 in it against a built `kdlith` binary. The harness, not kdlith, judges each
 run: kdlith's output is evidence and never interprets an expectation.
 [COVERAGE.md](COVERAGE.md) is the census of record for the suite: which
-dialect constructs, diagnostic codes, and verb contracts the scenarios
+meta-schema constructs, diagnostic codes, and verb contracts the scenarios
 exercise, and which gaps are declared elisions.
 
 ## Running the suite
@@ -63,43 +63,43 @@ name order. Symlinked directories are not followed.
 
 Categories:
 
-| Directory     | Intended use                                                                   |
-| ------------- | ------------------------------------------------------------------------------ |
-| `parse/`      | KDL v2 syntax: documents `kdlith read` must accept                             |
-| `dialect/`    | Dialect definitions: loading, validating, and linking dialect constructs       |
-| `schemas/`    | Schema definitions: types, bindings, context effects, and processing rules     |
-| `processing/` | Processing data documents end to end, plus CLI smoke scenarios                 |
-| `codegen/`    | Processor generation: generated output, ownership, and drift checks            |
-| `invalid/`    | Negative controls: inputs that must be rejected with declared diagnostic codes |
-| `harness/`    | Harness self-checks: the scratch protections must fail closed                  |
+| Directory      | Intended use                                                                   |
+| -------------- | ------------------------------------------------------------------------------ |
+| `parse/`       | KDL v2 syntax: documents `kdlith read` must accept                             |
+| `meta-schema/` | The meta-schema: loading, validating, and linking its constructs               |
+| `schemas/`     | Schema definitions: types, bindings, context effects, and processing rules     |
+| `processing/`  | Processing data documents end to end, plus CLI smoke scenarios                 |
+| `codegen/`     | Processor generation: generated output, ownership, and drift checks            |
+| `invalid/`     | Negative controls: inputs that must be rejected with declared diagnostic codes |
+| `harness/`     | Harness self-checks: the scratch protections must fail closed                  |
 
 `processing/smoke-help` asserts that `kdlith --help` exits `0` and prints its
 usage text. It keeps the suite non-empty and exercises the harness end to end.
 
-`dialect/canonical-read/` holds one scenario per canonical dialect definition
-file under `pkg/kdl/schemas/dialect/`. Each runs `kdlith read` on the
+`meta-schema/canonical-read/` holds one scenario per canonical meta-schema
+file under `pkg/kdl/schemas/schema/`. Each runs `kdlith read` on the
 committed file through `{fx-suite}` and must exit `0`. Adding a canonical
-dialect file means adding its scenario here.
+meta-schema file means adding its scenario here.
 
-`dialect/entrypoint-read/` holds one scenario per dialect-generation
-entrypoint, the committed one being `pkg/kdl/dialect.kdl`. An entrypoint
-selects the canonical dialect definition files through `import` nodes and
+`meta-schema/entry-read/` holds one scenario per meta-schema entrypoint,
+the committed one being `pkg/kdl/schemas/schema/schema.kdl`. An entrypoint
+selects the canonical meta-schema files through `import` nodes and
 declares nothing of its own. Each scenario runs `kdlith read` on the
 committed entrypoint through `{fx-suite}` and must exit `0`; it proves the
 entrypoint parses, not that its imports resolve.
 
-`dialect/canonical-vet/` and `dialect/entrypoint-vet/` run `kdlith vet
-dialect` on the same committed files. Each canonical file must pass
+`meta-schema/canonical-vet/` and `meta-schema/entry-vet/` run `kdlith vet
+schema` on the same committed files. Each canonical file must pass
 `--scope local` alone. The four files together, and the entrypoint
 through its imports, must pass complete checking and print the same
 digest. `schemas/vet/` holds schema definitions that must pass
-`kdlith vet schema` under the canonical dialect. `invalid/dialect/` and
+`kdlith vet schema` under the canonical meta-schema. `invalid/meta-schema/` and
 `invalid/schemas/` hold broken definitions, each rejected with its
 declared code.
 
-`dialect/canonical-bind/` and `dialect/entrypoint-bind/` run `kdlith vet
-data` with the canonical dialect as the schema, binding each committed
-file as a data document of the dialect. `processing/bind/` holds small
+`meta-schema/canonical-bind/` and `meta-schema/entry-bind/` run `kdlith vet
+data` with the canonical meta-schema as the schema, binding each committed
+file as a data document of the meta-schema. `processing/bind/` holds small
 schemas and scenarios that bind data documents against them, each asserting
 the ordered JSON-line item stream on stdout; most scenarios share one
 `schema.kdl`, the import-mechanics scenarios share `imports.kdl` (whose
@@ -168,14 +168,14 @@ source (`invalid/schemas/*location-source-unknown/`), with an invalid one
 only on a profile, which never governs the schema's own imports
 (`invalid/schemas/location-pattern-profiled/`).
 
-`dialect/canonical-inspect/`, `dialect/entrypoint-inspect/`, and
+`meta-schema/canonical-inspect/`, `meta-schema/entry-inspect/`, and
 `schemas/inspect/` run `kdlith inspect`, which reads definitions through
 the reference processor, prints each typed item as one JSON line, and then
 checks the definition as `vet` does. Each scenario asserts ordered runs of
 the expected declaration items and scope completions. The four single-file
-`dialect/canonical-inspect/` scenarios show one canonical contributing
+`meta-schema/canonical-inspect/` scenarios show one canonical contributing
 document's items and then exit 1, because a contributing document alone
-does not link; `dialect/canonical-inspect/merged` reads all four and exits
+does not link; `meta-schema/canonical-inspect/merged` reads all four and exits
 0. `invalid/schemas/inspect-*` hold schema definitions the reference
 processor rejects while binding them, each with its declared code; when
 the reader rejects an input, the compile stage does not run.
@@ -217,11 +217,11 @@ Each of these holds its streams byte for byte, so a change to clap's
 wording or to the command grammar means regenerating their goldens from
 the binary's output.
 
-The `*-dialect` twins under `processing/list/`, `processing/cache/`,
-`processing/export/`, and `processing/read-data-found-dialect/` run a data
-verb with `--dialect` naming the dialect-generation entrypoint and reuse
+The `*-meta-schema` twins under `processing/list/`, `processing/cache/`,
+`processing/export/`, and `processing/read-data-found-meta-schema/` run a
+data verb with `--meta-schema` naming the meta-schema entrypoint and reuse
 their bundled-default twin's goldens unchanged, and
-`invalid/dialect/processor-mismatch-*` prove each verb consumes the
+`invalid/meta-schema/processor-mismatch-*` prove each verb consumes the
 override.
 
 `processing/export/` holds the `export` contract scenarios: `--emit
@@ -242,8 +242,8 @@ the goldens with it. `invalid/export/` holds the `KDLITH-EXP001`-`003`
 negative controls and the REF001 failure of the default complete
 scope.
 
-`processing/round-trip/` runs the full chain entrypoint to dialect to
-schema to data over the committed catalog schema: `vet data` and
+`processing/round-trip/` runs the full chain entrypoint to meta-schema
+to schema to data over the committed catalog schema: `vet data` and
 `inspect data` each bind a catalog-shaped data document end to end.
 
 `processing/read-data-entry/` pins the `read data --entry` form: the entry
@@ -320,9 +320,9 @@ payload validation: `pending-payload-valid` passes, and
 `schemas/vet/import-repeat-coalesce/` and
 `schemas/vet/import-repeat-instantiate/` pin the two non-default
 repeated-import policies on the schema path;
-`dialect/entrypoint-vet/import-repeat-coalesce/` and
-`dialect/entrypoint-vet/import-repeat-instantiate/` pin them on the
-dialect path, where the conform walk now admits the `repeated=` property.
+`meta-schema/entry-vet/import-repeat-coalesce/` and
+`meta-schema/entry-vet/import-repeat-instantiate/` pin them on the
+meta-schema path, where the conform walk now admits the `repeated=` property.
 `invalid/schemas/deferred-mechanism/` and
 `invalid/schemas/inspect-deferred-mechanism/` pin the retirement of the
 deferral marker: its spelling rejects as an unbound node on both reading
@@ -355,10 +355,10 @@ only the construct under test removed.
 
 ## Codegen
 
-`codegen/` holds the generation scenarios. `gen dialect` generates the
-committed super-schema entrypoint's processor crate end to end into a
+`codegen/` holds the generation scenarios. `gen schema` generates the
+committed meta-schema entrypoint's processor crate end to end into a
 scratch `out/` directory inside the materialized copy — never the
-reference crate — and `gen schema` does the same for a committed schema
+reference crate — and does the same for a committed schema
 definition. `--dry-run` prints the generator-owned plan while the
 scratch check proves nothing was written; `--check` compares against a
 destination holding an injected difference and classifies missing,
@@ -366,18 +366,18 @@ changed, and stale generator-owned files as `KDLITH-GEN002`; and a
 writing run into a destination holding an unowned file at a
 generator-owned path is refused `KDLITH-GEN001` before anything is
 written. The reference-generation oracle is
-`codegen/gen-dialect-oracle`: a multi-step codegen-oracle scenario that
+`codegen/gen-meta-schema-oracle`: a multi-step codegen-oracle scenario that
 generates the entrypoint's processor twice into scratch trees the
 harness requires byte-identical, compares the generated `src/**/*.rs`
 and `build.rs` against `pkg/rs/schema-kdl` excluding only the
 generated-marker header line, compiles the generated crate in a scratch
 workspace materialized from the scenario's committed template with the
-canonical dialect documents at the sibling path its `build.rs` reads,
+canonical meta-schema documents at the sibling path its `build.rs` reads,
 and exercises the compiled processor's schema reading — every step judged
 by the harness and fail-closed on any difference. The schema-form
 companion is `codegen/gen-schema-oracle`: the same step chain over a
 committed schema definition (no reference comparison — the reference
-processor is the dialect form's oracle), with the exercise reading a
+processor is the meta-schema form's oracle), with the exercise reading a
 committed data document through the generated typed reader and
 requiring the `KDLITH-BND008` rejection a value outside the schema's
 enum type produces. `codegen/gen-schema-ref-import` runs that chain over
@@ -439,7 +439,7 @@ it stands for; the placeholder makes the scenario read the committed file
 itself. For example, with the suite at `tests/fixtures`:
 
 ```json
-"args": ["read", "{fx-suite}/../../pkg/kdl/schemas/dialect/types.kdl"]
+"args": ["read", "{fx-suite}/../../pkg/kdl/schemas/schema/types.kdl"]
 ```
 
 `{fx-suite}` is the only placeholder an `args` entry may carry (a
@@ -473,7 +473,7 @@ exercises. The keys beyond `binary` and `description`:
 
 | Key          | Required | Type             | Meaning                                            |
 | ------------ | -------- | ---------------- | -------------------------------------------------- |
-| `form`       | no       | string           | `"dialect"` (default) or `"schema"`: the `gen` form the generate step drives |
+| `form`       | no       | string           | `"schema"` (default) or `"meta-schema"`: the definition `gen schema` generates; only the schema form takes `sources` |
 | `entrypoint` | yes      | string           | The definition entrypoint; both placeholders allowed |
 | `crate`      | yes      | string           | The crate name generation publishes                |
 | `sources`    | no       | array of strings | `NAME=DIR` named sources every generate step passes as `--source`; schema form only, never empty |

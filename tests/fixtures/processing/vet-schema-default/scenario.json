@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "A schema definition vets under the bundled canonical dialect with no --dialect: the default path needs no dialect documents on the command line",
+  "description": "A schema definition vets under the bundled canonical meta-schema with no --meta-schema: the default path needs no meta-schema documents on the command line",
   "args": [
     "vet",
     "schema",

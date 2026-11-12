@@ -1,12 +1,12 @@
 {
   "binary": "kdlith",
-  "description": "The references view describes how a data reading's references link, which a dialect target does not do: the pair is rejected before any document is read, exit 2 under KDLITH-CLI004",
+  "description": "The references view describes how a data reading's references link, which a meta-schema target does not do: the pair is rejected before any document is read, exit 2 under KDLITH-CLI004",
   "args": [
     "inspect",
-    "dialect",
+    "schema",
     "--view",
     "references",
-    "{fx-suite}/../../pkg/kdl/schemas/dialect/types.kdl"
+    "{fx-suite}/../../pkg/kdl/schemas/schema/types.kdl"
   ],
   "expect": {
     "exit": 2,

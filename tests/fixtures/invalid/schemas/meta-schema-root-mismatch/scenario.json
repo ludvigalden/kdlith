@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A --meta-schema replacement whose root is an ordinary schema, not the schema named schema, is rejected as a root mismatch before any schema is read",
+  "args": [
+    "vet",
+    "schema",
+    "--meta-schema",
+    "replacement.kdl",
+    "replacement.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

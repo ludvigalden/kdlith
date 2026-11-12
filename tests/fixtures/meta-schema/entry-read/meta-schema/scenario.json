@@ -1,0 +1,8 @@
+{
+  "binary": "kdlith",
+  "description": "The committed meta-schema-generation entrypoint pkg/kdl/schemas/schema/schema.kdl parses as KDL v2",
+  "args": ["read", "{fx-suite}/../../pkg/kdl/schemas/schema/schema.kdl"],
+  "expect": {
+    "exit": 0
+  }
+}

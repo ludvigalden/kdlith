@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "list types --meta-schema: the meta-schema-generation entrypoint, which imports the four canonical documents, governs the schema load; stdout and stderr are byte-identical to processing/list/types under the bundled meta-schema (the goldens are that scenario's, unchanged)",
+  "args": [
+    "list",
+    "types",
+    "--meta-schema",
+    "{fx-suite}/../../pkg/kdl/schemas/schema/schema.kdl",
+    "--schema",
+    "{fx-suite}/processing/list/schema.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

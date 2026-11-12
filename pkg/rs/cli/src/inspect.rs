@@ -1,4 +1,4 @@
-//! `kdlith inspect dialect|schema|data`: read documents through the
+//! `kdlith inspect schema|data`: read documents through the
 //! reference processor and print each item as one JSON line (the source
 //! view), then check a definition as `vet` does; diagnostics go to
 //! stderr.
@@ -13,40 +13,39 @@ use kdlith_engine::{
     list_profiles, list_types,
 };
 use kdlith_model::Location;
-use kdlith_schema_kdl::{Item, load_dialect, load_schema_with, reader};
+use kdlith_schema_kdl::{Item, load_meta_schema, load_schema_with, reader};
 
 use crate::DiagnosticsArg;
 use crate::InspectCommand;
 use crate::ViewArg;
 use crate::report::{mirror_diagnostics_as_json, report_all};
-use crate::vet::{Linked, VetTarget, definition_extensions, governing_dialect};
+use crate::vet::{Linked, VetTarget, definition_extensions, governing_meta_schema};
 
 /// Run a parsed `inspect` subcommand. The view matrix is decided before
 /// any document is read.
 pub(crate) fn run(command: InspectCommand) -> ExitStatus {
     match command {
-        InspectCommand::Dialect(args) => match dispatch(args.view, VetTarget::Dialect) {
-            Ok(rendering) => inspect_view(
-                VetTarget::Dialect,
-                args.view,
-                rendering,
-                args.dialect.as_deref(),
-                &paths(&args.files),
-                ReadOptions::new(),
-            ),
-            Err(status) => status,
-        },
-        InspectCommand::Schema(args) => match dispatch(args.view, VetTarget::Schema) {
-            Ok(rendering) => inspect_view(
-                VetTarget::Schema,
-                args.view,
-                rendering,
-                args.dialect.as_deref(),
-                &paths(&args.files),
-                args.locations.read_options(),
-            ),
-            Err(status) => status,
-        },
+        // The meta-schema's documents are read through the governing
+        // reader like any schema's, so `--meta-schema` still replaces it,
+        // and then checked against the canonical definition.
+        InspectCommand::Schema(args) => {
+            let entries = paths(&args.files);
+            let target = match crate::vet::definition_target(&entries, None) {
+                Ok(target) => target,
+                Err(status) => return status,
+            };
+            match dispatch(args.view, target) {
+                Ok(rendering) => inspect_view(
+                    target,
+                    args.view,
+                    rendering,
+                    args.meta_schema.as_deref(),
+                    &entries,
+                    args.locations.read_options(),
+                ),
+                Err(status) => status,
+            }
+        }
         InspectCommand::Data(args) => {
             mirror_diagnostics_as_json(args.diagnostics.is_some_and(DiagnosticsArg::json));
             let rendering = match dispatch(args.view, VetTarget::Data) {
@@ -59,7 +58,7 @@ pub(crate) fn run(command: InspectCommand) -> ExitStatus {
                     args.schema.as_deref(),
                     &paths(&args.files),
                     &options
-                        .with_dialect(args.dialect)
+                        .with_meta_schema(args.meta_schema)
                         .with_scope(crate::vet::scope_of(args.scope)),
                     rendering == Rendering::References,
                     |out, item| {
@@ -123,7 +122,7 @@ enum DefinitionView {
 impl Rendering {
     fn of(view: ViewArg, target: VetTarget) -> Self {
         match (view, target) {
-            (ViewArg::Effective, VetTarget::Dialect | VetTarget::Schema) => {
+            (ViewArg::Effective, VetTarget::MetaSchema | VetTarget::Schema) => {
                 Rendering::Definition(DefinitionView::Effective)
             }
             (ViewArg::Plan, _) => Rendering::Definition(DefinitionView::Plan),
@@ -138,7 +137,7 @@ impl Rendering {
 /// bound, context, origins and references describe data binding and
 /// linking, so on a definition target they are an argument fault.
 fn dispatch(view: ViewArg, target: VetTarget) -> Result<Rendering, ExitStatus> {
-    let definition_target = matches!(target, VetTarget::Dialect | VetTarget::Schema);
+    let definition_target = matches!(target, VetTarget::MetaSchema | VetTarget::Schema);
     match view {
         ViewArg::Bound | ViewArg::Context | ViewArg::Origins | ViewArg::References
             if definition_target =>
@@ -188,22 +187,21 @@ fn render_data(
 
 fn target_name(target: VetTarget) -> &'static str {
     match target {
-        VetTarget::Dialect => "dialect",
-        VetTarget::Schema => "schema",
+        VetTarget::MetaSchema | VetTarget::Schema => "schema",
         VetTarget::Data => "data",
     }
 }
 
 /// Read `entries` and their imports as definition documents written in
-/// the governing dialect — the bundled one, or the single document
-/// `dialect` names — resolving the documents' import locations under
+/// the governing meta-schema — the bundled one, or the single document
+/// `meta_schema` names — resolving the documents' import locations under
 /// `options`, then check them as the `target` definition with
 /// the loader `vet` uses. Every item is shown before any compile fault
 /// is reported: reader diagnostics, then compile diagnostics, decide the
 /// exit together.
 pub fn inspect(
     target: VetTarget,
-    dialect: Option<&Path>,
+    meta_schema: Option<&Path>,
     entries: &[&Path],
     options: ReadOptions,
 ) -> ExitStatus {
@@ -211,7 +209,7 @@ pub fn inspect(
         target,
         ViewArg::Source,
         Rendering::Stream,
-        dialect,
+        meta_schema,
         entries,
         options,
     )
@@ -224,7 +222,7 @@ fn inspect_view(
     target: VetTarget,
     view: ViewArg,
     rendering: Rendering,
-    dialect: Option<&Path>,
+    meta_schema: Option<&Path>,
     entries: &[&Path],
     options: ReadOptions,
 ) -> ExitStatus {
@@ -233,7 +231,7 @@ fn inspect_view(
         return ExitStatus::Usage;
     }
     let extensions = definition_extensions();
-    let compiled = match governing_dialect(dialect, &extensions) {
+    let compiled = match governing_meta_schema(meta_schema, &extensions) {
         Ok(compiled) => compiled,
         Err(records) => return report_all(&records),
     };
@@ -787,7 +785,7 @@ pub(crate) fn write_lines(lines: &[serde_json::Value]) -> ExitStatus {
     ExitStatus::Success
 }
 
-/// The compile stage: the same load `vet` runs on a dialect or schema
+/// The compile stage: the same load `vet` runs on a meta-schema or schema
 /// target, with complete checking.
 fn check(
     target: VetTarget,
@@ -804,7 +802,7 @@ fn check(
             CheckScope::Complete,
             options,
         ),
-        _ => load_dialect(entries, extensions, CheckScope::Complete),
+        _ => load_meta_schema(entries, extensions, CheckScope::Complete),
     }
 }
 

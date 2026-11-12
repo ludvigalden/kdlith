@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "A string type with two pattern children exceeds the dialect's max-occurs=1 and is rejected by the compiler with the code the reference processor reports",
+  "description": "A string type with two pattern children exceeds the meta-schema's max-occurs=1 and is rejected by the compiler with the code the reference processor reports",
   "args": [
     "vet",
     "schema",

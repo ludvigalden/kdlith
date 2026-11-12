@@ -3,19 +3,19 @@
 kdlith provides Rust primitives for typed, streaming KDL processing and Rust
 processor generation.
 
-A dialect definition describes a family of KDL documents; a schema definition
-describes one kind of data document within that dialect. kdlith reads these
-definitions and either processes data documents directly or generates a typed
-Rust processor for them.
+A schema definition describes one kind of KDL data document. Schemas are
+themselves written in the meta-schema, the schema named `schema`, which
+describes itself. kdlith reads these definitions and either processes data
+documents directly or generates a typed Rust processor for them.
 
 > Status: early development, pre-release. Every `kdlith` command (`gen`,
 > `vet`, `export`, `inspect`, `list`, `read`, `cache`, `changelog`, `help`) is
-> implemented, and `gen` generates compilable processor crates from dialect
-> and schema definitions. Interfaces may still change between releases.
+> implemented, and `gen` generates compilable processor crates from schema
+> definitions. Interfaces may still change between releases.
 
 ## What it does
 
-- **Validate.** `kdlith vet dialect|schema|data` compiles a definition and
+- **Validate.** `kdlith vet schema|data` compiles a definition and
   binds data documents against it. Under the default complete scope,
   `vet data` also links every reference a declared reference type looks
   up and reports references that are unresolved, ambiguous, or missing a
@@ -55,7 +55,7 @@ under [`context/`](context); development-facing design notes live in
 | `pkg/rs/model`                | `kdlith-model`      | Identities, origins, bound values, and processing items            |
 | `pkg/rs/runtime`              | `kdlith-runtime`    | Binding frames, context operations, sessions, processor interfaces |
 | `pkg/rs/diagnostic`           | `kdlith-diagnostic` | Diagnostic codes, labels, and presentation-neutral structures      |
-| `pkg/rs/engine`               | `kdlith-engine`     | Dialect and schema validation, linking, compiled processing plans  |
+| `pkg/rs/engine`               | `kdlith-engine`     | Schema validation, linking, compiled processing plans              |
 | `pkg/rs/codegen`              | `kdlith-codegen`    | Deterministic Rust crate generation from compiled definitions      |
 | `pkg/rs/schema-kdl`           | `kdlith-schema-kdl` | Hand-maintained reference processor for schema definitions         |
 | `pkg/rs/cli`                  | `kdlith-cli`        | Commands, arguments, and output conventions                        |

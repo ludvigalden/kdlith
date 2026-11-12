@@ -1,0 +1,7 @@
+schema shop version="1" {
+    types {
+        object Entry {
+            field id String
+        }
+    }
+}

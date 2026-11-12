@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "A property the dialect does not bind on a field is rejected by the reference processor with the code the compiler reports",
+  "description": "A property the meta-schema does not bind on a field is rejected by the reference processor with the code the compiler reports",
   "args": [
     "inspect",
     "schema",

@@ -10,12 +10,12 @@ binds_to_depth: main...
 
 kdlith is a single binary with eight verbs, all implemented:
 
-- `gen dialect|schema` — generate a Rust processor crate from a
-  dialect or schema definition
-- `vet dialect|schema|data` — compile a definition or bind data
+- `gen schema` — generate a Rust processor crate from a schema
+  definition
+- `vet schema|data` — compile a definition or bind data
   documents against a schema and report every diagnostic
 - `export` — write typed records as NDJSON
-- `inspect dialect|schema|data` — show a reading seven ways with
+- `inspect schema|data` — show a reading seven ways with
   `--view`
 - `list types|nodes|items` — list a definition's types and nodes, or
   a data reading's items

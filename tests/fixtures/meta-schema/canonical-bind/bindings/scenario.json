@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "bindings.kdl binds as a data document of the canonical meta-schema through the session, with no diagnostic: every declaration and container in it is described by the meta-schema's compiled bindings",
+  "args": [
+    "vet",
+    "data",
+    "{fx-suite}/../../pkg/kdl/schemas/schema/bindings.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":null}}\n"
+    ]
+  }
+}

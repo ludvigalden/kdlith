@@ -32,16 +32,16 @@ pub(crate) fn run(command: ListCommand) -> ExitStatus {
 }
 
 /// The schema a declaration listing names, under the definition
-/// extensions, the governing dialect, and the root and sources it names.
+/// extensions, the governing meta-schema, and the root and sources it names.
 fn load_listed(args: &ListSchemaArgs) -> Result<Definition, ExitStatus> {
     let options = args
         .locations
         .apply(DataOptions::new(None, Vec::new()))
-        .with_dialect(args.dialect.clone());
+        .with_meta_schema(args.meta_schema.clone());
     load(&args.schema, &options, &definition_extensions())
 }
 
-/// The schema loaded under the options' governing dialect with complete
+/// The schema loaded under the options' governing meta-schema with complete
 /// checking, its import locations resolved under the options' root and
 /// sources; a failed load is reported and decides the exit.
 fn load(
@@ -63,7 +63,7 @@ fn load(
 /// in the documents fails the listing after the index is printed.
 fn items(args: ListItemsArgs) -> ExitStatus {
     let options = match args.profiles.data_options(args.locations, args.handlers) {
-        Ok(options) => options.with_dialect(args.dialect),
+        Ok(options) => options.with_meta_schema(args.meta_schema),
         Err(status) => return status,
     };
     let def = match load(&args.schema, &options, &options.extensions()) {

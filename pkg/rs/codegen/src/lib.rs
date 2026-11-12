@@ -78,7 +78,7 @@ pub enum Error {
     /// name a declared logical type already takes.
     LocalTypeCollision { node: String, ty: String },
     /// A name the definition admits has no spelling in the generated
-    /// crate: it is no Rust identifier, it shadows a name a dialect
+    /// crate: it is no Rust identifier, it shadows a name a meta-schema
     /// crate spells unqualified, it takes another declared type's name,
     /// or it maps onto a sibling's spelling.
     UnspellableName {
@@ -228,7 +228,7 @@ pub enum Packaging {
 pub(crate) fn dependency_dirs(kind: DefinitionKind) -> Vec<&'static str> {
     let mut dirs = vec!["diagnostic", "engine"];
     match kind {
-        DefinitionKind::Dialect => dirs.push("runtime"),
+        DefinitionKind::MetaSchema => dirs.push("runtime"),
         DefinitionKind::Schema => dirs.extend(["model", "schema-kdl"]),
         _ => {}
     }
@@ -249,21 +249,21 @@ pub fn generate(
     Ok(tree)
 }
 
-/// Compile the dialect named by `entries` and generate its processor
+/// Compile the meta-schema named by `entries` and generate its processor
 /// crate, through the reference processor's loader: the entry documents
 /// are read and bound before anything is generated.
-pub fn generate_dialect(
+pub fn generate_meta_schema(
     entries: &[&Path],
     extensions: &Extensions,
     crate_name: &str,
     packaging: Packaging,
 ) -> Result<GeneratedTree, Error> {
-    let definition = kdlith_schema_kdl::load_dialect(entries, extensions, CheckScope::Complete)
+    let definition = kdlith_schema_kdl::load_meta_schema(entries, extensions, CheckScope::Complete)
         .map_err(|records| Error::DefinitionRejected { records })?;
     generate(&definition, crate_name, packaging)
 }
 
-/// Compile the schema named by `entries`, under the canonical dialect,
+/// Compile the schema named by `entries`, under the canonical meta-schema,
 /// and generate its data-document processor crate. The documents' own
 /// import locations resolve under `options`.
 pub fn generate_schema(
@@ -273,11 +273,11 @@ pub fn generate_schema(
     options: ReadOptions,
     packaging: Packaging,
 ) -> Result<GeneratedTree, Error> {
-    let dialect = kdlith_schema_kdl::seed(extensions)
+    let meta_schema = kdlith_schema_kdl::seed(extensions)
         .map_err(|records| Error::DefinitionRejected { records })?;
     let scope = CheckScope::Complete;
     let definition =
-        kdlith_schema_kdl::load_schema_with(&dialect, entries, extensions, scope, options)
+        kdlith_schema_kdl::load_schema_with(&meta_schema, entries, extensions, scope, options)
             .map_err(|records| Error::DefinitionRejected { records })?;
     generate(&definition, crate_name, packaging)
 }

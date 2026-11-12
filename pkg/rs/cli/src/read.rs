@@ -72,8 +72,8 @@ pub(crate) fn source_error(code: &str, values: &[&str]) -> DiagnosticRecord {
 }
 
 /// Bind the data document (after the entry document, when one is
-/// given) through the schema under the bundled dialect or the one
-/// `--dialect` names, print the one record item whose identity was
+/// given) through the schema under the bundled meta-schema or the one
+/// `--meta_schema` names, print the one record item whose identity was
 /// asked for as a single JSON line, and report a missing identity as a
 /// failure with a clear diagnostic. The
 /// documents' imports execute as invocations, so a record reached
@@ -95,7 +95,7 @@ pub(crate) fn read_data(args: &crate::ReadDataArgs) -> ExitStatus {
         .clone()
         .data_options(args.locations.clone(), args.handlers.clone())
     {
-        Ok(options) => options.with_dialect(args.dialect.clone()),
+        Ok(options) => options.with_meta_schema(args.meta_schema.clone()),
         Err(status) => return status,
     };
     let extensions = options.extensions();

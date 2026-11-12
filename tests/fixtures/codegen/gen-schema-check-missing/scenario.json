@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "gen schema --check compares against the destination without writing: against a destination that does not exist, every generator-owned file of the schema crate is reported missing (KDLITH-GEN002), exit 1, and nothing is created; the schema form of the drift report codegen/gen-dialect-check-drift pins for the dialect form",
+  "description": "gen schema --check compares against the destination without writing: against a destination that does not exist, every generator-owned file of the schema crate is reported missing (KDLITH-GEN002), exit 1, and nothing is created; the schema form of the drift report codegen/gen-meta-schema-check-drift pins for the meta-schema form",
   "args": [
     "gen",
     "schema",

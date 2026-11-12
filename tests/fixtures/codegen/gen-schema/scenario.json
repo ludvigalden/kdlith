@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "gen schema compiles a committed schema definition under the canonical dialect and generates its data-reader crate into a scratch output directory, exiting 0 with the summary; the scenario commits stub sibling crates (diagnostic, engine, model, schema-kdl, each a bare manifest) beside the output directory so the default sibling packaging resolves, and the generated crate loads the schema through the reference processor instead of embedding a seed",
+  "description": "gen schema compiles a committed schema definition under the canonical meta-schema and generates its data-reader crate into a scratch output directory, exiting 0 with the summary; the scenario commits stub sibling crates (diagnostic, engine, model, schema-kdl, each a bare manifest) beside the output directory so the default sibling packaging resolves, and the generated crate loads the schema through the reference processor instead of embedding a seed",
   "args": ["gen", "schema", "schema.kdl", "--crate", "parts-proc", "--out", "out"],
   "expect": {
     "exit": 0,

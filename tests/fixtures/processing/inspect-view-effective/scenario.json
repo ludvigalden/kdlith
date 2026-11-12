@@ -1,15 +1,15 @@
 {
   "binary": "kdlith",
-  "description": "The effective view of the four canonical dialect files: one effective line per entry of the compiled definition, grouped as types then nodes (the canonical dialect declares no slots, imports or profiles), each group sorted by name as list sorts it; the entry shapes mirror the list entries",
+  "description": "The effective view of the four canonical meta-schema files: one effective line per entry of the compiled definition, grouped as types then nodes (the canonical meta-schema declares no slots, imports or profiles), each group sorted by name as list sorts it; the entry shapes mirror the list entries",
   "args": [
     "inspect",
-    "dialect",
+    "schema",
     "--view",
     "effective",
-    "{fx-suite}/../../pkg/kdl/schemas/dialect/types.kdl",
-    "{fx-suite}/../../pkg/kdl/schemas/dialect/bindings.kdl",
-    "{fx-suite}/../../pkg/kdl/schemas/dialect/context.kdl",
-    "{fx-suite}/../../pkg/kdl/schemas/dialect/documents.kdl"
+    "{fx-suite}/../../pkg/kdl/schemas/schema/types.kdl",
+    "{fx-suite}/../../pkg/kdl/schemas/schema/bindings.kdl",
+    "{fx-suite}/../../pkg/kdl/schemas/schema/context.kdl",
+    "{fx-suite}/../../pkg/kdl/schemas/schema/documents.kdl"
   ],
   "expect": {
     "exit": 0,

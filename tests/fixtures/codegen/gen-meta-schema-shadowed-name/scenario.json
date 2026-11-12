@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "gen schema fails closed when a meta-schema contribution declares a type taking a name a meta-schema-form generated crate spells unqualified: the definition imports the four canonical meta-schema documents and adds a string type named Ref. It vets green (the limit is the generated crate's, not the meta-schema's), and generation exits 1 naming the type, its document, and the reason before anything is emitted; the scratch check proves nothing was written into the output directory. A meta-schema cannot declare a reference type at all, so a declared type is the reachable carrier of this refusal on the meta-schema form",
+  "args": ["gen", "schema", "{fx-suite}/codegen/gen-meta-schema-shadowed-name/shadowed.kdl", "--crate", "shadow-meta-schema", "--out", "out"],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": [
+      "kdlith: gen schema: the type `Ref` of `shadowed.kdl` has no Rust spelling in a generated crate: it shadows a name the generated crate spells unqualified\n"
+    ],
+    "scratch-check": {
+      "plant": [{ "path": "planted-foreign.txt", "kind": "file" }]
+    }
+  }
+}

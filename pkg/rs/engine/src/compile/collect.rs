@@ -1,6 +1,6 @@
 //! Building compiler state from a reader's input: one construct per
 //! declaration, already validated by binding, so only the rules the
-//! dialect's declarations cannot state are checked here.
+//! meta-schema's declarations cannot state are checked here.
 
 use kdlith_model::{FieldMerge, Value};
 use kdlith_runtime::Repeated;
@@ -1494,7 +1494,7 @@ fn slot_policy(
         cx.malformed(site, &label, &reason);
         ok = false;
     }
-    // The dialect's fallback spells `reject` on every accumulation, so
+    // The meta-schema's fallback spells `reject` on every accumulation, so
     // only a declared non-default treatment can contradict its operation.
     if merge_duplicates != MergeDuplicates::Reject {
         let reason = match (input.accumulate.as_deref(), accumulate) {

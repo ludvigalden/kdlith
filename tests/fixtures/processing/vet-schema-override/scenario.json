@@ -1,11 +1,11 @@
 {
   "binary": "kdlith",
-  "description": "A single-file --dialect override selects the dialect-generation entrypoint, which imports the four canonical documents: the schema vets to the same digest as the bundled default",
+  "description": "A single-file --meta-schema override selects the meta-schema-generation entrypoint, which imports the four canonical documents: the schema vets to the same digest as the bundled default",
   "args": [
     "vet",
     "schema",
-    "--dialect",
-    "{fx-suite}/../../pkg/kdl/dialect.kdl",
+    "--meta-schema",
+    "{fx-suite}/../../pkg/kdl/schemas/schema/schema.kdl",
     "{fx-suite}/schemas/vet/catalog/schema.kdl"
   ],
   "expect": {

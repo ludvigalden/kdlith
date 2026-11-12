@@ -79,20 +79,19 @@ pub(crate) struct CodegenOracle {
     pub(crate) heavy: bool,
 }
 
-/// The `gen` form a codegen-oracle scenario drives.
+/// The `gen` form a codegen-oracle scenario drives. The meta-schema
+/// generates through `gen schema` too; only a schema form scenario may
+/// name sources.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum GenForm {
-    Dialect,
+    MetaSchema,
     Schema,
 }
 
 impl GenForm {
     /// The subcommand spelling.
     pub(crate) fn as_str(self) -> &'static str {
-        match self {
-            GenForm::Dialect => "dialect",
-            GenForm::Schema => "schema",
-        }
+        "schema"
     }
 }
 
@@ -334,12 +333,12 @@ fn oracle(root: &Map<String, Value>) -> Result<Scenario, String> {
         return Err(format!("{MANIFEST}: \"description\" must be a string"));
     }
     let form = match root.get("form") {
-        None => GenForm::Dialect,
-        Some(Value::String(s)) if s == "dialect" => GenForm::Dialect,
+        None => GenForm::Schema,
+        Some(Value::String(s)) if s == "meta-schema" => GenForm::MetaSchema,
         Some(Value::String(s)) if s == "schema" => GenForm::Schema,
         Some(other) => {
             return Err(format!(
-                "{MANIFEST}: \"form\" must be \"dialect\" or \"schema\", got {other}"
+                "{MANIFEST}: \"form\" must be \"meta-schema\" or \"schema\", got {other}"
             ));
         }
     };

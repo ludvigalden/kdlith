@@ -11,7 +11,7 @@ rather than replacing it; the declaration takes effect at the field's
 own depth, on a contribution type's field and on a field of an
 object a contribution nests alike. A map- or object-typed field may
 declare `merge=union` too, stating the key-wise merge it already
-receives. The canonical dialect spells the policy with the
+receives. The canonical meta-schema spells the policy with the
 `MergePolicy` vocabulary type, whose one member is `union`; a value
 outside it is `KDLITH-BND008`.
 

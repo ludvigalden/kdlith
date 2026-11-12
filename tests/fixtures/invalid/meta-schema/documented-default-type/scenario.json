@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A documented default in a meta-schema definition that does not decode as its field's type is rejected on the meta-schema reading path, even though it never fills a value",
+  "args": [
+    "vet",
+    "schema",
+    "{fx-suite}/../../pkg/kdl/schemas/schema/types.kdl",
+    "{fx-suite}/../../pkg/kdl/schemas/schema/bindings.kdl",
+    "{fx-suite}/../../pkg/kdl/schemas/schema/context.kdl",
+    "{fx-suite}/../../pkg/kdl/schemas/schema/documents.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

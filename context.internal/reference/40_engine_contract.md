@@ -1,13 +1,13 @@
 # Contract for the engine and the reference processor
 
 The engine (`pkg/rs/engine`) and runtime (`pkg/rs/runtime`)
-implement the dialect for every processor, hand-written or generated:
+implement the meta-schema for every processor, hand-written or generated:
 
-1. **Compile once.** Compile dialect and schema definitions into
+1. **Compile once.** Compile schema definitions, the meta-schema included, into
    catalogs and a processing plan; never reinterpret a definition's
    KDL per record.
 2. **Merge contributions.** Combine documents that repeat one root
-   name and version into one dialect or schema, and reject a
+   name and version into one schema, and reject a
    declaration made twice.
 3. **Resolve imports** as `documents.kdl` states: every path a
    location inside a source, written order, projection only,
@@ -16,9 +16,9 @@ implement the dialect for every processor, hand-written or generated:
    where a locations rule admits them, and no rule admits
    environment-variable interpolation. Namespaces preserve both
    source and namespace and gate visibility. Processing
-   `pkg/kdl/dialect.kdl` yields the same dialect as reading the four
-   canonical files directly, and that equivalence has its own fixture
-   scenario (`dialect/entrypoint-vet/dialect`).
+   `pkg/kdl/schemas/schema/schema.kdl` yields the same meta-schema as
+   reading the four canonical files directly, and that equivalence has
+   its own fixture scenario (`meta-schema/entry-vet/meta-schema`).
 4. **Link.** Check that every type, node, slot, and parent a
    definition references is declared, including the canonical files'
    own self-description. Every field an `identity` block composes
@@ -140,16 +140,16 @@ engine compiles what the reader gives it — one construct per
 declaration, already validated by binding, with the span it was
 written at. Each construct stays with the document that wrote it, so
 a compile diagnostic names that document. In-memory definitions load
-through `load_dialect_sources` / `load_schema_sources`
+through `load_meta_schema_sources` / `load_schema_sources`
 (`load_schema_sources_with` takes `ReadOptions`); an in-memory
 definition belongs to no source, so an unprefixed import inside one
 fails closed (`KDLITH-LOC001`). Data in memory reads through
 `DataReader::read_sources` and the typed `read_sources`,
 `read_sources_local`, and `collect_sources`.
 
-One cycle cannot close: a reader needs a compiled dialect before it
+One cycle cannot close: a reader needs a compiled meta-schema before it
 can read one. `kdlith_schema_kdl::seed` breaks it the only way possible — the
-engine's seed bootstrap (`compile_dialect`), the one remaining
+engine's seed bootstrap (`compile_meta_schema`), the one remaining
 hand-written reader of definition syntax, compiles the four canonical
 documents embedded beside the reference processor's declarations. The
 bootstrap compiles nothing else, and the equivalence it exists for is
@@ -159,13 +159,13 @@ seed reproduces the seed's own digest.
 ## schema-kdl
 
 The reference processor (`pkg/rs/schema-kdl`) reads schema definitions
-in this dialect: it reads every canonical file and the entrypoint end
-to end; it holds only the dialect's own type and binding declarations
+in this meta-schema: it reads every canonical file and the entrypoint
+end to end; it holds only the meta-schema's own type and binding declarations
 plus glue, with every reusable decision in the engine or runtime; it
-hosts the compiler entry points (`load_dialect`,
-`load_dialect_sources`, `load_schema`, `load_schema_with`,
+hosts the compiler entry points (`load_meta_schema`,
+`load_meta_schema_sources`, `load_schema`, `load_schema_with`,
 `load_schema_sources`, `load_schema_sources_with`, and `seed`); and
 it is the code-generation oracle — generating from
-`pkg/kdl/dialect.kdl` must reproduce its source, apart from the
+`pkg/kdl/schemas/schema/schema.kdl` must reproduce its source, apart from the
 defined generated-marker header. It is reviewed by hand and never
 overwritten by the generator.

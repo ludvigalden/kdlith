@@ -1,6 +1,6 @@
 //! Self-description: each definition document is walked through its
-//! describing dialect's compiled dispatch and scope rules, so a construct
-//! the dialect does not declare is caught. A dialect describes itself.
+//! describing meta-schema's compiled dispatch and scope rules, so a construct
+//! the meta-schema does not declare is caught. A meta-schema describes itself.
 
 use kdlith_diagnostic::ByteSpan;
 use kdlith_parse::locate;
@@ -8,8 +8,8 @@ use kdlith_parse::locate;
 use crate::bindings::{ChildPlan, ScopeId};
 use crate::definition::{Definition, DefinitionKind};
 use crate::diag::{
-    CARDINALITY, Diagnostics, MISSING_FIELD, Site, UNBOUND_ENTRY, UNKNOWN_NODE, UNRESOLVED_DIALECT,
-    sibling_note,
+    CARDINALITY, Diagnostics, MISSING_FIELD, Site, UNBOUND_ENTRY, UNKNOWN_NODE,
+    UNRESOLVED_META_SCHEMA, sibling_note,
 };
 use crate::structure::Violation;
 use crate::syntax::{ParsedDocument, SyntaxNode};
@@ -27,7 +27,7 @@ pub(crate) fn run(
     for (doc, document) in documents.iter().enumerate() {
         let walk = Walk {
             kind,
-            dialect: describing,
+            meta_schema: describing,
             text: document.text(),
         };
         let mut found = Vec::new();
@@ -44,7 +44,7 @@ pub(crate) fn run(
     }
 }
 
-/// One construct the describing dialect does not admit, with the values
+/// One construct the describing meta-schema does not admit, with the values
 /// its binding code renders.
 struct Finding {
     span: ByteSpan,
@@ -64,7 +64,7 @@ impl Finding {
         }
     }
 
-    /// One phrase for a dialect that does not describe its own construct.
+    /// One phrase for a meta-schema that does not describe its own construct.
     fn phrase(&self) -> String {
         match self.code {
             UNKNOWN_NODE => format!("{} under {}", self.values[0], self.values[1]),
@@ -79,7 +79,7 @@ impl Finding {
 
 struct Walk<'d> {
     kind: DefinitionKind,
-    dialect: &'d Definition,
+    meta_schema: &'d Definition,
     /// The text of the document being walked, to compare columns.
     text: &'d str,
 }
@@ -93,14 +93,18 @@ struct Admitted<'n> {
 }
 
 impl Walk<'_> {
-    /// A schema definition the dialect does not admit gets the binding
-    /// code any processor binding it reports; a dialect that does not
+    /// A schema definition the meta-schema does not admit gets the binding
+    /// code any processor binding it reports; a meta-schema that does not
     /// describe its own constructs is not self-describing.
     fn report(&self, diags: &mut Diagnostics<'_>, doc: usize, finding: &Finding) {
         let site = Site::new(doc, finding.span);
         match self.kind {
-            DefinitionKind::Dialect => {
-                diags.error(UNRESOLVED_DIALECT, site, &["construct", &finding.phrase()]);
+            DefinitionKind::MetaSchema => {
+                diags.error(
+                    UNRESOLVED_META_SCHEMA,
+                    site,
+                    &["construct", &finding.phrase()],
+                );
             }
             DefinitionKind::Schema => {
                 let values: Vec<&str> = finding.values.iter().map(String::as_str).collect();
@@ -119,10 +123,10 @@ impl Walk<'_> {
         owner: &str,
         depth: usize,
     ) {
-        let Some(compiled) = self.dialect.bindings.scope(scope) else {
+        let Some(compiled) = self.meta_schema.bindings.scope(scope) else {
             return;
         };
-        let names = &self.dialect.names;
+        let names = &self.meta_schema.names;
         let mut state = compiled.rules.start();
         let mut previous: Option<Admitted<'_>> = None;
         for child in children {
@@ -159,7 +163,7 @@ impl Walk<'_> {
             }
             let inner = match compiled.child(sym) {
                 Some(ChildPlan::Declared { decl, .. }) => {
-                    let inner = self.dialect.bindings.decl_scope(decl);
+                    let inner = self.meta_schema.bindings.decl_scope(decl);
                     if let Some(inner) = inner {
                         self.node(found, inner, child, depth);
                     }
@@ -192,8 +196,8 @@ impl Walk<'_> {
     /// The note for an unknown child whose admitted sibling above it
     /// admits it as a child, when the child is indented past it.
     fn sibling(&self, sibling: Admitted<'_>, child: &SyntaxNode) -> Option<(ByteSpan, String)> {
-        let sym = self.dialect.names.get(&child.name)?;
-        self.dialect.bindings.child(sibling.scope?, sym)?;
+        let sym = self.meta_schema.names.get(&child.name)?;
+        self.meta_schema.bindings.child(sibling.scope?, sym)?;
         let at = locate(self.text, child.span).start;
         let above = locate(self.text, sibling.node.span).start;
         (at.column > above.column).then(|| {
@@ -245,10 +249,10 @@ impl Walk<'_> {
 
     /// Check a node's entries against its scope, then walk its children.
     fn node(&self, found: &mut Vec<Finding>, scope: ScopeId, node: &SyntaxNode, depth: usize) {
-        let Some(compiled) = self.dialect.bindings.scope(scope) else {
+        let Some(compiled) = self.meta_schema.bindings.scope(scope) else {
             return;
         };
-        let names = &self.dialect.names;
+        let names = &self.meta_schema.names;
         let arity = compiled.arity;
         if !arity.rest {
             let skip = usize::try_from(arity.indexed).unwrap_or(usize::MAX);
@@ -279,7 +283,7 @@ impl Walk<'_> {
 
     /// A scope rule the children broke, as the binder reports it.
     fn violation(&self, span: ByteSpan, owner: &str, violation: &Violation) -> Finding {
-        let names = &self.dialect.names;
+        let names = &self.meta_schema.names;
         let under = |child| format!("{} under {owner}", names.resolve(child));
         match violation {
             Violation::NotPermitted { child } => {

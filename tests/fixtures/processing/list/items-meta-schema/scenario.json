@@ -1,0 +1,18 @@
+{
+  "binary": "kdlith",
+  "description": "list items --meta-schema: the meta-schema-generation entrypoint governs the schema load and the index; stdout and stderr are byte-identical to processing/list/items under the bundled meta-schema (the goldens are that scenario's, unchanged)",
+  "args": [
+    "list",
+    "items",
+    "--meta-schema",
+    "{fx-suite}/../../pkg/kdl/schemas/schema/schema.kdl",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "entry.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

@@ -5,7 +5,7 @@ types and enum members or union variants in Pascal case, field keys
 in snake case (a Rust keyword as a raw identifier, `type` as `ty`),
 and each contributing document as a module named after its file stem.
 A field's type imports every engine item it spells at any depth. The
-dialect admits names Rust cannot spell, so generation checks them
+meta-schema admits names Rust cannot spell, so generation checks them
 before writing anything and fails closed, naming the name and the
 reason, when: a member, variant, or field key is no Rust identifier;
 two of one declaration's spellings collide; a document's module name
@@ -39,10 +39,10 @@ A schema crate spells every prelude and engine name by path
 macro, and trait by path (`::core::hash::Hash`, `::core::clone::Clone`)
 on both forms, so a declared type a sibling module imports by name —
 `Hash`, `Clone`, `Debug`, `Default`, `PartialEq`, `Eq` — never shadows
-one. A dialect crate keeps the reference
-processor's unqualified spellings, so the dialect form fails closed
-on those names instead. A dialect declares no reference types, so on
-the schema form the only reference-type name generation refuses is
+one. The meta-schema's crate keeps the reference processor's
+unqualified spellings, so the meta-schema form fails closed on those
+names instead. The meta-schema declares no reference types, so on the
+schema form the only reference-type name generation refuses is
 `Self`.
 
 Generic declarations are never spelled themselves: each instantiation
@@ -122,9 +122,9 @@ their bytes stay exactly as spelled. `--kdlith-workspace`
 inputs while the source and the license move to the consumer's root
 manifest.
 
-A dialect crate embeds its seed at build time: generation emits a
+The meta-schema's crate embeds its seed at build time: generation emits a
 `build.rs` that copies every contributing document from the sibling
-path `../../kdl/schemas/dialect` into `OUT_DIR`, and `compile.rs`
+path `../../kdl/schemas/schema` into `OUT_DIR`, and `compile.rs`
 includes each through an `OUT_DIR` `include_str!` beside the
 `CANONICAL_VERSION` constant naming the version they declare. The
 crate commits no copy, so its embed is the canonical text and cannot

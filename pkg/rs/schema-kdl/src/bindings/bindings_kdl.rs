@@ -7,7 +7,7 @@ const SOURCE_PARENTS: &[&str] = &["from", "child", "children"];
 
 pub(crate) const NODES: &[NodeShape] = &[
     NodeShape::new("node")
-        .under(&["schema", "dialect"])
+        .under(&["schema"])
         .declaration()
         .ty("NodeDef"),
     NodeShape::new("annotation")

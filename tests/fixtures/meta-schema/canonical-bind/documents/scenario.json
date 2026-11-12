@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "documents.kdl binds as a data document of the canonical meta-schema through the session, with no diagnostic: every declaration, record, and container in it is described by the meta-schema's compiled bindings",
+  "args": [
+    "vet",
+    "data",
+    "{fx-suite}/../../pkg/kdl/schemas/schema/documents.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "{\"item\":\"record\",\"data\":{\"node\":{\"source\":0,\"index\":298},\"type_name\":\"DocumentRule\",\"fields\":[{\"name\":\"first\",\"value\":{\"kind\":\"map\",\"value\":[{\"key\":\"exactly-one\",\"value\":{\"kind\":\"list\",\"value\":[{\"kind\":\"string\",\"value\":\"schema\"}]}}]},\"origin\":298},{\"name\":\"following\",\"value\":{\"kind\":\"list\",\"value\":[]},\"origin\":298}],\"origin\":298,\"validation\":\"valid\"}}\n",
+      "{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":{\"source\":0,\"index\":0}}}\n{\"item\":\"scope-complete\",\"data\":{\"source\":0,\"scope\":null}}\n"
+    ]
+  }
+}

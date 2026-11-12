@@ -5,10 +5,10 @@ repo kdlith {
         consumers "tests/tools/kdlith-fixtures"
     }
     // The schema-kdl crate's build script embeds these documents, and its
-    // generated code must equal what dialect generation makes of them;
-    // fixture scenarios read them.
-    input dialect kind=data {
-        path "pkg/kdl/dialect.kdl" "pkg/kdl/schemas/dialect"
+    // generated code must equal what generating the meta-schema makes of
+    // them; fixture scenarios read them.
+    input meta-schema kind=data {
+        path "pkg/kdl/schemas/schema"
         consumers "pkg/rs/schema-kdl" "tests/tools/kdlith-fixtures"
     }
     // The sources-manifest schema; fixture scenarios vet against it.

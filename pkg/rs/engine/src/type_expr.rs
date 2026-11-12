@@ -146,7 +146,7 @@ fn build(
     })
 }
 
-/// `^[A-Z][A-Za-z0-9]*$`, the dialect's `TypeName`.
+/// `^[A-Z][A-Za-z0-9]*$`, the meta-schema's `TypeName`.
 pub(crate) fn is_type_name(text: &str) -> bool {
     let mut bytes = text.bytes();
     bytes.next().is_some_and(|b| b.is_ascii_uppercase()) && bytes.all(|b| b.is_ascii_alphanumeric())

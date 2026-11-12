@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "An import projecting a slot the governing dialect does not declare is rejected",
+  "description": "An import projecting a slot the governing meta-schema does not declare is rejected",
   "args": [
     "vet",
     "schema",

@@ -1,11 +1,10 @@
-Validate dialect definitions, schemas, or data
+Validate schema definitions or data
 
 Usage: kdlith vet <COMMAND>
 
 Commands:
-  dialect  Load a dialect definition with its imports, compile, link, and check it
-  schema   Vet a schema definition under the bundled dialect, or the one `--dialect` names, itself vetted with complete checking
-  data     Bind data documents against the schema `--schema` names (or the dialect itself), under the bundled dialect or `--dialect`, then link their references; items go to stdout as JSON lines
+  schema  Vet a schema definition under the bundled meta-schema, or the one `--meta-schema` names, itself vetted with complete checking; the meta-schema itself (the schema named schema) is vetted against its own canonical definition
+  data    Bind data documents against the schema `--schema` names (or the meta-schema itself), under the bundled meta-schema or `--meta-schema`, then link their references; items go to stdout as JSON lines
 
 Options:
   -h, --help  Print help

@@ -1,4 +1,4 @@
-//! `kdlith vet dialect|schema|data`: load and check a definition, or
+//! `kdlith vet schema|data`: load and check a definition, or
 //! bind data documents against one; diagnostics go to stderr. `vet data`
 //! streams bound items to stdout as one JSON object per line.
 
@@ -13,7 +13,7 @@ use kdlith_engine::{
     LinkInputs, LinkReport, ReadOptions, SharedResolver, SourceTree, check_reading, link_reading,
 };
 use kdlith_model::{Item, SourceId};
-use kdlith_schema_kdl::{load_dialect, load_schema_with, seed};
+use kdlith_schema_kdl::{load_meta_schema, load_schema_with, seed};
 
 use crate::handlers;
 use crate::report::{mirror_diagnostics_as_json, report_all};
@@ -23,26 +23,25 @@ use crate::{DiagnosticsArg, ScopeArg, VetCommand};
 /// Run a parsed `vet` subcommand.
 pub(crate) fn run(command: VetCommand) -> ExitStatus {
     match command {
-        VetCommand::Dialect(args) => vet(
-            VetTarget::Dialect,
-            None,
-            &paths(&args.files),
-            scope_of(args.scope),
-            ReadOptions::new(),
-        ),
-        VetCommand::Schema(args) => vet(
-            VetTarget::Schema,
-            args.dialect.as_deref(),
-            &paths(&args.files),
-            scope_of(args.scope),
-            args.locations.read_options(),
-        ),
+        VetCommand::Schema(args) => {
+            let entries = paths(&args.files);
+            match definition_target(&entries, args.meta_schema.as_deref()) {
+                Ok(target) => vet(
+                    target,
+                    args.meta_schema.as_deref(),
+                    &entries,
+                    scope_of(args.scope),
+                    args.locations.read_options(),
+                ),
+                Err(status) => status,
+            }
+        }
         VetCommand::Data(args) => {
             mirror_diagnostics_as_json(args.diagnostics.is_some_and(DiagnosticsArg::json));
             match args.profiles.data_options(args.locations, args.handlers) {
                 Ok(options) => {
                     let options = options
-                        .with_dialect(args.dialect)
+                        .with_meta_schema(args.meta_schema)
                         .with_scope(scope_of(args.scope));
                     vet_data(args.schema.as_deref(), &paths(&args.files), &options)
                 }
@@ -63,47 +62,111 @@ pub(crate) fn scope_of(scope: ScopeArg) -> CheckScope {
     }
 }
 
-/// The governing dialect: the bundled canonical dialect, or the one
-/// entry document an explicit `--dialect` names, itself loaded with
+/// The governing meta-schema: the bundled canonical meta-schema, or the one
+/// entry document an explicit `--meta-schema` names, itself loaded with
 /// complete checking.
-pub(crate) fn governing_dialect(
-    dialect: Option<&Path>,
+pub(crate) fn governing_meta_schema(
+    meta_schema: Option<&Path>,
     extensions: &Extensions,
 ) -> Result<Definition, Vec<DiagnosticRecord>> {
-    match dialect {
-        Some(file) => load_dialect(&[file], extensions, CheckScope::Complete),
+    match meta_schema {
+        Some(file) => load_meta_schema(&[file], extensions, CheckScope::Complete),
         None => seed(extensions),
     }
+}
+
+/// The definition the schema verbs read from `entries`: the meta-schema
+/// when the first entry document's root is the schema named schema, any
+/// other schema otherwise. The meta-schema is read against its own
+/// canonical definition, so a `--meta-schema` replacement does not apply
+/// to it (`KDLITH-CLI001`, exit 2).
+pub(crate) fn definition_target(
+    entries: &[&Path],
+    meta_schema: Option<&Path>,
+) -> Result<VetTarget, ExitStatus> {
+    if !entries
+        .first()
+        .is_some_and(|entry| declares_meta_schema(entry))
+    {
+        return Ok(VetTarget::Schema);
+    }
+    if meta_schema.is_some() {
+        return Err(crate::usage::report_invalid_argument(
+            "--meta-schema does not apply to the meta-schema itself",
+        ));
+    }
+    Ok(VetTarget::MetaSchema)
+}
+
+/// Whether the document at `path` opens with the meta-schema's root,
+/// `schema schema`. A document that cannot be read or parsed declares no
+/// meta-schema here; the loader reports it.
+fn declares_meta_schema(path: &Path) -> bool {
+    use std::io::Read;
+    let mut text = String::new();
+    let Ok(file) = std::fs::File::open(path) else {
+        return false;
+    };
+    if file
+        .take(kdlith_engine::MAX_DOCUMENT_BYTES)
+        .read_to_string(&mut text)
+        .is_err()
+    {
+        return false;
+    }
+    let mut parser = kdlith_parse::Parser::new(&text);
+    let mut root = false;
+    while let Ok(Some(event)) = parser.next_event() {
+        match event.item {
+            kdlith_parse::Event::Node { name, .. } if !root => {
+                if name != kdlith_engine::DefinitionKind::Schema.root_name() {
+                    return false;
+                }
+                root = true;
+            }
+            kdlith_parse::Event::Entry(entry) if root && entry.name.is_none() => {
+                return matches!(
+                    entry.value,
+                    kdlith_parse::Value::String(name) if name == kdlith_engine::META_SCHEMA_NAME
+                );
+            }
+            kdlith_parse::Event::Entry(_) => {}
+            _ => return false,
+        }
+    }
+    false
 }
 
 /// The definition level being vetted.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum VetTarget {
-    Dialect,
-    /// A schema definition, under the bundled dialect or the one given
-    /// by an explicit `--dialect`.
+    /// The meta-schema, the schema named schema, read against its own
+    /// canonical definition.
+    MetaSchema,
+    /// A schema definition, under the bundled meta-schema or the one given
+    /// by an explicit `--meta-schema`.
     Schema,
-    /// Data documents, bound against a schema loaded under a dialect.
+    /// Data documents, bound against a schema loaded under a meta-schema.
     Data,
 }
 
 /// Vet the definition whose entry documents are `entries`. A schema is
-/// vetted under the bundled dialect, or the dialect loaded from the one
-/// document `dialect` names, which is itself vetted with complete
+/// vetted under the bundled meta-schema, or the meta-schema loaded from the one
+/// document `meta_schema` names, which is itself vetted with complete
 /// checking first; its import locations resolve under `options`. A
-/// dialect's imports are literal locations, so it takes none.
+/// meta-schema's imports are literal locations, so it takes none.
 pub fn vet(
     target: VetTarget,
-    dialect: Option<&Path>,
+    meta_schema: Option<&Path>,
     entries: &[&Path],
     scope: CheckScope,
     options: ReadOptions,
 ) -> ExitStatus {
     let extensions = definition_extensions();
     let loaded = match target {
-        VetTarget::Dialect => load_dialect(entries, &extensions, scope),
-        VetTarget::Schema => match governing_dialect(dialect, &extensions) {
+        VetTarget::MetaSchema => load_meta_schema(entries, &extensions, scope),
+        VetTarget::Schema => match governing_meta_schema(meta_schema, &extensions) {
             Ok(governing) => load_schema_with(&governing, entries, &extensions, scope, options),
             Err(records) => Err(records),
         },
@@ -150,7 +213,7 @@ fn summary_line(definition: &Definition) -> String {
     )
 }
 
-/// What one data reading supplies beyond its documents: the dialect
+/// What one data reading supplies beyond its documents: the meta-schema
 /// definition replacing the bundled one, the project root and named
 /// sources the command line passes, the profile or profile set the
 /// invocation names, the built-in context handlers to install, the
@@ -161,7 +224,7 @@ fn summary_line(definition: &Definition) -> String {
 /// execution semantics.
 #[derive(Default)]
 pub struct DataOptions {
-    dialect: Option<PathBuf>,
+    meta_schema: Option<PathBuf>,
     root: Option<PathBuf>,
     sources: Vec<(String, SourceTree)>,
     manifest: Option<PathBuf>,
@@ -180,7 +243,7 @@ pub struct DataOptions {
 impl DataOptions {
     pub fn new(profile: Option<String>, handlers: Vec<String>) -> Self {
         Self {
-            dialect: None,
+            meta_schema: None,
             root: None,
             sources: Vec::new(),
             manifest: None,
@@ -289,25 +352,25 @@ impl DataOptions {
         self
     }
 
-    /// The same options under the dialect the one document `dialect`
-    /// names, or under the bundled dialect when it is `None`.
+    /// The same options under the meta-schema the one document `meta_schema`
+    /// names, or under the bundled meta-schema when it is `None`.
     #[must_use]
-    pub fn with_dialect(mut self, dialect: Option<PathBuf>) -> Self {
-        self.dialect = dialect;
+    pub fn with_meta_schema(mut self, meta_schema: Option<PathBuf>) -> Self {
+        self.meta_schema = meta_schema;
         self
     }
 
-    /// The governing dialect: the bundled one, or the one the options
+    /// The governing meta-schema: the bundled one, or the one the options
     /// name, itself loaded with complete checking.
     pub(crate) fn governing(
         &self,
         extensions: &Extensions,
     ) -> Result<Definition, Vec<DiagnosticRecord>> {
-        governing_dialect(self.dialect.as_deref(), extensions)
+        governing_meta_schema(self.meta_schema.as_deref(), extensions)
     }
 
     /// The schema `schema` names, loaded with complete checking under
-    /// the governing dialect and these options' extensions, its import
+    /// the governing meta-schema and these options' extensions, its import
     /// locations resolved under the root and sources.
     pub(crate) fn load_schema(
         &self,
@@ -391,8 +454,8 @@ impl DataOptions {
 }
 
 /// Bind each data document against `schema` under the governing
-/// dialect — the bundled one, or the single document the options'
-/// dialect names — or against the dialect itself when `schema` is
+/// meta-schema — the bundled one, or the single document the options'
+/// meta-schema names — or against the meta-schema itself when `schema` is
 /// absent. The documents'
 /// imports execute as invocations: each document's items follow a
 /// document item, and imported records reach the stream with their own

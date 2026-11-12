@@ -8,7 +8,7 @@ use kdlith_parse::{Event, Parser};
 
 /// Print the hint when the run failed, no schema was given, and one of
 /// `entries` opens with a root node named `schema`: bound as data
-/// against the governing dialect, a schema definition fails for the
+/// against the governing meta-schema, a schema definition fails for the
 /// wrong reason. `status` returns unchanged.
 pub(crate) fn on_failure(
     schema: Option<&Path>,

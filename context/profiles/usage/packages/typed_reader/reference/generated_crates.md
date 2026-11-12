@@ -2,7 +2,7 @@
 
 ## Generating
 
-`gen dialect` and `gen schema` both require `--crate NAME` (the
+`gen schema` requires `--crate NAME` (the
 published package name) and `--out DIR`, before the definition
 documents. A writing run records every path it owns in
 `DIR/kdlith-manifest` and refuses to overwrite an existing file the
@@ -65,7 +65,7 @@ src/lib.rs
 ```
 
 The lines name the generator version, the form (`schema` or
-`dialect`), the crate, the definition and its declared version, and
+`meta-schema`), the crate, the definition and its declared version, and
 the packaging (`sibling`, `path`, `registry` or `workspace`); they
 carry no path and no time, so two runs write the same bytes. Every
 `#` line is a comment to the ownership reader, so a manifest written
@@ -83,9 +83,9 @@ under `--kdlith-workspace` the manifest carries
 there is no `license` key, and a registry publication gets its
 license from the consumer's own manifest or publisher.
 
-A dialect crate embeds its seed at build time: its generated
-`build.rs` copies the dialect's contributing documents from the
-sibling path `../../kdl/schemas/dialect` into `OUT_DIR`, and
+The meta-schema's crate embeds its seed at build time: its generated
+`build.rs` copies the meta-schema's contributing documents from the
+sibling path `../../kdl/schemas/schema` into `OUT_DIR`, and
 `compile.rs` includes each through an `OUT_DIR` `include_str!` beside
 the `CANONICAL_VERSION` constant naming the version the documents
 declare. The crate commits no copy of the documents, so it builds only
@@ -192,7 +192,9 @@ pub enum Item {
 
 ## Two forms
 
-`gen dialect` regenerates a reference-processor-shaped crate;
-`gen schema` generates a domain crate. The dialect form takes none
-of the schema-only flags (`--root`, `--source`, `--handler`); the
-packaging flags and `--kdlith-workspace` are shared.
+`gen schema` generates a domain crate from a schema, and a
+reference-processor-shaped crate from the meta-schema, the schema
+named `schema`. The meta-schema's imports are literal, so the
+location flags (`--root`, `--source`) and `--handler` have nothing to
+act on there; the packaging flags and `--kdlith-workspace` apply to
+both.

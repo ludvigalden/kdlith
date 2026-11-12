@@ -28,8 +28,8 @@ caller's context; its context mutations never return to the caller.
 Each `project` token names a declared slot, or a declared namespace —
 projecting every slot in it, so the list never goes stale when the
 schema grows a slot into the namespace; a token naming neither a slot
-nor a namespace is `KDLITH-SCH006` (or `KDLITH-DLC008` inside a
-dialect), never a silently empty projection.
+nor a namespace is `KDLITH-SCH006` (or `KDLITH-DLC008` inside the
+meta-schema), never a silently empty projection.
 
 An import carrying `as=NAME` preserves the namespace: the namespaced
 document resolves its own declarations unqualified, while every other

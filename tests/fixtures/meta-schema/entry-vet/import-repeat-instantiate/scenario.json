@@ -1,0 +1,20 @@
+{
+  "binary": "kdlith",
+  "description": "Repeated-import policy instantiate on the meta-schema path: the conform walk admits the repeated= property (previously the meta-schema self-description rejected any spelling), so the second import of the same source under repeated=instantiate vets green alongside the four canonical files and the digest stays the canonical one",
+  "args": [
+    "vet",
+    "schema",
+    "{fx-suite}/../../pkg/kdl/schemas/schema/types.kdl",
+    "{fx-suite}/../../pkg/kdl/schemas/schema/bindings.kdl",
+    "{fx-suite}/../../pkg/kdl/schemas/schema/context.kdl",
+    "{fx-suite}/../../pkg/kdl/schemas/schema/documents.kdl",
+    "extra.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "ok: schema schema version 0 scope=complete documents=7 ",
+      " digest=13400d6dbaf3ce86"
+    ]
+  }
+}

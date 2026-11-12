@@ -1,6 +1,6 @@
 # Inspect views
 
-`inspect dialect`, `inspect schema`, and `inspect data` take
+`inspect schema` and `inspect data` take
 `--view`, which picks what standard output carries. Every view writes
 JSON lines in the tagged envelope the item stream already uses,
 `{"item":"<kind>","data":{…}}`, so one decoder reads all of them.
@@ -8,15 +8,15 @@ Diagnostics always go to standard error.
 
 ## Applicability
 
-| View         | dialect          | schema           | data                         |
-| ------------ | ---------------- | ---------------- | ---------------------------- |
-| `source`     | item stream      | item stream      | item stream                  |
-| `bound`      | `KDLITH-CLI004`  | `KDLITH-CLI004`  | data items                   |
-| `context`    | `KDLITH-CLI004`  | `KDLITH-CLI004`  | entry contexts               |
-| `effective`  | compiled entries | compiled entries | declarations and resolutions |
-| `origins`    | `KDLITH-CLI004`  | `KDLITH-CLI004`  | provenance envelopes         |
-| `plan`       | processing plan  | processing plan  | the bound definition's plan  |
-| `references` | `KDLITH-CLI004`  | `KDLITH-CLI004`  | linked references            |
+| View         | schema           | data                         |
+| ------------ | ---------------- | ---------------------------- |
+| `source`     | item stream      | item stream                  |
+| `bound`      | `KDLITH-CLI004`  | data items                   |
+| `context`    | `KDLITH-CLI004`  | entry contexts               |
+| `effective`  | compiled entries | declarations and resolutions |
+| `origins`    | `KDLITH-CLI004`  | provenance envelopes         |
+| `plan`       | processing plan  | the bound definition's plan  |
+| `references` | `KDLITH-CLI004`  | linked references            |
 
 `bound`, `context`, `origins`, and `references` describe how data
 binds and links; a definition target binds no data, so asking for one

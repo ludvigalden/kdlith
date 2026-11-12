@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A document contributing to the canonical meta-schema declares one context slot twice and is rejected as a duplicate meta-schema construct (KDLITH-DLC002), the slot arm beside the type and root-node arms",
+  "args": [
+    "vet",
+    "schema",
+    "{fx-suite}/../../pkg/kdl/schemas/schema/types.kdl",
+    "{fx-suite}/../../pkg/kdl/schemas/schema/bindings.kdl",
+    "{fx-suite}/../../pkg/kdl/schemas/schema/context.kdl",
+    "{fx-suite}/../../pkg/kdl/schemas/schema/documents.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

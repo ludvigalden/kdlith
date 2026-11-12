@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "A string format that is not a member of the dialect's StringFormat enum is rejected by the compiler with the code the reference processor reports",
+  "description": "A string format that is not a member of the meta-schema's StringFormat enum is rejected by the compiler with the code the reference processor reports",
   "args": [
     "vet",
     "schema",

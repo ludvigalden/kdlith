@@ -1,0 +1,16 @@
+// A fifth contribution to the canonical meta-schema: one string type the
+// reference processor does not declare. The document imports the four
+// canonical meta-schema definition documents and adds the contribution, so
+// the governing meta-schema is the canonical one plus the extra type. The
+// meta-schema still compiles; the processor must refuse to read with it.
+schema schema version="0" {
+    import "../../../../../pkg/kdl/schemas/schema/types.kdl"
+    import "../../../../../pkg/kdl/schemas/schema/bindings.kdl"
+    import "../../../../../pkg/kdl/schemas/schema/context.kdl"
+    import "../../../../../pkg/kdl/schemas/schema/documents.kdl"
+    types {
+        string Extra {
+            min-length 1
+        }
+    }
+}

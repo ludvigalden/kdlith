@@ -989,7 +989,7 @@ fn bounded_type(cx: &Cx<'_>, ty: &TypeExpr) -> Result<(), &'static str> {
     }
 }
 
-/// `^[A-Za-z][A-Za-z0-9_-]*$`, the dialect's `FieldName`.
+/// `^[A-Za-z][A-Za-z0-9_-]*$`, the meta-schema's `FieldName`.
 pub(crate) fn field_name(text: &str) -> bool {
     let mut bytes = text.bytes();
     bytes.next().is_some_and(|b| b.is_ascii_alphabetic())

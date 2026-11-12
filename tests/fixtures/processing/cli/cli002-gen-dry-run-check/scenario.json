@@ -3,8 +3,8 @@
   "description": "gen declares --dry-run and --check mutually exclusive (one prints the plan, the other compares against the destination); both together are conflicting options: exit 2 under KDLITH-CLI002, nothing generated or compared",
   "args": [
     "gen",
-    "dialect",
-    "dialect.kdl",
+    "schema",
+    "schema.kdl",
     "--crate",
     "demo",
     "--out",

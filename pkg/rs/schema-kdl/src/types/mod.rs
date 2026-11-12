@@ -1,4 +1,4 @@
-//! The dialect's logical types: one module per contributing document,
+//! The meta-schema's logical types: one module per contributing document,
 //! each type declared once and read from bound values.
 
 mod bindings_kdl;

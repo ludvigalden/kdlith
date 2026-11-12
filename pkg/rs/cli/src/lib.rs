@@ -51,7 +51,7 @@ struct Cli {
 enum Command {
     /// Generate a Rust processor crate from definitions
     Gen(GenArgs),
-    /// Validate dialect definitions, schemas, or data
+    /// Validate schema definitions or data
     Vet(VetArgs),
     /// Process data and write typed output
     Export(ExportArgs),
@@ -90,7 +90,7 @@ struct ChangelogArgs {
     target: changelog::Target,
 }
 
-/// `kdlith gen dialect|schema|workspace`.
+/// `kdlith gen schema|workspace`.
 #[derive(Args)]
 struct GenArgs {
     #[command(subcommand)]
@@ -99,11 +99,10 @@ struct GenArgs {
 
 #[derive(Subcommand)]
 enum GenCommand {
-    /// Generate the processor crate a dialect definition's documents
-    /// compile to, embedding them as its seed
-    Dialect(GenFormArgs),
     /// Generate the data reader a schema definition compiles to, under
-    /// the canonical dialect
+    /// the canonical meta-schema; the meta-schema itself (the schema
+    /// named schema) generates the processor crate that embeds it as its
+    /// seed
     Schema(Box<GenSchemaArgs>),
     /// Check the workspace root's kdlith dependencies against a named
     /// source and write the owned .cargo/config.toml that patches them
@@ -128,8 +127,8 @@ struct GenFormArgs {
     /// definition the generator refuses fails before anything is compared
     #[arg(long, conflicts_with = "dry_run")]
     check: bool,
-    /// Definition documents: the dialect entrypoint, or the schema's
-    /// documents
+    /// Definition documents: the schema's documents, or the meta-schema
+    /// entrypoint
     #[arg(required = true)]
     files: Vec<PathBuf>,
     /// The directory the generated manifest roots its kdlith path
@@ -189,7 +188,7 @@ struct GenWorkspaceArgs {
     check: bool,
 }
 
-/// `kdlith vet dialect|schema|data`.
+/// `kdlith vet schema|data`.
 #[derive(Args)]
 struct VetArgs {
     #[command(subcommand)]
@@ -198,35 +197,23 @@ struct VetArgs {
 
 #[derive(Subcommand)]
 enum VetCommand {
-    /// Load a dialect definition with its imports, compile, link, and
-    /// check it
-    Dialect(VetDialectArgs),
-    /// Vet a schema definition under the bundled dialect, or the one
-    /// `--dialect` names, itself vetted with complete checking
+    /// Vet a schema definition under the bundled meta-schema, or the one
+    /// `--meta-schema` names, itself vetted with complete checking; the
+    /// meta-schema itself (the schema named schema) is vetted against its
+    /// own canonical definition
     Schema(VetSchemaArgs),
     /// Bind data documents against the schema `--schema` names (or the
-    /// dialect itself), under the bundled dialect or `--dialect`, then
+    /// meta-schema itself), under the bundled meta-schema or `--meta-schema`, then
     /// link their references; items go to stdout as JSON lines
     Data(VetDataArgs),
 }
 
 #[derive(Args)]
-struct VetDialectArgs {
-    /// Check the named documents alone (local) or also resolve imports,
-    /// link references, and check self-description (complete)
-    #[arg(long, value_enum, default_value_t = ScopeArg::Complete)]
-    scope: ScopeArg,
-    /// Definition documents
-    #[arg(required = true)]
-    files: Vec<PathBuf>,
-}
-
-#[derive(Args)]
 struct VetSchemaArgs {
-    /// A dialect definition document replacing the bundled one; it is
+    /// A meta-schema definition document replacing the bundled one; it is
     /// itself vetted with complete checking
-    #[arg(long = "dialect", value_name = "FILE")]
-    dialect: Option<PathBuf>,
+    #[arg(long = "meta-schema", value_name = "FILE")]
+    meta_schema: Option<PathBuf>,
     /// Check the named documents alone (local) or also resolve imports,
     /// link references, and check self-description (complete)
     #[arg(long, value_enum, default_value_t = ScopeArg::Complete)]
@@ -240,11 +227,11 @@ struct VetSchemaArgs {
 
 #[derive(Args)]
 struct VetDataArgs {
-    /// A dialect definition document replacing the bundled one
-    #[arg(long = "dialect", value_name = "FILE")]
-    dialect: Option<PathBuf>,
+    /// A meta-schema definition document replacing the bundled one
+    #[arg(long = "meta-schema", value_name = "FILE")]
+    meta_schema: Option<PathBuf>,
     /// A schema definition document; without one, data binds against
-    /// the dialect itself
+    /// the meta-schema itself
     #[arg(long = "schema", value_name = "FILE")]
     schema: Option<PathBuf>,
     #[command(flatten)]
@@ -433,7 +420,7 @@ impl DiagnosticsArg {
     }
 }
 
-/// `kdlith inspect dialect|schema|data`.
+/// `kdlith inspect schema|data`.
 #[derive(Args)]
 struct InspectArgs {
     #[command(subcommand)]
@@ -442,42 +429,22 @@ struct InspectArgs {
 
 #[derive(Subcommand)]
 enum InspectCommand {
-    /// Show dialect definition documents and their imports as typed
-    /// items, one JSON line each on stdout, then check the dialect as
-    /// `vet dialect` does; any error exits nonzero after the items
-    Dialect(InspectDefinitionArgs),
     /// Show schema definition documents and their imports as typed
     /// items, one JSON line each on stdout, then check the schema as
     /// `vet schema` does; any error exits nonzero after the items
     Schema(InspectSchemaArgs),
     /// Bind data documents exactly as `vet data` does: under the bundled
-    /// dialect (or --dialect) and the --schema schema, checked first, or
-    /// the dialect itself without --schema; each bound item goes to
+    /// meta-schema (or --meta-schema) and the --schema schema, checked first, or
+    /// the meta-schema itself without --schema; each bound item goes to
     /// stdout as one JSON line
     Data(InspectDataArgs),
 }
 
 #[derive(Args)]
-struct InspectDefinitionArgs {
-    /// A dialect definition document replacing the bundled one
-    #[arg(long = "dialect", value_name = "FILE")]
-    dialect: Option<PathBuf>,
-    /// The item view to print: source (every item), effective (the
-    /// compiled definition by section) or plan (its processing plan);
-    /// bound, context, origins and references apply only to inspect
-    /// data (KDLITH-CLI004, exit 2)
-    #[arg(long, value_enum, default_value_t = ViewArg::Source)]
-    view: ViewArg,
-    /// Definition documents
-    #[arg(required = true)]
-    files: Vec<PathBuf>,
-}
-
-#[derive(Args)]
 struct InspectSchemaArgs {
-    /// A dialect definition document replacing the bundled one
-    #[arg(long = "dialect", value_name = "FILE")]
-    dialect: Option<PathBuf>,
+    /// A meta-schema definition document replacing the bundled one
+    #[arg(long = "meta-schema", value_name = "FILE")]
+    meta_schema: Option<PathBuf>,
     /// The item view to print: source (every item), effective (the
     /// compiled definition by section) or plan (its processing plan);
     /// bound, context, origins and references apply only to inspect
@@ -493,11 +460,11 @@ struct InspectSchemaArgs {
 
 #[derive(Args)]
 struct InspectDataArgs {
-    /// A dialect definition document replacing the bundled one
-    #[arg(long = "dialect", value_name = "FILE")]
-    dialect: Option<PathBuf>,
+    /// A meta-schema definition document replacing the bundled one
+    #[arg(long = "meta-schema", value_name = "FILE")]
+    meta_schema: Option<PathBuf>,
     /// A schema definition document; without one, data binds against
-    /// the dialect itself
+    /// the meta-schema itself
     #[arg(long = "schema", value_name = "FILE")]
     schema: Option<PathBuf>,
     #[command(flatten)]
@@ -605,12 +572,12 @@ enum ListCommand {
 
 #[derive(Args)]
 struct ListSchemaArgs {
-    /// A dialect definition document replacing the bundled one; it is
+    /// A meta-schema definition document replacing the bundled one; it is
     /// itself vetted with complete checking
-    #[arg(long = "dialect", value_name = "FILE")]
-    dialect: Option<PathBuf>,
-    /// A schema definition document, read under the bundled dialect or
-    /// the one `--dialect` names
+    #[arg(long = "meta-schema", value_name = "FILE")]
+    meta_schema: Option<PathBuf>,
+    /// A schema definition document, read under the bundled meta-schema or
+    /// the one `--meta-schema` names
     #[arg(long, value_name = "FILE", required = true)]
     schema: PathBuf,
     #[command(flatten)]
@@ -619,12 +586,12 @@ struct ListSchemaArgs {
 
 #[derive(Args)]
 struct ListItemsArgs {
-    /// A dialect definition document replacing the bundled one; it is
+    /// A meta-schema definition document replacing the bundled one; it is
     /// itself vetted with complete checking
-    #[arg(long = "dialect", value_name = "FILE")]
-    dialect: Option<PathBuf>,
-    /// A schema definition document, read under the bundled dialect or
-    /// the one `--dialect` names
+    #[arg(long = "meta-schema", value_name = "FILE")]
+    meta_schema: Option<PathBuf>,
+    /// A schema definition document, read under the bundled meta-schema or
+    /// the one `--meta-schema` names
     #[arg(long, value_name = "FILE", required = true)]
     schema: PathBuf,
     #[command(flatten)]
@@ -675,12 +642,12 @@ struct CacheRefreshArgs {
     /// created when it does not exist, its parent must
     #[arg(long, value_name = "DIR", required = true)]
     state: PathBuf,
-    /// A dialect definition document replacing the bundled one; it is
+    /// A meta-schema definition document replacing the bundled one; it is
     /// itself vetted with complete checking
-    #[arg(long = "dialect", value_name = "FILE")]
-    dialect: Option<PathBuf>,
-    /// A schema definition document, read under the bundled dialect or
-    /// the one `--dialect` names
+    #[arg(long = "meta-schema", value_name = "FILE")]
+    meta_schema: Option<PathBuf>,
+    /// A schema definition document, read under the bundled meta-schema or
+    /// the one `--meta-schema` names
     #[arg(long, value_name = "FILE", required = true)]
     schema: PathBuf,
     #[command(flatten)]
@@ -724,12 +691,12 @@ struct ReadFileArgs {
 
 #[derive(Args)]
 struct ReadDataArgs {
-    /// A dialect definition document replacing the bundled one; it is
+    /// A meta-schema definition document replacing the bundled one; it is
     /// itself vetted with complete checking
-    #[arg(long = "dialect", value_name = "FILE")]
-    dialect: Option<PathBuf>,
-    /// A schema definition document, read under the bundled dialect or
-    /// the one `--dialect` names
+    #[arg(long = "meta-schema", value_name = "FILE")]
+    meta_schema: Option<PathBuf>,
+    /// A schema definition document, read under the bundled meta-schema or
+    /// the one `--meta-schema` names
     #[arg(long, required = true)]
     schema: PathBuf,
     /// An entry document bound before the read document as its own
@@ -794,12 +761,12 @@ enum SensitiveArg {
 /// `kdlith export --schema <FILE> <files...>`.
 #[derive(Args)]
 struct ExportArgs {
-    /// A dialect definition document replacing the bundled one; it is
+    /// A meta-schema definition document replacing the bundled one; it is
     /// itself vetted with complete checking
-    #[arg(long = "dialect", value_name = "FILE")]
-    dialect: Option<PathBuf>,
-    /// A schema definition document, read under the bundled dialect or
-    /// the one `--dialect` names
+    #[arg(long = "meta-schema", value_name = "FILE")]
+    meta_schema: Option<PathBuf>,
+    /// A schema definition document, read under the bundled meta-schema or
+    /// the one `--meta-schema` names
     #[arg(long, value_name = "FILE", required = true)]
     schema: PathBuf,
     /// What to emit: `roots` for the entry documents' top-level nodes,
@@ -900,18 +867,15 @@ impl Command {
             Command::Gen(args) => match &mut args.command {
                 GenCommand::Schema(args) => &mut args.locations,
                 GenCommand::Workspace(args) => &mut args.locations,
-                GenCommand::Dialect(_) => return None,
             },
             Command::Vet(args) => match &mut args.command {
                 VetCommand::Schema(args) => &mut args.locations,
                 VetCommand::Data(args) => &mut args.locations,
-                VetCommand::Dialect(_) => return None,
             },
             Command::Export(args) => &mut args.locations,
             Command::Inspect(args) => match &mut args.command {
                 InspectCommand::Schema(args) => &mut args.locations,
                 InspectCommand::Data(args) => &mut args.locations,
-                InspectCommand::Dialect(_) => return None,
             },
             Command::List(args) => match &mut args.command {
                 ListCommand::Types(args)

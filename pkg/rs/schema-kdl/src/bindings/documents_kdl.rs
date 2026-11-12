@@ -4,13 +4,10 @@
 use kdlith_engine::NodeShape;
 
 pub(crate) const NODES: &[NodeShape] = &[
-    NodeShape::new("dialect").container().ty("DialectDef"),
     NodeShape::new("schema").container().ty("SchemaDef"),
-    NodeShape::new("types")
-        .under(&["dialect", "schema"])
-        .container(),
+    NodeShape::new("types").under(&["schema"]).container(),
     NodeShape::new("document")
-        .under(&["dialect", "schema"])
+        .under(&["schema"])
         .record()
         .ty("DocumentRule"),
     NodeShape::new("first").under(&["document"]).ty("FirstRule"),
@@ -18,7 +15,7 @@ pub(crate) const NODES: &[NodeShape] = &[
         .under(&["node"])
         .ty("ExactlyOneGroup"),
     NodeShape::new("import")
-        .under(&["dialect", "schema"])
+        .under(&["schema"])
         .source_import()
         .ty("ImportRequest"),
     NodeShape::new("profile")

@@ -1,7 +1,7 @@
 ---
 description: >-
   Authoring kdlith definitions: the three authoring levels, schema
-  and dialect documents, logical types, node bindings, context slots
+  and meta-schema documents, logical types, node bindings, context slots
   and effects, document rules, imports, and profiles.
 binds_to_depth: main...
 ---
@@ -11,20 +11,20 @@ binds_to_depth: main...
 kdlith has three authoring levels. All three are KDL documents, and
 their role, not their file extension, tells them apart:
 
-| Level | Term               | Defines                                                            |
-| ----- | ------------------ | ------------------------------------------------------------------ |
-| 1     | Dialect definition | The language used to author schemas                                |
-| 2     | Schema definition  | Domain types, node bindings, context effects, and processing rules |
-| 3     | Data document      | Domain declarations, controls, imports, and records                |
+| Level | Term              | Defines                                                            |
+| ----- | ----------------- | ------------------------------------------------------------------ |
+| 1     | Meta-schema       | The schema schemas are authored in                                 |
+| 2     | Schema definition | Domain types, node bindings, context effects, and processing rules |
+| 3     | Data document     | Domain declarations, controls, imports, and records                |
 
-A dialect definition is written in the dialect it defines. Several
-documents may contribute to one dialect or schema: each repeats the
+The meta-schema is the schema named `schema`, written in itself.
+Several documents may contribute to one schema: each repeats the
 same root name and version, and a declaration made twice across them
 is rejected, never merged.
 
-Most tools use the committed kdlith dialect (`dialect kdlith
+Most tools use the committed meta-schema (`schema schema
 version="0"`, whose canonical documents live under
-`pkg/kdl/schemas/dialect/`) and author a schema definition for their
+`pkg/kdl/schemas/schema/`) and author a schema definition for their
 domain; data documents are authored against that schema.
 
 Read on demand:

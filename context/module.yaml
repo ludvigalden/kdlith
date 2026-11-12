@@ -1,7 +1,7 @@
 title: kdlith
 description: >-
-  Typed, streaming KDL processing: the kdlith CLI compiles dialect and
-  schema definitions, validates authored documents, generates
+  Typed, streaming KDL processing: the kdlith CLI compiles schema
+  definitions, validates authored documents, generates
   specialized Rust crates, and exports typed records with provenance.
 path: github.com/ludvigalden/kdlith
 requires: []

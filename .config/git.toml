@@ -4,8 +4,8 @@ schema_version = 1
 # ctxmod shape: a deliberately narrow committed surface under a
 # deny-by-default root. Committed classes: Rust source (library crates
 # under pkg/rs/, the CLI under tools/kdlith), the fixture harness and
-# its fixture suite (tests/), the canonical KDL dialect definitions and
-# authored schemas and the dialect-generation entrypoint (pkg/kdl/), the
+# its fixture suite (tests/), the canonical KDL meta-schema and the
+# authored schemas (pkg/kdl/), the
 # committed context trees (context/ for consumers, context.internal/ for
 # development), the Cargo
 # manifests, the CLI crate's build script, the root TOML formatter

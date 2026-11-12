@@ -31,8 +31,8 @@ use crate::bindings::{
 };
 use crate::decode::{self, At, Decoded, Decoder, Mismatch};
 use crate::definition::{
-    AccumulateOp, Definition, DefinitionKind, MergeDuplicates, ProfileSelection, ProviderDecl,
-    SlotDuplicates,
+    AccumulateOp, Definition, DefinitionKind, META_SCHEMA_NAME, MergeDuplicates, ProfileSelection,
+    ProviderDecl, SlotDuplicates,
 };
 use crate::diag::{
     CONFLICTING_BINDING, DUPLICATE_KEY, MALFORMED, MISSING_FIELD, NOT_INSTALLED, TYPE_EXPRESSION,
@@ -130,7 +130,7 @@ enum CaseSelection {
     Unmatched,
 }
 
-/// The dialect construct a schema definition's root node is written as.
+/// The meta-schema construct a schema definition's root node is written as.
 const SCHEMA_ROOT: &str = "schema";
 
 /// The include short form's declared type, target field, and the owner
@@ -266,6 +266,12 @@ pub struct Binder<'d, 's> {
     order_broken: bool,
     /// The name of the document's first root node, once it opened.
     root_name: Option<String>,
+    /// The first argument of the document's first root node, its
+    /// definition name, once read.
+    root_title: Option<String>,
+    /// Whether the first root node is open and its first argument not
+    /// yet read.
+    title_pending: bool,
     /// The root node bound last, while no later root node has opened.
     root_last: Option<Sibling>,
     /// The `as=` namespaces this document's imports bound, with the span
@@ -399,6 +405,8 @@ impl<'d, 's> Binder<'d, 's> {
             profile_reported,
             order_broken: false,
             root_name: None,
+            root_title: None,
+            title_pending: false,
             root_last: None,
             namespaces: Vec::new(),
             handlers: Handlers::new(),
@@ -423,6 +431,13 @@ impl<'d, 's> Binder<'d, 's> {
     /// The name of the document's first root node, once it has opened.
     pub fn root_name(&self) -> Option<&str> {
         self.root_name.as_deref()
+    }
+
+    /// Whether the document's root declares the meta-schema: a schema
+    /// root whose name argument is the reserved meta-schema name.
+    pub fn meta_root(&self) -> bool {
+        self.root_name.as_deref() == Some(SCHEMA_ROOT)
+            && self.root_title.as_deref() == Some(META_SCHEMA_NAME)
     }
 
     /// A node no binding accepts here, with a note when the sibling
@@ -2735,7 +2750,7 @@ impl<'d, 's> Binder<'d, 's> {
     }
 
     /// Whether a node declaration of a definition bound as data of the
-    /// dialect binds two fields to the same syntax, reported with the
+    /// meta-schema binds two fields to the same syntax, reported with the
     /// code the definition compiler uses for the same construct.
     fn overlapping(
         &mut self,
@@ -2743,7 +2758,7 @@ impl<'d, 's> Binder<'d, 's> {
         frame: &BindFrame,
         values: &[Option<Value>],
     ) -> bool {
-        if self.def.kind != DefinitionKind::Dialect
+        if self.def.kind != DefinitionKind::MetaSchema
             || self.name(frame.name) != overlap::NODE_CONSTRUCT
         {
             return false;
@@ -2761,9 +2776,9 @@ impl<'d, 's> Binder<'d, 's> {
         !found.is_empty()
     }
 
-    /// Whether a schema root of a definition read as data of the dialect
+    /// Whether a schema root of a definition read as data of the meta-schema
     /// states its `version`, with the code the compiler reports for the
-    /// same construct; dialect roots declare theirs required already.
+    /// same construct; meta-schema roots declare theirs required already.
     fn root_without_version(
         &mut self,
         cx: &mut Cx<'_>,
@@ -2771,7 +2786,9 @@ impl<'d, 's> Binder<'d, 's> {
         values: &[Option<Value>],
         root: bool,
     ) -> bool {
-        if !root || self.def.kind != DefinitionKind::Dialect || self.name(frame.name) != SCHEMA_ROOT
+        if !root
+            || self.def.kind != DefinitionKind::MetaSchema
+            || self.name(frame.name) != SCHEMA_ROOT
         {
             return false;
         }
@@ -3046,11 +3063,11 @@ impl<'d, 's> Binder<'d, 's> {
         }
     }
 
-    /// Whether a dialect document's import path is literal, reported
+    /// Whether a meta-schema document's import path is literal, reported
     /// as the compiler reports it when empty or not a literal location.
     /// A schema document's paths are left to its own compile.
     fn literal_import(&mut self, cx: &mut Cx<'_>, span: ByteSpan, path: &str) -> bool {
-        if self.root_name.as_deref() != Some("dialect") {
+        if !self.meta_root() {
             return true;
         }
         if path.is_empty() {
@@ -3308,7 +3325,7 @@ impl<'d, 's> Binder<'d, 's> {
         values: &[Option<Value>],
     ) -> bool {
         let info = &self.tables.decls[frame.owner.index()];
-        if self.def.kind != DefinitionKind::Dialect || info.type_name != INCLUDE_TYPE {
+        if self.def.kind != DefinitionKind::MetaSchema || info.type_name != INCLUDE_TYPE {
             return false;
         }
         // The keyed members bound before the include: its splice point
@@ -3564,6 +3581,9 @@ impl<'s> Processor for Binder<'_, 's> {
         };
         if parent.is_none() && self.root_name.is_none() {
             self.root_name = Some(node.name.to_string());
+            self.title_pending = true;
+        } else {
+            self.title_pending = false;
         }
         if parent.is_none() && !self.profile_reported {
             // A schema that declares profiles must have exactly one
@@ -3744,6 +3764,12 @@ impl<'s> Processor for Binder<'_, 's> {
 
     fn entry(&mut self, cx: &mut Cx<'_>, frame: &mut BindFrame, entry: EntryValue<'s>) {
         let span = cx.span();
+        if self.title_pending && entry.name.is_none() {
+            self.title_pending = false;
+            if let Value::String(title) = &entry.value {
+                self.root_title = Some(title.clone());
+            }
+        }
         let node = self.name(frame.name);
         if entry.annotated {
             let what = match &entry.name {
@@ -4337,6 +4363,11 @@ impl<'d, 's> BindingSession<'d, 's> {
     /// The name of the document's first root node, once it has opened.
     pub fn root_name(&self) -> Option<&str> {
         self.session.processor().root_name()
+    }
+
+    /// Whether the document's first root node declares the meta-schema.
+    pub fn meta_root(&self) -> bool {
+        self.session.processor().meta_root()
     }
 
     /// Whether binding put any field to the registered value resolver,

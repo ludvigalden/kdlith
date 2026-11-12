@@ -1,0 +1,3 @@
+schema cyclic version="0" {
+    import "input.kdl"
+}

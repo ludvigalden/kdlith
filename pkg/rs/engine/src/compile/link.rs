@@ -9,7 +9,7 @@ use crate::compile::Cx;
 use crate::definition::{DefinitionKind, SlotDuplicates};
 use crate::diag::{
     DISPATCH_PREFIX, FALLBACK_IDENTITY, INHERITANCE_CYCLE, NOT_STREAMABLE, Site, TYPE_EXPRESSION,
-    UNKNOWN_TYPE, UNRESOLVED_DIALECT, UNRESOLVED_SCHEMA,
+    UNKNOWN_TYPE, UNRESOLVED_META_SCHEMA, UNRESOLVED_SCHEMA,
 };
 use crate::names::Sym;
 use crate::summary::expr as expr_name;
@@ -87,7 +87,7 @@ fn profiles(cx: &mut Cx<'_>) {
 /// An undeclared reference, reported in the definition's own area.
 pub(crate) fn unresolved(cx: &mut Cx<'_>, site: Site, kind: &str, name: &str) {
     match cx.kind {
-        DefinitionKind::Dialect => cx.diags.error(UNRESOLVED_DIALECT, site, &[kind, name]),
+        DefinitionKind::MetaSchema => cx.diags.error(UNRESOLVED_META_SCHEMA, site, &[kind, name]),
         DefinitionKind::Schema if kind == "type" => cx.diags.error(UNKNOWN_TYPE, site, &[name]),
         DefinitionKind::Schema => cx.diags.error(UNRESOLVED_SCHEMA, site, &[kind, name]),
     }

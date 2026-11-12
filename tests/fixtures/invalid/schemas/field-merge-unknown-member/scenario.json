@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "A field whose merge property is not a member of the dialect's MergePolicy enum (merge=overseas) is rejected by the compiler with the code the reference processor reports",
+  "description": "A field whose merge property is not a member of the meta-schema's MergePolicy enum (merge=overseas) is rejected by the compiler with the code the reference processor reports",
   "args": [
     "vet",
     "schema",

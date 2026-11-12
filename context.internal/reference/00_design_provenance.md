@@ -1,6 +1,6 @@
 # Design provenance
 
-Every mechanism in the dialect traces to the kdlith design drafts
+Every mechanism in the meta-schema traces to the kdlith design drafts
 that preceded the committed record. Those drafts are not part of the
 repository; pointers name the draft round and section so the
 reasoning can be found again:
@@ -12,8 +12,8 @@ reasoning can be found again:
 | R3 §n   | Roles and declarations: roles, profiles, ordered maps, references, providers, contributions, import sources |
 | F §n    | Framework and repository layout: authoring levels, schema-kdl, fixtures                                     |
 
-The committed dialect definition documents under
-`pkg/kdl/schemas/dialect/` are the only authority for the dialect.
+The committed meta-schema documents under
+`pkg/kdl/schemas/schema/` are the only authority for the meta-schema.
 This tree describes them; where the files and any description here
 disagree, the files win and the description is out of date. The
 committed census `tests/fixtures/COVERAGE.md` maps every mechanism

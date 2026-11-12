@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "A meta-schema contribution the reference processor does not declare makes the processor refuse to read, before any document is bound: the override imports the canonical documents and adds one undeclared string type",
+  "args": [
+    "inspect",
+    "schema",
+    "--meta-schema",
+    "{fx-suite}/invalid/meta-schema/processor-mismatch/extra.kdl",
+    "{fx-suite}/../../pkg/kdl/schemas/schema/schema.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

@@ -14,7 +14,7 @@ declined value resolution; `BND010` a map key of unusable type;
 `BND011`–`BND014` broken object constraints, numeric bounds, field
 exclusivity, and case-selected shapes.
 
-## SCH and DLC — schema and dialect compile
+## SCH and DLC — schema and meta-schema compile
 
 `SCH001` an unknown type; `SCH003` overlapping bindings; `SCH004` a
 duplicate root declaration; `SCH006` an undeclared reference;
@@ -25,7 +25,7 @@ faults; `SCH020` an invalid field child binding; `SCH021` an invalid
 open-world arm; `SCH022` a `qualify-from` naming no declared string
 slot; `SCH023` a case-level binding naming what its node binds in
 common. `DLC005` names a malformed construct, `DLC006` an uninstalled
-extension, `DLC007` a broken type expression, `DLC008` a dialect
+extension, `DLC007` a broken type expression, `DLC008` a meta-schema
 linking fault, `DLC010` a resolver refusal.
 
 ## LOC and IMP — locations and imports

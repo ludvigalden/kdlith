@@ -1,5 +1,5 @@
 // A schema definition whose version property is a number, so binding
-// it as data against the governing dialect fails: the dialect binds
+// it as data against the governing meta-schema fails: the meta-schema binds
 // schema.version as String (KDLITH-BND003). Read as the schema it
 // declares itself to be (--schema), the document is valid.
 schema demo version=1 {

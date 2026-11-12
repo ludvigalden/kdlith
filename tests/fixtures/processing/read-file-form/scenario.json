@@ -4,7 +4,7 @@
   "args": [
     "read",
     "file",
-    "{fx-suite}/../../pkg/kdl/schemas/dialect/types.kdl"
+    "{fx-suite}/../../pkg/kdl/schemas/schema/types.kdl"
   ],
   "expect": {
     "exit": 0,

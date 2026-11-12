@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "A node whose role is not a member of the dialect's Role enum is rejected by the reference processor with the code the compiler reports",
+  "description": "A node whose role is not a member of the meta-schema's Role enum is rejected by the reference processor with the code the compiler reports",
   "args": [
     "inspect",
     "schema",

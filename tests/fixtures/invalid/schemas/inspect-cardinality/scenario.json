@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "A string type with two pattern children exceeds the dialect's max-occurs=1 when the reference processor binds the schema",
+  "description": "A string type with two pattern children exceeds the meta-schema's max-occurs=1 when the reference processor binds the schema",
   "args": [
     "inspect",
     "schema",

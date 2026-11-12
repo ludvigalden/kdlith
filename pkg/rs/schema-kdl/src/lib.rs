@@ -1,5 +1,5 @@
 //! The reference typed reader for schema definitions: the hand-maintained
-//! processor that generated processors mirror. It declares the dialect's
+//! processor that generated processors mirror. It declares the meta-schema's
 //! types, node bindings, and context; reading is the engine's.
 pub mod bindings;
 pub mod compile;
@@ -8,8 +8,8 @@ pub mod processors;
 pub mod types;
 
 pub use compile::{
-    load_dialect, load_dialect_sources, load_schema, load_schema_sources, load_schema_sources_with,
-    load_schema_with, seed,
+    load_meta_schema, load_meta_schema_sources, load_schema, load_schema_sources,
+    load_schema_sources_with, load_schema_with, seed,
 };
 pub use kdlith_engine::{
     ContributionResolver, LAYERED, Layered, ResolutionCall, SharedContributionResolver,

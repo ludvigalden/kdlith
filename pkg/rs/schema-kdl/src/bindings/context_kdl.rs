@@ -4,9 +4,7 @@
 use kdlith_engine::NodeShape;
 
 pub(crate) const NODES: &[NodeShape] = &[
-    NodeShape::new("context")
-        .under(&["schema", "dialect"])
-        .container(),
+    NodeShape::new("context").under(&["schema"]).container(),
     NodeShape::new("slot")
         .under(&["context"])
         .declaration()

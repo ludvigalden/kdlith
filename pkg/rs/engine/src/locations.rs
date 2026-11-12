@@ -82,7 +82,7 @@ impl LocalRoot {
 #[derive(Clone, Debug)]
 pub(crate) enum Home {
     Local(Rc<LocalRoot>),
-    /// A dialect definition document read from the local source: its
+    /// A meta-schema definition document read from the local source: its
     /// relative locations follow its own directory unconfined.
     Unconfined,
     Named(String),
@@ -248,7 +248,7 @@ impl Sources {
 
     /// The place of an entry document read from disk: under the project
     /// root, the local source; otherwise an ad hoc local source rooted
-    /// at its own directory. A dialect definition's entries resolve
+    /// at its own directory. A meta-schema definition's entries resolve
     /// their relative locations unconfined.
     pub(crate) fn entry_place(&self, canonical: &Path, shown: &str, confined: bool) -> Place {
         let file = canonical.file_name().map_or_else(String::new, portable);
@@ -1092,7 +1092,7 @@ fn matches_star(pattern: &str, name: &str) -> bool {
 }
 
 /// Whether a path is a literal location in the local source: no
-/// `$name/` and no pattern syntax. Dialect definitions import only these.
+/// `$name/` and no pattern syntax. Meta-schema definitions import only these.
 pub fn is_literal(path: &str) -> bool {
     !path.starts_with('$') && !path.contains(['*', '{', '}'])
 }
@@ -1132,12 +1132,17 @@ impl DeclaredLocations {
     /// declared is kept, as the compiler reports any repeat. Text that
     /// does not parse declares nothing; binding reports it. Whether the
     /// document's root is a schema is returned: a schema definition's
-    /// own locations are confined, a dialect definition's are not.
+    /// own locations are confined, a meta-schema definition's are not.
     pub(crate) fn scan(&mut self, text: &str) -> bool {
         let Ok(parsed) = ParsedDocument::parse("", text) else {
             return false;
         };
-        let Some(root) = parsed.nodes().first().filter(|root| root.name == "schema") else {
+        let Some(root) = parsed.nodes().first().filter(|root| {
+            root.name == "schema"
+                && !root.args.first().is_some_and(|name| {
+                    matches!(&name.value, Value::String(name) if name == crate::META_SCHEMA_NAME)
+                })
+        }) else {
             return false;
         };
         if self.rule.is_none()

@@ -8,7 +8,7 @@ use crate::bindings::{BindingCatalog, Effect, SetFrom};
 use crate::compile::Cx;
 use crate::decode::{self, Decoder};
 use crate::definition::DefinitionKind;
-use crate::diag::{DIALECT_LITERAL, MALFORMED, SCHEMA_LITERAL, Site};
+use crate::diag::{MALFORMED, META_SCHEMA_LITERAL, SCHEMA_LITERAL, Site};
 use crate::summary;
 use crate::types::{TypeExpr, TypeKind};
 
@@ -67,7 +67,7 @@ pub(crate) fn run(cx: &mut Cx<'_>, bindings: &BindingCatalog) {
         }
     }
     let code = match cx.kind {
-        DefinitionKind::Dialect => DIALECT_LITERAL,
+        DefinitionKind::MetaSchema => META_SCHEMA_LITERAL,
         DefinitionKind::Schema => SCHEMA_LITERAL,
     };
     // Literals are scalars of the definition itself; no source location

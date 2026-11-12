@@ -1,15 +1,15 @@
 {
   "binary": "kdlith",
-  "description": "The plan view of the four canonical dialect files: one plan-context line (the canonical dialect declares no slots or namespaces), then one plan-node line per node declaration in plan order, which is declaration order, each carrying its role, scope, effects, context reads, deferred bindings, dependent payload, declaration flag and the derived requires flags",
+  "description": "The plan view of the four canonical meta-schema files: one plan-context line (the canonical meta-schema declares no slots or namespaces), then one plan-node line per node declaration in plan order, which is declaration order, each carrying its role, scope, effects, context reads, deferred bindings, dependent payload, declaration flag and the derived requires flags",
   "args": [
     "inspect",
-    "dialect",
+    "schema",
     "--view",
     "plan",
-    "{fx-suite}/../../pkg/kdl/schemas/dialect/types.kdl",
-    "{fx-suite}/../../pkg/kdl/schemas/dialect/bindings.kdl",
-    "{fx-suite}/../../pkg/kdl/schemas/dialect/context.kdl",
-    "{fx-suite}/../../pkg/kdl/schemas/dialect/documents.kdl"
+    "{fx-suite}/../../pkg/kdl/schemas/schema/types.kdl",
+    "{fx-suite}/../../pkg/kdl/schemas/schema/bindings.kdl",
+    "{fx-suite}/../../pkg/kdl/schemas/schema/context.kdl",
+    "{fx-suite}/../../pkg/kdl/schemas/schema/documents.kdl"
   ],
   "expect": {
     "exit": 0,

@@ -1,0 +1,8 @@
+{
+  "binary": "kdlith",
+  "description": "The committed canonical meta-schema definition pkg/kdl/schemas/schema/context.kdl parses as KDL v2",
+  "args": ["read", "{fx-suite}/../../pkg/kdl/schemas/schema/context.kdl"],
+  "expect": {
+    "exit": 0
+  }
+}

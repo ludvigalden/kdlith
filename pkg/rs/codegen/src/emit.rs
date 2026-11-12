@@ -152,15 +152,15 @@ impl Emission<'_> {
                 self.processors_doc_rs(doc),
             ));
         }
-        // The dialect form embeds its seed through a build script that
+        // The meta-schema form embeds its seed through a build script that
         // copies the canonical documents into `OUT_DIR`: no copy of them
         // is generated, so the embed cannot drift from the canonical.
-        if self.kind == DefinitionKind::Dialect {
+        if self.kind == DefinitionKind::MetaSchema {
             files.push(("build.rs".to_owned(), self.build_rs()));
         }
         let provenance = Provenance {
             form: match self.kind {
-                DefinitionKind::Dialect => "dialect",
+                DefinitionKind::MetaSchema => "meta-schema",
                 _ => "schema",
             },
             crate_name: &self.crate_name,
@@ -196,13 +196,12 @@ impl Emission<'_> {
         // license is the consumer's, never the generator's: workspace
         // packaging inherits it like the lints, other packagings omit
         // it.
-        let form = match self.kind {
-            DefinitionKind::Dialect => "dialect",
-            _ => "schema",
+        let subject = match self.kind {
+            DefinitionKind::MetaSchema => "meta-schema".to_owned(),
+            _ => format!("{} schema", self.name),
         };
         out.line(&format!(
-            "description = \"Generated kdlith processor for the {} {}.\"",
-            self.name, form
+            "description = \"Generated kdlith processor for the {subject}.\""
         ));
         if self.packaging == Packaging::Workspace {
             out.line("license.workspace = true");
@@ -231,7 +230,7 @@ impl Emission<'_> {
         out.finish()
     }
 
-    /// The dialect form's build script: it copies the canonical seed
+    /// The meta-schema form's build script: it copies the canonical seed
     /// documents into `OUT_DIR` for `src/compile.rs` to embed, failing
     /// the build when one is missing.
     fn build_rs(&self) -> String {
@@ -310,9 +309,9 @@ fn cargo_env(name: &str) -> OsString {{
     fn lib_rs(&self) -> String {
         let mut out = Out::new();
         match self.kind {
-            DefinitionKind::Dialect => out.doc(&[
+            DefinitionKind::MetaSchema => out.doc(&[
                 "The reference typed reader for schema definitions: the hand-maintained",
-                "processor that generated processors mirror. It declares the dialect's",
+                "processor that generated processors mirror. It declares the meta-schema's",
                 "types, node bindings, and context; reading is the engine's.",
             ]),
             _ => out.doc(&[
@@ -326,9 +325,9 @@ fn cargo_env(name: &str) -> OsString {{
         out.blank();
         let names = |list: &[&str]| list.iter().map(|name| (*name).to_owned()).collect();
         let compile: Vec<String> = match self.kind {
-            DefinitionKind::Dialect => names(&[
-                "load_dialect",
-                "load_dialect_sources",
+            DefinitionKind::MetaSchema => names(&[
+                "load_meta_schema",
+                "load_meta_schema_sources",
                 "load_schema",
                 "load_schema_sources",
                 "load_schema_sources_with",
@@ -361,7 +360,7 @@ fn cargo_env(name: &str) -> OsString {{
                 ],
             ),
         ];
-        // The dialect form stays byte-equal to the reference processor;
+        // The meta-schema form stays byte-equal to the reference processor;
         // schema crates also carry the tool-author surface so a tool
         // needs no dependency beyond the generated crate.
         if self.kind == DefinitionKind::Schema {
@@ -598,7 +597,7 @@ fn cargo_env(name: &str) -> OsString {{
         let node_name = self.names.resolve(node.name);
         out.line("object_type! {");
         // Schema-form node-local types match and construct exhaustively;
-        // the dialect form keeps the reference processor's bytes.
+        // the meta-schema form keeps the reference processor's bytes.
         if self.kind == DefinitionKind::Schema {
             out.line("    exhaustive;");
         }
@@ -684,7 +683,7 @@ fn cargo_env(name: &str) -> OsString {{
         let spelled = (name != logical).then(|| format!("    as {logical:?};"));
         // Only the attribute-carrying macros accept the marker; the
         // newtype macros never carried `#[non_exhaustive]`. Gated here
-        // per form, never inside a shared macro arm, so the dialect
+        // per form, never inside a shared macro arm, so the meta-schema
         // form's bytes stay pinned to the reference processor.
         let exhaustive = (self.kind == DefinitionKind::Schema
             && matches!(
@@ -861,8 +860,8 @@ fn cargo_env(name: &str) -> OsString {{
     fn types_mod_rs(&self) -> String {
         let mut out = Out::new();
         match self.kind {
-            DefinitionKind::Dialect => out.doc(&[
-                "The dialect's logical types: one module per contributing document,",
+            DefinitionKind::MetaSchema => out.doc(&[
+                "The meta-schema's logical types: one module per contributing document,",
                 "each type declared once and read from bound values.",
             ]),
             _ => out.doc(&[
@@ -965,9 +964,9 @@ fn cargo_env(name: &str) -> OsString {{
     fn bindings_mod_rs(&self) -> String {
         let mut out = Out::new();
         match self.kind {
-            DefinitionKind::Dialect => out.doc(&[
+            DefinitionKind::MetaSchema => out.doc(&[
                 "Node, property, argument, and child bindings for schema definitions:",
-                "the dialect's node declarations, one table per contributing document.",
+                "the meta-schema's node declarations, one table per contributing document.",
             ]),
             _ => out.doc(&[
                 "Node, property, argument, and child bindings for data documents: the",
@@ -1026,13 +1025,13 @@ fn cargo_env(name: &str) -> OsString {{
         let mut out = Out::new();
         let slots = self.slot_documents().count();
         match (self.kind, slots == 0) {
-            (DefinitionKind::Dialect, true) => out.doc(&[
-                "Context declarations for schema definitions: the dialect's own typed",
-                "context slots. The dialect declares none, so its documents bind with",
+            (DefinitionKind::MetaSchema, true) => out.doc(&[
+                "Context declarations for schema definitions: the meta-schema's own typed",
+                "context slots. The meta-schema declares none, so its documents bind with",
                 "an empty context.",
             ]),
-            (DefinitionKind::Dialect, false) => out.doc(&[
-                "Context declarations for schema definitions: the dialect's own typed",
+            (DefinitionKind::MetaSchema, false) => out.doc(&[
+                "Context declarations for schema definitions: the meta-schema's own typed",
                 "context slots, one table per contributing document.",
             ]),
             (_, true) => out.doc(&[
@@ -1165,10 +1164,10 @@ fn cargo_env(name: &str) -> OsString {{
 
         let mut out = Out::new();
         match self.kind {
-            DefinitionKind::Dialect => out.doc(&[
+            DefinitionKind::MetaSchema => out.doc(&[
                 "Typed readers: the per-role schema-definition processing logic. The",
-                "dialect's items, the handlers that read them, and the declarations",
-                "the engine conforms to the compiled dialect before reading.",
+                "meta-schema's items, the handlers that read them, and the declarations",
+                "the engine conforms to the compiled meta-schema before reading.",
             ]),
             _ => out.doc(&[
                 "Typed readers: the per-role document processing logic. The schema's",
@@ -1211,8 +1210,10 @@ fn cargo_env(name: &str) -> OsString {{
             out.line("    exhaustive;");
         }
         match self.kind {
-            DefinitionKind::Dialect => {
-                out.line("    /// A record or declaration of a definition written in the dialect.");
+            DefinitionKind::MetaSchema => {
+                out.line(
+                    "    /// A record or declaration of a definition written in the meta-schema.",
+                );
             }
             _ => out.line("    /// A record or declaration of a document written in the schema."),
         }
@@ -1225,7 +1226,7 @@ fn cargo_env(name: &str) -> OsString {{
         out.blank();
         let identity_arms = self.identity_arms();
         if self.kind == DefinitionKind::Schema && !identity_arms.is_empty() {
-            // The schema form alone names its items; the dialect form's
+            // The schema form alone names its items; the meta-schema form's
             // bytes stay pinned to the reference processor.
             let option = self.spelling.path("core::option", "Option");
             out.line(&format!("impl {item} {{"));
@@ -1284,7 +1285,7 @@ fn cargo_env(name: &str) -> OsString {{
         );
         out.blank();
         let (kind_word, kind_path) = match self.kind {
-            DefinitionKind::Dialect => ("dialect", "Dialect"),
+            DefinitionKind::MetaSchema => ("meta-schema", "MetaSchema"),
             _ => ("schema", "Schema"),
         };
         out.line(&format!(
@@ -1313,7 +1314,10 @@ fn cargo_env(name: &str) -> OsString {{
         );
         out.blank();
         let (param, reads) = match self.kind {
-            DefinitionKind::Dialect => ("dialect", "definitions written in the compiled dialect"),
+            DefinitionKind::MetaSchema => (
+                "meta_schema",
+                "definitions written in the compiled meta-schema",
+            ),
             _ => ("schema", "documents written under the compiled schema"),
         };
         let definition = spelling.engine("Definition");

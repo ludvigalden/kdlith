@@ -1,5 +1,5 @@
-//! Context declarations for schema definitions: the dialect's own typed
-//! context slots. The dialect declares none, so its documents bind with
+//! Context declarations for schema definitions: the meta-schema's own typed
+//! context slots. The meta-schema declares none, so its documents bind with
 //! an empty context.
 
 use kdlith_engine::SlotShape;

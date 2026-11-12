@@ -59,7 +59,7 @@ fn refresh(args: CacheRefreshArgs) -> ExitStatus {
         return combine(ExitStatus::Failure, status);
     }
     let options = match args.profiles.data_options(args.locations, args.handlers) {
-        Ok(options) => options.with_dialect(args.dialect),
+        Ok(options) => options.with_meta_schema(args.meta_schema),
         Err(status) => return status,
     };
     let extensions = options.extensions();

@@ -1,0 +1,17 @@
+{
+  "binary": "kdlith",
+  "description": "read data --meta-schema is consumed, never ignored: the override adds a type the reference processor does not declare, so the processor refuses before the schema loads and nothing is listed, exported, cached, or read; the same override governs invalid/meta-schema/processor-mismatch",
+  "args": [
+    "read",
+    "data",
+    "--meta-schema",
+    "{fx-suite}/invalid/meta-schema/processor-mismatch/extra.kdl",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "{fx-suite}/processing/bind/stream/input.kdl",
+    "one"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

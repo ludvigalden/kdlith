@@ -11,7 +11,7 @@ pub struct SourceId(pub u32);
 #[serde(rename_all = "kebab-case")]
 #[non_exhaustive]
 pub enum DocumentRole {
-    DialectDefinition,
+    MetaSchemaDefinition,
     SchemaDefinition,
     DataDocument,
 }

@@ -1,0 +1,7 @@
+schema schema version="0" {
+    types {
+        object Broken {
+            field target Undeclared
+        }
+    }
+}

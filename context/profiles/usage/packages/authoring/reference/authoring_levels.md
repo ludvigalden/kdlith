@@ -2,8 +2,9 @@
 
 ## Roots and containers
 
-A dialect definition has exactly one `dialect NAME version="V"` root;
-a schema definition has exactly one `schema NAME version="V"` root.
+Every definition has exactly one `schema NAME version="V"` root; the
+meta-schema is the schema named `schema`, and a schema may not take
+that name for itself.
 The root containers hold `types`, `node`, `context`, `document`,
 `import`, `annotation`, `reference`, and `resolution` declarations as
 the sections below describe. Every definition root states its
@@ -12,13 +13,13 @@ the sections below describe. Every definition root states its
 
 ## Contributing documents
 
-Several documents may contribute to one dialect or schema. Every
+Several documents may contribute to one schema. Every
 contributor repeats the same root name and version, and a declaration
 made twice across them is rejected rather than merged, so one
-definition never depends on merge order. The committed kdlith
-dialect is itself four contributing documents — `types.kdl`,
+definition never depends on merge order. The committed
+meta-schema is itself four contributing documents — `types.kdl`,
 `bindings.kdl`, `context.kdl`, and `documents.kdl` under
-`pkg/kdl/schemas/dialect/` — and `pkg/kdl/dialect.kdl` is the thin
+`pkg/kdl/schemas/schema/` — and `schema.kdl` beside them is the thin
 entrypoint that imports the four, in that order. It declares nothing
 of its own.
 

@@ -1,0 +1,8 @@
+{
+  "binary": "kdlith",
+  "description": "A meta-schema entrypoint importing a document that does not exist is rejected, never passed silently",
+  "args": ["vet", "schema", "input.kdl"],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

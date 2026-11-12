@@ -1,0 +1,20 @@
+{
+  "binary": "kdlith",
+  "description": "gen schema --kdlith-workspace writes the meta-schema form's three kdlith dependencies (diagnostic, engine, runtime) as { workspace = true } with [lints] workspace = true; the written Cargo.toml is pinned byte for byte",
+  "args": [
+    "gen",
+    "schema",
+    "{fx-suite}/../../pkg/kdl/schemas/schema/schema.kdl",
+    "--crate",
+    "demo",
+    "--out",
+    "out",
+    "--kdlith-workspace"
+  ],
+  "expect": {
+    "exit": 0,
+    "files": {
+      "out/Cargo.toml": "cargo-toml.golden"
+    }
+  }
+}

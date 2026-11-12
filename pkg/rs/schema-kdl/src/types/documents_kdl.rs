@@ -12,10 +12,6 @@ use super::{
 };
 
 string_type! {
-    pub struct DialectName;
-}
-
-string_type! {
     pub struct SchemaName;
 }
 
@@ -37,13 +33,6 @@ string_type! {
 
 string_type! {
     pub struct SecretId;
-}
-
-object_type! {
-    pub struct DialectDef {
-        "name" => name: DialectName,
-        "version" => version: String,
-    }
 }
 
 object_type! {
@@ -381,14 +370,12 @@ impl SecretProvider {
 
 /// The shapes of this document's types, in declaration order.
 pub(crate) const TYPES: &[TypeShape] = &[
-    DialectName::SHAPE,
     SchemaName::SHAPE,
     ProfileName::SHAPE,
     ScopeName::SHAPE,
     DomainName::SHAPE,
     ResolverName::SHAPE,
     SecretId::SHAPE,
-    DialectDef::SHAPE,
     SchemaDef::SHAPE,
     DocumentRule::SHAPE,
     FirstRule::SHAPE,

@@ -1,0 +1,4 @@
+schema repeated version="0" {
+    import "part.kdl"
+    import "./part.kdl"
+}

@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "A document contributing to the canonical meta-schema references a type no contributing document declares and fails linking",
+  "args": [
+    "vet",
+    "schema",
+    "{fx-suite}/../../pkg/kdl/schemas/schema/types.kdl",
+    "{fx-suite}/../../pkg/kdl/schemas/schema/bindings.kdl",
+    "{fx-suite}/../../pkg/kdl/schemas/schema/context.kdl",
+    "{fx-suite}/../../pkg/kdl/schemas/schema/documents.kdl",
+    "input.kdl"
+  ],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

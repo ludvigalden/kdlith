@@ -18,11 +18,11 @@ pub(crate) const CONFLICTING_BINDING: &str = "KDLITH-SCH003";
 pub(crate) const DUPLICATE_DECLARATION: &str = "KDLITH-SCH004";
 pub(crate) const INVALID_BINDING: &str = "KDLITH-SCH005";
 pub(crate) const DUPLICATE_PROPERTY: &str = "KDLITH-SYN003";
-pub(crate) const UNRESOLVED_DIALECT: &str = "KDLITH-DLC008";
+pub(crate) const UNRESOLVED_META_SCHEMA: &str = "KDLITH-DLC008";
 pub(crate) const UNKNOWN_TYPE: &str = "KDLITH-SCH001";
 pub(crate) const UNRESOLVED_SCHEMA: &str = "KDLITH-SCH006";
 pub(crate) const NOT_STREAMABLE: &str = "KDLITH-SCH007";
-pub(crate) const DIALECT_LITERAL: &str = "KDLITH-DLC009";
+pub(crate) const META_SCHEMA_LITERAL: &str = "KDLITH-DLC009";
 pub(crate) const SCHEMA_LITERAL: &str = "KDLITH-SCH008";
 pub(crate) const EXPANSION_CYCLE: &str = "KDLITH-SCH009";
 pub(crate) const INSTANTIATION_CYCLE: &str = "KDLITH-SCH009";
@@ -55,8 +55,8 @@ pub(crate) const SOURCE_UNREADABLE: &str = "KDLITH-SRC001";
 pub(crate) const SOURCE_NOT_UTF8: &str = "KDLITH-SRC002";
 pub(crate) const SOURCE_LIMIT: &str = "KDLITH-SRC003";
 
-// Binding codes. A definition is a data document of its dialect, so a
-// construct the dialect rejects gets these codes on every reading path.
+// Binding codes. A definition is a data document of its meta-schema, so a
+// construct the meta-schema rejects gets these codes on every reading path.
 pub(crate) const UNKNOWN_NODE: &str = "KDLITH-BND001";
 pub(crate) const CARDINALITY: &str = "KDLITH-BND002";
 pub(crate) const VALUE_TYPE: &str = "KDLITH-BND003";
@@ -273,7 +273,7 @@ pub(crate) fn located(
 }
 
 /// Report a key repeated in a keyed collection of a construct, such as
-/// two fields of one object: the dialect binds these collections with
+/// two fields of one object: the meta-schema binds these collections with
 /// `duplicate-keys reject`, so this is the binding code on every path.
 pub(crate) fn duplicate_key(diags: &mut Diagnostics<'_>, sites: (Site, Site), key: &str, of: &str) {
     diags.labelled(
@@ -285,7 +285,7 @@ pub(crate) fn duplicate_key(diags: &mut Diagnostics<'_>, sites: (Site, Site), ke
     );
 }
 
-/// Report a declaration made twice: a dialect construct, a schema type,
+/// Report a declaration made twice: a meta-schema construct, a schema type,
 /// or another schema declaration, labelled with the first declaration.
 pub(crate) fn duplicate(
     diags: &mut Diagnostics<'_>,
@@ -296,7 +296,7 @@ pub(crate) fn duplicate(
 ) {
     let subject = format!("{what} {name}");
     let (code, value) = match kind {
-        DefinitionKind::Dialect => (DUPLICATE_CONSTRUCT, subject.as_str()),
+        DefinitionKind::MetaSchema => (DUPLICATE_CONSTRUCT, subject.as_str()),
         DefinitionKind::Schema if what == "type" => (DUPLICATE_TYPE, name),
         DefinitionKind::Schema => (DUPLICATE_DECLARATION, subject.as_str()),
     };

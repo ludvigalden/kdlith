@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "The second precondition of meta-schema generation: the meta-schema-generation entrypoint pkg/kdl/schemas/schema/schema.kdl vets to the canonical digest. It duplicates meta-schema/entry-vet from the codegen side so the codegen category is self-contained; the reference-generation oracle generates from this same entrypoint",
+  "args": [
+    "vet",
+    "schema",
+    "{fx-suite}/../../pkg/kdl/schemas/schema/schema.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "digest=13400d6dbaf3ce86"
+    ]
+  }
+}

@@ -3,10 +3,10 @@
   "description": "A --view value naming no view is rejected by the argument parser before any document is read: --view bogus exits 2 under KDLITH-CLI001, the possible values listed",
   "args": [
     "inspect",
-    "dialect",
+    "schema",
     "--view",
     "bogus",
-    "{fx-suite}/../../pkg/kdl/schemas/dialect/types.kdl"
+    "{fx-suite}/../../pkg/kdl/schemas/schema/types.kdl"
   ],
   "expect": {
     "exit": 2,

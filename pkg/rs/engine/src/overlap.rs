@@ -6,7 +6,7 @@ use kdlith_model::Value;
 
 use crate::syntax::parse_u64;
 
-/// The dialect construct that declares a node; its bound `fields` map
+/// The meta-schema construct that declares a node; its bound `fields` map
 /// holds the field bindings this check reads.
 pub(crate) const NODE_CONSTRUCT: &str = "node";
 
@@ -73,7 +73,7 @@ pub(crate) fn overlaps(
     found
 }
 
-/// The overlaps in a node declaration bound as data of the dialect, given
+/// The overlaps in a node declaration bound as data of the meta-schema, given
 /// its bound fields: the field bindings of its `fields` map, and the
 /// sources nested under each child they select from.
 pub(crate) fn in_declaration(fields: &[(&str, &Value)]) -> Vec<Overlap> {

@@ -1,5 +1,5 @@
 //! Node, property, argument, and child bindings for schema definitions:
-//! the dialect's node declarations, one table per contributing document.
+//! the meta-schema's node declarations, one table per contributing document.
 
 mod bindings_kdl;
 mod context_kdl;

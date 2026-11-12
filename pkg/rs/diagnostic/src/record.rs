@@ -77,7 +77,7 @@ pub struct DiagnosticRecord {
     pub span: Option<ByteSpan>,
     pub line: Option<u32>,
     pub col: Option<u32>,
-    /// Provenance of the condition: the dialect definition, schema
+    /// Provenance of the condition: the meta-schema definition, schema
     /// definition, or data document role it arose in.
     pub origin: Option<String>,
     pub labels: Vec<Label>,

@@ -43,7 +43,7 @@ pub(crate) fn run(args: ExportArgs) -> ExitStatus {
         .map(|options| {
             options
                 .with_scope(scope_of(args.scope))
-                .with_dialect(args.dialect)
+                .with_meta_schema(args.meta_schema)
         }) {
         Ok(options) => options,
         Err(status) => return status,
@@ -63,7 +63,7 @@ fn paths(files: &[PathBuf]) -> Vec<&Path> {
 }
 
 /// Export the data documents under the schema: load the governing
-/// dialect (the bundled one, or the one the data options name) and the
+/// meta-schema (the bundled one, or the one the data options name) and the
 /// schema with complete checking under the data options' extensions, run the engine's export through a reader carrying the
 /// options' handlers, under the options' root, sources, and profile, the
 /// delivery, and the explicit output policy (`None` keeps the

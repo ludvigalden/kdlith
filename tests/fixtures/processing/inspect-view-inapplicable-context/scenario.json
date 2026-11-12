@@ -1,12 +1,12 @@
 {
   "binary": "kdlith",
-  "description": "The context view describes data binding, which a dialect target does not do: the pair is rejected before any document is read, exit 2 under KDLITH-CLI004",
+  "description": "The context view describes data binding, which a meta-schema target does not do: the pair is rejected before any document is read, exit 2 under KDLITH-CLI004",
   "args": [
     "inspect",
-    "dialect",
+    "schema",
     "--view",
     "context",
-    "{fx-suite}/../../pkg/kdl/schemas/dialect/types.kdl"
+    "{fx-suite}/../../pkg/kdl/schemas/schema/types.kdl"
   ],
   "expect": {
     "exit": 2,

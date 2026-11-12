@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "A child the dialect does not bind under object is rejected by the compiler with the code the reference processor reports",
+  "description": "A child the meta-schema does not bind under object is rejected by the compiler with the code the reference processor reports",
   "args": [
     "vet",
     "schema",

@@ -24,7 +24,7 @@ pub(crate) struct Document<'d> {
     /// The document's file name, e.g. `types.kdl`.
     pub file_name: String,
     /// The document's text, as the definition compiled it: the bytes a
-    /// dialect crate's seed snapshot embeds.
+    /// meta-schema crate's seed snapshot embeds.
     pub text: String,
     /// The module the document's per-document files take.
     pub module: String,
@@ -667,7 +667,7 @@ impl<'d> Emission<'d> {
     }
 
     /// The documents the seed embeds: every contributing document's
-    /// file name and text, in contribution order. The dialect form's
+    /// file name and text, in contribution order. The meta-schema form's
     /// `build.rs` copies these files from the canonical directory into
     /// `OUT_DIR`; the generated crate commits no copy of them.
     pub(crate) fn seed_documents(&self) -> impl Iterator<Item = (&String, &String)> + '_ {
@@ -1243,12 +1243,12 @@ fn annotation_value(
 
 /// Why a type the crate declares under `name` has no spelling, if it
 /// has none: `Self` is never a type name, schema crates spell
-/// undeclared names by absolute path, and dialect crates stay
+/// undeclared names by absolute path, and meta-schema crates stay
 /// byte-equal to the reference processor.
 fn unspellable_name(kind: DefinitionKind, name: &str) -> Option<&'static str> {
     if !is_identifier(name) || name == "Self" {
         Some(NOT_IDENTIFIER)
-    } else if kind == DefinitionKind::Dialect && SHADOWED_IN_DIALECT.contains(&name) {
+    } else if kind == DefinitionKind::MetaSchema && SHADOWED_IN_META_SCHEMA.contains(&name) {
         Some(SHADOWS)
     } else {
         None
@@ -1291,10 +1291,10 @@ fn processor_enum(
     })
 }
 
-/// The names a dialect crate spells bare beside its declared types —
+/// The names a meta-schema crate spells bare beside its declared types —
 /// prelude items, `Self`, its imported engine items, `BTreeMap` — which
 /// a declared or node-local type taking one would shadow.
-const SHADOWED_IN_DIALECT: [&str; 27] = [
+const SHADOWED_IN_META_SCHEMA: [&str; 27] = [
     "BTreeMap",
     "Decimal",
     "Declarations",

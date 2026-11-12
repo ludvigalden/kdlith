@@ -1,0 +1,9 @@
+{
+  "binary": "kdlith",
+  "description": "The committed canonical meta-schema definition pkg/kdl/schemas/schema/types.kdl passes local checking on its own: constructs, bindings, and the invariants one document supports",
+  "args": ["vet", "schema", "--scope", "local", "{fx-suite}/../../pkg/kdl/schemas/schema/types.kdl"],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": ["ok: schema schema version 0 scope=local documents=1 "]
+  }
+}

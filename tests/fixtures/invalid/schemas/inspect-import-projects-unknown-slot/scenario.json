@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "An import projecting a slot the dialect does not declare is rejected by the reference processor with the code the compiler reports",
+  "description": "An import projecting a slot the meta-schema does not declare is rejected by the reference processor with the code the compiler reports",
   "args": [
     "inspect",
     "schema",

@@ -50,7 +50,7 @@ pub(crate) fn context(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) {
             continue;
         }
         let namespace = namespace.map(|namespace| cx.names.intern(&namespace));
-        // The canonical dialect's own slots declare no accumulation; the
+        // The canonical meta-schema's own slots declare no accumulation; the
         // reader path lands accumulate with the expanded-surface issue. Nor
         // do they declare a duplicate policy, so a canonical slot keeps the
         // fail-closed reject default.
@@ -183,7 +183,7 @@ pub(crate) fn import(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) {
         return;
     }
     if !is_literal(&path) {
-        // The seed bootstrap compiles only the canonical dialect, whose
+        // The seed bootstrap compiles only the canonical meta-schema, whose
         // imports are literal locations; a schema's own locations arrive
         // through the reader path, which checks them against its rule.
         let construct = format!("import {path:?}");

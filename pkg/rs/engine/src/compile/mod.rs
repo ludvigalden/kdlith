@@ -1,6 +1,6 @@
 //! The schema compiler: reader input in, one merged definition out.
-//! The seed bootstrap (`compile_dialect`) reads syntax directly and
-//! compiles only the canonical dialect; see context.internal/reference/40_engine_contract.md
+//! The seed bootstrap (`compile_meta_schema`) reads syntax directly and
+//! compiles only the canonical meta-schema; see context.internal/reference/40_engine_contract.md
 
 mod annotations;
 mod collect;
@@ -20,11 +20,12 @@ mod scopes;
 mod types;
 
 use kdlith_diagnostic::DiagnosticRecord;
+use kdlith_model::Value;
 
 use crate::bindings::NodeDecl;
 use crate::compile::reader::Construct;
 use crate::definition::{
-    CheckScope, Definition, DefinitionKind, DocumentRule, ImportDecl, SlotDecl,
+    CheckScope, Definition, DefinitionKind, DocumentRule, ImportDecl, META_SCHEMA_NAME, SlotDecl,
 };
 use crate::diag::{
     CARDINALITY, Diagnostics, MALFORMED, MISSING_FIELD, NOT_INSTALLED, ROOT_MISMATCH, Site,
@@ -40,25 +41,25 @@ use crate::types::{TypeCatalog, TypeExpr};
 
 use input::DefinitionInput;
 
-/// The dialect version this engine compiles definitions against.
-pub const DIALECT_VERSION: &str = "0";
+/// The meta-schema version this engine compiles definitions against.
+pub const META_SCHEMA_VERSION: &str = "0";
 
-/// Compile a dialect definition from a reader's input, with the given
+/// Compile a meta-schema definition from a reader's input, with the given
 /// checking scope. This is the path every definition takes: the
 /// reference processor's typed reader produced the input, and its
 /// binding diagnostics were reported before compilation began.
-pub fn compile_dialect_input(
+pub fn compile_meta_schema_input(
     input: &DefinitionInput,
     extensions: &Extensions,
     scope: CheckScope,
 ) -> Result<Definition, Vec<DiagnosticRecord>> {
-    compile_input(DefinitionKind::Dialect, input, None, extensions, scope)
+    compile_input(DefinitionKind::MetaSchema, input, None, extensions, scope)
 }
 
 /// Compile a schema definition from a reader's input, under its
-/// governing dialect, with the given checking scope.
+/// governing meta-schema, with the given checking scope.
 pub fn compile_schema_input(
-    dialect: &Definition,
+    meta_schema: &Definition,
     input: &DefinitionInput,
     extensions: &Extensions,
     scope: CheckScope,
@@ -66,23 +67,23 @@ pub fn compile_schema_input(
     compile_input(
         DefinitionKind::Schema,
         input,
-        Some(dialect),
+        Some(meta_schema),
         extensions,
         scope,
     )
 }
 
-/// Compile a dialect definition straight from its documents, with
+/// Compile a meta-schema definition straight from its documents, with
 /// complete checking. This is the seed bootstrap: it exists only to
-/// compile the canonical dialect a typed reader is constructed over,
-/// because reading that dialect's own documents through a reader
-/// already needs a compiled dialect.
-pub fn compile_dialect(
+/// compile the canonical meta-schema a typed reader is constructed over,
+/// because reading that meta-schema's own documents through a reader
+/// already needs a compiled meta-schema.
+pub fn compile_meta_schema(
     documents: &[ParsedDocument],
     extensions: &Extensions,
 ) -> Result<Definition, Vec<DiagnosticRecord>> {
     let mut cx = start(
-        DefinitionKind::Dialect,
+        DefinitionKind::MetaSchema,
         CheckScope::Complete,
         documents,
         extensions,
@@ -197,13 +198,15 @@ fn start<'d>(
         cx.diags.unsited(NOT_INSTALLED, &["validator", &wanted]);
         return Err(cx.diags.into_records());
     }
-    if let Some(dialect) = governing {
-        if dialect.kind != DefinitionKind::Dialect
-            || dialect.version.as_deref() != Some(DIALECT_VERSION)
+    if let Some(meta_schema) = governing {
+        if meta_schema.kind != DefinitionKind::MetaSchema
+            || meta_schema.version.as_deref() != Some(META_SCHEMA_VERSION)
         {
-            let reason =
-                format!("the governing definition must be a dialect at version {DIALECT_VERSION}");
-            cx.diags.unsited(ROOT_MISMATCH, &[&dialect.name, &reason]);
+            let reason = format!(
+                "the governing definition must be a meta-schema at version {META_SCHEMA_VERSION}"
+            );
+            cx.diags
+                .unsited(ROOT_MISMATCH, &[&meta_schema.name, &reason]);
             return Err(cx.diags.into_records());
         }
     }
@@ -318,7 +321,7 @@ fn roots<'d>(cx: &mut Cx<'d>, documents: &'d [ParsedDocument]) -> Option<Root<'d
             cx.diags.error(UNKNOWN_NODE, site, &[&extra.name, place]);
             ok = false;
         }
-        if !matches!(node.name.as_str(), "dialect" | "schema") {
+        if node.name != expected {
             let site = Site::new(doc, node.span);
             cx.unknown(doc, node, "the document root");
             cx.cardinality(
@@ -330,8 +333,18 @@ fn roots<'d>(cx: &mut Cx<'d>, documents: &'d [ParsedDocument]) -> Option<Root<'d
             ok = false;
             continue;
         }
-        if node.name != expected {
-            let reason = format!("expected a {expected} root, found {}", node.name);
+        let declared = match node.args.first().map(|arg| &arg.value) {
+            Some(Value::String(name)) => Some(DefinitionKind::of_name(name)),
+            _ => None,
+        };
+        if let Some(declared) = declared
+            && declared != cx.kind
+        {
+            let reason = format!(
+                "expected {}, found {}",
+                kind_phrase(cx.kind),
+                kind_phrase(declared)
+            );
             cx.diags.error(
                 ROOT_MISMATCH,
                 Site::new(doc, node.span),
@@ -339,6 +352,9 @@ fn roots<'d>(cx: &mut Cx<'d>, documents: &'d [ParsedDocument]) -> Option<Root<'d
             );
             ok = false;
             continue;
+        }
+        if cx.kind == DefinitionKind::MetaSchema {
+            ok &= meta_children(cx, doc, node);
         }
         let mut construct = Construct::new(cx, doc, node);
         let name = construct.string_arg(cx, 0, "name");
@@ -390,6 +406,31 @@ fn roots<'d>(cx: &mut Cx<'d>, documents: &'d [ParsedDocument]) -> Option<Root<'d
     if ok { root } else { None }
 }
 
+/// How a root mismatch names a definition kind.
+fn kind_phrase(kind: DefinitionKind) -> &'static str {
+    match kind {
+        DefinitionKind::MetaSchema => "the meta-schema root schema schema",
+        DefinitionKind::Schema => "a schema root",
+    }
+}
+
+/// The meta-schema root admits only the constructs the meta-schema
+/// describes itself with; a schema-only construct under it is an unknown
+/// node, as binding reports one. Whether every child was admitted.
+fn meta_children(cx: &mut Cx<'_>, doc: usize, root: &SyntaxNode) -> bool {
+    let mut ok = true;
+    for child in &root.children {
+        if !META_CHILDREN.contains(&child.name.as_str()) {
+            cx.unknown(doc, child, &format!("{} {}", root.name, META_SCHEMA_NAME));
+            ok = false;
+        }
+    }
+    ok
+}
+
+/// The children a meta-schema root may hold.
+const META_CHILDREN: [&str; 5] = ["types", "node", "context", "document", "import"];
+
 /// Every source-context field names a declared slot: the derived value
 /// lands in that slot, validated against both the field's and the slot's
 /// declared types. A field naming no declared slot is rejected loudly,
@@ -434,7 +475,7 @@ fn root_children(cx: &mut Cx<'_>, doc: usize, root: &SyntaxNode) {
 }
 
 impl Cx<'_> {
-    /// A rule of a dialect construct its dialect's declarations cannot
+    /// A rule of a meta-schema construct its meta-schema's declarations cannot
     /// state. A rule they state is reported with its binding code, the
     /// one every processor binding the document reports.
     pub(crate) fn malformed(&mut self, site: Site, construct: &str, reason: &str) {
@@ -446,18 +487,18 @@ impl Cx<'_> {
         self.diags.error(MISSING_FIELD, site, &[construct, field]);
     }
 
-    /// A value does not decode as the type the dialect declares for it.
+    /// A value does not decode as the type the meta-schema declares for it.
     pub(crate) fn mistyped(&mut self, site: Site, what: &str, expected: &str, found: &str) {
         self.diags.error(VALUE_TYPE, site, &[what, expected, found]);
     }
 
-    /// A value names no member of the dialect enum `ty`.
+    /// A value names no member of the meta-schema enum `ty`.
     pub(crate) fn not_member(&mut self, site: Site, what: &str, ty: &str, value: &str) {
         let found = format!("string {value:?}");
         self.diags.error(UNKNOWN_MEMBER, site, &[what, ty, &found]);
     }
 
-    /// A child occurs more or fewer times than its dialect rule allows.
+    /// A child occurs more or fewer times than its meta-schema rule allows.
     pub(crate) fn cardinality(&mut self, site: Site, what: &str, count: &str, expected: &str) {
         self.diags
             .error(CARDINALITY, site, &[what, count, expected]);

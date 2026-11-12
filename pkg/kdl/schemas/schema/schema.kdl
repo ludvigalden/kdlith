@@ -1,0 +1,19 @@
+// kdlith meta-schema entrypoint.
+//
+// This document selects the canonical meta-schema documents beside it
+// through source imports and declares nothing of its own: they are the
+// only authority for the meta-schema, the schema every schema definition
+// is written in, and this entrypoint is the input that vetting and
+// generation read, so they always read exactly what is committed.
+//
+// Import paths are literal and resolved relative to this document. Each
+// document contributes to the same schema root (same name and version),
+// and imports are processed in the order written. No context is
+// projected: the meta-schema declares no context slots of its own.
+
+schema schema version="0" {
+    import "types.kdl"
+    import "bindings.kdl"
+    import "context.kdl"
+    import "documents.kdl"
+}

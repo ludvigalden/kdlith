@@ -1,0 +1,14 @@
+// A contribution to the canonical meta-schema declaring a type named Ref, a
+// name a meta-schema-form generated crate spells unqualified: the meta-schema
+// vets, and generation refuses it before anything is written.
+schema schema version="0" {
+    import "../../../../pkg/kdl/schemas/schema/types.kdl"
+    import "../../../../pkg/kdl/schemas/schema/bindings.kdl"
+    import "../../../../pkg/kdl/schemas/schema/context.kdl"
+    import "../../../../pkg/kdl/schemas/schema/documents.kdl"
+    types {
+        string Ref {
+            min-length 1
+        }
+    }
+}

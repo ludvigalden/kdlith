@@ -2,11 +2,13 @@
 
 ## Definition verbs
 
-`kdlith vet dialect FILES...` compiles dialect-definition documents.
-`kdlith vet schema --dialect D FILES...` (or `--schema` alone when the
-schema names its dialect) compiles schema documents. Compilation
-resolves imports, links every reference, and walks the documents
-through the dialect's own bindings; any error exits 1.
+`kdlith vet schema FILES...` compiles schema-definition documents
+under the bundled meta-schema, or under the one `--meta-schema FILE`
+names. The meta-schema itself, the schema named `schema`, is vetted
+the same way and is recognised by its root: `kdlith vet schema
+pkg/kdl/schemas/schema/schema.kdl`. Compilation resolves imports,
+links every reference, and walks the documents through the
+meta-schema's own bindings; any error exits 1.
 
 `kdlith list types|nodes SCHEMA` prints a definition's types or node
 declarations. `kdlith list items` lists the items a data reading
@@ -56,7 +58,7 @@ the tree's `digest`. `sources list` prints every source with its
 
 ## gen
 
-`gen dialect` and `gen schema` both require `--crate NAME` and
+`gen schema` requires `--crate NAME` and
 `--out DIR` before the definition documents. `--dry-run` prints the
 plan and writes nothing; `--check` compares the generated tree
 against `--out` and reports drift (`KDLITH-GEN002`) without writing;

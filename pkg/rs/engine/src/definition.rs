@@ -1,4 +1,4 @@
-//! A compiled dialect or schema definition: the catalogs plus the
+//! A compiled meta-schema or schema definition: the catalogs plus the
 //! declarations later compile stages consume.
 
 use std::path::{Component, Path, PathBuf};
@@ -14,25 +14,37 @@ use crate::plan::ProcessingPlan;
 use crate::symbols::SymbolCatalog;
 use crate::types::{TypeCatalog, TypeExpr};
 
+/// The name reserved for the meta-schema: the schema every schema
+/// definition, its own included, is written in.
+pub const META_SCHEMA_NAME: &str = "schema";
+
 /// Which authoring level a definition belongs to.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum DefinitionKind {
-    Dialect,
+    MetaSchema,
     Schema,
 }
 
 impl DefinitionKind {
+    /// The root node every definition document opens with: the
+    /// meta-schema is the schema named [`META_SCHEMA_NAME`].
     pub fn root_name(self) -> &'static str {
-        match self {
-            DefinitionKind::Dialect => "dialect",
-            DefinitionKind::Schema => "schema",
+        "schema"
+    }
+
+    /// The kind a definition root named `name` declares.
+    pub fn of_name(name: &str) -> Self {
+        if name == META_SCHEMA_NAME {
+            DefinitionKind::MetaSchema
+        } else {
+            DefinitionKind::Schema
         }
     }
 
     pub(crate) fn origin(self) -> &'static str {
         match self {
-            DefinitionKind::Dialect => "dialect-definition",
+            DefinitionKind::MetaSchema => "meta-schema-definition",
             DefinitionKind::Schema => "schema-definition",
         }
     }
@@ -90,7 +102,7 @@ pub struct Definition {
     pub locations: Option<LocationsDecl>,
     pub references: Vec<ReferenceDecl>,
     /// The schema-level annotations the schema declares, in declaration
-    /// order. Dialect definitions declare none: the declaration node's
+    /// order. Meta-schema definitions declare none: the declaration node's
     /// parent is the schema root.
     pub annotations: Vec<AnnotationDecl>,
     /// The declared contribution-resolution policy, when the schema

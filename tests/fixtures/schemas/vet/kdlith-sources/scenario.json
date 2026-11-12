@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "The kdlith-sources schema, the documented shape of a sources manifest and an overrides file, vets under the canonical dialect",
+  "description": "The kdlith-sources schema, the documented shape of a sources manifest and an overrides file, vets under the canonical meta-schema",
   "args": [
     "vet",
     "schema",

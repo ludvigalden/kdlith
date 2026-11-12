@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "Without --schema, vet data binds its entry documents against the governing dialect, so a schema definition with a mistyped property fails binding (BND003 here); the run ends nonzero and one plain hint line on stderr after the diagnostics names the document as a schema definition and points at --schema; stdout carries no hint",
+  "description": "Without --schema, vet data binds its entry documents against the governing meta-schema, so a schema definition with a mistyped property fails binding (BND003 here); the run ends nonzero and one plain hint line on stderr after the diagnostics names the document as a schema definition and points at --schema; stdout carries no hint",
   "args": [
     "vet",
     "data",

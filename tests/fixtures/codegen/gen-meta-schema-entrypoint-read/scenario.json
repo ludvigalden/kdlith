@@ -1,0 +1,8 @@
+{
+  "binary": "kdlith",
+  "description": "The first precondition of meta-schema generation: the generation entrypoint pkg/kdl/schemas/schema/schema.kdl parses under kdlith read. The generation scenarios and the reference-generation oracle generate from this same entrypoint",
+  "args": ["read", "{fx-suite}/../../pkg/kdl/schemas/schema/schema.kdl"],
+  "expect": {
+    "exit": 0
+  }
+}

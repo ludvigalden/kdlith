@@ -1,5 +1,5 @@
 //! `src/compile.rs` emission: the definition-reader entry point for a
-//! dialect, assembled from the vocabulary catalog, and the load-only
+//! meta-schema, assembled from the vocabulary catalog, and the load-only
 //! entry point for a schema.
 
 use std::fmt::Write as _;
@@ -23,23 +23,23 @@ const SKELETON_INPUTS: [&str; 14] = [
     "ParsedDocument",
     "ReadOptions",
     "TypedItem",
-    "compile_dialect",
-    "compile_dialect_input",
+    "compile_meta_schema",
+    "compile_meta_schema_input",
     "compile_schema_input",
 ];
 
 impl Emission<'_> {
     pub(crate) fn compile_rs(&self) -> Result<String, Error> {
         match self.kind {
-            kdlith_engine::DefinitionKind::Dialect => self.dialect_compile_rs(),
+            kdlith_engine::DefinitionKind::MetaSchema => self.meta_schema_compile_rs(),
             _ => Ok(schema_compile_rs()),
         }
     }
 
     /// The definition-reader entry point: seed, load, gather, and the
-    /// declaration mapping, assembled from the items the dialect
+    /// declaration mapping, assembled from the items the meta-schema
     /// declares.
-    fn dialect_compile_rs(&self) -> Result<String, Error> {
+    fn meta_schema_compile_rs(&self) -> Result<String, Error> {
         let glues: Vec<(String, catalog::Glue)> = self
             .items
             .iter()
@@ -109,7 +109,7 @@ use crate::processors::{Item, reader};
         let _ = writeln!(
             out,
             "
-/// The canonical dialect's contributing documents, copied into
+/// The canonical meta-schema's contributing documents, copied into
 /// `OUT_DIR` by `build.rs` from the kdlith checkout at build time.
 const CANONICAL: [(&str, &str); {}] = [",
             seed.len()
@@ -124,13 +124,13 @@ const CANONICAL: [(&str, &str); {}] = [",
         let _ = writeln!(
             out,
             "
-/// The dialect version the embedded documents declare.
+/// The meta-schema version the embedded documents declare.
 pub const CANONICAL_VERSION: &str = {:?};",
             self.version
         );
 
         out.push_str(SEED);
-        out.push_str(LOAD_DIALECT);
+        out.push_str(LOAD_META_SCHEMA);
         out.push_str(LOAD_SCHEMA);
         out.push_str(GATHER);
         out.push_str(&self.take_fn(&glues));
@@ -210,10 +210,10 @@ pub const CANONICAL_VERSION: &str = {:?};",
 }
 
 /// The schema-form entry point: load this schema's documents through
-/// the reference processor against the canonical dialect.
+/// the reference processor against the canonical meta-schema.
 fn schema_compile_rs() -> String {
     let body = r##"//! The compile entry point: this schema's documents load through the
-//! reference processor against the canonical dialect, and the engine
+//! reference processor against the canonical meta-schema, and the engine
 //! compiles what the reader hands it.
 
 use std::path::Path;
@@ -222,7 +222,7 @@ use kdlith_diagnostic::DiagnosticRecord;
 use kdlith_engine::{CheckScope, Definition, Extensions, ReadOptions, Source};
 
 /// Load this schema's definition from its entry documents and compile it
-/// under the canonical dialect: the definition language every schema is
+/// under the canonical meta-schema: the definition language every schema is
 /// written in.
 pub fn load(
     entries: &[&Path],
@@ -241,8 +241,8 @@ pub fn load_with(
     scope: CheckScope,
     options: ReadOptions,
 ) -> Result<Definition, Vec<DiagnosticRecord>> {
-    let dialect = kdlith_schema_kdl::seed(extensions)?;
-    kdlith_schema_kdl::load_schema_with(&dialect, entries, extensions, scope, options)
+    let meta_schema = kdlith_schema_kdl::seed(extensions)?;
+    kdlith_schema_kdl::load_schema_with(&meta_schema, entries, extensions, scope, options)
 }
 
 /// Load this schema's definition as [`load`] does, over documents held
@@ -266,15 +266,15 @@ pub fn load_sources_with(
     scope: CheckScope,
     options: ReadOptions,
 ) -> Result<Definition, Vec<DiagnosticRecord>> {
-    let dialect = kdlith_schema_kdl::seed(extensions)?;
-    kdlith_schema_kdl::load_schema_sources_with(&dialect, sources, extensions, scope, options)
+    let meta_schema = kdlith_schema_kdl::seed(extensions)?;
+    kdlith_schema_kdl::load_schema_sources_with(&meta_schema, sources, extensions, scope, options)
 }
 "##;
     format!("{}\n\n{}", crate::RUST_MARKER, body)
 }
 
 const SEED: &str = r##"
-/// The canonical dialect, compiled from its embedded documents with the
+/// The canonical meta-schema, compiled from its embedded documents with the
 /// engine's seed bootstrap. This is the only definition the bootstrap
 /// ever compiles: the reader every other definition flows through is
 /// constructed over it.
@@ -284,73 +284,78 @@ pub fn seed(extensions: &Extensions) -> Result<Definition, Vec<DiagnosticRecord>
         let parsed = ParsedDocument::parse(path, text).map_err(|record| vec![*record])?;
         documents.push(parsed);
     }
-    compile_dialect(&documents, extensions)
+    compile_meta_schema(&documents, extensions)
 }
 "##;
 
-const LOAD_DIALECT: &str = r##"
-/// Load a dialect definition from its entry documents and compile it.
+const LOAD_META_SCHEMA: &str = r##"
+/// Load a meta-schema definition from its entry documents and compile it.
 /// The documents are read through the reference processor against the
-/// canonical dialect — the definition language every dialect is written
+/// canonical meta-schema — the definition language every meta-schema is written
 /// in — so their binding diagnostics are reported before compilation
 /// begins.
-pub fn load_dialect(
+pub fn load_meta_schema(
     entries: &[&Path],
     extensions: &Extensions,
     scope: CheckScope,
 ) -> Result<Definition, Vec<DiagnosticRecord>> {
-    let dialect = seed(extensions)?;
-    let input = gather(&dialect, Entries::Paths(entries), scope, ReadOptions::new())?;
-    compile_dialect_input(&input, extensions, scope)
+    let meta_schema = seed(extensions)?;
+    let input = gather(
+        &meta_schema,
+        Entries::Paths(entries),
+        scope,
+        ReadOptions::new(),
+    )?;
+    compile_meta_schema_input(&input, extensions, scope)
 }
 
-/// Load a dialect definition as [`load_dialect`] does, over documents
+/// Load a meta-schema definition as [`load_meta_schema`] does, over documents
 /// held in memory instead of read from disk. An in-memory document
 /// belongs to no source, so an import inside it fails closed
 /// (`KDLITH-LOC001`).
-pub fn load_dialect_sources(
+pub fn load_meta_schema_sources(
     sources: &[kdlith_engine::Source],
     extensions: &Extensions,
     scope: CheckScope,
 ) -> Result<Definition, Vec<DiagnosticRecord>> {
-    let dialect = seed(extensions)?;
+    let meta_schema = seed(extensions)?;
     let input = gather(
-        &dialect,
+        &meta_schema,
         Entries::Sources(sources),
         scope,
         ReadOptions::new(),
     )?;
-    compile_dialect_input(&input, extensions, scope)
+    compile_meta_schema_input(&input, extensions, scope)
 }
 "##;
 
 const LOAD_SCHEMA: &str = r##"
 /// Load a schema definition from its entry documents and compile it
-/// under `dialect`: the documents are read through the reference
-/// processor against the governing dialect, so a construct the dialect
+/// under `meta_schema`: the documents are read through the reference
+/// processor against the governing meta-schema, so a construct the meta-schema
 /// does not admit is rejected with the binding code any processor
 /// binding it reports.
 pub fn load_schema(
-    dialect: &Definition,
+    meta_schema: &Definition,
     entries: &[&Path],
     extensions: &Extensions,
     scope: CheckScope,
 ) -> Result<Definition, Vec<DiagnosticRecord>> {
-    load_schema_with(dialect, entries, extensions, scope, ReadOptions::new())
+    load_schema_with(meta_schema, entries, extensions, scope, ReadOptions::new())
 }
 
 /// Load a schema definition as [`load_schema`] does, resolving the
 /// documents' own import locations under `options`: its project root
 /// and the named sources `$name/` locations address.
 pub fn load_schema_with(
-    dialect: &Definition,
+    meta_schema: &Definition,
     entries: &[&Path],
     extensions: &Extensions,
     scope: CheckScope,
     options: ReadOptions,
 ) -> Result<Definition, Vec<DiagnosticRecord>> {
-    let input = gather(dialect, Entries::Paths(entries), scope, options)?;
-    compile_schema_input(dialect, &input, extensions, scope)
+    let input = gather(meta_schema, Entries::Paths(entries), scope, options)?;
+    compile_schema_input(meta_schema, &input, extensions, scope)
 }
 
 /// Load a schema definition as [`load_schema`] does, over documents
@@ -358,26 +363,26 @@ pub fn load_schema_with(
 /// belongs to no source, so an import inside it without a `$name/`
 /// prefix fails closed (`KDLITH-LOC001`).
 pub fn load_schema_sources(
-    dialect: &Definition,
+    meta_schema: &Definition,
     sources: &[kdlith_engine::Source],
     extensions: &Extensions,
     scope: CheckScope,
 ) -> Result<Definition, Vec<DiagnosticRecord>> {
-    load_schema_sources_with(dialect, sources, extensions, scope, ReadOptions::new())
+    load_schema_sources_with(meta_schema, sources, extensions, scope, ReadOptions::new())
 }
 
 /// Load a schema definition as [`load_schema_sources`] does, resolving
 /// the documents' `$name/` import locations in the named sources
 /// `options` registers, such as files a host embeds.
 pub fn load_schema_sources_with(
-    dialect: &Definition,
+    meta_schema: &Definition,
     sources: &[kdlith_engine::Source],
     extensions: &Extensions,
     scope: CheckScope,
     options: ReadOptions,
 ) -> Result<Definition, Vec<DiagnosticRecord>> {
-    let input = gather(dialect, Entries::Sources(sources), scope, options)?;
-    compile_schema_input(dialect, &input, extensions, scope)
+    let input = gather(meta_schema, Entries::Sources(sources), scope, options)?;
+    compile_schema_input(meta_schema, &input, extensions, scope)
 }
 "##;
 
@@ -389,16 +394,16 @@ enum Entries<'a> {
     Sources(&'a [kdlith_engine::Source]),
 }
 
-/// Read `entries` through the typed reader over `dialect`, collecting
+/// Read `entries` through the typed reader over `meta_schema`, collecting
 /// the item stream into compiler input. An error diagnostic, or a
 /// broken reader contract, fails the load with the records collected.
 fn gather(
-    dialect: &Definition,
+    meta_schema: &Definition,
     entries: Entries<'_>,
     scope: CheckScope,
     options: ReadOptions,
 ) -> Result<DefinitionInput, Vec<DiagnosticRecord>> {
-    let typed = reader(dialect)?.with_options(options);
+    let typed = reader(meta_schema)?.with_options(options);
     let mut input = Gathering::default();
     let mut records: Vec<DiagnosticRecord> = Vec::new();
     let mut sink = |item: TypedItem<Item>| take(item, &mut input, &mut records);
@@ -464,7 +469,7 @@ fn take(item: TypedItem<Item>, input: &mut Gathering, records: &mut Vec<Diagnost
 "##;
 
 const TAKE_TAIL: &str = r##"            // A record of any other type is a reader contract this loader
-            // cannot proceed past: the dialect declares no such record.
+            // cannot proceed past: the meta-schema declares no such record.
             _ => records.push(broken_contract(
                 "a definition reading yielded an unknown record",
             )),

@@ -1,0 +1,20 @@
+{
+  "binary": "kdlith",
+  "description": "The four canonical meta-schema definition files compile as one meta-schema with complete checking: every type, node, parent, field, and slot they reference is declared, and the meta-schema's own bindings describe every construct the files use. The digest is the canonical summary the entrypoint must reproduce (meta-schema/entry-vet/meta-schema)",
+  "args": [
+    "vet",
+    "schema",
+    "{fx-suite}/../../pkg/kdl/schemas/schema/types.kdl",
+    "{fx-suite}/../../pkg/kdl/schemas/schema/bindings.kdl",
+    "{fx-suite}/../../pkg/kdl/schemas/schema/context.kdl",
+    "{fx-suite}/../../pkg/kdl/schemas/schema/documents.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "ok: schema schema version 0 scope=complete documents=4 ",
+      " types=134 nodes=89 ",
+      " digest=13400d6dbaf3ce86"
+    ]
+  }
+}

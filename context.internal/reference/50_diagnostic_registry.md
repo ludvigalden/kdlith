@@ -1,7 +1,7 @@
 # One code per rejected construct
 
-A definition document is a data document of its dialect. A construct
-the dialect's declarations reject therefore gets one diagnostic code
+A definition document is a data document of the meta-schema. A
+construct the meta-schema's declarations reject therefore gets one diagnostic code
 on every reading path: when a processor binds it (the item stream
 `inspect` shows) and when the engine compiles it (`vet`, and
 `inspect` after its item stream).
@@ -23,7 +23,7 @@ on every reading path: when a processor binds it (the item stream
 | A node holding a field the object type its case selects does not declare                            | `KDLITH-BND014` |
 | A type expression that breaks the type-expression grammar                                           | `KDLITH-DLC007` |
 | Two fields bound to the same argument, property, or rest arguments                                  | `KDLITH-SCH003` |
-| An import that projects a slot the dialect does not declare, or any undeclared reference            | `KDLITH-SCH006` |
+| An import that projects a slot the meta-schema does not declare, or any undeclared reference        | `KDLITH-SCH006` |
 | An expansion or generic-instantiation cycle                                                         | `KDLITH-SCH009` |
 | Variant prefixes of one union where one is a prefix of another                                      | `KDLITH-SCH010` |
 | A schema that declares profiles while its invocation selects none, or names or lists an unknown one | `KDLITH-SCH011` |
@@ -70,8 +70,8 @@ machine-readable form is the JSON `diagnostic` item.
 
 ## Show, then fail
 
-`inspect dialect` and `inspect schema` stream every item the reader
-yields, then hand the same documents to the compiler exactly as `vet`
+`inspect schema` streams every item the reader
+yields, then hands the same documents to the compiler exactly as `vet`
 does, under complete checking, rendering the reader's diagnostics
 followed by the compiler's; any error exits nonzero after the items
 are shown, warnings alone exit 0. When the reader itself reports an
@@ -89,7 +89,7 @@ semantics. `LOC008` joins with the `asset` type kind; `LOC006`, `LOC007`,
 `LOC009` (warning), and `LOC010` (note) join with sources manifests,
 the store, and overrides. `KDLITH-CTX006` subsumed the retired `CTX003`; the slot
 malformed constructs stay `DLC005` (a layer name the slot does not
-list is `SCH006`, or `DLC008` in a dialect definition). `BND009`
+list is `SCH006`, or `DLC008` in the meta-schema). `BND009`
 joins with the value-resolution hook; `BND010` with reference-keyed
 maps (its link failure names the map field); `BND011`–`BND014` with
 constraints, bounds, exclusivity, and case shapes; `SCH016`–`SCH019`

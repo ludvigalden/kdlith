@@ -170,7 +170,7 @@ pub fn named_references(expr: &TypeExpr, names: &Names) -> Vec<String> {
 /// How a generated file spells the names it does not declare itself.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Spelling {
-    /// Bare, through the file's imports: the dialect form, byte-equal to
+    /// Bare, through the file's imports: the meta-schema form, byte-equal to
     /// the reference processor.
     Imported,
     /// By absolute path, so no declared type can shadow the spelling: the
@@ -182,7 +182,7 @@ impl Spelling {
     /// The spelling a definition of `kind` generates under.
     pub fn of(kind: DefinitionKind) -> Self {
         match kind {
-            DefinitionKind::Dialect => Self::Imported,
+            DefinitionKind::MetaSchema => Self::Imported,
             _ => Self::Qualified,
         }
     }
@@ -424,11 +424,11 @@ pub fn normalize_path(path: &str) -> String {
     }
 }
 
-/// Where the dialect form's `build.rs` reads the canonical documents,
+/// Where the meta-schema form's `build.rs` reads the canonical documents,
 /// relative to the generated crate: the repository's sibling layout,
-/// `pkg/rs/<crate>` beside `pkg/kdl/schemas/dialect`. A constant, so
+/// `pkg/rs/<crate>` beside `pkg/kdl/schemas/schema`. A constant, so
 /// generation stays a pure function of its inputs.
-pub const SEED_DIR: &str = "../../kdl/schemas/dialect";
+pub const SEED_DIR: &str = "../../kdl/schemas/schema";
 
 /// The `OUT_DIR` subdirectory `build.rs` copies the seed into.
 pub const SEED_OUT: &str = "schema";

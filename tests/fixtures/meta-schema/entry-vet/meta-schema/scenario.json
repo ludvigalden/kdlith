@@ -1,0 +1,16 @@
+{
+  "binary": "kdlith",
+  "description": "Processing the meta-schema-generation entrypoint resolves its four imports in written order and yields the same meta-schema as reading the four canonical files directly: the digest equals meta-schema/canonical-vet/merged's",
+  "args": [
+    "vet",
+    "schema",
+    "{fx-suite}/../../pkg/kdl/schemas/schema/schema.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [
+      "ok: schema schema version 0 scope=complete documents=5 ",
+      " digest=13400d6dbaf3ce86"
+    ]
+  }
+}

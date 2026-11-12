@@ -1,0 +1,11 @@
+{
+  "binary": "kdlith",
+  "description": "gen schema records the same provenance lines as the schema form, naming the meta-schema form, the canonical meta-schema definition and its declared version, and the path packaging; every other generated file opens with the version-free marker, and the written manifest is pinned byte for byte",
+  "args": ["gen", "schema", "{fx-suite}/../../pkg/kdl/schemas/schema/schema.kdl", "--crate", "demo", "--out", "out", "--kdlith-path", "../pkg/rs"],
+  "expect": {
+    "exit": 0,
+    "files": {
+      "out/kdlith-manifest": "manifest.golden"
+    }
+  }
+}

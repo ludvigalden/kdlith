@@ -2,11 +2,12 @@
 
 Inputs that recur across the schema- and data-reading verbs.
 
-## Schema and dialect
+## Schema and meta-schema
 
 `--schema FILE` names the schema a data reading binds under. Without
-it, the governing dialect reads the data. `--dialect FILE` on the
-schema verbs names the dialect a schema is written in.
+it, the governing meta-schema reads the data. `--meta-schema FILE`
+replaces the bundled meta-schema a schema is written in; its root
+must be `schema schema`.
 
 ## Root and sources
 
