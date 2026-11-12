@@ -22,6 +22,25 @@ pub fn pascal(name: &str) -> String {
     spelled
 }
 
+/// The Rust variant a KDL enum value reads as: the value's words, split
+/// at `_`, `-`, and whitespace, each capitalized and joined —
+/// `not_assessed` as `NotAssessed`, `Not-assessed` as `NotAssessed`. The
+/// KDL spelling stays the binding key; only this identifier changes, so
+/// parsing and serialization keep the exact value strings. A value whose
+/// words spell no Rust identifier, or one whose spelling another member
+/// of the same enum shares, fails closed in the caller's check.
+pub fn enum_variant(value: &str) -> String {
+    let mut spelled = String::with_capacity(value.len());
+    for word in value.split(|c: char| c == '_' || c == '-' || c.is_whitespace()) {
+        let mut characters = word.chars();
+        if let Some(first) = characters.next() {
+            spelled.extend(first.to_uppercase());
+            spelled.push_str(characters.as_str());
+        }
+    }
+    spelled
+}
+
 /// A field key as a Rust field name: the snake_case translation of
 /// [`snake_case`] (dashes to underscores, every word boundary starting
 /// a new word), `type` spelled `ty` as the declaration tables do, and

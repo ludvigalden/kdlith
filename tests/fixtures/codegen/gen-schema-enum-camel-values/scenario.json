@@ -1,0 +1,38 @@
+{
+  "heavy": true,
+  "binary": "kdlith",
+  "kind": "codegen-oracle",
+  "description": "gen schema spells every enum variant of a generated crate in UpperCamelCase: a committed schema whose enum members carry an underscore spelling, a kebab spelling, an already-camel spelling, and a mixed-case spelling generates twice into scratch trees the harness requires byte-identical, the generated crate compiles inside a scratch workspace materialized from this scenario's committed template, and the compiled processor loads its own schema with the digest the reference CLI reports and reads a committed data document through its own typed reader, printing every value twice — as its Rust variant (NotAssessed, FullyMapped, MixedCase, OutOfScope, NeedsContext) and as its exact KDL value string (not_assessed, fully-mapped, MixedCase, out-of-scope, needs_context) — so the separator-aware conversion changes only the identifier, never the binding key, and the same data document vets green unchanged",
+  "form": "schema",
+  "entrypoint": "inputs/camelvalues.kdl",
+  "crate": "camelvalues-proc",
+  "steps": [
+    { "generate": { "out": "ws/rs/camelvalues-proc", "args": ["--kdlith-path", ".."] } },
+    { "generate": { "out": "gen-again", "args": ["--kdlith-path", ".."] } },
+    { "determinism": ["ws/rs/camelvalues-proc", "gen-again"] },
+    {
+      "compile": {
+        "workspace": "ws",
+        "copy": {
+          "crates": ["diagnostic", "engine", "model", "parse", "runtime", "schema-kdl"],
+          "documents": ["schemas/schema"]
+        },
+        "command": ["cargo", "build", "--offline", "--manifest-path", "ws/rs/camelvalues-proc/Cargo.toml"]
+      }
+    },
+    {
+      "exercise": {
+        "command": ["cargo", "run", "--offline", "--quiet", "--manifest-path", "ws/rs/exercise/Cargo.toml", "--", "inputs/camelvalues.kdl", "inputs/data.kdl"],
+        "stdout-contains": [
+          "schema ok digest=562f54c20f3f1fa1\n",
+          "read ok entries=5\n",
+          "outcome NotAssessed spells not_assessed\n",
+          "outcome FullyMapped spells fully-mapped\n",
+          "outcome MixedCase spells MixedCase\n",
+          "outcome OutOfScope spells out-of-scope\n",
+          "outcome NeedsContext spells needs_context\n"
+        ]
+      }
+    }
+  ]
+}

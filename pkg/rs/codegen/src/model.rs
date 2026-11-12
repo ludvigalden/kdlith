@@ -11,8 +11,8 @@ use kdlith_engine::{
 
 use crate::emit::{declaration_expressions, placement_parents};
 use crate::render::{
-    Spelling, field_name, inline_union_name, is_identifier, mangle, normalize_path, pascal,
-    rust_type, subexpressions, variant_name,
+    Spelling, enum_variant, field_name, inline_union_name, is_identifier, mangle, normalize_path,
+    pascal, rust_type, subexpressions, variant_name,
 };
 use crate::{Error, Packaging};
 
@@ -610,7 +610,7 @@ impl<'d> Emission<'d> {
                 match &decl.kind {
                     TypeKind::Enum(enumeration) => {
                         let members = enumeration.members.iter().map(|m| m.name.as_str());
-                        variants("member", name, members, pascal)?;
+                        variants("member", name, members, enum_variant)?;
                     }
                     TypeKind::Union(union) => {
                         let discriminators = union
@@ -1233,7 +1233,7 @@ fn annotation_value(
         }
         (Some((name, TypeKind::Enum(_))), Value::String(member)) => {
             let ty = format!("crate::types::{name}");
-            let member = format!("{ty}::{}", pascal(member));
+            let member = format!("{ty}::{}", enum_variant(member));
             (ty, member)
         }
         (_, Value::String(spelled) | Value::Number(spelled)) => text(spelled),

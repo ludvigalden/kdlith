@@ -1,0 +1,14 @@
+schema collide version="1" {
+    types {
+        enum Status {
+            member not_assessed
+            member not-assessed
+        }
+        object Entry {
+            field status Status
+        }
+    }
+    node entry role=record type=Entry {
+        field status arg=0
+    }
+}

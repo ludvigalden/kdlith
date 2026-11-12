@@ -1,0 +1,24 @@
+// A schema whose enum member spellings exercise the generated-variant
+// naming contract: an underscore spelling, a kebab spelling, an
+// already-camel spelling, and a mixed-case spelling all render as
+// UpperCamelCase variants in the generated crate (NotAssessed,
+// FullyMapped, MixedCase, OutOfScope, NeedsContext) while the KDL
+// value string stays the binding key, so the same data document vets
+// green unchanged.
+schema camelvalues version="1" {
+    types {
+        enum Outcome {
+            member not_assessed description="No assessment recorded yet"
+            member fully-mapped
+            member MixedCase
+            member out-of-scope
+            member needs_context
+        }
+        object Entry {
+            field outcome Outcome
+        }
+    }
+    node entry role=record type=Entry {
+        field outcome arg=0
+    }
+}

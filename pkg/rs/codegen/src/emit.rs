@@ -12,8 +12,8 @@ use crate::layout::{Expr, assignment, use_list, version_order};
 use crate::manifest::{MANIFEST_NAME, Provenance, manifest_text};
 use crate::model::{Document, Emission, InlineUnion, ItemNode, kind_name};
 use crate::render::{
-    Spelling, engine_names, field_name, inline_union_name, named_references, pascal, rust_type,
-    spells_btree_map,
+    Spelling, engine_names, enum_variant, field_name, inline_union_name, named_references, pascal,
+    rust_type, spells_btree_map,
 };
 use crate::{Error, Packaging};
 
@@ -728,7 +728,7 @@ fn cargo_env(name: &str) -> OsString {{
                     out.line(&format!(
                         "        \"{}\" => {},",
                         member.name,
-                        pascal(&member.name)
+                        enum_variant(&member.name)
                     ));
                 }
                 out.line("    }");
