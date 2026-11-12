@@ -93,7 +93,6 @@ implement the dialect for every processor, hand-written or generated:
     its identity, type, source digest and span, schema fingerprint,
     snapshot ID, invocation ID, and validation status; restore only
     when the fingerprint and lineage match (`KDLITH-CTX004`).
-
 17. **Scale with the reading.** Derive what binding needs from a
     definition — the binding tables and the compiled patterns — once
     per definition, never per document. Keep nothing of a document
