@@ -225,14 +225,14 @@ checksum = "8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682"
 
 [[package]]
 name = "kdlith-bin"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "kdlith-cli",
 ]
 
 [[package]]
 name = "kdlith-cli"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "clap",
  "kdlith-codegen",
@@ -246,7 +246,7 @@ dependencies = [
 
 [[package]]
 name = "kdlith-codegen"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "kdlith-diagnostic",
  "kdlith-engine",
@@ -255,7 +255,7 @@ dependencies = [
 
 [[package]]
 name = "kdlith-diagnostic"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -263,7 +263,7 @@ dependencies = [
 
 [[package]]
 name = "kdlith-engine"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "kdlith-diagnostic",
  "kdlith-model",
@@ -277,7 +277,7 @@ dependencies = [
 
 [[package]]
 name = "kdlith-fixtures"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "kdlith-cli",
  "kdlith-codegen",
@@ -288,7 +288,7 @@ dependencies = [
 
 [[package]]
 name = "kdlith-model"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "kdlith-diagnostic",
  "serde",
@@ -296,7 +296,7 @@ dependencies = [
 
 [[package]]
 name = "kdlith-parse"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "kdlith-diagnostic",
  "kdlith-model",
@@ -304,7 +304,7 @@ dependencies = [
 
 [[package]]
 name = "kdlith-runtime"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "kdlith-diagnostic",
  "kdlith-model",
@@ -314,7 +314,7 @@ dependencies = [
 
 [[package]]
 name = "kdlith-schema-kdl"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "kdlith-diagnostic",
  "kdlith-engine",

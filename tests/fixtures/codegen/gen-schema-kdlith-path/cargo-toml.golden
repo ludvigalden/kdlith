@@ -2,7 +2,7 @@
 
 [package]
 name = "parts-proc"
-version = "0.3.0"
+version = "0.3.1"
 description = "Generated kdlith processor for the parts schema."
 edition = "2024"
 rust-version = "1.85"
