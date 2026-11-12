@@ -6,8 +6,9 @@
 //! where it opens: its text is scanned for its end, nothing in it is
 //! decoded or validated, and it yields no item. What a node leaves for
 //! the nodes after it never depends on a skipped one: a node whose
-//! effects reach its siblings, an import, and every node on the way
-//! down to a demanded one stay bound.
+//! effects reach its siblings, an import, a node a descendant rule
+//! counts, and every node on the way down to one of these or to a
+//! demanded one stay bound.
 
 use std::collections::HashSet;
 
@@ -29,13 +30,23 @@ pub(crate) fn skips(def: &Definition, demand: &[String]) -> Result<Vec<bool>, St
             .ok_or_else(|| name.clone())?;
         wanted.insert(declared);
     }
+    // A descendant rule counts the nodes of one name anywhere below its
+    // owner, so a node of a counted name is never passed over, nor is
+    // anything it is written inside.
+    let counted: HashSet<Sym> = def
+        .bindings
+        .iter()
+        .flat_map(|(_, decl)| decl.descendants.iter().map(|rule| rule.name))
+        .collect();
     // A node is live when its own item is demanded, when it is an import
-    // or leaves effects, or when a live node can be written inside it.
+    // or leaves effects, when a rule counts it wherever it is written,
+    // or when a live node can be written inside it.
     let mut live: Vec<bool> = def
         .bindings
         .iter()
         .map(|(id, decl)| {
             decl.role == Some(Role::SourceImport)
+                || counted.contains(&decl.name)
                 || binds_as(decl).any(|ty| wanted.contains(&ty))
                 || def.plan.node(id).is_some_and(|plan| {
                     !plan.children_effects.steps.is_empty()
