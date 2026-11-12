@@ -100,7 +100,8 @@ fn run_step(
         OracleStep::Compare {
             generated,
             reference,
-        } => compare(generated, reference, cwd, env, expansion),
+            exclude,
+        } => compare(generated, reference, exclude, cwd, env, expansion),
         OracleStep::Compile {
             workspace,
             copy,
@@ -202,20 +203,25 @@ fn determinism(
 }
 
 /// Require the generated tree's files to match the reference tree byte
-/// for byte: each `**/*.rs` file excluding exactly the generated marker
-/// header line, and every other file (the dialect snapshot) raw.
+/// for byte: `**/*.rs` minus the generated marker line, every other
+/// file raw, and the `exclude` paths dropped from both sides first.
 fn compare(
     generated: &str,
     reference: &str,
+    exclude: &[String],
     cwd: &Path,
     env: &RunEnv<'_>,
     expansion: &Expansion<'_>,
 ) -> Result<(), String> {
     let gen_dir = cwd.join(expansion.string(generated, env));
     let reference_dir = expansion.string(reference, env);
-    let generated_files = tree_files(&gen_dir).map_err(|e| format!("{generated}: {e}"))?;
-    let reference_files =
+    let mut generated_files = tree_files(&gen_dir).map_err(|e| format!("{generated}: {e}"))?;
+    let mut reference_files =
         tree_files(Path::new(&reference_dir)).map_err(|e| format!("{reference}: {e}"))?;
+    for path in exclude {
+        generated_files.remove(path);
+        reference_files.remove(path);
+    }
     if let Some(path) = reference_files
         .keys()
         .find(|p| !generated_files.contains_key(*p))
@@ -294,6 +300,27 @@ fn compile(
             .map_err(|e| format!("cannot create {}: {e}", target.display()))?;
         scratch::copy_tree(&source, &target)
             .map_err(|e| format!("cannot copy crate {name} into the workspace: {e}"))?;
+    }
+    for dir in &copy.documents {
+        let source = expansion.repo.join("pkg").join("kdl").join(dir);
+        if !source.is_dir() {
+            return Err(format!(
+                "repository documents {} are missing at {}",
+                dir,
+                source.display()
+            ));
+        }
+        let target = ws.join("kdl").join(dir);
+        if target.symlink_metadata().is_ok() {
+            return Err(format!(
+                "{} already exists in the workspace; the template must not carry repository documents",
+                target.display()
+            ));
+        }
+        std::fs::create_dir_all(&target)
+            .map_err(|e| format!("cannot create {}: {e}", target.display()))?;
+        scratch::copy_tree(&source, &target)
+            .map_err(|e| format!("cannot copy documents {dir} into the workspace: {e}"))?;
     }
     let program = PathBuf::from(&command[0]);
     let output = spawn(&program, &command[1..], cwd, env, expansion)

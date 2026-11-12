@@ -4,8 +4,9 @@ repo kdlith {
         path "tests/fixtures"
         consumers "tests/tools/kdlith-fixtures"
     }
-    // The schema-kdl crate's dialect snapshot and generated code must equal
-    // what dialect generation makes of these; fixture scenarios read them.
+    // The schema-kdl crate's build script embeds these documents, and its
+    // generated code must equal what dialect generation makes of them;
+    // fixture scenarios read them.
     input dialect kind=data {
         path "pkg/kdl/dialect.kdl" "pkg/kdl/schemas/dialect"
         consumers "pkg/rs/schema-kdl" "tests/tools/kdlith-fixtures"

@@ -122,17 +122,19 @@ their bytes stay exactly as spelled. `--kdlith-workspace`
 inputs while the source and the license move to the consumer's root
 manifest.
 
-A dialect crate embeds its seed as a versioned snapshot: every
-contributing document is written under `src/dialect/` (byte-identical
-to the documents generation read), `compile.rs` includes each through
-a crate-relative `include_str!` beside the `CANONICAL_VERSION`
-constant naming the version they declare, and the crate reads no file
-outside itself — a published dialect crate is self-contained wherever
-it is built. The reference processor holds the same snapshot shape
-(its copy under `pkg/rs/schema-kdl/src/dialect/` is refreshed by hand
-when the canonical documents move; the oracle's byte comparison
-catches a stale copy), and the engine's compiled definition carries
-each document's text so generation never re-reads the working tree.
+A dialect crate embeds its seed at build time: generation emits a
+`build.rs` that copies every contributing document from the sibling
+path `../../kdl/schemas/dialect` into `OUT_DIR`, and `compile.rs`
+includes each through an `OUT_DIR` `include_str!` beside the
+`CANONICAL_VERSION` constant naming the version they declare. The
+crate commits no copy, so its embed is the canonical text and cannot
+drift from it; the cost is that it builds only from a kdlith checkout
+(a git or path dependency), and its build script fails the build,
+naming the path, when a document is missing. The reference processor
+`pkg/rs/schema-kdl` has the same shape (the oracle's byte comparison
+of `src/**` and `build.rs` catches a stale crate), and the engine's
+compiled definition carries each document's text so generation never
+re-reads the working tree.
 
 `gen workspace` is the workspace-level half. It reads one named source
 of a sources manifest (an origin at the repository root with a 40-hex

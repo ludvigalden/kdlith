@@ -7,6 +7,7 @@
 #@ definition "kdlith" version="0"
 #@ packaging path
 Cargo.toml
+build.rs
 kdlith-manifest
 src/bindings/bindings_kdl.rs
 src/bindings/context_kdl.rs
@@ -15,10 +16,6 @@ src/bindings/mod.rs
 src/bindings/types_kdl.rs
 src/compile.rs
 src/contexts/mod.rs
-src/dialect/bindings.kdl
-src/dialect/context.kdl
-src/dialect/documents.kdl
-src/dialect/types.kdl
 src/lib.rs
 src/processors/bindings_kdl.rs
 src/processors/context_kdl.rs

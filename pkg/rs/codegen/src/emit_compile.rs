@@ -102,34 +102,29 @@ use crate::processors::{Item, reader};
         );
         out.push_str(&use_list("", "crate::types", &types));
 
-        // The seed: a versioned snapshot of every contributing document,
-        // embedded through the crate's own `src/dialect/` directory so
-        // the published crate carries its seed with it.
+        // The seed: every contributing document, copied into `OUT_DIR`
+        // by the crate's `build.rs` from the canonical files, so the
+        // embedded seed is the canonical text at build time. Each tuple
+        // spans lines, as rustfmt lays out a call wider than its width.
         let _ = writeln!(
             out,
             "
-/// The canonical dialect's contributing documents, snapshotted at
-/// generation time so the published crate carries its own seed.
+/// The canonical dialect's contributing documents, copied into
+/// `OUT_DIR` by `build.rs` from the kdlith checkout at build time.
 const CANONICAL: [(&str, &str); {}] = [",
             seed.len()
         );
         for (file_name, include) in &seed {
-            let inline = format!("    (\"{file_name}\", include_str!(\"{include}\")),");
-            if inline.chars().count() <= 100 {
-                out.push_str(&inline);
-                out.push('\n');
-            } else {
-                let _ = write!(
-                    out,
-                    "    (\n        \"{file_name}\",\n        include_str!(\"{include}\"),\n    ),\n"
-                );
-            }
+            let _ = write!(
+                out,
+                "    (\n        \"{file_name}\",\n        include_str!(concat!(env!(\"OUT_DIR\"), \"{include}\")),\n    ),\n"
+            );
         }
         let _ = writeln!(out, "];");
         let _ = writeln!(
             out,
             "
-/// The dialect version the snapshotted documents declare.
+/// The dialect version the embedded documents declare.
 pub const CANONICAL_VERSION: &str = {:?};",
             self.version
         );

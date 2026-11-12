@@ -424,9 +424,17 @@ pub fn normalize_path(path: &str) -> String {
     }
 }
 
-/// The include path a seed document takes from the generated crate's
-/// `src/compile.rs`: the snapshot directory beside it, `src/dialect/`,
-/// so the crate carries its own seed wherever it is published.
+/// Where the dialect form's `build.rs` reads the canonical documents,
+/// relative to the generated crate: the repository's sibling layout,
+/// `pkg/rs/<crate>` beside `pkg/kdl/schemas/dialect`. A constant, so
+/// generation stays a pure function of its inputs.
+pub const SEED_DIR: &str = "../../kdl/schemas/dialect";
+
+/// The `OUT_DIR` subdirectory `build.rs` copies the seed into.
+pub const SEED_OUT: &str = "schema";
+
+/// The `OUT_DIR`-relative include path a seed document takes from the
+/// generated crate's `src/compile.rs`, as the `concat!` suffix.
 pub fn include_path(file_name: &str) -> String {
-    format!("dialect/{file_name}")
+    format!("/{SEED_OUT}/{file_name}")
 }

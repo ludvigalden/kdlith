@@ -83,13 +83,14 @@ under `--kdlith-workspace` the manifest carries
 there is no `license` key, and a registry publication gets its
 license from the consumer's own manifest or publisher.
 
-A dialect crate embeds its seed as a versioned snapshot: the
-dialect's contributing documents are written under `src/dialect/`,
-`compile.rs` includes each through a crate-relative `include_str!`
-beside the `CANONICAL_VERSION` constant naming the version the
-documents declare, and the crate reads no file outside itself, so a
-generated dialect crate is publishable and self-contained wherever it
-is built.
+A dialect crate embeds its seed at build time: its generated
+`build.rs` copies the dialect's contributing documents from the
+sibling path `../../kdl/schemas/dialect` into `OUT_DIR`, and
+`compile.rs` includes each through an `OUT_DIR` `include_str!` beside
+the `CANONICAL_VERSION` constant naming the version the documents
+declare. The crate commits no copy of the documents, so it builds only
+from a kdlith checkout (a git or path dependency); a build without
+them fails, naming the missing path.
 
 ## Workspace dependencies
 

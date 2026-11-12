@@ -152,13 +152,11 @@ impl Emission<'_> {
                 self.processors_doc_rs(doc),
             ));
         }
-        // The dialect form embeds its seed as a snapshot beside the
-        // sources: the published crate carries the documents it was
-        // generated from and reads nothing outside itself.
+        // The dialect form embeds its seed through a build script that
+        // copies the canonical documents into `OUT_DIR`: no copy of them
+        // is generated, so the embed cannot drift from the canonical.
         if self.kind == DefinitionKind::Dialect {
-            for (file_name, text) in self.seed_documents() {
-                files.push((format!("src/dialect/{file_name}"), text.clone()));
-            }
+            files.push(("build.rs".to_owned(), self.build_rs()));
         }
         let provenance = Provenance {
             form: match self.kind {
@@ -231,6 +229,80 @@ impl Emission<'_> {
             });
         }
         out.finish()
+    }
+
+    /// The dialect form's build script: it copies the canonical seed
+    /// documents into `OUT_DIR` for `src/compile.rs` to embed, failing
+    /// the build when one is missing.
+    fn build_rs(&self) -> String {
+        let mut out = Out::new();
+        out.doc(&[
+            "Copies the canonical documents the crate embeds into `OUT_DIR`. They",
+            "live in the kdlith checkout, so a build without them fails here.",
+        ]);
+        out.blank();
+        out.line("use std::ffi::OsString;");
+        out.line("use std::path::PathBuf;");
+        out.blank();
+        out.line("/// The canonical documents' directory, relative to this crate.");
+        out.line(&format!(
+            "const CANONICAL_DIR: &str = \"{}\";",
+            crate::render::SEED_DIR
+        ));
+        out.blank();
+        out.line("/// The documents the crate embeds, in contribution order.");
+        let names: Vec<String> = self
+            .seed_documents()
+            .map(|(name, _)| format!("\"{name}\""))
+            .collect();
+        let head = format!("const DOCUMENTS: [&str; {}] = [", names.len());
+        let flat = format!("{head}{}];", names.join(", "));
+        if flat.chars().count() <= 100 {
+            out.line(&flat);
+        } else {
+            out.line(&head);
+            for name in &names {
+                out.line(&format!("    {name},"));
+            }
+            out.line("];");
+        }
+        let _ = write!(
+            out.text,
+            "
+fn main() {{
+    let canonical = PathBuf::from(cargo_env(\"CARGO_MANIFEST_DIR\")).join(CANONICAL_DIR);
+    let target = PathBuf::from(cargo_env(\"OUT_DIR\")).join(\"{out_dir}\");
+    if let Err(error) = std::fs::create_dir_all(&target) {{
+        panic!(\"cannot create {{}}: {{error}}\", target.display());
+    }}
+    for name in DOCUMENTS {{
+        let source = canonical.join(name);
+        println!(\"cargo::rerun-if-changed={{}}\", source.display());
+        let text = match std::fs::read(&source) {{
+            Ok(text) => text,
+            Err(error) => panic!(
+                \"cannot read the canonical document {{}}: {{error}}; build this crate from a kdlith checkout\",
+                source.display()
+            ),
+        }};
+        let copy = target.join(name);
+        if let Err(error) = std::fs::write(&copy, text) {{
+            panic!(\"cannot write {{}}: {{error}}\", copy.display());
+        }}
+    }}
+}}
+
+/// A variable cargo sets for every build script.
+fn cargo_env(name: &str) -> OsString {{
+    match std::env::var_os(name) {{
+        Some(value) => value,
+        None => panic!(\"cargo did not set {{name}}\"),
+    }}
+}}
+",
+            out_dir = crate::render::SEED_OUT
+        );
+        rust_file(&out.finish())
     }
 
     /// The crate root: module declarations and the compile entry points

@@ -368,11 +368,12 @@ generator-owned path is refused `KDLITH-GEN001` before anything is
 written. The reference-generation oracle is
 `codegen/gen-dialect-oracle`: a multi-step codegen-oracle scenario that
 generates the entrypoint's processor twice into scratch trees the
-harness requires byte-identical, compares the generated
-`src/**/*.rs` against `pkg/rs/schema-kdl` excluding only the
+harness requires byte-identical, compares the generated `src/**/*.rs`
+and `build.rs` against `pkg/rs/schema-kdl` excluding only the
 generated-marker header line, compiles the generated crate in a scratch
-workspace materialized from the scenario's committed template, and
-exercises the compiled processor's schema reading — every step judged
+workspace materialized from the scenario's committed template with the
+canonical dialect documents at the sibling path its `build.rs` reads,
+and exercises the compiled processor's schema reading — every step judged
 by the harness and fail-closed on any difference. The schema-form
 companion is `codegen/gen-schema-oracle`: the same step chain over a
 committed schema definition (no reference comparison — the reference

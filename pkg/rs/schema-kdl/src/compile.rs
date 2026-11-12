@@ -27,16 +27,28 @@ use crate::types::{
     Source, StringType, UnionType,
 };
 
-/// The canonical dialect's contributing documents, snapshotted at
-/// generation time so the published crate carries its own seed.
+/// The canonical dialect's contributing documents, copied into
+/// `OUT_DIR` by `build.rs` from the kdlith checkout at build time.
 const CANONICAL: [(&str, &str); 4] = [
-    ("types.kdl", include_str!("dialect/types.kdl")),
-    ("bindings.kdl", include_str!("dialect/bindings.kdl")),
-    ("context.kdl", include_str!("dialect/context.kdl")),
-    ("documents.kdl", include_str!("dialect/documents.kdl")),
+    (
+        "types.kdl",
+        include_str!(concat!(env!("OUT_DIR"), "/schema/types.kdl")),
+    ),
+    (
+        "bindings.kdl",
+        include_str!(concat!(env!("OUT_DIR"), "/schema/bindings.kdl")),
+    ),
+    (
+        "context.kdl",
+        include_str!(concat!(env!("OUT_DIR"), "/schema/context.kdl")),
+    ),
+    (
+        "documents.kdl",
+        include_str!(concat!(env!("OUT_DIR"), "/schema/documents.kdl")),
+    ),
 ];
 
-/// The dialect version the snapshotted documents declare.
+/// The dialect version the embedded documents declare.
 pub const CANONICAL_VERSION: &str = "0";
 
 /// The canonical dialect, compiled from its embedded documents with the

@@ -107,12 +107,12 @@ pub(crate) enum OracleStep {
     /// hold exactly the same files with exactly the same bytes.
     Determinism { trees: Vec<String> },
     /// Require the generated tree's files to match the reference tree
-    /// byte for byte — every `**/*.rs` file excluding exactly the
-    /// generated marker header line, every other file (the dialect
-    /// snapshot) raw.
+    /// byte for byte: `**/*.rs` minus the generated marker line, every
+    /// other file raw, and the `exclude` paths dropped from both sides.
     Compare {
         generated: String,
         reference: String,
+        exclude: Vec<String>,
     },
     /// Materialize the scratch workspace (the scenario's committed
     /// template, plus the declared repository crates copied in), then
@@ -134,13 +134,16 @@ pub(crate) enum OracleStep {
 
 /// What a compile step copies from the repository into the scratch
 /// workspace, at the pinned layout positions the generated crate's own
-/// manifest demands. The generated crate's seed is its embedded
-/// snapshot, so no working-tree dialect documents are ever copied.
+/// manifest and build script demand.
 #[derive(Debug)]
 pub(crate) struct RepoCopy {
     /// Crate directory names under `pkg/rs`, copied to `<ws>/rs/<name>`
     /// so the generated crate's `../<name>` path dependencies resolve.
     pub(crate) crates: Vec<String>,
+    /// Document directories under `pkg/kdl`, copied to `<ws>/kdl/<dir>`
+    /// so a build script's `../../kdl/<dir>` resolves as in the
+    /// repository.
+    pub(crate) documents: Vec<String>,
 }
 
 impl OracleStep {
@@ -483,7 +486,11 @@ fn oracle_step(index: usize, value: &Value) -> Result<OracleStep, String> {
         let obj = v
             .as_object()
             .ok_or_else(|| mismatch("compare", "an object"))?;
-        check_keys(obj, &["generated", "reference"], &format!("{what} compare"))?;
+        check_keys(
+            obj,
+            &["generated", "reference", "exclude"],
+            &format!("{what} compare"),
+        )?;
         let generated = required_string(obj, "generated")?;
         let generated = contained(&generated, &format!("{what} compare generated tree"))?;
         let reference = required_string(obj, "reference")?;
@@ -493,9 +500,16 @@ fn oracle_step(index: usize, value: &Value) -> Result<OracleStep, String> {
             ));
         }
         check_placeholder_string(&reference, &format!("{what} compare reference"))?;
+        let mut exclude = Vec::new();
+        if let Some(value) = obj.get("exclude") {
+            for path in string_array(value, "compare exclude")? {
+                exclude.push(contained(&path, &format!("{what} compare exclude"))?);
+            }
+        }
         return Ok(OracleStep::Compare {
             generated,
             reference,
+            exclude,
         });
     }
     if let Some(v) = obj.get("compile") {
@@ -515,7 +529,11 @@ fn oracle_step(index: usize, value: &Value) -> Result<OracleStep, String> {
                 .ok_or_else(|| mismatch("compile copy", "an object"))?,
             None => return Err(format!("{MANIFEST}: {what} compile is missing \"copy\"")),
         };
-        check_keys(copy, &["crates"], &format!("{what} compile copy"))?;
+        check_keys(
+            copy,
+            &["crates", "documents"],
+            &format!("{what} compile copy"),
+        )?;
         let crates_value = match copy.get("crates") {
             Some(v) => v
                 .as_array()
@@ -548,10 +566,16 @@ fn oracle_step(index: usize, value: &Value) -> Result<OracleStep, String> {
             }
             crates.push(name.to_owned());
         }
+        let mut documents = Vec::new();
+        if let Some(value) = copy.get("documents") {
+            for dir in string_array(value, "compile copy documents")? {
+                documents.push(contained(&dir, &format!("{what} compile copy documents"))?);
+            }
+        }
         let command = required_command(obj, &format!("{what} compile"))?;
         return Ok(OracleStep::Compile {
             workspace,
-            copy: RepoCopy { crates },
+            copy: RepoCopy { crates, documents },
             command,
         });
     }

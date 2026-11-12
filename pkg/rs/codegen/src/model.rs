@@ -666,11 +666,10 @@ impl<'d> Emission<'d> {
             .filter(|doc| doc.nodes.iter().any(|node| reading_role(node.role)))
     }
 
-    /// The documents the seed embeds as a versioned snapshot: every
-    /// contributing document's file name and text, in contribution
-    /// order. The snapshot lives inside the crate (`src/dialect/`), so
-    /// the published crate carries its own seed and never reads the
-    /// working tree.
+    /// The documents the seed embeds: every contributing document's
+    /// file name and text, in contribution order. The dialect form's
+    /// `build.rs` copies these files from the canonical directory into
+    /// `OUT_DIR`; the generated crate commits no copy of them.
     pub(crate) fn seed_documents(&self) -> impl Iterator<Item = (&String, &String)> + '_ {
         self.documents.iter().map(|doc| (&doc.file_name, &doc.text))
     }
