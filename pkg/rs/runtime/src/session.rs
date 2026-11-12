@@ -126,6 +126,8 @@ where
     /// Depth of a skipped subtree still being drained; no frames are kept
     /// for it.
     skipping: usize,
+    /// Whether the nodes inside the skipped subtree are numbered.
+    passing: bool,
     items: VecDeque<Item>,
     /// Reused buffer for the effects of the node being handled.
     effects: Vec<ContextEffect>,
@@ -159,6 +161,7 @@ where
             context,
             frames: FrameStack::new(SessionLimits::DEFAULT.max_depth),
             skipping: 0,
+            passing: false,
             items: VecDeque::new(),
             effects: Vec::new(),
             document,
@@ -247,7 +250,12 @@ where
         self.last = span;
         if self.skipping > 0 {
             match event.step {
-                Step::Node(_) => self.skipping += 1,
+                Step::Node(_) => {
+                    self.skipping += 1;
+                    if self.passing {
+                        self.next_node = self.next_node.saturating_add(1);
+                    }
+                }
                 Step::End => self.skipping -= 1,
                 Step::Entry(_) | Step::Children => {}
             }
@@ -289,7 +297,14 @@ where
                     return Err(depth_limit(self.limits.max_depth, span));
                 }
             }
-            Disposition::Skip => self.skipping = 1,
+            Disposition::Skip => {
+                self.skipping = 1;
+                self.passing = false;
+            }
+            Disposition::Pass => {
+                self.skipping = 1;
+                self.passing = true;
+            }
         }
         Ok(())
     }

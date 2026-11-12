@@ -1,0 +1,22 @@
+{
+  "binary": "kdlith",
+  "description": "--lazy validates only what it binds: the setting record carries a property no binding consumes, which fails the same export without --lazy (KDLITH-BND005), but a setting is no node an Item can come from, so it is passed over unread and the item exports",
+  "args": [
+    "export",
+    "--schema",
+    "{fx-suite}/processing/bind/schema.kdl",
+    "entry.kdl",
+    "--emit",
+    "Item",
+    "--format",
+    "ndjson",
+    "--scope",
+    "local",
+    "--lazy"
+  ],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden"
+  }
+}

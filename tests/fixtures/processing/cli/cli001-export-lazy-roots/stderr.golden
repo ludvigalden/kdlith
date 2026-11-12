@@ -1,0 +1,2 @@
+error[KDLITH-CLI001]: the argument '--lazy' requires '--emit <TYPE>' and '--scope local'
+  help: Pass a value of the documented form; see the command's --help

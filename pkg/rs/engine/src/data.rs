@@ -2,9 +2,10 @@
 //! definition and executes their imports as invocations, under the
 //! identity and cache rules the runtime records.
 
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
+use std::sync::{Arc, Mutex, mpsc};
 
 use kdlith_diagnostic::DiagnosticRecord;
 use kdlith_model::{ImportRequest, Item, SourceDocument, SourceId};
@@ -61,6 +62,8 @@ pub struct ReadOptions {
     store: Option<PathBuf>,
     output_policy: Option<OutputPolicy>,
     max_invocations: Option<usize>,
+    threads: Option<usize>,
+    demand: Option<Vec<String>>,
 }
 
 impl ReadOptions {
@@ -112,6 +115,51 @@ impl ReadOptions {
     #[must_use]
     pub fn with_max_invocations(mut self, max: usize) -> Self {
         self.max_invocations = Some(max);
+        self
+    }
+
+    /// Read only what the record types `types` name can come from. A
+    /// node whose item is of no demanded type, and inside which nothing
+    /// demanded can be written, is skipped where it opens: its text is
+    /// passed over, nothing in it is decoded or validated, and it yields
+    /// no item. Imports are still followed, a node whose effects reach
+    /// its siblings still binds, and so does every node on the way down
+    /// to a demanded one, so each demanded item binds under the context
+    /// a full reading binds it under.
+    ///
+    /// A demand trusts the documents for everything it skips: a reading
+    /// that must validate a tree reads it without one. Such a reading
+    /// resolves no contributions, and linking it sees only the
+    /// declarations it bound. A name the definition declares no record
+    /// type for fails the reading before any document is read
+    /// ([`ReadError::UnknownType`]).
+    #[must_use]
+    pub fn with_demand<I, S>(mut self, types: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        self.demand = Some(types.into_iter().map(Into::into).collect());
+        self
+    }
+
+    /// Bind on `threads` threads in place of one. The documents one
+    /// import request fans out to are read and bound ahead of their
+    /// turn on the other threads, since no import's effects reach its
+    /// importer or its siblings, and their items are given in the order
+    /// a single thread gives them: the reading is the same whatever the
+    /// count. A reading with context handlers or a value resolver
+    /// installed binds on one thread, so they are called in document
+    /// order.
+    ///
+    /// Each item is made on one thread and released on another, so the
+    /// threads pay off only under an allocator that scales across
+    /// threads, such as jemalloc or mimalloc; under one that guards
+    /// each thread's memory with a lock, a second thread costs more
+    /// than it binds.
+    #[must_use]
+    pub fn with_threads(mut self, threads: usize) -> Self {
+        self.threads = Some(threads.max(1));
         self
     }
 
@@ -172,6 +220,11 @@ impl ReadOptions {
     pub fn with_store(mut self, store: impl Into<PathBuf>) -> Self {
         self.store = Some(store.into());
         self
+    }
+
+    /// Whether these options demand some record types alone.
+    pub(crate) fn demands(&self) -> bool {
+        self.demand.is_some()
     }
 
     /// What the reading's source set is made from.
@@ -740,6 +793,55 @@ impl<'d> DataReader<'d> {
         sides: Sides<'_, '_, '_>,
         mode: Mode,
     ) -> Result<Outcome, ReadError> {
+        let threads = options.threads.unwrap_or(1);
+        // A handler or a resolver is the consuming program's code: it
+        // runs in document order, on the reading's own thread.
+        let alone = threads < 2
+            || !mode.follow
+            || !self.handlers.is_empty()
+            || self.resolver.is_some()
+            || self.def.kind == DefinitionKind::Dialect;
+        if alone {
+            return self.read_with(entries, options, sink, sides, mode, None);
+        }
+        let (jobs, queue) = mpsc::channel::<Job<'d>>();
+        let queue = Mutex::new(queue);
+        std::thread::scope(|scope| {
+            for _ in 1..threads {
+                scope.spawn(|| {
+                    // The lock is held only to take the next job.
+                    loop {
+                        let job = match queue.lock() {
+                            Ok(queue) => queue.recv(),
+                            Err(_) => break,
+                        };
+                        match job {
+                            Ok(job) => job(),
+                            Err(_) => break,
+                        }
+                    }
+                });
+            }
+            let ahead = Ahead {
+                jobs,
+                width: (threads - 1) * LOOKAHEAD,
+            };
+            // Dropping the sender with the reading ends the workers.
+            self.read_with(entries, options, sink, sides, mode, Some(ahead))
+        })
+    }
+
+    /// [`DataReader::read_inner`], binding the documents an import fans
+    /// out to ahead of their turn when `ahead` gives it workers.
+    fn read_with(
+        &self,
+        entries: &[EntrySource<'_>],
+        options: &ReadOptions,
+        sink: &mut dyn FnMut(Item),
+        sides: Sides<'_, '_, '_>,
+        mode: Mode,
+        ahead: Option<Ahead<'d>>,
+    ) -> Result<Outcome, ReadError> {
         let def = self.def;
         let resolving = mode.resolving;
         // Definition documents declare their own locations rule, so every
@@ -775,12 +877,20 @@ impl<'d> DataReader<'d> {
                 return Ok(Outcome::failed_early());
             }
         };
-        // A local reading leaves imports unfollowed, so its records are
-        // never the whole picture a resolver must see.
+        // A demand is checked before anything is read.
+        let skips = match &options.demand {
+            Some(demand) => Some(Arc::<[bool]>::from(
+                crate::demand::skips(def, demand).map_err(ReadError::UnknownType)?,
+            )),
+            None => None,
+        };
+        // A local reading leaves imports unfollowed, and a demand leaves
+        // contributions unbound, so their records are never the whole
+        // picture a resolver must see.
         let resolver = self
             .contributions
             .as_ref()
-            .filter(|_| resolving && def.resolution.is_some());
+            .filter(|_| resolving && skips.is_none() && def.resolution.is_some());
         let mut records: Vec<ContributionRecord> = Vec::new();
         let mut tap = |item: Item| {
             if resolver.is_some()
@@ -826,6 +936,8 @@ impl<'d> DataReader<'d> {
                 .with_schema_fingerprint(self.schema_fingerprint()),
             slots: def.plan.context.layout.slots().collect(),
             mode,
+            skips,
+            ahead,
             held: HashMap::new(),
             seen: HashSet::new(),
             bound: HashMap::new(),
@@ -870,7 +982,7 @@ impl<'d> DataReader<'d> {
                     }),
             };
             match entered {
-                Ok(id) => reading.visit(id),
+                Ok(id) => reading.visit(id, None),
                 Err(failure) => reading.diagnose(entry_failure(failure)),
             }
             if let Some(error) = reading.broken {
@@ -990,6 +1102,179 @@ impl Mode {
     }
 }
 
+/// A piece of work for a reading's workers.
+type Job<'a> = Box<dyn FnOnce() + Send + 'a>;
+
+/// How many documents each worker may have bound ahead of the reading:
+/// enough that no worker waits on the reading, few enough that the
+/// items waiting for their turn stay a small part of it.
+const LOOKAHEAD: usize = 4;
+
+/// The source identity a document is bound under ahead of its turn;
+/// its items move to its invocation's identity when their turn comes.
+const AHEAD: SourceId = SourceId(u32::MAX);
+
+/// A reading's workers: where it sends the documents to bind ahead of
+/// their turn, and how many it lets wait.
+struct Ahead<'a> {
+    jobs: mpsc::Sender<Job<'a>>,
+    width: usize,
+}
+
+impl<'a> Ahead<'a> {
+    /// Have a worker read and bind one document; `None` when no worker
+    /// is left to take it.
+    fn start(&self, prebinding: Prebinding<'a>) -> Option<mpsc::Receiver<Prebound>> {
+        let (done, waiting) = mpsc::sync_channel(1);
+        let job: Job<'a> = Box::new(move || {
+            // A reading that stopped waiting dropped its end.
+            let _ = done.send(prebinding.run());
+        });
+        self.jobs.send(job).ok().map(|()| waiting)
+    }
+}
+
+/// One document to read and bind ahead of its turn, with everything its
+/// binding reads of the reading.
+struct Prebinding<'a> {
+    def: &'a Definition,
+    path: PathBuf,
+    shown: String,
+    context: Option<Context>,
+    selection: ProfileSelection,
+    output_policy: Option<OutputPolicy>,
+    skips: Option<Arc<[bool]>>,
+    /// Whether each record carries the context it bound under.
+    records: bool,
+    /// Whether each record and declaration carries it.
+    contexts: bool,
+}
+
+impl Prebinding<'_> {
+    fn run(self) -> Prebound {
+        let def = self.def;
+        let text = read_text(&self.path, &self.shown, "document size", ORIGIN)?;
+        let mut read = Read::of(text);
+        let context = self
+            .context
+            .unwrap_or_else(|| Context::new(def.plan.context.layout.clone()));
+        let mut session = BindingSession::with_handlers(
+            def,
+            AHEAD,
+            &self.shown,
+            &read.text,
+            context,
+            self.selection,
+            Handlers::new(),
+        )
+        .under_policy(self.output_policy)
+        .skipping(self.skips);
+        let mut items = Vec::new();
+        let mut broken = None;
+        loop {
+            match session.next_item() {
+                // The reading follows an import in the document's turn.
+                Ok(Some(kdlith_model::BoundItem::Import(_))) => return Ok(read),
+                Ok(Some(item)) => {
+                    let carries = match &item {
+                        kdlith_model::BoundItem::Record(_) => self.records || self.contexts,
+                        kdlith_model::BoundItem::Declaration(_) => self.contexts,
+                        _ => false,
+                    };
+                    let values = carries.then(|| session.context().snapshot_values());
+                    items.push((item, values));
+                }
+                Ok(None) => break,
+                Err(error) => {
+                    broken = Some(error);
+                    break;
+                }
+            }
+        }
+        let bound = Bound {
+            items,
+            failed: session.failed(),
+            left: session.left_context(),
+            broken,
+        };
+        drop(session);
+        read.bound = Some(bound);
+        Ok(read)
+    }
+}
+
+/// A document as a worker left it, or why it could not be read.
+type Prebound = Result<Read, Box<DiagnosticRecord>>;
+
+/// One document's text, with what its reading derives from the text
+/// alone and, when a worker bound it ahead of its turn, its items.
+struct Read {
+    text: String,
+    /// The content hash the invocation identity is keyed on.
+    revision: u64,
+    /// The hex digest the local source's identity is computed from.
+    sha: String,
+    /// The document's items, when it holds no import: a document that
+    /// imports binds in its turn, where its imports are followed.
+    bound: Option<Bound>,
+}
+
+impl Read {
+    fn of(text: String) -> Self {
+        Self {
+            revision: stable_hash(text.as_bytes()),
+            sha: bytes_hex(text.as_bytes()),
+            text,
+            bound: None,
+        }
+    }
+}
+
+/// The items of one document bound ahead of its turn, each record and
+/// declaration with the context it bound under where the reading keeps
+/// it, and what its binding left.
+struct Bound {
+    items: Vec<(kdlith_model::BoundItem, Option<Vec<Option<SlotValue>>>)>,
+    failed: bool,
+    left: Vec<Option<SlotValue>>,
+    broken: Option<kdlith_runtime::SessionError>,
+}
+
+/// One document's binding in progress.
+struct Binding {
+    id: InvocationId,
+    source: SourceId,
+    revision: u64,
+    /// Whether the document's items are kept for replay.
+    keeping: bool,
+    /// Whether the document's result is its own: no import was followed.
+    cacheable: bool,
+    own: Vec<Item>,
+    records: Vec<RecordContext>,
+    bound: Vec<Vec<Option<SlotValue>>>,
+}
+
+impl Binding {
+    /// Give up the result: the document followed an import.
+    fn release(&mut self) {
+        self.cacheable = false;
+        self.keeping = false;
+        self.own = Vec::new();
+        self.records = Vec::new();
+        self.bound = Vec::new();
+    }
+}
+
+/// What a document's binding left once its stream ended.
+struct Leaving {
+    failed: bool,
+    values: Vec<Option<SlotValue>>,
+    consulted: bool,
+    /// The fingerprint of the values the resolver supplied; `None` when
+    /// one of them is a secret.
+    resolved: Option<u64>,
+}
+
 /// What a finished reading returns beyond its item stream.
 struct Outcome {
     failed: bool,
@@ -1058,6 +1343,11 @@ struct Reading<'r, 'd> {
     /// Every slot of the definition, in slot order.
     slots: Vec<SlotId>,
     mode: Mode,
+    /// Under a demand, the node declarations whose nodes stay unbound.
+    skips: Option<Arc<[bool]>>,
+    /// The workers that bind documents ahead of their turn, when the
+    /// reading has any.
+    ahead: Option<Ahead<'d>>,
     /// The text of each document held in memory, by its invocation, until
     /// the invocation binds it: an entry given in memory, or a file of
     /// an embedded source. It is never read from disk.
@@ -1118,18 +1408,21 @@ impl Reading<'_, '_> {
     /// Bind the innermost active invocation's document, following each
     /// import as its request is read, then leave it. Nothing of the
     /// document outlives its visit but what the reading's mode keeps.
-    fn visit(&mut self, id: InvocationId) {
+    /// `ahead` is the document as a worker read and bound it ahead of
+    /// its turn, when one did.
+    fn visit(&mut self, id: InvocationId, ahead: Option<Prebound>) {
         if let Some(invocation) = self.invocations.get(id) {
             let (path, shown) = (invocation.path.clone(), invocation.shown.clone());
-            let context = invocation.context.project(&self.slots);
+            let context = invocation.context.project(&self.slots).ok();
             // A document held in memory reads its own text; every other
             // invocation reads from disk.
-            let read = match self.held.remove(&id) {
-                Some(held) => Ok(held),
-                None => read_text(&path, &shown, "document size", ORIGIN).map(Rc::from),
+            let read = match (ahead, self.held.remove(&id)) {
+                (Some(ahead), _) => ahead,
+                (None, Some(held)) => Ok(Read::of(held.as_ref().to_owned())),
+                (None, None) => read_text(&path, &shown, "document size", ORIGIN).map(Read::of),
             };
             match read {
-                Ok(text) => self.read(id, &shown, &text, context.ok()),
+                Ok(read) => self.read(id, &shown, read, context),
                 Err(record) => self.diagnose(*record),
             }
         }
@@ -1139,17 +1432,22 @@ impl Reading<'_, '_> {
 
     /// Bind one invocation's text, or replay it from the bound-result
     /// cache when an invocation of equal semantics is held there.
-    fn read(&mut self, id: InvocationId, shown: &str, text: &str, context: Option<Context>) {
+    fn read(&mut self, id: InvocationId, shown: &str, read: Read, context: Option<Context>) {
+        let Read {
+            text,
+            revision,
+            sha,
+            bound,
+        } = read;
+        let text: &str = &text;
         // A rule written after the import it governs still governs it,
         // so a definition document is scanned before it binds.
         if let Some(declared) = &mut self.declared {
             declared.scan(text);
         }
         if !matches!(self.places.get(&id).map(|p| &p.home), Some(Home::Named(_))) {
-            self.local
-                .insert(shown.to_owned(), bytes_hex(text.as_bytes()));
+            self.local.insert(shown.to_owned(), sha);
         }
-        let revision = stable_hash(text.as_bytes());
         self.invocations.supply_revision(id, revision);
         let identity = self.invocations.get(id).and_then(|i| i.identity());
         let digest = revision_digest(revision);
@@ -1159,7 +1457,11 @@ impl Reading<'_, '_> {
         let key = identity.map(|identity| (identity, self.selection.members().to_vec()));
         let cached = key.as_ref().and_then(|key| self.bound.get(key)).cloned();
         let Some(cached) = cached else {
-            self.bind(id, (shown, &digest), text, context, key);
+            let document = (shown, digest.as_str(), text);
+            match bound {
+                Some(bound) => self.bind_ahead(id, document, bound, key),
+                None => self.bind(id, document, context, key),
+            }
             return;
         };
         let mut bound = Vec::new();
@@ -1241,26 +1543,21 @@ impl Reading<'_, '_> {
         ));
     }
 
+    /// Bind one document in its turn, following each import as its
+    /// request is read.
     fn bind(
         &mut self,
         id: InvocationId,
-        (shown, digest): (&str, &str),
-        text: &str,
+        (shown, digest, text): (&str, &str, &str),
         context: Option<Context>,
         key: Option<ResultKey>,
     ) {
         let def = self.reader.def;
-        let source = SourceId(u32::try_from(id.index()).unwrap_or(u32::MAX));
         let context = context.unwrap_or_else(|| Context::new(def.plan.context.layout.clone()));
-        let revision = self
-            .invocations
-            .get(id)
-            .and_then(|i| i.revision)
-            .unwrap_or_default();
-        self.document(source, shown, digest, text);
+        let mut binding = self.begin(id, (shown, digest, text), key.as_ref());
         let mut session = BindingSession::with_handlers(
             def,
-            source,
+            binding.source,
             shown,
             text,
             context,
@@ -1268,115 +1565,173 @@ impl Reading<'_, '_> {
             self.handlers.clone(),
         )
         .under_policy(self.output_policy)
-        .with_resolver(self.reader.resolver.clone());
-        // The result is kept for replay when the reading returns its
-        // results, or when this is the second invocation of its
-        // semantics; a first invocation only streams.
-        let mut keeping = match &key {
-            Some(key) => self.mode.results || self.seen.contains(key),
-            None => false,
-        };
-        let indexing = self.mode.records;
-        let mut own: Vec<Item> = Vec::new();
-        let mut records: Vec<RecordContext> = Vec::new();
-        let mut bound: Vec<Vec<Option<SlotValue>>> = Vec::new();
-        let mut cacheable = true;
+        .with_resolver(self.reader.resolver.clone())
+        .skipping(self.skips.clone());
         while self.broken.is_none() {
             match session.next_item() {
+                Ok(Some(kdlith_model::BoundItem::Import(request))) if self.mode.follow => {
+                    // A followed import's items are part of this
+                    // document's stream but not of its own bound result:
+                    // the imports' revisions are outside this
+                    // invocation's identity.
+                    binding.release();
+                    let mut request = request;
+                    let projected = self.projection(&session, &request, shown);
+                    let resolved = projected.map(|context| (context, self.targets(&request)));
+                    if let Some((_, Ok(targets))) = &resolved {
+                        request.targets =
+                            targets.iter().map(|target| target.shown.clone()).collect();
+                    }
+                    self.emit(Item::Import(request.clone()));
+                    if let Some((context, targets)) = resolved {
+                        self.import(&request, shown, context, targets);
+                    }
+                }
                 Ok(Some(item)) => {
-                    if let kdlith_model::BoundItem::Import(request) = item {
-                        if self.mode.follow {
-                            // A followed import's items are part of this
-                            // document's stream but not of its own bound
-                            // result: the imports' revisions are outside
-                            // this invocation's identity.
-                            cacheable = false;
-                            if keeping {
-                                keeping = false;
-                                own = Vec::new();
-                                bound = Vec::new();
-                            }
-                            let mut request = request;
-                            let projected = self.projection(&session, &request, shown);
-                            let resolved =
-                                projected.map(|context| (context, self.targets(&request)));
-                            if let Some((_, Ok(targets))) = &resolved {
-                                request.targets =
-                                    targets.iter().map(|target| target.shown.clone()).collect();
-                            }
-                            self.emit(Item::Import(request.clone()));
-                            if let Some((context, targets)) = resolved {
-                                self.import(&request, shown, context, targets);
-                            }
-                            continue;
-                        }
-                        let item = Item::Import(request);
-                        if keeping {
-                            own.push(item.clone());
-                        }
-                        self.emit(item);
-                        continue;
-                    }
-                    let mut item = Item::from(item);
-                    // The bound result keeps assets as written: a replay
-                    // resolves them in its own document's source.
-                    if keeping {
-                        own.push(item.clone());
-                    }
-                    let failures = self.assets(id, shown, &mut item);
-                    if indexing && let Item::Record(record) = &item {
-                        // Records carry no context effects and their
-                        // children scope has closed, so the live context is
-                        // the one the record bound under.
-                        let indexed = RecordContext {
-                            identity: record_identity(&item).map(str::to_owned),
-                            ty: record.type_name.clone(),
-                            revision,
-                            source: source.0,
-                            node: record.node.index,
-                            span: (record.span.start, record.span.end),
-                            validation: validation_status(record.validation),
-                            values: session.context().snapshot_values(),
-                        };
-                        if keeping {
-                            records.push(indexed.clone());
-                        }
-                        self.records.push(indexed);
-                    }
-                    if let Some(entering) = &mut self.entering
-                        && matches!(item, Item::Record(_) | Item::Declaration(_))
-                    {
-                        // As for the record index above: no record or
-                        // declaration carries effects, so the live
-                        // context is the one the item bound under.
-                        let values = session.context().snapshot_values();
-                        entering(&values);
-                        if keeping {
-                            bound.push(values);
-                        }
-                    }
-                    self.emit(item);
-                    for failure in failures {
-                        self.diagnose(failure);
-                    }
+                    let mut values = || session.context().snapshot_values();
+                    self.take(&mut binding, shown, Item::from(item), &mut values);
                 }
                 Ok(None) => break,
                 Err(error) => self.broken = Some(ReadError::Session(error)),
             }
         }
-        let failed = self.failed || session.failed();
+        let left = Leaving {
+            failed: session.failed(),
+            values: session.left_context(),
+            consulted: session.consulted_resolver(),
+            resolved: session.resolved_fingerprint(),
+        };
+        self.finish(binding, shown, key, left);
+    }
+
+    /// Give the items of a document a worker bound ahead of its turn,
+    /// exactly as binding it in its turn gives them.
+    fn bind_ahead(
+        &mut self,
+        id: InvocationId,
+        (shown, digest, text): (&str, &str, &str),
+        bound: Bound,
+        key: Option<ResultKey>,
+    ) {
+        let mut binding = self.begin(id, (shown, digest, text), key.as_ref());
+        for (item, values) in bound.items {
+            let mut item = Item::from(item);
+            remap(&mut item, binding.source);
+            let mut values = || values.clone().unwrap_or_default();
+            self.take(&mut binding, shown, item, &mut values);
+        }
+        if let Some(error) = bound.broken {
+            self.broken = Some(ReadError::Session(error));
+        }
+        let left = Leaving {
+            failed: bound.failed,
+            values: bound.left,
+            consulted: false,
+            resolved: None,
+        };
+        self.finish(binding, shown, key, left);
+    }
+
+    /// Open one document's binding: its document item, and whether its
+    /// result is kept.
+    fn begin(
+        &mut self,
+        id: InvocationId,
+        (shown, digest, text): (&str, &str, &str),
+        key: Option<&ResultKey>,
+    ) -> Binding {
+        let source = SourceId(u32::try_from(id.index()).unwrap_or(u32::MAX));
+        let revision = self
+            .invocations
+            .get(id)
+            .and_then(|i| i.revision)
+            .unwrap_or_default();
+        self.document(source, shown, digest, text);
+        Binding {
+            id,
+            source,
+            revision,
+            // The result is kept for replay when the reading returns its
+            // results, or when this is the second invocation of its
+            // semantics; a first invocation only streams.
+            keeping: key.is_some_and(|key| self.mode.results || self.seen.contains(key)),
+            cacheable: true,
+            own: Vec::new(),
+            records: Vec::new(),
+            bound: Vec::new(),
+        }
+    }
+
+    /// Give one bound item of a document: resolve its assets, index it
+    /// with the context it bound under where the reading keeps that, and
+    /// emit it. `values` is every slot's value as the item bound.
+    fn take(
+        &mut self,
+        binding: &mut Binding,
+        shown: &str,
+        mut item: Item,
+        values: &mut dyn FnMut() -> Vec<Option<SlotValue>>,
+    ) {
+        // The bound result keeps assets as written: a replay resolves
+        // them in its own document's source.
+        if binding.keeping {
+            binding.own.push(item.clone());
+        }
+        let failures = self.assets(binding.id, shown, &mut item);
+        if self.mode.records
+            && let Item::Record(record) = &item
+        {
+            // Records carry no context effects and their children scope
+            // has closed, so the live context is the one the record
+            // bound under.
+            let indexed = RecordContext {
+                identity: record_identity(&item).map(str::to_owned),
+                ty: record.type_name.clone(),
+                revision: binding.revision,
+                source: binding.source.0,
+                node: record.node.index,
+                span: (record.span.start, record.span.end),
+                validation: validation_status(record.validation),
+                values: values(),
+            };
+            if binding.keeping {
+                binding.records.push(indexed.clone());
+            }
+            self.records.push(indexed);
+        }
+        if let Some(entering) = &mut self.entering
+            && matches!(item, Item::Record(_) | Item::Declaration(_))
+        {
+            // As for the record index above: no record or declaration
+            // carries effects, so the live context is the one the item
+            // bound under.
+            let values = values();
+            entering(&values);
+            if binding.keeping {
+                binding.bound.push(values);
+            }
+        }
+        self.emit(item);
+        for failure in failures {
+            self.diagnose(failure);
+        }
+    }
+
+    /// Close one document's binding: capture what its root left and,
+    /// when its result is kept, cache it for replay.
+    fn finish(&mut self, binding: Binding, shown: &str, key: Option<ResultKey>, left: Leaving) {
+        let failed = self.failed || left.failed;
         self.failed = failed;
-        let left = session.left_context();
-        let consulted = session.consulted_resolver();
+        let consulted = left.consulted;
         self.consulted |= consulted;
-        self.capture(id, shown, left.clone());
-        if !cacheable || failed || self.broken.is_some() {
+        self.capture(binding.id, shown, left.values.clone());
+        if !binding.cacheable || failed || self.broken.is_some() {
             return;
         }
         let Some((identity, active)) = key else {
             return;
         };
-        if !keeping {
+        if !binding.keeping {
             // The next invocation of these semantics keeps its result.
             self.seen.insert((identity, active));
             return;
@@ -1385,14 +1740,14 @@ impl Reading<'_, '_> {
         // result holding a resolved secret has no cacheable identity:
         // even a fingerprint of a secret on disk is a guessing oracle.
         let identity = if consulted {
-            match session.resolved_fingerprint() {
+            match left.resolved {
                 Some(resolved) => identity.with_resolved(resolved),
                 None => return,
             }
         } else {
             identity
         };
-        let derivation = self.derivation(id);
+        let derivation = self.derivation(binding.id);
         let key = (identity, active);
         // A result the session lookup could not find before binding (its
         // resolved values were not yet known) may equal one already
@@ -1403,15 +1758,16 @@ impl Reading<'_, '_> {
         }
         // One copy of the items, under the canonical source identity,
         // serves both the replay cache and the returned result.
+        let mut own = binding.own;
         for item in &mut own {
             remap(item, SourceId(0));
         }
         let own = Rc::new(own);
         let left = Left {
-            values: left,
+            values: left.values,
             consulted,
-            records,
-            bound,
+            records: binding.records,
+            bound: binding.bound,
         };
         self.left.insert(key.clone(), left);
         if self.mode.results {
@@ -1520,7 +1876,9 @@ impl Reading<'_, '_> {
     }
 
     /// Execute one import request over the targets it resolved to:
-    /// invoke each under the request's policy.
+    /// invoke each under the request's policy, in order. With workers,
+    /// the documents on disk are read and bound ahead of their turn, a
+    /// bounded number at a time.
     fn import(
         &mut self,
         request: &ImportRequest,
@@ -1535,7 +1893,31 @@ impl Reading<'_, '_> {
                 return;
             }
         };
-        for target in targets {
+        let mut started: VecDeque<Option<mpsc::Receiver<Prebound>>> = VecDeque::new();
+        let mut next = 0;
+        for (at, target) in targets.iter().enumerate() {
+            // One document alone gains nothing from a worker.
+            if let Some(ahead) = self.ahead.as_ref().filter(|_| targets.len() > 1) {
+                while next < targets.len() && next <= at + ahead.width {
+                    let ahead_of = &targets[next];
+                    let waiting = ahead_of.text.is_none().then(|| {
+                        ahead.start(Prebinding {
+                            def: self.reader.def,
+                            path: ahead_of.resolved.clone(),
+                            shown: ahead_of.shown.clone(),
+                            context: context.project(&self.slots).ok(),
+                            selection: self.selection.clone(),
+                            output_policy: self.output_policy,
+                            skips: self.skips.clone(),
+                            records: self.mode.records,
+                            contexts: self.entering.is_some(),
+                        })
+                    });
+                    started.push_back(waiting.flatten());
+                    next += 1;
+                }
+            }
+            let waiting = started.pop_front().flatten();
             let admitted = self.invocations.invoke_resolved(
                 &target.resolved,
                 &target.shown,
@@ -1544,17 +1926,23 @@ impl Reading<'_, '_> {
             );
             match admitted {
                 Ok(Admission::Invoke(id)) => {
-                    self.places.insert(id, target.place);
-                    if let Some(text) = target.text {
-                        self.held.insert(id, text);
+                    self.places.insert(id, target.place.clone());
+                    if let Some(text) = &target.text {
+                        self.held.insert(id, text.clone());
                     }
-                    self.visit(id);
+                    // A worker that is gone leaves the document to its
+                    // turn.
+                    let ahead = waiting.and_then(|waiting| waiting.recv().ok());
+                    self.visit(id, ahead);
                 }
                 Ok(_) => {}
                 Err(failure) => {
                     let record = import_failure(failure, ORIGIN);
                     self.diagnose(at_request(record, shown, request));
                 }
+            }
+            if self.broken.is_some() {
+                return;
             }
         }
     }

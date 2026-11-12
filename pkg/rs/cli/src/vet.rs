@@ -174,6 +174,7 @@ pub struct DataOptions {
     resolver: Option<SharedResolver>,
     scope: CheckScope,
     max_invocations: Option<u32>,
+    threads: Option<u32>,
 }
 
 impl DataOptions {
@@ -192,6 +193,7 @@ impl DataOptions {
             resolver: None,
             scope: CheckScope::Complete,
             max_invocations: None,
+            threads: None,
         }
     }
 
@@ -244,6 +246,14 @@ impl DataOptions {
     #[must_use]
     pub fn with_max_invocations(mut self, max: Option<u32>) -> Self {
         self.max_invocations = max;
+        self
+    }
+
+    /// The same options binding one reading on `threads` threads, or on
+    /// one when it is `None`.
+    #[must_use]
+    pub fn with_threads(mut self, threads: Option<u32>) -> Self {
+        self.threads = threads;
         self
     }
 
@@ -372,6 +382,9 @@ impl DataOptions {
         }
         if let Some(max) = self.max_invocations {
             options = options.with_max_invocations(max as usize);
+        }
+        if let Some(threads) = self.threads {
+            options = options.with_threads(threads as usize);
         }
         self.locations(options)
     }
