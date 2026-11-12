@@ -36,8 +36,8 @@ Read on demand:
   `reference/verbs.md`
 - the inputs shared across verbs (`--schema`, `--root`, `--source`,
   `--alias`, `--profiles`, `--scope`, `--max-invocations`,
-  `--resolve-from`, and the export sensitivity policy) —
-  `reference/host_inputs.md`
+  `--threads`, `--resolve-from`, and the export sensitivity policy
+  and `--lazy`) — `reference/host_inputs.md`
 - the seven `--view` outputs, their applicability, and ordering —
   `reference/inspect_views.md`
 - the key tables for decoding each view's JSON lines —

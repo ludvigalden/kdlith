@@ -34,3 +34,6 @@ Read on demand:
   `reference/export.md`
 - `cache refresh` state and `read data --state` snapshot restore —
   `reference/state_and_cache.md`
+- what a reading of a large tree keeps, the invocation bound, and
+  reading on demand or on several threads —
+  `reference/large_trees.md`

@@ -21,8 +21,11 @@ Host inputs are builders on the returned reader:
 - `with_profile(NAME)` names the profile every entry document binds
   under
 - `with_options(ReadOptions)` takes a whole options set (profile or
-  profile set, root and sources, output policy, max invocations) in
-  place of every option set before
+  profile set, root and sources, output policy, max invocations,
+  demand, threads) in place of every option set before
+- `demanding(&["Widget", "Gadget"])` reads on demand: only the nodes
+  an item of a named record type can come from bind (see Reading on
+  demand below)
 - `with_handlers` installs the context handlers that handler effects
   run through
 
@@ -45,6 +48,39 @@ other item. The schema form also
 exposes `load`, `load_with(entries, extensions, scope,
 ReadOptions)`, and `load_sources` / `load_sources_with` for a schema
 held in memory.
+
+## Reading on demand
+
+A tool that wants a few record types out of a large tree names them:
+`reader.demanding(&["Widget"])`, or `ReadOptions::with_demand`. A
+node whose item is of no demanded type, and inside which nothing
+demanded can be written, is passed over where it opens: nothing in it
+is decoded, validated, or yielded. Imports are still followed, a node
+whose effects reach its siblings still binds, and so does every node
+on the way down to a demanded one, so a demanded item is exactly the
+item a full reading yields — the same fields, context, site, and node
+index. Items of other types the reading had to bind on the way still
+stream; match the variants you asked for and ignore the rest.
+
+A demand trusts the documents for everything it passes over: errors
+inside a skipped node are not reported. Such a reading resolves no
+contributions, and `.link` sees only the declarations the reading
+bound, so demand every type its references target. A name the schema
+declares no record type for fails the reading before any document is
+read (`ReadError::UnknownType`).
+
+## Threads
+
+`ReadOptions::with_threads(n)` binds the documents an import fans out
+to ahead of their turn on other threads and gives their items in the
+order one thread gives them: the stream is the same whatever the
+count, which defaults to one. A reading with context handlers or a
+value resolver installed binds on one thread, so they are called in
+document order. Each item is made on one thread and released on
+another, so threads pay off only when the program's allocator scales
+across threads (jemalloc or mimalloc, for instance); under an
+allocator that guards each thread's memory with a lock they cost more
+than they bind, except where a demand leaves few items to hand over.
 
 ## In-memory sources
 

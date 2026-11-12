@@ -25,6 +25,11 @@ kdlith cache refresh --state .kdlith --schema shop.kdl orders.kdl
 kdlith export --schema shop.kdl --emit roots --format ndjson orders.kdl
 ```
 
+`export --lazy` binds only the nodes the emitted type can come from
+and links nothing, so it requires `--emit TYPE` and `--scope local`;
+without either it is `KDLITH-CLI001`. Every data verb takes
+`--threads N`.
+
 `read data` reads the last entry document and prints one record
 identified by `--record`; earlier entries bind so imports and
 numbering match. `--state DIR` restores the record from a snapshot

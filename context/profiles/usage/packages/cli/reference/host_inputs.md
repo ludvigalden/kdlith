@@ -37,10 +37,15 @@ decides only the exit. On `read data` the same flag instead selects the
 partition the lookup consults and also admits a scope name (see the
 verbs reference).
 
-## Limits and resolvers
+## Limits, threads, and resolvers
 
 `--max-invocations N` bounds one reading's entries plus import
-instantiations (default 1024, `KDLITH-SRC003`). `--resolve-from FILE`
+instantiations (default 1024, `KDLITH-SRC003`). `--threads N` binds a
+data reading on N threads in place of one: the documents an import
+fans out to are bound ahead of their turn and their items given in
+the same order, so the output never depends on the count (see the
+data package's `reference/large_trees.md` for when it pays off).
+`--resolve-from FILE`
 registers the file-based value resolver on every data verb: a KDL
 document of `value KEY VALUE` nodes supplying computed-default
 values. Nothing else is ever read for values.
@@ -49,7 +54,9 @@ values. Nothing else is ever read for values.
 
 `export` takes `--emit roots|items...` selection, `--format ndjson`,
 and the sensitivity policy: a `secret` field is emitted only when the
-policy explicitly says emit, and is redacted otherwise.
+policy explicitly says emit, and is redacted otherwise. `--lazy`
+binds only the nodes the emitted type can come from (see the data
+package's `reference/export.md`).
 `vet data --diagnostics json` writes each diagnostic as a `diagnostic`
 item on standard output after every other item, so a host reads the
 verdict without parsing stderr text.

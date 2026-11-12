@@ -23,6 +23,13 @@ A reference that did not resolve, resolved ambiguously, or failed a
 required qualifier is a `ResolveError::Link` carrying the link
 outcome and the namespaces that hid a match — never a default value.
 
+`reading.link_of(&reference)` returns the link itself: its outcome,
+its `candidates`, and the namespaces that gated a match. Each
+candidate is the link stage's index entry for one declaration — its
+`node`, `identity`, `namespace`, the identity `labels` its name
+segments came from, and its `site` — shared with every other link
+that reached it, so holding links costs no copy of a declaration.
+
 A generated reference type holds its reference as `.0`, so
 `reading.resolve(&record.target.0)` resolves a record's field.
 
