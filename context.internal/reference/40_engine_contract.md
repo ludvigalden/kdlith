@@ -94,6 +94,45 @@ implement the dialect for every processor, hand-written or generated:
     snapshot ID, invocation ID, and validation status; restore only
     when the fingerprint and lineage match (`KDLITH-CTX004`).
 
+17. **Scale with the reading.** Derive what binding needs from a
+    definition — the binding tables and the compiled patterns — once
+    per definition, never per document. Keep nothing of a document
+    once its items have streamed unless the reading returns it: a
+    plain reading holds neither texts nor items, a result is kept for
+    replay only from the second invocation of its semantics, and only
+    the reading made for the snapshot store keeps the context each
+    record bound under. Link from what the stream leaves behind — one
+    compact entry per declaration, one per bound reference — with
+    declarations indexed by the hash of their composed name, so a
+    lookup probes for the identity its reference determines and no
+    pass scans a domain. Check a value against its type without
+    copying it, and resolve a line and column, or spell a label, only
+    where something records it. Whatever the size of a reading, its
+    stream and its diagnostics are byte for byte those of the
+    straightforward implementation.
+18. **Read on demand, exactly.** A reading with a demand
+    (`ReadOptions::with_demand`, `export --lazy`) passes over a node
+    whose item is of no demanded type and inside which nothing
+    demanded can be written (`demand.rs`): the session numbers the
+    nodes inside it (`Disposition::Pass`) and nothing in it is
+    decoded, validated, or yielded. A source import, a node whose
+    plan carries children or following effects, and every node a
+    live node can be written inside stay bound, so each demanded
+    item is the item a full reading yields, index and context
+    included. Such a reading resolves no contributions; what it
+    passes over is trusted, never checked.
+19. **Bind ahead only where order cannot matter.** With threads
+    (`ReadOptions::with_threads`), the documents one import request
+    fans out to are read and bound on workers under a provisional
+    source identity and their items given, in request order, under
+    their invocation's (`remap`); admission, replay, asset
+    resolution, and every consumer callback stay on the reading's
+    thread, in order. A document holding a followed import binds in
+    its turn. Handlers and the value resolver are the consuming
+    program's code and run in document order, so a reading that
+    installs either binds on one thread. The count never changes a
+    stream.
+
 ## Self-hosted compilation
 
 Loading a definition is reading it: `vet` and `inspect` hand their

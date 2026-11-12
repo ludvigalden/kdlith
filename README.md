@@ -35,6 +35,13 @@ Rust processor for them.
   same reading as `vet data`. It can link a reading, resolve references
   by site, and attach each record's origin and captured context. The
   crate re-exports everything a tool needs, so a tool depends on it alone.
+- **Scale.** A reading streams and keeps nothing it was not asked to
+  keep, and linking indexes declarations by identity, so time and memory
+  grow with the tree, not with its square. A consumer that wants a few
+  record types reads on demand (`export --lazy`, the typed reader's
+  `demanding`): nodes nothing demanded can come from are passed over
+  unbound. `--threads` binds the documents an import fans out to ahead of
+  their turn, with the same output.
 
 Usage and feature documentation live in the committed context module
 under [`context/`](context); development-facing design notes live in
@@ -83,8 +90,8 @@ Heavy scenarios — the codegen family's scratch-workspace compiles, marked
 `--fx-heavy` (or name them with an explicit `--fx-filter`) to run them
 deliberately.
 
-The suite holds 1209 scenarios: the 243 positive cases of the official KDL v2
-test suite and 966 kdlith scenarios. There are no unit tests.
+The suite holds 1436 scenarios: the 243 positive cases of the official KDL v2
+test suite and 1193 kdlith scenarios. There are no unit tests.
 [`tests/fixtures/COVERAGE.md`](tests/fixtures/COVERAGE.md) maps every
 construct, diagnostic code, and command contract to the scenarios that
 cover it.

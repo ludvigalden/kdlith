@@ -86,7 +86,10 @@ A bound node yields the item its role names; every diagnostic is an
 item in the same stream; fields holding references stay provisional
 until linking. A node's `NodeId.index` numbers it within its source
 in document order as nodes open (pre-order); a node that does not
-bind is numbered, but nodes written inside it are not. A node's item
+bind is numbered, but nodes written inside it are not; a node a
+reading's demand passes over is numbered with every node inside it,
+as binding them would number them, so the nodes after it keep the
+indices a full reading gives them. A node's item
 is emitted when the node completes (post-order). Each record and
 declaration carries, as `parent`, the `NodeId` of the nearest
 enclosing node whose role yields an item — a context control is
