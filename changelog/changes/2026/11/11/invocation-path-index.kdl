@@ -1,0 +1,8 @@
+change invocation-path-index {
+    summary "Find a repeated invocation by its path"
+    category performance
+    impact public
+    touches "pkg/rs/runtime"
+    commit "212fb5e0da4caa1d9172f0ceff70d51c6dcc5719"
+    detail "Admitting an import compared its resolved path against every invocation the reading had made, so admissions cost the square of a reading's documents. The first invocation of each path is now indexed."
+}

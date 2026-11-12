@@ -1,0 +1,9 @@
+change reading-keeps-nothing {
+    summary "Keep nothing of a reading beyond its stream"
+    category breaking
+    impact breaking
+    touches "pkg/rs/engine"
+    commit "daf962d07262975bf6bbf55507fb51e1a469658f"
+    detail "Every reading cloned each item of each document it bound for the replay cache, cloned them again for the results it returned, kept every document's text, and copied the whole context under every record, whether or not anything asked for them: binding a 49 MB tree held 3.1 GB. A reading now keeps only what its mode returns. A plain reading drops each document's text and items once they have streamed and holds about 30 MB over the same tree; a result is kept for replay only from the second invocation of its semantics; bound results are kept once, under the canonical source identity, and shared with the replay cache; and only the reading made for the snapshot store keeps the context each record bound under."
+    migration "`DataReader::read_entry_contexts` returns each entry's context without its records: only `cache refresh`'s reading indexes them. `BoundResult::items` is an `Rc<Vec<Item>>` shared with the reading's replay cache."
+}

@@ -1,0 +1,30 @@
+release kdlith version="0.2.0" channel=stable {
+    summary "Readings that scale with the tree"
+    paragraph "Reading and linking now cost time and memory in proportion to the tree: linking is hash-indexed, a reading keeps only what it returns, and values are checked in place. A reading can also bind on demand, or bind import targets on several threads."
+    includes link-identity-index reading-keeps-nothing read-on-demand bind-ahead-threads changelog-from-relmap present-every-export-target codegen-use-list-width locate-line-index binding-tables-once invocation-path-index stream-output-blocks check-values-in-place scan-byte-runs typed-links-by-site
+    section breaking {
+        item "Link a reading through a hashed identity index: `LinkInputs::new` takes the definition, `link_reading` and `check_reading` take the inputs alone, and a link's candidates are shared index entries" covers=link-identity-index
+        item "Keep nothing of a reading beyond its stream: `read_entry_contexts` returns no records, and a bound result's items are shared" covers=reading-keeps-nothing
+    }
+    section added {
+        item "Read on demand with `ReadOptions::with_demand`, the typed reader's `demanding`, and `export --lazy`: bind only the nodes the wanted record types can come from" covers=read-on-demand
+        item "Bind the documents an import fans out to on several threads with `ReadOptions::with_threads` and `--threads N`, with the same stream" covers=bind-ahead-threads
+    }
+    section changed {
+        item "Print the changelog and version from relmap at build time" covers=changelog-from-relmap
+        item "Present every relmap export target from `kdlith changelog`" covers=present-every-export-target
+    }
+    section fixed {
+        item "Lay out generated use lists exactly as rustfmt does" covers=codegen-use-list-width
+    }
+    section performance {
+        item "Locate spans through a line-start index" covers=locate-line-index
+        item "Build binding tables and patterns once per definition" covers=binding-tables-once
+        item "Find a repeated invocation by its path" covers=invocation-path-index
+        item "Write item streams and exports in blocks" covers=stream-output-blocks
+        item "Check bound values without copying them" covers=check-values-in-place
+        item "Scan runs of plain bytes at once" covers=scan-byte-runs
+        item "Find a typed reading's links by site" covers=typed-links-by-site
+    }
+    sealed at="1cd50f62d994feefc53b9748f72b72ea72828131"
+}

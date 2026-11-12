@@ -1,0 +1,8 @@
+change scan-byte-runs {
+    summary "Scan runs of plain bytes at once"
+    category performance
+    impact public
+    touches "pkg/rs/parse" "pkg/rs/engine"
+    commit "b69d173c362fd8f0e1c74a1689cfb46ab8966988"
+    detail "The scanner decoded and classified one code point at a time and checked the token limit after each. Identifiers, single- and multi-line string text, comments, and blank space are scanned as runs of ASCII bytes through a class table, cut one byte past the token limit so a breach fails exactly where it did; everything else takes the code-point path. Parsing takes about half the time. A definition's names are looked up by hash."
+}

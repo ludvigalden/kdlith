@@ -1,0 +1,8 @@
+change bind-ahead-threads {
+    summary "Bind the documents an import fans out to on several threads"
+    category added
+    impact public
+    touches "pkg/rs/engine" "pkg/rs/cli" "input:fixtures"
+    commit "46146b7e05dbdca1273957c1e1fb0b5f5991fece"
+    detail "ReadOptions::with_threads and --threads N on the data verbs bind the documents one import request fans out to ahead of their turn. No import's effects reach its importer or its siblings, so each such document is read and bound on a worker under a provisional source identity, and its items are given in request order under its invocation's: the stream is byte for byte the same whatever the count. A document that itself imports binds in its turn, and a reading with context handlers or a value resolver installed binds on one thread, so they are called in document order. The count defaults to one: every item is made on a worker and released by its consumer, which pays off only under an allocator that scales across threads. With jemalloc a reading of 3,434 documents binds twice as fast on four threads; under glibc's allocator it binds slower, unless a demand leaves few items to hand over."
+}

@@ -1,0 +1,8 @@
+change typed-links-by-site {
+    summary "Find a typed reading's links by site"
+    category performance
+    impact public
+    touches "pkg/rs/engine"
+    commit "86cf65216b7e3fb1d0b172712f4452b818c694db"
+    detail "A collected typed reading keyed every link by a copy of its reference's domain, name segments, and qualifiers. Links are keyed by the site they were bound at, and the few a slot or fallback fed at one site are told apart by what each names."
+}

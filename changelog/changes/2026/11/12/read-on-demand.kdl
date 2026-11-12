@@ -1,0 +1,8 @@
+change read-on-demand {
+    summary "Read on demand: bind only what the wanted types can come from"
+    category added
+    impact public
+    touches "pkg/rs/engine" "pkg/rs/runtime" "pkg/rs/cli" "input:fixtures"
+    commit "46146b7e05dbdca1273957c1e1fb0b5f5991fece"
+    detail "A reading may name the record types it wants: ReadOptions::with_demand, the typed reader's demanding, and export --lazy. A node whose item is of no demanded type, and inside which nothing demanded can be written, is passed over where it opens: its nodes are numbered, so every later node keeps the index a full reading gives it, and nothing in it is decoded, validated, or yielded. An import, a node whose effects reach its siblings, and every node on the way down to a demanded one still bind, so each demanded item is byte for byte the item a full reading yields. A demand trusts the tree for what it passes over: such a reading resolves no contributions, and export --lazy links nothing, so it requires --emit TYPE and --scope local (KDLITH-CLI001 otherwise). A name the schema declares no record type for is ReadError::UnknownType before any document is read. Over a tree of 246,000 items, reading its 126 system, collection, and release declarations takes a fifth of a full reading."
+}
