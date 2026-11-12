@@ -495,7 +495,19 @@ impl IdentityIndex {
                 });
                 domain.shapes.len() - 1
             });
-        domain.shapes[shape].members.push(here);
+        let held = &mut domain.shapes[shape];
+        held.members.push(here);
+        // A position table a lookup already built takes the declaration
+        // too: an index linked, extended, and linked again answers as
+        // one built whole.
+        for (at, built) in held.positions.iter_mut().enumerate() {
+            if let Some(built) = built.get_mut() {
+                built
+                    .entry(name_hash([name[at].as_str()]))
+                    .or_default()
+                    .push(here);
+            }
+        }
         self.shape.push(position(shape));
         self.declarations.push(Arc::new(entry));
     }
