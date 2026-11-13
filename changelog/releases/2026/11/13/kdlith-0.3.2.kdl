@@ -1,0 +1,9 @@
+release kdlith version="0.3.2" channel=stable {
+    summary "Schemas can no longer take the meta-schema's name"
+    paragraph "A schema definition named schema is refused with KDLITH-SCH024 instead of being read as the meta-schema; the bundled meta-schema and self-describing meta-schemas read as before."
+    includes reserved-schema-name
+    section fixed {
+        item "Refuse a schema definition named `schema` with `KDLITH-SCH024`, naming the file and the reserved word, instead of reading it as the meta-schema" covers=reserved-schema-name
+    }
+    sealed at="ec4f8f14dec20ebc03b341648b44e2f03798ac22"
+}

@@ -1,0 +1,9 @@
+change reserved-schema-name {
+    summary "Refuse a schema that takes the reserved name schema"
+    category fixed
+    impact public
+    touches "pkg/rs/engine" "pkg/rs/diagnostic" "pkg/rs/codegen" "pkg/rs/schema-kdl" "input:fixtures"
+    commit "7a303e46adce4e0a33c30f4da93872ea593b096e"
+    detail "A schema definition named schema was silently read as the meta-schema, because the name alone selected the meta-schema reading. It is now refused with KDLITH-SCH024, naming the file and the reserved word, on every verb that reads a definition, before anything is compiled or generated. A definition named schema is still read as the meta-schema when it is the bundled meta-schema, imports it, or declares the node schema its own root is written with."
+    migration "Rename a schema definition named schema; nothing else changes. The bundled meta-schema and meta-schema definitions that describe their own root read as before."
+}
