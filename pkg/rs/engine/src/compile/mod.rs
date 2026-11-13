@@ -28,8 +28,8 @@ use crate::definition::{
     CheckScope, Definition, DefinitionKind, DocumentRule, ImportDecl, META_SCHEMA_NAME, SlotDecl,
 };
 use crate::diag::{
-    CARDINALITY, Diagnostics, MALFORMED, MISSING_FIELD, NOT_INSTALLED, ROOT_MISMATCH, Site,
-    TYPE_EXPRESSION, UNKNOWN_MEMBER, UNKNOWN_NODE, VALUE_TYPE,
+    CARDINALITY, Diagnostics, MALFORMED, MISSING_FIELD, NOT_INSTALLED, RESERVED_NAME,
+    ROOT_MISMATCH, Site, TYPE_EXPRESSION, UNKNOWN_MEMBER, UNKNOWN_NODE, VALUE_TYPE,
 };
 use crate::extensions::{Extensions, TYPE_EXPRESSION_VALIDATOR, TYPE_EXPRESSION_VERSION};
 use crate::names::Names;
@@ -121,6 +121,97 @@ fn compile_input(
     let mut definition = finish(cx, documents, governing)?;
     definition.notes.splice(0..0, input.notes.iter().cloned());
     Ok(definition)
+}
+
+/// Refuse a definition that takes the name reserved for the meta-schema
+/// without being one. It stays admitted when one of its documents is a
+/// document of `own`, the reading processor's embedded meta-schema, or
+/// imports one by a literal path (an entrypoint read without following
+/// its imports), or when it declares the node `schema` its own root is
+/// written with, as every self-describing meta-schema does. Otherwise it
+/// is a schema under the reserved name, refused before either compiler
+/// reads it.
+pub fn check_reserved_name(
+    input: &DefinitionInput,
+    own: &[&str],
+) -> Result<(), Vec<DiagnosticRecord>> {
+    let Some((document, span)) = input
+        .documents
+        .iter()
+        .find_map(|document| reserved_root(&document.text).map(|span| (document, span)))
+    else {
+        return Ok(());
+    };
+    let owned = input
+        .documents
+        .iter()
+        .any(|document| own.contains(&document.text.as_str()) || imports_own(document, own));
+    let describes_root = input
+        .documents
+        .iter()
+        .flat_map(|document| &document.constructs)
+        .any(|located| match &located.item {
+            input::Construct::Node(node) => {
+                node.name == META_SCHEMA_NAME
+                    || node.aliases.iter().any(|alias| alias == META_SCHEMA_NAME)
+            }
+            _ => false,
+        });
+    if owned || describes_root {
+        return Ok(());
+    }
+    let at = kdlith_parse::locate(&document.text, span).start;
+    let record = crate::diag::record(
+        RESERVED_NAME,
+        &[&document.path, META_SCHEMA_NAME],
+        DefinitionKind::Schema.origin(),
+    )
+    .with_source(document.path.clone())
+    .with_span(span, Some(at.line), Some(at.column));
+    Err(vec![record])
+}
+
+/// Whether `document` imports a document of `own` by a literal path,
+/// resolved beside the document as its imports resolve.
+fn imports_own(document: &input::DocumentInput, own: &[&str]) -> bool {
+    let dir = std::path::Path::new(&document.path).parent();
+    document.constructs.iter().any(|located| {
+        let input::Construct::Import(import) = &located.item else {
+            return false;
+        };
+        if !crate::locations::is_literal(&import.path) {
+            return false;
+        }
+        let target = dir.map_or_else(
+            || std::path::PathBuf::from(&import.path),
+            |dir| dir.join(&import.path),
+        );
+        let small = std::fs::metadata(&target)
+            .is_ok_and(|meta| meta.len() <= crate::documents::MAX_DOCUMENT_BYTES);
+        small && std::fs::read_to_string(&target).is_ok_and(|text| own.contains(&text.as_str()))
+    })
+}
+
+/// The span of a document's first root node when it is the schema named
+/// schema; only the root's opening is read.
+fn reserved_root(text: &str) -> Option<kdlith_diagnostic::ByteSpan> {
+    use kdlith_parse::{Event, Parser, Value as Written};
+    let mut parser = Parser::new(text);
+    let opened = parser.next_event().ok()??;
+    match opened.item {
+        Event::Node { name, .. } if name == DefinitionKind::Schema.root_name() => {}
+        _ => return None,
+    }
+    loop {
+        match parser.next_event().ok()??.item {
+            Event::Entry(entry) if entry.name.is_none() => {
+                return matches!(entry.value, Written::String(name) if name == META_SCHEMA_NAME)
+                    .then_some(opened.span);
+            }
+            Event::Entry(_) => {}
+            _ => return None,
+        }
+    }
 }
 
 /// The state of one compilation.

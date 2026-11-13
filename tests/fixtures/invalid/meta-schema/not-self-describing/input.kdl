@@ -1,10 +1,10 @@
 schema schema version="0" {
     types {
-        object Entry {
-            field id String
+        object Root {
+            field name String
         }
     }
-    node entry role=record type=Entry {
-        field id arg=0
+    node schema role=container type=Root {
+        field name arg=0
     }
 }

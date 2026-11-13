@@ -11,7 +11,7 @@ use crate::model::Emission;
 
 /// Engine names the compile skeleton uses regardless of which items the
 /// definition declares.
-const SKELETON_INPUTS: [&str; 14] = [
+const SKELETON_INPUTS: [&str; 15] = [
     "CheckScope",
     "Construct",
     "Definition",
@@ -23,6 +23,7 @@ const SKELETON_INPUTS: [&str; 14] = [
     "ParsedDocument",
     "ReadOptions",
     "TypedItem",
+    "check_reserved_name",
     "compile_meta_schema",
     "compile_meta_schema_input",
     "compile_schema_input",
@@ -432,6 +433,10 @@ fn gather(
         records.push(broken_contract(&error.to_string()));
         return Err(records);
     }
+    // A definition named schema is this processor's meta-schema only when
+    // it reads one of the embedded documents or describes its own root.
+    let own = CANONICAL.map(|(_, text)| text);
+    check_reserved_name(&input.definition, &own)?;
     // A reading's warnings and notes, such as an overridden source, ride
     // on the definition.
     let mut definition = input.definition;

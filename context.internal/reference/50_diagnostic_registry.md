@@ -34,6 +34,7 @@ on every reading path: when a processor binds it (the item stream
 | Two `when` branches of one children rule not provably disjoint                                      | `KDLITH-SCH017` |
 | A `when-all` or `when-any` combinator with no member conditions                                     | `KDLITH-SCH018` |
 | A children rule carrying `when` branches without bounds of its own                                  | `KDLITH-SCH019` |
+| A schema named `schema` that is not the bundled meta-schema and declares no `schema` node            | `KDLITH-SCH024` |
 
 Distinctness rules: a bad type expression (`KDLITH-DLC007`) and an
 unknown enum value (`KDLITH-BND008`) are distinct from a plain

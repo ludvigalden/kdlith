@@ -95,7 +95,8 @@ through its imports, must pass complete checking and print the same
 digest. `schemas/vet/` holds schema definitions that must pass
 `kdlith vet schema` under the canonical meta-schema. `invalid/meta-schema/` and
 `invalid/schemas/` hold broken definitions, each rejected with its
-declared code.
+declared code; `invalid/schemas/reserved-schema-name/` pins the refusal
+of a schema taking the meta-schema's reserved name.
 
 `meta-schema/canonical-bind/` and `meta-schema/entry-bind/` run `kdlith vet
 data` with the canonical meta-schema as the schema, binding each committed

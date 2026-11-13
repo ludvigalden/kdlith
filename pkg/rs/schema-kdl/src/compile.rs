@@ -15,7 +15,7 @@ use kdlith_engine::{
     OpenWorldInput, ParsedDocument, PathValueInput, ProfileInput, ProviderInput, QualifierInput,
     ReadOptions, ReferenceInput, ResolutionInput, SequenceInput, SlotInput, SourceContextInput,
     SourceFieldInput, SourceInput, StepInput, TypeInput, TypedItem, ValidatorInput, VariantInput,
-    compile_meta_schema, compile_meta_schema_input, compile_schema_input,
+    check_reserved_name, compile_meta_schema, compile_meta_schema_input, compile_schema_input,
 };
 use kdlith_runtime::Repeated;
 
@@ -203,6 +203,10 @@ fn gather(
         records.push(broken_contract(&error.to_string()));
         return Err(records);
     }
+    // A definition named schema is this processor's meta-schema only when
+    // it reads one of the embedded documents or describes its own root.
+    let own = CANONICAL.map(|(_, text)| text);
+    check_reserved_name(&input.definition, &own)?;
     // A reading's warnings and notes, such as an overridden source, ride
     // on the definition.
     let mut definition = input.definition;

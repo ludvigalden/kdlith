@@ -4,7 +4,9 @@
 
 Every definition has exactly one `schema NAME version="V"` root; the
 meta-schema is the schema named `schema`, and a schema may not take
-that name for itself.
+that name for itself: a definition named `schema` that is not the
+bundled meta-schema, and declares no `schema` node for its own root,
+is refused (`KDLITH-SCH024`), never read as a meta-schema.
 The root containers hold `types`, `node`, `context`, `document`,
 `import`, `annotation`, `reference`, and `resolution` declarations as
 the sections below describe. Every definition root states its

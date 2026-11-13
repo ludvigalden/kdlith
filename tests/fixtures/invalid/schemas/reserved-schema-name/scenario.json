@@ -1,0 +1,8 @@
+{
+  "binary": "kdlith",
+  "description": "A schema definition named schema, the name reserved for the meta-schema, that is no document of the embedded meta-schema and declares no node schema for its own root, is refused as a reserved name instead of being read as a meta-schema",
+  "args": ["vet", "schema", "schema.kdl"],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

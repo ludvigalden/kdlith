@@ -757,6 +757,16 @@ pub const CODES: &[CodeDefinition] = &[
         correction: "Bind the name once in common, or give the case binding a name no common binding takes",
         retired: false,
     },
+    CodeDefinition {
+        code: "KDLITH-SCH024",
+        label: "reserved-schema-name",
+        severity: Severity::Error,
+        exit_class: 1,
+        trigger: "a definition takes the name schema, reserved for the meta-schema, while none of its documents is a document of the reading processor's embedded meta-schema and none declares the node schema a meta-schema writes its own root with; refused before either compiler reads it",
+        message_template: "<path>: the name <name> is reserved for the meta-schema; a schema definition cannot take it",
+        correction: "Give the schema another name; only a meta-schema takes the name schema",
+        retired: false,
+    },
     // BND
     CodeDefinition {
         code: "KDLITH-BND001",

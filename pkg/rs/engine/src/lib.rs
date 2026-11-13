@@ -56,7 +56,8 @@ pub use compile::input::{
     SourceFieldInput, SourceInput, StepInput, TypeInput, ValidatorInput, VariantInput,
 };
 pub use compile::{
-    META_SCHEMA_VERSION, compile_meta_schema, compile_meta_schema_input, compile_schema_input,
+    META_SCHEMA_VERSION, check_reserved_name, compile_meta_schema, compile_meta_schema_input,
+    compile_schema_input,
 };
 pub use data::{
     BoundResult, DataReader, EntryContext, ReadOptions, RecordContext, Restored, Source,

@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "gen schema refuses a schema definition named schema, the name reserved for the meta-schema: it exits 1 naming the file and the reserved word before anything is generated, and the scratch check proves nothing was written into the output directory",
+  "args": ["gen", "schema", "schema.kdl", "--crate", "reserved-kdl", "--out", "out"],
+  "expect": {
+    "exit": 1,
+    "stderr-contains": [
+      "error[KDLITH-SCH024]: schema.kdl: the name schema is reserved for the meta-schema; a schema definition cannot take it\n"
+    ],
+    "scratch-check": {
+      "plant": [{ "path": "planted-foreign.txt", "kind": "file" }]
+    }
+  }
+}

@@ -24,7 +24,8 @@ profile inheritance faults; `SCH015`–`SCH019` group and `when`-branch
 faults; `SCH020` an invalid field child binding; `SCH021` an invalid
 open-world arm; `SCH022` a `qualify-from` naming no declared string
 slot; `SCH023` a case-level binding naming what its node binds in
-common. `DLC005` names a malformed construct, `DLC006` an uninstalled
+common; `SCH024` a schema taking the name `schema`, reserved for the
+meta-schema. `DLC005` names a malformed construct, `DLC006` an uninstalled
 extension, `DLC007` a broken type expression, `DLC008` a meta-schema
 linking fault, `DLC010` a resolver refusal.
 
