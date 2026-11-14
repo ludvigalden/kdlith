@@ -2,13 +2,6 @@ repo kdlith {
     import "$relmap/profiles/core/profile.kdl"
     import "$relmap/profiles/rust/profile.kdl"
 
-    // Generated CI scripts and tool configs no built-in class claims.
-    class generated-tooling {
-        tags config generated
-        glob "*.sh" ".shellcheckrc" ".stamp" ".yamlfmt" {
-            in-dir ".config/generated"
-        }
-    }
     // The fixture corpus: scenarios, goldens, caches and snapshots of
     // every extension, including Cargo crates that are data, not units.
     class fixture-data {
@@ -23,6 +16,5 @@ repo kdlith {
     }
     exclude "device-local working material, never committed" {
         path ".recovery-archive" "pkg/kdl/vocab"
-        path ".config/generated/tools/terraform/.tflint.hcl"
     }
 }

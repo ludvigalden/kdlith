@@ -1,5 +1,5 @@
-# Secret and policy scan: the repository override of the generated
-# baseline, which it replaces whole. The default rule set is inherited.
+# Secret and policy scan: the default rule set, inherited, and the
+# repository's overrides.
 
 title = 'secret and policy scan'
 minVersion = 'v2.0.0-rc.1'

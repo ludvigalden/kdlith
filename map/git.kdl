@@ -1,0 +1,26 @@
+// The git files and the commit rules, ported from .config/git.toml. The
+// .gitignore stays out of git, as it was. Under `area "."` every
+// top-level entry git tracks stays visible; `track` adds the one root
+// path the old include list named before it exists. The old Rust and
+// file artifact baselines are the rust library's set and
+// core.build-output; the old skip_dirs (but vendor/, which holds
+// committed fixture data) are the ignore lines.
+repo kdlith {
+    configure core.gitignore {
+        commit #false
+    }
+
+    track ".cargo/config.toml"
+
+    enable core.build-output
+
+    ignore "node_modules/" ".venv/" ".ctx/" ".work/" ".claude/" ".codex/" ".gemini/" ".cursor/" ".windsurf/"
+
+    // A subject of at most 72 characters and nothing else: no body, no
+    // trailers.
+    commits {
+        max-subject 72
+        body #false
+        trailers #false
+    }
+}

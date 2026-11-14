@@ -1,0 +1,158 @@
+// Where relmap looks, and what this repository is checked, fixed and
+// tested with: the libraries' Rust and file checks, taplo, the fixture
+// suite against the kdlith just built, and relmap's own view of the map
+// and the changelog it renders.
+repo kdlith {
+    import "$relmap/profiles/core/tools.kdl"
+    import "$relmap/profiles/rust/tools.kdl"
+    import "$relmap/profiles/security/tools.kdl"
+
+    // Everything; the fixture corpus holds Cargo crates that are data
+    // the suite generates into, never units of this workspace.
+    area "."
+    area "tests/fixtures" role=fixture
+
+    // The fixture suite is this repository's test: it holds no unit
+    // tests for cargo test to run.
+    disable rust.test
+    // TOML formats as taplo.toml says.
+    enable core.taplo-format
+
+    // The corpus is data the suite compares byte for byte: generated
+    // crate manifests as the generator writes them, and inputs whose
+    // missing final newline or trailing whitespace is the syntax under
+    // test (the KDL conformance inputs among them). Formatting and the
+    // whitespace fixers leave it alone; the other hygiene checks read it.
+    configure core.taplo-format {
+        except "tests/fixtures/**"
+    }
+    configure core.trailing-whitespace {
+        except "tests/fixtures/**"
+    }
+    configure core.final-newline {
+        except "tests/fixtures/**"
+    }
+
+    // Secrets, as .betterleaks.toml says: the default rules, less the
+    // content-addressed digests the fixture caches and snapshots hold.
+    enable security.betterleaks-check
+
+    // ---- tools ------------------------------------------------------------
+
+    // relmap reads the map and the changelog and renders CHANGELOG.md
+    // and the per-version files from them. It is not pinned: the one a
+    // developer builds or installs is the one that runs.
+    tool relmap {
+        about "relmap, which vets the map and the changelog and renders them"
+        version "relmap" "--version" match=#"^relmap (?<version>\S+)"#
+        provide env "RELMAP_BIN"
+        provide host
+    }
+
+    // relmap's and kdlith's diagnostics: a headline, then the position
+    // on an arrow line below it.
+    parser diagnostics format=lines {
+        match #"^(?<severity>error|warning)\[(?<rule>[A-Z]+-[A-Z]+\d+)\]: (?<message>.*)$"#
+        amend #"^\s+--> (?<path>[^:\s][^:]*):(?<line>\d+):(?<column>\d+)$"#
+        severity {
+            map error error
+            map warning warn
+        }
+    }
+
+    // ---- the binaries under test --------------------------------------------
+
+    action bins kind=build tool=rust.cargo {
+        about "Builds kdlith and the fixture harness"
+        on repo
+        exclusive "cargo-build-dir"
+        run "cargo" "build" "--message-format=json" "-p" "kdlith-bin" "-p" "kdlith-fixtures" {
+            ok 0
+            findings 101
+            parse rust.diagnostics
+            capture key="target.name" value="executable" {
+                where "reason" equals="compiler-artifact"
+                where "executable" exists=#true
+            }
+        }
+    }
+
+    // ---- tests --------------------------------------------------------------
+
+    // The harness is a libtest-mimic program: one JSON event stream,
+    // a scenario per test, named by its directory under the corpus; it
+    // exits 1 when a scenario fails.
+    action fixtures kind=test {
+        about "Runs the fixture suite against the kdlith just built"
+        on repo
+        needs kdlith.bins
+        attach "tools/kdlith" "tests/tools/kdlith-fixtures"
+        inputs "tests/fixtures/**" "pkg/kdl/**"
+        slots 2
+        timeout "1h"
+        run "{capture.bins.kdlith-fixtures}" "--fx-suite" "tests/fixtures" "--fx-kdlith" "{capture.bins.kdlith}" "--fx-scratch-root" "{scratch}" "-Z" "unstable-options" "--format" "json" {
+            ok 0
+            findings 1 101
+            parse rust.libtest-json path="tests/fixtures/{name}"
+        }
+    }
+
+    // The heavy tier, on request (`--with heavy`): every scenario, the
+    // heavy ones included.
+    action fixtures-heavy kind=test {
+        about "Runs the whole fixture suite, heavy scenarios included"
+        on repo
+        needs kdlith.bins
+        attach "tools/kdlith" "tests/tools/kdlith-fixtures"
+        inputs "tests/fixtures/**" "pkg/kdl/**"
+        label heavy
+        subsumes kdlith.fixtures
+        slots 2
+        timeout "2h"
+        run "{capture.bins.kdlith-fixtures}" "--fx-suite" "tests/fixtures" "--fx-kdlith" "{capture.bins.kdlith}" "--fx-scratch-root" "{scratch}" "--fx-heavy" "-Z" "unstable-options" "--format" "json" {
+            ok 0
+            findings 1 101
+            parse rust.libtest-json path="tests/fixtures/{name}"
+        }
+    }
+
+    // ---- the map and the changelog ------------------------------------------
+
+    action vet-map kind=lint tool=kdlith.relmap {
+        about "Vets the map documents"
+        on repo
+        inputs "map/**"
+        check "relmap" "vet" "map" {
+            ok 0
+            findings 1
+            stream stderr
+            parse kdlith.diagnostics
+        }
+    }
+    action vet-changelog kind=lint tool=kdlith.relmap {
+        about "Vets the changelog records"
+        on repo
+        inputs "changelog/**" "map/**"
+        check "relmap" "vet" "changelog" {
+            ok 0
+            findings 1
+            stream stderr
+            parse kdlith.diagnostics
+        }
+    }
+    // CHANGELOG.md and the per-version files are what relmap renders
+    // from the map, the changelog and the commit graph.
+    action changelog kind=generate tool=kdlith.relmap {
+        about "Keeps CHANGELOG.md and the per-version files rendered"
+        on repo
+        inputs "changelog/**" "map/**"
+        outputs "CHANGELOG.md" "changelog/versions/**"
+        check "relmap" "map" "--check" {
+            ok 0
+            findings 1
+            stream stderr
+            parse kdlith.diagnostics fixable=#true
+        }
+        run "relmap" "map"
+    }
+}
