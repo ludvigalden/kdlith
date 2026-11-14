@@ -3,6 +3,10 @@
 // suite against the kdlith just built, and relmap's own view of the map
 // and the changelog it renders.
 repo kdlith {
+    // The CLI's build script exports relmap's schemas: hand it the
+    // relmap that runs the task (relmap strips the caller's RELMAP_*).
+    env RELMAP_BIN "{relmap}"
+
     import "$relmap/profiles/core/tools.kdl"
     import "$relmap/profiles/rust/tools.kdl"
     import "$relmap/profiles/security/tools.kdl"
