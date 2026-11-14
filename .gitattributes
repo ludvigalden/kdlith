@@ -1,0 +1,13 @@
+# Line endings and the libraries' attributes
+* text=auto eol=lf
+
+# The classes' attributes
+Cargo.lock linguist-generated
+
+# Fixture data, kept byte for byte
+/tests/fixtures/** -text
+
+# What the generators write
+/**/CHANGELOG.md linguist-generated
+/**/Cargo.lock linguist-generated
+/changelog/versions/** linguist-generated

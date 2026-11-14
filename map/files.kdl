@@ -1,0 +1,28 @@
+// The tool configurations at the root, owned by relmap from the
+// libraries' files and adopted as they stood: Taplo's rule for the
+// workspace manifest, and Clippy and rustfmt at their defaults.
+repo kdlith {
+    enable core.taplo-config rust.clippy-config rust.rustfmt-config
+
+    adopt core.taplo-config
+    configure core.taplo-config {
+        merge #"""
+            [[rule]]
+            include = ["Cargo.toml"]
+
+            [rule.formatting]
+            indent_string = "    "
+
+            """#
+        delete "/formatting"
+    }
+
+    adopt rust.clippy-config
+
+    adopt rust.rustfmt-config
+    configure rust.rustfmt-config {
+        delete "/style_edition"
+        delete "/max_width"
+        delete "/tab_spaces"
+    }
+}
