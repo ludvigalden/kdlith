@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "gen workspace --check over a root manifest whose [workspace.dependencies] spell every kdlith crate a schema reader needs exactly as the named source's origin pins them, and a marker-only .cargo/config.toml (the source has no override): nothing is reported, nothing is written, exit 0",
+  "description": "gen workspace --check over a root manifest whose [workspace.dependencies] spell every kdlith crate a schema reader needs exactly as the named source's origin pins them, and a marker-only .cargo/kdlith-local.toml (the source has no override): nothing is reported, nothing is written, exit 0",
   "args": [
     "gen",
     "workspace",

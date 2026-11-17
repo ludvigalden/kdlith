@@ -1098,7 +1098,7 @@ pub const CODES: &[CodeDefinition] = &[
         exit_class: 1,
         trigger: "gen workspace finds a kdlith crate a generated schema reader needs missing from the workspace root manifest's [workspace.dependencies], spelled otherwise than the git and rev the named source pins, or local: a path dependency, or an entry of a [patch] table in that manifest",
         message_template: "workspace dependency <crate> in <file> is <state>: expected <line>",
-        correction: "Write the expected line under [workspace.dependencies]; keep a local checkout in the generated .cargo/config.toml, never in the committed manifest",
+        correction: "Write the expected line under [workspace.dependencies]; keep a local checkout in the generated .cargo/kdlith-local.toml, never in the committed manifest",
         retired: false,
     },
     CodeDefinition {
@@ -1119,6 +1119,16 @@ pub const CODES: &[CodeDefinition] = &[
         trigger: "a writing generation run under the default sibling packaging finds a kdlith dependency directory with no crate beside the output crate",
         message_template: "the default sibling packaging writes <crate> at <path>, which does not resolve to a crate: the default sibling packaging only resolves beside the kdlith crates, so pass --kdlith-path to point at them",
         correction: "Generate beside the kdlith crates, or name the packaging with --kdlith-path, --kdlith-version, or --kdlith-workspace",
+        retired: false,
+    },
+    CodeDefinition {
+        code: "KDLITH-GEN009",
+        label: "legacy-patch-file",
+        severity: Severity::Warning,
+        exit_class: 0,
+        trigger: "gen workspace finds a .cargo/config.toml whose first line is a kdlith marker: an earlier kdlith wrote its local patch there, where cargo applies it to every build and rewrites the lock",
+        message_template: "<path> was written by an earlier kdlith and cargo applies it to every build; the local patch now lives in <replacement>, applied only with cargo --config",
+        correction: "Delete the old file once nothing else in it is needed; build against a local checkout with cargo --config .cargo/kdlith-local.toml",
         retired: false,
     },
     // EXP

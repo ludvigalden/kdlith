@@ -1,0 +1,15 @@
+{
+  "binary": "kdlith",
+  "description": "a .cargo/config.toml an earlier kdlith wrote, its local patch still in it, is reported and left alone: gen workspace with no override warns KDLITH-GEN009 naming the file and the opt-in .cargo/kdlith-local.toml that replaces it, writes the marker-only .cargo/kdlith-local.toml, and leaves the old file byte for byte unchanged; a warning only, so exit 0",
+  "args": ["gen", "workspace", "--sources", "sources.kdl"],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "stderr-golden": "stderr.golden",
+    "files": {
+      ".cargo/config.toml": "config-toml.golden",
+      ".cargo/kdlith-local.toml": "kdlith-local-toml.golden",
+      "Cargo.toml": "Cargo.toml"
+    }
+  }
+}

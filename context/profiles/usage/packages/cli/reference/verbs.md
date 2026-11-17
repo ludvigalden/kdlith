@@ -84,9 +84,12 @@ sources manifest declares (default name `kdlith`): it prints the
 `[workspace.dependencies]` lines a generated schema reader needs, each
 `kdlith-<crate> = { git = "<git>", rev = "<rev>" }`, reports a line
 that is missing, different, or local (`KDLITH-GEN006`), and writes the
-owned `.cargo/config.toml`. `--dry-run` and `--check` behave as on the
-other forms; see the typed reader's generated-crates reference for the
-patch file and the one-time cache seed.
+owned `.cargo/kdlith-local.toml`, which cargo applies only through
+`cargo --config`. A `.cargo/config.toml` an earlier kdlith wrote is
+warned about (`KDLITH-GEN009`) and left alone. `--dry-run` and
+`--check` behave as on the other forms; see the typed reader's
+generated-crates reference for the patch file and the one-time cache
+seed.
 
 ## changelog and --version
 

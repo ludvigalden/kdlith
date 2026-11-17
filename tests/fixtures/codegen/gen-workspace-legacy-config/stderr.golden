@@ -1,0 +1,2 @@
+warning[KDLITH-GEN009]: .cargo/config.toml was written by an earlier kdlith and cargo applies it to every build; the local patch now lives in .cargo/kdlith-local.toml, applied only with cargo --config
+  help: Delete the old file once nothing else in it is needed; build against a local checkout with cargo --config .cargo/kdlith-local.toml

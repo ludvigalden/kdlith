@@ -1,6 +1,6 @@
 {
   "binary": "kdlith",
-  "description": "gen workspace --check with an overlay override against a marker-only .cargo/config.toml: the expected patch differs, so KDLITH-GEN002 changed; the override warns KDLITH-LOC009 at its overlay location; exit 1, nothing written",
+  "description": "gen workspace --check with an overlay override against a marker-only .cargo/kdlith-local.toml: the expected patch differs, so KDLITH-GEN002 changed; the override warns KDLITH-LOC009 at its overlay location; exit 1, nothing written",
   "args": [
     "gen",
     "workspace",
@@ -14,10 +14,10 @@
     "exit": 1,
     "stderr-contains": [
       "warning[KDLITH-LOC009]: source kdlith is overridden by checkout (layer overlay; unpinned not used)\n  --> overrides.kdl:2:5",
-      "error[KDLITH-GEN002]: .cargo/config.toml is changed\n"
+      "error[KDLITH-GEN002]: .cargo/kdlith-local.toml is changed\n"
     ],
     "files": {
-      ".cargo/config.toml": ".cargo/config.toml"
+      ".cargo/kdlith-local.toml": ".cargo/kdlith-local.toml"
     }
   }
 }

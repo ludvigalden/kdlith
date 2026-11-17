@@ -63,7 +63,8 @@ fn packaging_of(path: Option<String>, version: Option<String>, workspace: bool) 
 
 /// `gen workspace`: check the root manifest's kdlith dependencies
 /// against the named source (`KDLITH-GEN006`, never written), and
-/// write, plan, or check the owned patch file.
+/// write, plan, or check the owned opt-in patch file, and warn on a
+/// `.cargo/config.toml` an earlier kdlith wrote (`KDLITH-GEN009`).
 fn workspace(args: &GenWorkspaceArgs) -> ExitStatus {
     if args.locations.manifest.is_none() {
         return usage::report_invalid_argument("gen workspace needs --sources FILE");
@@ -87,7 +88,7 @@ fn workspace(args: &GenWorkspaceArgs) -> ExitStatus {
         Ok(patch) => patch,
         Err(error) => return failed("workspace", &error),
     };
-    let config = root.join(codegen::CARGO_CONFIG);
+    let config = root.join(codegen::PATCH_FILE);
     let patched = match checkout {
         Some(dir) => format!(
             "{} patched crates from {}",
@@ -104,6 +105,10 @@ fn workspace(args: &GenWorkspaceArgs) -> ExitStatus {
     }
     match codegen::check_workspace(&root, &source) {
         Ok(findings) => records.extend(findings),
+        Err(error) => return failed("workspace", &error),
+    }
+    match codegen::legacy_patch(&root) {
+        Ok(found) => records.extend(found),
         Err(error) => return failed("workspace", &error),
     }
     if args.check {
@@ -124,6 +129,12 @@ fn workspace(args: &GenWorkspaceArgs) -> ExitStatus {
     match codegen::write_patch(&root, &patch) {
         Ok(()) => {
             println!("ok: wrote {} ({patched})", config.display());
+            if checkout.is_some() {
+                println!(
+                    "note: cargo applies the patch only when asked: cargo --config {} build",
+                    config.display()
+                );
+            }
             let seed_from = checkout.map_or_else(|| PathBuf::from("<checkout>"), Path::to_path_buf);
             println!(
                 "note: with an empty cargo git cache and an unreachable origin, seed it once from a local checkout: {}",

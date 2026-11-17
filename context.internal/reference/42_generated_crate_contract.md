@@ -141,10 +141,14 @@ of a sources manifest (an origin at the repository root with a 40-hex
 `rev`, else `KDLITH-GEN007`), checks the root
 `[workspace.dependencies]` line by line (`KDLITH-GEN006` missing,
 different, or local; the root manifest is never written, and kdlith
-links no TOML library), and owns `.cargo/config.toml` by its first-line
-marker (the current one, or the versioned one earlier versions wrote):
-a `[patch."<git>"]` over the schema reader's transitive kdlith closure
-when the source is overridden, the marker alone otherwise. The
+links no TOML library), and owns `.cargo/kdlith-local.toml` by its
+first-line marker (the current one, or the versioned one earlier
+versions wrote): a `[patch."<git>"]` over the schema reader's
+transitive kdlith closure when the source is overridden, the marker
+alone otherwise. Cargo applies that file only through `cargo --config`,
+so a consumer's committed lock keeps the git sources; the
+`.cargo/config.toml` earlier versions wrote, which cargo applies to
+every build, is warned about (`KDLITH-GEN009`) and never touched. The
 closure is a codegen constant (`SCHEMA_CLOSURE`); the
 `codegen/gen-workspace-oracle` fixture compares it with the
 repository's own `cargo metadata` resolve graph, since a partial patch

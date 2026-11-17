@@ -105,8 +105,9 @@ enum GenCommand {
     /// seed
     Schema(Box<GenSchemaArgs>),
     /// Check the workspace root's kdlith dependencies against a named
-    /// source and write the owned .cargo/config.toml that patches them
-    /// to the source's local override
+    /// source and write the owned .cargo/kdlith-local.toml that patches
+    /// them to the source's local override, applied only through cargo
+    /// --config
     Workspace(Box<GenWorkspaceArgs>),
 }
 

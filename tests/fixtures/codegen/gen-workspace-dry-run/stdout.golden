@@ -3,4 +3,4 @@ kdlith-diagnostic = { git = "https://github.com/ludvigalden/kdlith", rev = "0123
 kdlith-engine = { git = "https://github.com/ludvigalden/kdlith", rev = "0123456789abcdef0123456789abcdef01234567" }
 kdlith-model = { git = "https://github.com/ludvigalden/kdlith", rev = "0123456789abcdef0123456789abcdef01234567" }
 kdlith-schema-kdl = { git = "https://github.com/ludvigalden/kdlith", rev = "0123456789abcdef0123456789abcdef01234567" }
-plan: .cargo/config.toml (marker only, no override, dry run)
+plan: .cargo/kdlith-local.toml (marker only, no override, dry run)

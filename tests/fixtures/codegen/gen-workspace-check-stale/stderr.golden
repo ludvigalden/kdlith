@@ -1,2 +1,2 @@
-error[KDLITH-GEN002]: .cargo/config.toml is stale
+error[KDLITH-GEN002]: .cargo/kdlith-local.toml is stale
   help: Re-run generation without --check

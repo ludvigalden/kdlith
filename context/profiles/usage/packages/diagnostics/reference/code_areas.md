@@ -58,7 +58,9 @@ invocation bound); cache faults (`CAC002` an unusable owned entry);
 generation faults (`GEN001` unowned overwrite, `GEN002` drift,
 `GEN006` a workspace dependency missing, different, or local, `GEN007`
 a source that cannot pin the kdlith crates, `GEN008` a default
-sibling packaging that resolves to no kdlith crate beside the output);
+sibling packaging that resolves to no kdlith crate beside the output,
+`GEN009` the warning for a `.cargo/config.toml` an earlier kdlith
+wrote);
 argument faults (`CLI001`–`CLI004`, exit 2, before any document is
 read); syntax faults (`SYN…` from the KDL parser); export faults
 (`EXP002` provisional delivery); changelog faults (`CHG001` a binary
