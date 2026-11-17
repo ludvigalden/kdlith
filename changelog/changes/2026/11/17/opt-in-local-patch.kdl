@@ -1,0 +1,9 @@
+change opt-in-local-patch {
+    summary "Write the local kdlith patch to an opt-in cargo config"
+    category changed
+    impact public
+    touches "pkg/rs/codegen" "pkg/rs/cli" "pkg/rs/diagnostic" "input:fixtures"
+    commit "5596916ce4ce6d8ce8e8980d97bac3e4415fb533"
+    detail "gen workspace writes the local-checkout patch to .cargo/kdlith-local.toml instead of .cargo/config.toml. Cargo applies it only when a command asks with cargo --config .cargo/kdlith-local.toml, so a plain build and a committed Cargo.lock keep the kdlith git sources and --locked works on a clean clone. A .cargo/config.toml an earlier kdlith wrote is reported with the new warning KDLITH-GEN009 and is never written or deleted."
+    migration "Pass --config .cargo/kdlith-local.toml to cargo when building against a local kdlith checkout, and restore Cargo.lock before committing after such a build. Delete a .cargo/config.toml an earlier kdlith wrote once nothing else in it is needed, and ignore .cargo/kdlith-local.toml."
+}
