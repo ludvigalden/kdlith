@@ -1424,7 +1424,7 @@ fn slot(cx: &mut Cx<'_>, site: Site, input: &SlotInput) {
         if !ok {
             let reason = format!(
                 "slot {} declares accumulate {} but its type is not {}-typed",
-                &input.name,
+                input.name,
                 parsed.name(),
                 match parsed {
                     AccumulateOp::Append => "list",

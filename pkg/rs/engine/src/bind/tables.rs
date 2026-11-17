@@ -659,10 +659,8 @@ fn collect(sources: &[Source]) -> Collect {
         match source {
             Source::Entries { .. } => return Collect::Map,
             Source::Args | Source::Children { .. } => found = Collect::List,
-            Source::Child { sources, .. } => {
-                if collect(sources) != Collect::No {
-                    found = Collect::List;
-                }
+            Source::Child { sources, .. } if collect(sources) != Collect::No => {
+                found = Collect::List;
             }
             _ => {}
         }

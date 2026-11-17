@@ -276,7 +276,7 @@ impl Sources {
         };
         let mut warnings = Vec::new();
         for (name, mut found) in layered {
-            found.sort_by(|a, b| b.0.layer.cmp(&a.0.layer));
+            found.sort_by_key(|entry| std::cmp::Reverse(entry.0.layer));
             let mut found = found.into_iter();
             let Some((winner, dir)) = found.next() else {
                 continue;
