@@ -37,7 +37,7 @@ location syntax; `LOC005` an invalid root, source, manifest, or
 override; `LOC006` an origin the store does not hold; `LOC007` a tree
 that does not match its pin; `LOC008` an asset of the wrong kind or
 extension; `LOC009` an overridden source (warning); `LOC010` an
-unpinned source (note). `IMP002` an
+unpinned origin source (note). `IMP002` an
 import cycle; `IMP003` a repeat; `IMP006`–`IMP008` data-import
 confinement and alias faults.
 
