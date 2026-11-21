@@ -1,0 +1,8 @@
+change dir-source-not-noted {
+    summary "Note only unpinned origin sources as unpinned, never a dir source"
+    category fixed
+    impact public
+    touches "input:fixtures" "pkg/rs/diagnostic" "pkg/rs/engine"
+    commit "66915c9e0534c13b734c8619483d4ae7423532e1"
+    detail "KDLITH-LOC010 noted every unpinned source a reading used and told the reader to pin it with the digest given, but a dir source takes no pin: the sources manifest refuses a child under one. Every reading of a manifest with a dir source printed a note nothing could answer. The note now covers unpinned origin sources alone, with the digest to pin them by; a dir source, versioned with the manifest that names it, is never noted."
+}
