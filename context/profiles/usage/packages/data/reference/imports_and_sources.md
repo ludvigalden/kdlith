@@ -51,8 +51,10 @@ tree is `KDLITH-LOC006`, its help naming what to fetch and where;
 `kdlith sources plan` lists every origin with its store path. A pin is
 optional. A pinned tree is checked against its canonical tree digest
 the first time a reading enters it, a mismatch being `KDLITH-LOC007`.
-Each unpinned source a reading uses is a `KDLITH-LOC010` note carrying
-its digest, the value to pin it by; a note never fails a run. A
+Each unpinned origin source a reading uses is a `KDLITH-LOC010` note
+carrying its digest, the value to pin it by; a note never fails a run.
+A `dir` source takes no pin and is never noted: its tree is versioned
+with the manifest that names it. A
 manifest may not declare a name the host registers (`KDLITH-LOC005`).
 
 The canonical tree digest: one line per regular file under the tree,
@@ -110,7 +112,7 @@ syntax the governing locations rule does not admit is
 `KDLITH-LOC005` before any document is read. An origin the store does
 not hold is `KDLITH-LOC006` and a pin its tree does not match
 `KDLITH-LOC007`; an override warns (`KDLITH-LOC009`) and an unpinned
-source notes (`KDLITH-LOC010`). An import cycle is `KDLITH-IMP002` and
+origin source notes (`KDLITH-LOC010`). An import cycle is `KDLITH-IMP002` and
 a repeat under `repeated=reject` is `KDLITH-IMP003`.
 
 ## The invocation bound

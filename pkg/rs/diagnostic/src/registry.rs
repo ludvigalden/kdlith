@@ -420,7 +420,7 @@ pub const CODES: &[CodeDefinition] = &[
         label: "source-unpinned",
         severity: Severity::Note,
         exit_class: 0,
-        trigger: "a reading used a dir or origin source that declares no pin; the note carries the tree's computed digest, and the local source is exempt",
+        trigger: "a reading used an origin source that declares no pin; the note carries the tree's computed digest; a dir source, which takes no pin, and the local source are exempt",
         message_template: "source <source> (<kind>) is unpinned; its tree digests to <digest>",
         correction: "Pin the source with the digest given to have its tree checked on every reading",
         retired: false,

@@ -332,10 +332,12 @@ impl Sources {
         }
     }
 
-    /// One `KDLITH-LOC010` note per unpinned dir or origin source of the
+    /// One `KDLITH-LOC010` note per unpinned origin source of the
     /// manifest the reading used, in name order, each with the tree's
-    /// digest. Sources the host registers and overridden sources are
-    /// exempt; an override is already a warning.
+    /// digest: the value to pin it by. A dir source is never noted, since
+    /// it takes no pin and its tree is the manifest's own to version.
+    /// Sources the host registers and overridden sources are exempt; an
+    /// override is already a warning.
     pub(crate) fn unpinned_notes(&self, origin: &str) -> Vec<DiagnosticRecord> {
         let used = self.used.borrow();
         used.iter()
@@ -346,7 +348,6 @@ impl Sources {
                     return None;
                 }
                 let kind = match &entry.tree {
-                    Tree::Dir(_) => "dir",
                     Tree::Origin(tree) if tree.pinned.is_none() => {
                         tree.located.get()?.as_ref().ok()?;
                         "origin"
