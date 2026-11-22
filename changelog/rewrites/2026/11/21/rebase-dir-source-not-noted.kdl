@@ -1,0 +1,4 @@
+rewrite rebase-dir-source-not-noted mode=manual {
+    reason "kdlith#1 was merged by rebase, which replaced the fix's commit"
+    replace from="66915c9e0534c13b734c8619483d4ae7423532e1" to="79db571f220f01f1ad1f66ac76f57fac9aca88f9" committed="2026-11-21T22:10:26Z"
+}
