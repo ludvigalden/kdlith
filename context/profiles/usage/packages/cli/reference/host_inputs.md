@@ -51,6 +51,21 @@ registers the file-based value resolver on every data verb: a KDL
 document of `value KEY VALUE` nodes supplying computed-default
 values. Nothing else is ever read for values.
 
+## Context handlers
+
+`--handler NAME` (repeatable) installs a built-in context handler
+that an effects group's `handler NAME` effect may name. The data verbs
+take it, and so does `gen schema`, so that a generated crate admits
+the handlers its schema names. The catalog holds three handlers, each
+keyed by the names of the calling node's fields: `copy-fields` sets
+the context slot each field names, from that field's value;
+`remove-fields` unsets each slot the field names name; and
+`clear-namespace` clears the context namespace each string field
+names (a field that is not a string names no namespace). A field that
+names no declared slot or namespace fails closed at the effect point
+(`KDLITH-CTX005`), and a name outside the catalog is a usage error
+(`KDLITH-CLI001`).
+
 ## Output policy
 
 `export` takes `--emit roots|items...` selection, `--format ndjson`,
