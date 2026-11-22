@@ -1,0 +1,7 @@
+title: kdlith - Maintain
+description: >-
+  Working on the kdlith repository: where things live, the workspace
+  conventions, how a change is verified, and where new context belongs.
+packages:
+  defaults:
+    - workspace

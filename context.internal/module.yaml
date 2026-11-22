@@ -1,0 +1,12 @@
+title: kdlith (internal)
+description: >-
+  Development context for work on kdlith itself: the meta-schema design
+  record (mechanism tables, the engine and reference-processor contract,
+  the generated-crate contract, the diagnostic registry), the workspace
+  architecture and crate boundaries, and the maintain profile with the
+  repository's layout, conventions, and verification gates.
+path: github.com/ludvigalden/kdlith/context.internal
+requires:
+  - github.com/ludvigalden/kdlith
+default_profiles:
+  - maintain
