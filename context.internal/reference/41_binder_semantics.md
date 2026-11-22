@@ -102,3 +102,9 @@ an item's serialized form; the typed reader carries it unchanged.
 Literals a definition writes (fallbacks, documented defaults, and
 `set` values) are decoded against their types when the definition
 compiles, through the same decoder.
+
+A record carries no registered identity. Where a data lookup needs
+one — `read data ID`, `list items`, and the snapshot index — it uses
+the record's bound `id` field when that field holds a string
+(`record_identity` in `pkg/rs/engine/src/list.rs`); a resolution item
+is found by its target as the contributions wrote it.
