@@ -4,7 +4,9 @@ amend "A1" {
     changes {
         set kind=module "status" "draft"
         set kind=module "validity.from" 20240101
-        set kind=module "validity" { validity from=20240101 to=20241231 }
+        set kind=module "validity" {
+            validity from=20240101 to=20241231
+        }
         put "status" "untyped until the schema selects a subject"
     }
 }

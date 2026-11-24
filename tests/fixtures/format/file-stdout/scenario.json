@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "fmt file --stdout prints the canonical layout of the document (the same bytes file-layout writes in place) and leaves the file as it was",
+  "args": ["fmt", "file", "--stdout", "input.kdl"],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden",
+    "files": {
+      "input.kdl": "input.kdl"
+    }
+  }
+}

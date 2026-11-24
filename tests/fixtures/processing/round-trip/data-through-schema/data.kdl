@@ -1,5 +1,4 @@
 locale en-gb {
     entry e1 group=archive
 }
-group archive {
-}
+group archive {}

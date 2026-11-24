@@ -292,6 +292,20 @@ impl Decoder {
             (TypeKind::Builtin(builtin), value) => {
                 builtin_accepts(*builtin, value).then_some(Decoded::Same)
             }
+            // A prose value reads folded, and is checked as it reads.
+            (TypeKind::String(string), Value::String(text))
+                if string.layout == Some(crate::types::TextLayout::Prose) =>
+            {
+                let folded = crate::types::fold_prose(text);
+                if !self.string(id, string, &folded) {
+                    return None;
+                }
+                Some(if folded == **text {
+                    Decoded::Same
+                } else {
+                    Decoded::Changed(Value::String(folded))
+                })
+            }
             (TypeKind::String(string), Value::String(text)) => {
                 self.string(id, string, text).then_some(Decoded::Same)
             }

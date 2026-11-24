@@ -1,0 +1,9 @@
+{
+  "binary": "kdlith",
+  "description": "vet schema accepts every layout construct: a schema-level layout rule (width, content-width), node-level rules (order=declared), and string types laid out as prose and verbatim; the rules are metadata the digest records, never binding",
+  "args": ["vet", "schema", "schema.kdl"],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [" types=9 nodes=5 ", " digest=a174413c0065c217"]
+  }
+}

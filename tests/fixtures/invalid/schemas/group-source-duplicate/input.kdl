@@ -1,6 +1,8 @@
 schema s version="1" {
     types {
-        object Shape { field label String }
+        object Shape {
+            field label String
+        }
         object Bundle {
             field name String
             field entries "list<Shape>"

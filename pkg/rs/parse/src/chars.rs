@@ -1,7 +1,7 @@
 //! KDL code-point classes.
 
 /// `disallowed-literal-code-points`; surrogates cannot occur in a `char`.
-pub(crate) fn is_disallowed(ch: char) -> bool {
+pub fn is_disallowed(ch: char) -> bool {
     matches!(
         ch,
         '\u{0}'..='\u{8}'
@@ -16,7 +16,7 @@ pub(crate) fn is_disallowed(ch: char) -> bool {
 }
 
 /// `unicode-space`.
-pub(crate) fn is_space(ch: char) -> bool {
+pub fn is_space(ch: char) -> bool {
     matches!(
         ch,
         '\u{9}' | '\u{20}' | '\u{A0}' | '\u{1680}' | '\u{2000}'
@@ -25,7 +25,7 @@ pub(crate) fn is_space(ch: char) -> bool {
 }
 
 /// `newline`; CRLF is two newline code points that count as one line.
-pub(crate) fn is_newline(ch: char) -> bool {
+pub fn is_newline(ch: char) -> bool {
     matches!(ch, '\u{A}'..='\u{D}' | '\u{85}' | '\u{2028}' | '\u{2029}')
 }
 

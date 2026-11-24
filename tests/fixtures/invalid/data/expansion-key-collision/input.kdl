@@ -1,1 +1,3 @@
-item { tag id "clash" }
+item {
+    tag id "clash"
+}

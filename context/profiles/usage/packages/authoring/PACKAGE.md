@@ -38,6 +38,8 @@ Read on demand:
 - context slots, effects, policies, and layers — `reference/context.md`
 - document rules, imports, profiles, and annotations —
   `reference/documents.md`
+- the canonical layout `kdlith fmt` writes, and the `layout` rules a
+  schema steers it with — `reference/layout.md`
 
 A minimal schema is in `examples/shop_schema.kdl`; the data that
 reads against it is in the `data` package's `examples/`.

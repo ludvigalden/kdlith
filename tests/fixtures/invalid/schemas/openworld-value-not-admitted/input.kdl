@@ -23,7 +23,7 @@ schema openworld-bad version="1" {
             capture code String
         }
         codec SystemName output=String {
-            match #"(?<system>[A-Z][A-Za-z0-9_]*)"#
+            match "(?<system>[A-Z][A-Za-z0-9_]*)"
             capture system String
         }
     }
@@ -43,8 +43,10 @@ schema openworld-bad version="1" {
             compose qualified-name system code
         }
     }
-    reference SystemRef target=SystemDef codec=SystemName lookup=systems qualification=explicit
-    reference EndpointRef target=ConceptDef codec=Endpoint lookup=concepts qualification=explicit-or-context {
+    reference SystemRef target=SystemDef codec=SystemName lookup=systems \
+            qualification=explicit
+    reference EndpointRef target=ConceptDef codec=Endpoint lookup=concepts \
+            qualification=explicit-or-context {
         qualifier system SystemRef required=#false
         open-world system-member=distribution values="external nope"
     }

@@ -100,6 +100,9 @@ pub struct Definition {
     /// The locations rule the schema root declares: the patterns its
     /// own imports, and the imports of data no profile governs, admit.
     pub locations: Option<LocationsDecl>,
+    /// The layout rule the schema root declares: how the documents it
+    /// reads are formatted. Metadata only.
+    pub layout: Option<crate::bindings::LayoutDecl>,
     pub references: Vec<ReferenceDecl>,
     /// The schema-level annotations the schema declares, in declaration
     /// order. Meta-schema definitions declare none: the declaration node's

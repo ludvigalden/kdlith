@@ -35,7 +35,11 @@ schema cd version="1" {
     }
     node holder role=record type=Holder {
         field name arg=0
-        field detail { from { children detail } }
+        field detail {
+            from {
+                children detail
+            }
+        }
         children detail min-occurs=1
     }
 }

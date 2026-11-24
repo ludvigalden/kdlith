@@ -1,0 +1,36 @@
+change schema-layout-rules {
+    summary "Order fields as declared, steer layout by schema, read prose folded"
+    category added
+    impact public
+    touches "input:fixtures" "input:meta-schema" "pkg/rs/cli" "pkg/rs/codegen" \
+            "pkg/rs/engine" "pkg/rs/format" "pkg/rs/schema-kdl" "context" "context.internal"
+    commit "6c509810c734e8dd03c64c8b1b34abb924761f2f"
+    commit "ef865d5070fc34b20834a7bb53226031fee977b2"
+    commit "6ef53fa822b2f6c3492fe988fa8c29d2d6725655"
+    detail """
+        Under a schema, fmt writes a node's properties in its declaration's field \
+        order and the children its fields bind in the same order. It moves only what \
+        no reading can observe: a child only a children rule admits, or one that \
+        declares a role, stays where it is with nothing moved across it; nothing moves \
+        across an empty line; and a node with a sequence keeps its children as \
+        written. A schema may declare layout width=N content-width=N \
+        order=declared|authored on its root, for every document it reads, and on a \
+        node declaration, for that node and everything under it; order=authored keeps \
+        a node as written. A string type may declare layout prose or layout verbatim: \
+        a prose value reads folded, each run of whitespace within a paragraph read as \
+        one space, so fmt refills it without changing what a reading returns, and a \
+        verbatim value is never broken over lines. By convention fmt also writes a \
+        value of an enum or a case-format string type bare. The meta-schema's node \
+        declaration now binds layout, effects, identity, value, and cases before its \
+        children rules, the order schemas are written in. The rules are metadata in \
+        the digest only when declared; the meta-schema digest moves to fc4f501f538ac83e.
+        """
+    migration """
+        A string type that declares layout prose reads its values folded: a value \
+        whose line breaks or whitespace runs within a paragraph carried meaning reads \
+        differently, so declare prose only on text where they do not. Formatting a \
+        document under its schema now reorders properties and field-bound children to \
+        the declaration's field order; reorder a declaration's field bindings to \
+        change it, or declare layout order=authored on a node to keep it as written.
+        """
+}

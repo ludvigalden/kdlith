@@ -76,6 +76,9 @@ pub(crate) fn all(cx: &mut Cx<'_>, input: &DefinitionInput) {
             }
             Construct::Provider(input) => provider(cx, site, input),
             Construct::SourceContext(input) => source_context(cx, site, input),
+            Construct::Layout(input) => {
+                cx.layout = Some(crate::bindings::LayoutDecl::from_input(input));
+            }
             // Collected by the first pass above.
             Construct::Profile(_) | Construct::Locations(_) | Construct::Reference(_) => {}
         }
@@ -180,6 +183,7 @@ fn type_decl(cx: &mut Cx<'_>, site: Site, ty: &TypeInput) {
             pattern,
             validator,
             min_length,
+            layout,
         } => {
             let label = format!("string {name}");
             let mut string = StringType::default();
@@ -192,6 +196,9 @@ fn type_decl(cx: &mut Cx<'_>, site: Site, ty: &TypeInput) {
                     validator_use(cx, site, &label, use_.name.clone(), use_.version.clone());
             }
             string.min_length = *min_length;
+            string.layout = layout
+                .as_deref()
+                .and_then(crate::types::TextLayout::from_name);
             (
                 name.clone(),
                 parameter_list(cx, site, &label, parameters),
@@ -785,6 +792,10 @@ fn node(cx: &mut Cx<'_>, site: Site, input: &NodeInput) {
             identity: identity.clone(),
             description: description.clone(),
             annotations: annotations.clone(),
+            layout: input
+                .layout
+                .as_ref()
+                .map(crate::bindings::LayoutDecl::from_input),
             site,
         });
     }

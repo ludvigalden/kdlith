@@ -28,9 +28,9 @@ schema broken version="1" {
     node set role=contribution type=Op parent=ops {
         field path arg=0
         field target arg=1
-        value-from-path field=path
         value codec=fixture-value {
             against target=target member=tail
         }
+        value-from-path field=path
     }
 }

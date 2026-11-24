@@ -1,6 +1,8 @@
 schema ui version="1" {
     types {
-        object Icon { field glyph String }
+        object Icon {
+            field glyph String
+        }
         object Plain {
             field label String
         }

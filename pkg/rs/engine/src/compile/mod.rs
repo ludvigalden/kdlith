@@ -228,6 +228,8 @@ pub(crate) struct Cx<'d> {
     pub(crate) profiles: Vec<crate::definition::ProfileDecl>,
     /// The schema root's locations rule, when it declares one.
     pub(crate) locations: Option<crate::definition::LocationsDecl>,
+    /// The schema root's layout rule, when it declares one.
+    pub(crate) layout: Option<crate::bindings::LayoutDecl>,
     pub(crate) references: Vec<crate::definition::ReferenceDecl>,
     pub(crate) annotations: Vec<crate::definition::AnnotationDecl>,
     /// The node groups the schema declares, expanded into children
@@ -273,6 +275,7 @@ fn start<'d>(
         imports: Vec::new(),
         profiles: Vec::new(),
         locations: None,
+        layout: None,
         references: Vec::new(),
         annotations: Vec::new(),
         groups: Vec::new(),
@@ -360,6 +363,7 @@ fn finish<'d>(
         imports: cx.imports,
         profiles: cx.profiles,
         locations: cx.locations,
+        layout: cx.layout,
         references: cx.references,
         annotations: cx.annotations,
         resolution: cx.resolution,

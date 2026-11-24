@@ -14,7 +14,7 @@ schema refordinal version="0" {
             field target String
         }
         codec Endpoint output=String {
-            match #"(?:(?<system>[A-Z]+):)?(?<code>[A-Za-z0-9]+)"#
+            match "(?:(?<system>[A-Z]+):)?(?<code>[A-Za-z0-9]+)"
             capture system String
             capture code String
         }
@@ -50,7 +50,8 @@ schema refordinal version="0" {
             compose qualified-name system id
         }
     }
-    reference ConceptRef target=Concept codec=Endpoint lookup=concepts qualification=explicit-or-context {
+    reference ConceptRef target=Concept codec=Endpoint lookup=concepts \
+            qualification=explicit-or-context {
         qualifier system String required=#false
     }
 }

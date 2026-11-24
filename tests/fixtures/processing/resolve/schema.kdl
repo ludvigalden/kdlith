@@ -41,5 +41,5 @@ schema deploy version="1" {
         field region property=region
         field token property=token
     }
-    provider vault ttl=300 "sh" "-c" "touch provider-executed"
+    provider vault "sh" "-c" "touch provider-executed" ttl=300
 }

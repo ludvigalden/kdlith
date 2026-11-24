@@ -7,7 +7,7 @@ schema demo version="1" {
     node thing role=record type=Thing {
         field name arg=0
     }
-    provider vault ttl=300 "secret-tool" "get" "--key"
+    provider vault "secret-tool" "get" "--key" ttl=300
     document {
         first {
             exactly-one thing

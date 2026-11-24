@@ -20,7 +20,8 @@ schema schema version="0" {
         enum Role {
             member record description="Emit a validated record"
             member declaration description="Register an identity and expose typed metadata"
-            member contribution description="Preserve an assignment or overlay for later resolution"
+            member contribution \
+                    description="Preserve an assignment or overlay for later resolution"
             member context-control description="Apply a declared context transition"
             member source-import description="Schedule another source invocation"
             member container description="Process children under structural and scope rules"
@@ -64,6 +65,29 @@ schema schema version="0" {
             field identity "optional<IdentityBlock>"
             field description "optional<String>"
             field annotations "optional<list<NodeAnnotation>>"
+            field layout "optional<LayoutRule>"
+        }
+
+        // The order a formatted node's properties and children are
+        // written in; absent means declared.
+        enum LayoutOrder {
+            member declared description="""
+                As the declaration binds them: properties by field, children by the field or \
+                children rule that admits them
+                """
+            member authored description="As the document writes them"
+        }
+
+        // How documents are formatted: the column no line runs past, the
+        // most columns a line holds after its indentation, and the order
+        // a node's properties and children are written in. On the schema
+        // root it holds for every document the schema reads; on a node
+        // declaration, for that node and everything under it, until a
+        // rule further down says otherwise.
+        object LayoutRule {
+            field width "optional<U64>"
+            field content-width "optional<U64>"
+            field order "optional<LayoutOrder>"
         }
 
         // The name of a schema-declared annotation. Kebab-case, so a
@@ -124,10 +148,20 @@ schema schema version="0" {
         // does not install compiles, and the binder emits a pending
         // typed-binding item.
         enum BindingCodec {
-            member argument-tail description="The remaining arguments, typed per expected type, no scalar-to-list promotion"
+            member argument-tail description="""
+                The remaining arguments, typed per expected type, no scalar-to-list promotion
+                """
             member fixture-value description="The type-directed recursive form"
-            member from-kind description="The payload shape is selected by the value the resolved declaration holds in its member field: flag binds Bool, number U64, choice one of the choices field the against block names (default `choices`), text String"
-            member from-type-name description="The payload's type is the declared type the resolved declaration names in its member field, held as a type name string; a list-typed or optional spelling admits those forms, and a name no declared type answers fails closed at link"
+            member from-kind description="""
+                The payload shape is selected by the value the resolved declaration holds in \
+                its member field: flag binds Bool, number U64, choice one of the choices field \
+                the against block names (default `choices`), text String
+                """
+            member from-type-name description="""
+                The payload's type is the declared type the resolved declaration names in its \
+                member field, held as a type name string; a list-typed or optional spelling \
+                admits those forms, and a name no declared type answers fails closed at link
+                """
         }
 
         // A path-typed payload binding: how a node's remaining payload
@@ -211,8 +245,7 @@ schema schema version="0" {
         }
 
         // All remaining positional arguments, in order, as a list.
-        object ArgsSource {
-        }
+        object ArgsSource {}
 
         object PropertySource {
             field name FieldName
@@ -392,21 +425,10 @@ schema schema version="0" {
                 }
             }
         }
+        field layout child=layout
         field fields {
             from {
                 entries field key="arg(0)" value=FieldBinding
-            }
-            duplicate-keys reject
-        }
-        field children {
-            from {
-                entries children key="arg(0)" value=ChildRule
-            }
-            duplicate-keys reject
-        }
-        field children-groups {
-            from {
-                entries children-group key="arg(0)" value=ChildRule
             }
             duplicate-keys reject
         }
@@ -420,10 +442,27 @@ schema schema version="0" {
                 children exactly-one
             }
         }
+        field identity child=identity
         field value child=value
         field value-from-path child=value-from-path
         field cases child=cases
-        field identity child=identity
+        field annotations {
+            from {
+                children annotation
+            }
+        }
+        field children {
+            from {
+                entries children key="arg(0)" value=ChildRule
+            }
+            duplicate-keys reject
+        }
+        field children-groups {
+            from {
+                entries children-group key="arg(0)" value=ChildRule
+            }
+            duplicate-keys reject
+        }
         field sequence child=sequence
         field descendants {
             from {
@@ -431,11 +470,6 @@ schema schema version="0" {
             }
         }
         field description property=description
-        field annotations {
-            from {
-                children annotation
-            }
-        }
         children parents max-occurs=1
         children effects max-occurs=2
         children value max-occurs=1
@@ -446,6 +480,15 @@ schema schema version="0" {
         children descendants
         children annotation
         children children-group
+        children layout max-occurs=1
+    }
+
+    // A node declaration's layout rule: `layout width=N content-width=N
+    // order=declared|authored`, each property optional.
+    node layout type=LayoutRule parent=node {
+        field width property=width
+        field content-width property=content-width
+        field order property=order
     }
 
     // A schema-level annotation declaration: `annotation NAME TYPE`,

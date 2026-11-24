@@ -26,12 +26,12 @@ schema pending-kind-composed version="1" {
             field context "optional<String>"
         }
         codec QualifiedName output=String {
-            match #"(?<owner>[a-z]+):(?<name>[a-z]+)"#
+            match "(?<owner>[a-z]+):(?<name>[a-z]+)"
             capture owner String
             capture name String
         }
         codec LocalName output=String {
-            match #"(?<name>[a-z]+)"#
+            match "(?<name>[a-z]+)"
             capture name String
         }
     }
@@ -116,9 +116,12 @@ schema pending-kind-composed version="1" {
             against target=target member=type
         }
     }
-    reference KnobRef target=Knob codec=QualifiedName lookup=knobs qualification=explicit
-    reference TokenRef target=Token codec=QualifiedName lookup=tokens qualification=explicit
-    reference PropRef target=Prop codec=LocalName lookup=props qualification=explicit-or-context {
+    reference KnobRef target=Knob codec=QualifiedName lookup=knobs \
+            qualification=explicit
+    reference TokenRef target=Token codec=QualifiedName lookup=tokens \
+            qualification=explicit
+    reference PropRef target=Prop codec=LocalName lookup=props \
+            qualification=explicit-or-context {
         qualifier namespace String required=#false
     }
 }

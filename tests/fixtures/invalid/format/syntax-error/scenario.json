@@ -1,0 +1,8 @@
+{
+  "binary": "kdlith",
+  "description": "fmt file over a document that is not KDL v2 reports the parser's diagnostic at the span read file reports, exits 1, and writes nothing",
+  "args": ["fmt", "file", "input.kdl"],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

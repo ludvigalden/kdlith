@@ -53,6 +53,8 @@ pub enum Construct {
     Profile(ProfileInput),
     /// The schema root's locations rule.
     Locations(LocationsInput),
+    /// The schema root's layout rule.
+    Layout(LayoutInput),
     Reference(ReferenceInput),
     /// A schema-level annotation declaration.
     Annotation(AnnotationInput),
@@ -74,6 +76,8 @@ pub enum TypeInput {
         pattern: Option<String>,
         validator: Option<ValidatorInput>,
         min_length: Option<u64>,
+        /// The `TextLayout` member the type's `layout` names.
+        layout: Option<String>,
     },
     Enum {
         name: String,
@@ -291,6 +295,8 @@ pub struct NodeInput {
     pub description: Option<String>,
     /// The annotation facts the declaration carries, in written order.
     pub annotations: Vec<NodeAnnotationInput>,
+    /// The declaration's layout rule.
+    pub layout: Option<LayoutInput>,
 }
 
 /// One field binding and the sources that populate it.
@@ -493,6 +499,15 @@ pub struct ProfileInput {
 pub struct MatchRuleInput {
     pub kind: String,
     pub text: String,
+}
+
+/// A layout rule, as declared: the line limits and the `LayoutOrder`
+/// member, each optional.
+#[derive(Clone, Debug, Default)]
+pub struct LayoutInput {
+    pub width: Option<u64>,
+    pub content_width: Option<u64>,
+    pub order: Option<String>,
 }
 
 /// A locations rule, as declared.

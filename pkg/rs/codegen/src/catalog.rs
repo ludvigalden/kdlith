@@ -305,7 +305,12 @@ pub(crate) struct Glue {
 }
 
 /// The record items in the order `take` spells them.
-pub(crate) const RECORD_ORDER: [&str; 3] = ["DocumentRule", "SourceContextDef", "LocationsRule"];
+pub(crate) const RECORD_ORDER: [&str; 4] = [
+    "DocumentRule",
+    "SourceContextDef",
+    "LocationsRule",
+    "LayoutRule",
+];
 
 pub(crate) fn glue(name: &str) -> Option<Glue> {
     let glue = match name {
@@ -370,9 +375,11 @@ pub(crate) fn glue(name: &str) -> Option<Glue> {
                 "FieldBindingInput",
                 "SourceInput",
                 "NodeAnnotationInput",
+                "LayoutInput",
             ],
             types: &[
                 "NodeDef",
+                "LayoutRule",
                 "FieldBinding",
                 "Source",
                 "Effect",
@@ -409,6 +416,12 @@ pub(crate) fn glue(name: &str) -> Option<Glue> {
             record_arm: Some(LOCATIONS_RULE_TAKE_ARM),
             engine_inputs: &["LocationsInput"],
             types: &["LocationsRule"],
+        },
+        "LayoutRule" => Glue {
+            arm: "",
+            record_arm: Some(LAYOUT_RULE_TAKE_ARM),
+            engine_inputs: &["LayoutInput"],
+            types: &["LayoutRule"],
         },
         "ReferenceDef" => Glue {
             arm: REFERENCE_DEF_ARM,
@@ -454,6 +467,7 @@ const STRING_TYPE_ARM: &str = r##"        Item::StringType(StringType {
             validator,
             validator_version,
             min_length,
+            layout,
         }) => Construct::Type(TypeInput::String {
             name: name.as_str().to_owned(),
             parameters: parameters
@@ -471,6 +485,7 @@ const STRING_TYPE_ARM: &str = r##"        Item::StringType(StringType {
                 version: validator_version,
             }),
             min_length,
+            layout: layout.map(|layout| layout.member().to_owned()),
         }),
 "##;
 
@@ -781,6 +796,29 @@ const LOCATIONS_RULE_TAKE_ARM: &str = r##"            // A schema root's locatio
                 Some(Construct::Locations(locations_input(&rule))),
                 span,
             ),
+"##;
+
+const LAYOUT_RULE_TAKE_ARM: &str = r##"            // A schema root's layout rule is a record: how the documents
+            // the schema reads are formatted, never referenced by name.
+            Item::LayoutRule(rule) => push(
+                input,
+                records,
+                Some(Construct::Layout(layout_input(&rule))),
+                span,
+            ),
+"##;
+
+/// The compiler-input mapping of a layout rule, shared by the node
+/// declaration arm and the record arm.
+pub(crate) const LAYOUT_INPUT: &str = r##"
+/// A layout rule, into its compiler input.
+fn layout_input(rule: &LayoutRule) -> LayoutInput {
+    LayoutInput {
+        width: rule.width,
+        content_width: rule.content_width,
+        order: rule.order.map(|order| order.member().to_owned()),
+    }
+}
 "##;
 
 /// The compiler-input mapping of a locations rule, shared by the

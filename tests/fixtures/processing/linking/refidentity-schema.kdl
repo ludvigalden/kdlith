@@ -24,12 +24,12 @@ schema refidentity version="1" {
             field role RoleRef
         }
         codec QualifiedName output=String {
-            match #"(?<owner>[a-z]+):(?<name>[a-z]+)"#
+            match "(?<owner>[a-z]+):(?<name>[a-z]+)"
             capture owner String
             capture name String
         }
         codec RoleName output=String {
-            match #"(?:(?<owner>[a-z]+):)?(?<name>[a-z]+)"#
+            match "(?:(?<owner>[a-z]+):)?(?<name>[a-z]+)"
             capture owner String
             capture name String
         }
@@ -76,27 +76,29 @@ schema refidentity version="1" {
     node override role=declaration type=Override parent=component root=#true {
         field target arg=0
         field role property=role
-        value codec=from-kind {
-            against target=target member=policy
-        }
         identity {
             domain overrides
             compose qualified-name target role
+        }
+        value codec=from-kind {
+            against target=target member=policy
         }
     }
     node page-override role=declaration type=Override parent=page {
         field target arg=0
         field role property=role
-        value codec=from-kind {
-            against target=target member=policy
-        }
         identity {
             domain page-overrides
             compose qualified-name target role
         }
+        value codec=from-kind {
+            against target=target member=policy
+        }
     }
-    reference KnobRef target=Knob codec=QualifiedName lookup=knobs qualification=explicit
-    reference RoleRef target=Role codec=RoleName lookup=roles qualification=explicit-or-context {
+    reference KnobRef target=Knob codec=QualifiedName lookup=knobs \
+            qualification=explicit
+    reference RoleRef target=Role codec=RoleName lookup=roles \
+            qualification=explicit-or-context {
         qualifier owner String required=#false
     }
 }

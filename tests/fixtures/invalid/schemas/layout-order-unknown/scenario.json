@@ -1,0 +1,8 @@
+{
+  "binary": "kdlith",
+  "description": "A layout rule whose order= names no LayoutOrder member is rejected where the definition is read: the declared and authored orders are the only two",
+  "args": ["vet", "schema", "input.kdl"],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

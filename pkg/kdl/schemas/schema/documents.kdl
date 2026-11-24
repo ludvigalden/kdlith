@@ -73,7 +73,8 @@ schema schema version="0" {
         // How a source repeated in one processing session is handled.
         enum RepeatedImport {
             member reject description="A second import of the same source is an error"
-            member coalesce description="A second import under equal context reuses the first invocation"
+            member coalesce \
+                    description="A second import under equal context reuses the first invocation"
             member instantiate description="Each import is a separate invocation"
         }
 
@@ -240,7 +241,8 @@ schema schema version="0" {
         }
 
         enum ComposeForm {
-            member qualified-name description="Compose a qualified name from the listed fields, in order"
+            member qualified-name \
+                    description="Compose a qualified name from the listed fields, in order"
         }
 
         // A named reference type: the target it resolves to, the
@@ -277,9 +279,14 @@ schema schema version="0" {
         // record.
         enum Qualification {
             member explicit description="The reference spells its qualification completely"
-            member explicit-or-context description="The reference may take missing qualifiers from context"
-            member imported-or-context description="The reference may resolve through an import namespace or context"
-            member explicit-or-sibling description="The reference may take missing qualifiers from a sibling field of the same record"
+            member explicit-or-context \
+                    description="The reference may take missing qualifiers from context"
+            member imported-or-context \
+                    description="The reference may resolve through an import namespace or context"
+            member explicit-or-sibling description="""
+                The reference may take missing qualifiers from a sibling field of the same \
+                record
+                """
         }
 
         // One qualifier of a reference: its name, its type or the
@@ -319,14 +326,17 @@ schema schema version="0" {
 
         // How contributions to one target combine.
         enum ResolutionSelection {
-            member replace description="The highest-precedence contribution replaces the rest"
-            member union description="Contributions union their values, per the resolver's contract"
+            member replace \
+                    description="The highest-precedence contribution replaces the rest"
+            member union \
+                    description="Contributions union their values, per the resolver's contract"
         }
 
         // How a layer contributing the same target twice is treated.
         enum DuplicateTreatment {
             member reject description="A twice-contributed target is a duplicate rejection"
-            member last-wins description="The later contribution wins, per the resolver's contract"
+            member last-wins \
+                    description="The later contribution wins, per the resolver's contract"
         }
 
         // Whether a target no contribution reaches is an error.
@@ -380,6 +390,7 @@ schema schema version="0" {
         children provider
         children annotation
         children group
+        children layout max-occurs=1
     }
 
     node types role=container {
@@ -526,6 +537,14 @@ schema schema version="0" {
                 args
             }
         }
+    }
+
+    // The schema's layout rule: how every document it reads is
+    // formatted, unless a node declaration's own rule says otherwise.
+    node layout role=record type=LayoutRule parent=schema {
+        field width property=width
+        field content-width property=content-width
+        field order property=order
     }
 
     // Locations rules: one on a schema governs its own imports and the

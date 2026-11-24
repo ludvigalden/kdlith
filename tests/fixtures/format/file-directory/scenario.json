@@ -1,0 +1,14 @@
+{
+  "binary": "kdlith",
+  "description": "a directory argument names every .kdl file under it, in path order: each is formatted in place, a file of another extension and everything under a hidden directory are left alone",
+  "args": ["fmt", "file", "tree"],
+  "expect": {
+    "exit": 0,
+    "files": {
+      "tree/a.kdl": "expected/a.kdl",
+      "tree/nested/b.kdl": "expected/b.kdl",
+      "tree/notes.txt": "tree/notes.txt",
+      "tree/.hidden/c.kdl": "tree/.hidden/c.kdl"
+    }
+  }
+}

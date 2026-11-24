@@ -1,0 +1,12 @@
+{
+  "binary": "kdlith",
+  "description": "fmt file over a document already in the canonical layout leaves it byte for byte as it was and writes no staged file",
+  "args": ["fmt", "file", "input.kdl"],
+  "expect": {
+    "exit": 0,
+    "files": {
+      "input.kdl": "input.kdl"
+    },
+    "absent": [".input.kdl.kdlith-fmt"]
+  }
+}

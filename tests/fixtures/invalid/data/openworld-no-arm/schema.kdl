@@ -54,7 +54,8 @@ schema openworld version="1" {
             compose qualified-name id
         }
     }
-    reference EndpointRef target=ConceptDef codec=Endpoint lookup=concepts qualification=explicit-or-context {
+    reference EndpointRef target=ConceptDef codec=Endpoint lookup=concepts \
+            qualification=explicit-or-context {
         qualifier system String required=#false
     }
 }

@@ -265,6 +265,7 @@ pub(crate) fn declaration(cx: &mut Cx<'_>, doc: usize, node: &SyntaxNode) {
             identity: None,
             description: description.clone(),
             annotations: annotations.clone(),
+            layout: None,
             site,
         });
     }

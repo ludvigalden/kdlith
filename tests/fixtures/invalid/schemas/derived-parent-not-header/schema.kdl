@@ -20,11 +20,7 @@ schema derivedid version="0" {
             field note String
         }
     }
-    node concept root=#true role=declaration type=Concept {
-        identity {
-            domain concepts
-            compose qualified-name code
-        }
+    node concept role=declaration type=Concept root=#true {
         field code {
             from {
                 children codes {
@@ -32,15 +28,15 @@ schema derivedid version="0" {
                 }
             }
         }
+        identity {
+            domain concepts
+            compose qualified-name code
+        }
         children codes
         children mapping
         children pack
     }
-    node mapping parent=concept role=declaration type=Mapping {
-        identity {
-            domain mappings
-            compose qualified-name code id
-        }
+    node mapping role=declaration type=Mapping parent=concept {
         field id arg=0 {
             from {
                 ordinal key=source
@@ -53,17 +49,21 @@ schema derivedid version="0" {
         }
         field source property=source
         field target property=target
-    }
-    node pack parent=concept root=#true role=declaration type=Pack {
         identity {
-            domain packs
-            compose qualified-name code
+            domain mappings
+            compose qualified-name code id
         }
+    }
+    node pack role=declaration type=Pack parent=concept root=#true {
         field code arg=0 {
             from {
                 parent code
             }
         }
         field note property=note
+        identity {
+            domain packs
+            compose qualified-name code
+        }
     }
 }

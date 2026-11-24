@@ -13,7 +13,7 @@ schema catalog version="1" {
             field name String
         }
         codec GroupName output=String {
-            match #"(?<name>[a-z0-9-]+)"#
+            match "(?<name>[a-z0-9-]+)"
             capture name String
         }
     }

@@ -100,3 +100,9 @@ diagnostic per disagreeing qualifier window); its declaration-time
 misuses reuse `DLC005`.
 The shipped resolver adds `DLC010` (a resolver refusal), leaving
 `DLC006` the not-installed and no-policy cases.
+The `FMT` area joins with `kdlith fmt`: `FMT001` an unformatted
+document under `--check`, `FMT002` a layout the formatter's own
+read-back check refused (a formatter defect, reported instead of
+written), `FMT003` a failed replacement. The `layout` rules mint no
+code of their own: an unknown order or text layout is `BND008` and a
+second rule `BND002`, where the meta-schema binds them.

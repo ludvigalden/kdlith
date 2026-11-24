@@ -14,7 +14,7 @@ schema pending-kind-named-choices version="1" {
             field allows "optional<list<String>>"
         }
         codec QualifiedName output=String {
-            match #"(?<owner>[a-z]+):(?<name>[a-z]+)"#
+            match "(?<owner>[a-z]+):(?<name>[a-z]+)"
             capture owner String
             capture name String
         }
@@ -58,5 +58,6 @@ schema pending-kind-named-choices version="1" {
             against target=target member=policy choices=allows
         }
     }
-    reference KnobRef target=Knob codec=QualifiedName lookup=knobs qualification=explicit
+    reference KnobRef target=Knob codec=QualifiedName lookup=knobs \
+            qualification=explicit
 }

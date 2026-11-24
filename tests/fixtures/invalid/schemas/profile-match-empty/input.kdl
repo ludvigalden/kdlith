@@ -8,7 +8,6 @@ schema neg version="1" {
         field id arg=0
     }
     profile a {
-        match {
-        }
+        match {}
     }
 }

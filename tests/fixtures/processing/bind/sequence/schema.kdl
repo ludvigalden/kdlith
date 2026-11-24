@@ -10,8 +10,7 @@ schema demo version="1" {
     node thing role=record type=Thing parent=box {
         field name arg=0
     }
-    node mid role=container parent=box {
-    }
+    node mid role=container parent=box {}
     node box role=container type=Box {
         field title arg=0
         children mid

@@ -60,10 +60,10 @@ schema remove-args version="1" {
                 }
             }
         }
-        children mapping
         effects target=following {
             remove-from-args field=slots
         }
+        children mapping
     }
     node stamp role=record type=Stamp {
         field system context=system

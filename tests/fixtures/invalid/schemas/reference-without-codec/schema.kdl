@@ -15,7 +15,8 @@ schema config version="1" {
     node use role=record type=Use {
         field target arg=0
     }
-    reference ConfigVarRef target=ConfigVarDef lookup=config-vars qualification=explicit {
+    reference ConfigVarRef target=ConfigVarDef lookup=config-vars \
+            qualification=explicit {
         qualifier scope String
     }
 }

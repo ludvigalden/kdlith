@@ -230,6 +230,70 @@ pub struct StringType {
     pub pattern: Option<String>,
     pub validator: Option<ValidatorUse>,
     pub min_length: Option<u64>,
+    /// How the type's values are read and formatted; absent keeps every
+    /// value exactly as written.
+    pub layout: Option<TextLayout>,
+}
+
+/// How a string type's values are laid out over lines.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum TextLayout {
+    /// Paragraphs separated by empty lines: a reading folds each run of
+    /// whitespace within a paragraph, line breaks included, to one space,
+    /// so a formatter may refill the lines.
+    Prose,
+    /// Never broken over lines it does not already hold.
+    Verbatim,
+}
+
+impl TextLayout {
+    pub fn from_name(name: &str) -> Option<Self> {
+        Some(match name {
+            "prose" => TextLayout::Prose,
+            "verbatim" => TextLayout::Verbatim,
+            _ => return None,
+        })
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            TextLayout::Prose => "prose",
+            TextLayout::Verbatim => "verbatim",
+        }
+    }
+}
+
+/// `text` as a prose value reads: paragraphs (separated by lines holding
+/// only whitespace) joined by one empty line, each paragraph's runs of
+/// whitespace folded to one space, leading and trailing whitespace gone.
+pub fn fold_prose(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut paragraph = String::new();
+    let flush = |paragraph: &mut String, out: &mut String| {
+        if !paragraph.is_empty() {
+            if !out.is_empty() {
+                out.push_str("\n\n");
+            }
+            out.push_str(paragraph);
+            paragraph.clear();
+        }
+    };
+    for line in text.split('\n') {
+        let mut words = line.split_whitespace().peekable();
+        if words.peek().is_none() {
+            flush(&mut paragraph, &mut out);
+            continue;
+        }
+        for word in words {
+            if !paragraph.is_empty() {
+                paragraph.push(' ');
+            }
+            paragraph.push_str(word);
+        }
+    }
+    flush(&mut paragraph, &mut out);
+    out
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

@@ -5,6 +5,7 @@ members = [
     "pkg/rs/codegen",
     "pkg/rs/diagnostic",
     "pkg/rs/engine",
+    "pkg/rs/format",
     "pkg/rs/model",
     "pkg/rs/parse",
     "pkg/rs/runtime",

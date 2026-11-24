@@ -1,0 +1,47 @@
+// Every string keeps its value; only its spelling and line breaks change.
+strings {
+    fits "A short value stays on its line."
+    long """
+        An overlong value with no line break \
+        of its own becomes a multi-line string \
+        whose lines break at spaces through \
+        whitespace escapes, so the value reads \
+        back exactly as it was written.
+        """
+    lines """
+        first line
+        second line
+
+        fourth line after an empty one
+        """
+    multi """
+        Already multi-line with a value that \
+        fits on one line
+        """
+    collapse "one line"
+    trailing """
+        ends with spaces\s\s\s
+        and a tab\t
+        """
+    blanks """
+        \s\s\s
+        only spaces above
+        """
+    quotes #"a "quoted" word, and a backslash \ too"#
+    triple """
+        three quotes \""" inside
+        and a second line
+        """
+    raw #"C:\path\to\file"#
+    long-raw #"^(?:[a-z][a-z0-9]*)(?:-[a-z0-9]+)*\.(?:kdl|toml|yaml|json)$ and some more words to make it long enough"#
+    token "https://example.com/a/very/long/path/without/any/spaces/that/cannot/break/anywhere/at/all"
+    escapes """
+        \u{a0}non-breaking, \u{2028}line \
+        separator, \u{7f}delete
+        """
+    property key="""
+        a property value that is long enough \
+        that it no longer fits on the line \
+        beside its key
+        """
+}

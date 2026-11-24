@@ -16,15 +16,15 @@ schema schema version="0" {
         // Names used throughout the meta-schema.
 
         string TypeName {
-            pattern #"^[A-Z][A-Za-z0-9]*$"#
+            pattern "^[A-Z][A-Za-z0-9]*$"
         }
 
         string NodeName {
-            pattern #"^[a-z][a-z0-9]*(-[a-z0-9]+)*$"#
+            pattern "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
         }
 
         string FieldName {
-            pattern #"^[A-Za-z][A-Za-z0-9_-]*$"#
+            pattern "^[A-Za-z][A-Za-z0-9_-]*$"
         }
 
         string MemberName {
@@ -66,7 +66,8 @@ schema schema version="0" {
             member map description="Keyed collection with typed keys"
             member ordered-map description="Keyed collection that retains declaration order"
             member union description="One of several alternatives, discriminated explicitly"
-            member ref description="Symbolic reference to a declared entity of the target type"
+            member ref \
+                    description="Symbolic reference to a declared entity of the target type"
         }
 
         // Built-in string formats. Each has a precisely documented grammar;
@@ -79,6 +80,22 @@ schema schema version="0" {
             member upper-snake
             member uuid
             member zero-padded
+        }
+
+        // How a string type's values are written when a document is
+        // formatted. A string of neither kind keeps its value exactly: a
+        // value too long for its line becomes a multi-line string whose
+        // lines break through whitespace escapes, which read back as
+        // nothing.
+        enum TextLayout {
+            member prose description="""
+                Paragraphs separated by empty lines; a line break or a run of whitespace \
+                within a paragraph reads as one space, so formatting may refill the lines
+                """
+            member verbatim description="""
+                Written on one line as given; formatting never breaks the value over lines it \
+                does not already hold
+                """
         }
 
         // The sensitivity a logical field may declare: `secret` marks a
@@ -124,6 +141,7 @@ schema schema version="0" {
             field validator "optional<ValidatorName>"
             field validator-version "optional<String>"
             field min-length "optional<U64>"
+            field layout "optional<TextLayout>"
         }
 
         object EnumType {
@@ -322,10 +340,18 @@ schema schema version="0" {
             }
         }
         field min-length child=min-length
+        field layout {
+            from {
+                child layout {
+                    argument 0
+                }
+            }
+        }
         children format max-occurs=1
         children pattern max-occurs=1
         children validator max-occurs=1
         children min-length max-occurs=1
+        children layout max-occurs=1
         children parameter
     }
 

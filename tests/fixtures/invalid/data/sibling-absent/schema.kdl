@@ -25,34 +25,35 @@ schema parts version="1" {
         }
     }
     reference WorkRef target=Work codec=SlugName lookup=works qualification=explicit
-    reference PartRef target=Part codec=SlugName lookup=parts qualification=explicit-or-sibling {
+    reference PartRef target=Part codec=SlugName lookup=parts \
+            qualification=explicit-or-sibling {
         qualifier work from-field=work
     }
-    node work root=#true role=declaration type=Work {
-        identity {
-            domain works
-            compose qualified-name id
-        }
+    node work role=declaration type=Work root=#true {
         field id arg=0
         field instruments {
             from {
                 children part
             }
         }
+        identity {
+            domain works
+            compose qualified-name id
+        }
     }
     node part role=declaration type=Part parent=work {
-        identity {
-            domain parts
-            compose qualified-name work id
-        }
         field id arg=0
         field work {
             from {
                 parent id
             }
         }
+        identity {
+            domain parts
+            compose qualified-name work id
+        }
     }
-    node render root=#true role=record type=Render {
+    node render role=record type=Render root=#true {
         field id arg=0
         field work property=work
         field parts {

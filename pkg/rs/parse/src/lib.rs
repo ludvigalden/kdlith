@@ -1,6 +1,8 @@
 //! Streaming KDL v2 parser (pull events, coordinates, fail-closed
 //! limits) and writer. The parser derives from just-kdl and kdlite
-//! (MIT OR Apache-2.0); attribution in src/NOTICE.md.
+//! (MIT OR Apache-2.0); attribution in src/NOTICE.md. [`tree`] keeps
+//! what the event stream drops (comments, blank lines, slashdashed
+//! text, spellings), for a formatter.
 mod chars;
 mod coords;
 mod error;
@@ -9,8 +11,10 @@ mod limits;
 mod number;
 mod parse;
 mod scan;
+pub mod tree;
 mod write;
 
+pub use chars::{is_disallowed, is_newline, is_space};
 pub use coords::{Locator, locate};
 pub use error::{Construct, ErrorKind, Limit, ParseError};
 pub use event::{Entry, Event, Number, NumberKind, Radix, Spanned, Value};

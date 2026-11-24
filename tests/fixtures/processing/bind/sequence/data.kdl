@@ -1,5 +1,4 @@
 box "b" {
-    mid {
-    }
+    mid {}
     thing "t"
 }

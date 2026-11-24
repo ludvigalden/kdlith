@@ -1,15 +1,25 @@
 schema probes version="1" {
     types {
-        object Plain { field label String }
-        object Rich { field label String }
+        object Plain {
+            field label String
+        }
+        object Rich {
+            field label String
+        }
         union Choice {
             variant plain Plain
             variant rich Rich
         }
-        object Board { field control Choice }
+        object Board {
+            field control Choice
+        }
     }
     node board role=record type=Board {
-        field control { from { child panel } }
+        field control {
+            from {
+                child panel
+            }
+        }
     }
     node panel parent=board {
         field kind String property=kind

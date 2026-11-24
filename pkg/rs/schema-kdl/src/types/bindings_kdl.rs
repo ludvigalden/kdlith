@@ -47,12 +47,28 @@ object_type! {
         "identity" => identity: Option<IdentityBlock>,
         "description" => description: Option<String>,
         "annotations" => annotations: Option<Vec<NodeAnnotation>>,
+        "layout" => layout: Option<LayoutRule>,
     }
 }
 
 impl NodeDef {
     /// The identity domain its declarations register in.
     pub const DOMAIN: &str = "NodeDef";
+}
+
+enum_type! {
+    pub enum LayoutOrder {
+        "declared" => Declared,
+        "authored" => Authored,
+    }
+}
+
+object_type! {
+    pub struct LayoutRule {
+        "width" => width: Option<u64>,
+        "content-width" => content_width: Option<u64>,
+        "order" => order: Option<LayoutOrder>,
+    }
 }
 
 string_type! {
@@ -347,6 +363,8 @@ impl NodeGroupDef {
 pub(crate) const TYPES: &[TypeShape] = &[
     Role::SHAPE,
     NodeDef::SHAPE,
+    LayoutOrder::SHAPE,
+    LayoutRule::SHAPE,
     AnnotationName::SHAPE,
     AnnotationRequirement::SHAPE,
     NodeAnnotation::SHAPE,

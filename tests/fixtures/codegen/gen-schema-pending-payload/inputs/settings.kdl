@@ -9,7 +9,7 @@ schema settings version="1" {
             field text String
         }
         codec SettingName output=String {
-            match #"(?<name>[a-z0-9-]+)"#
+            match "(?<name>[a-z0-9-]+)"
             capture name String
         }
     }

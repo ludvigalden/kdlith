@@ -147,7 +147,58 @@ pub struct NodeDecl {
     /// checked when the definition compiles; nothing in binding,
     /// linking, or provenance reads them.
     pub annotations: Vec<NodeAnnotation>,
+    /// How the node and what is under it are formatted. Metadata only:
+    /// nothing in binding, linking, or provenance reads it.
+    pub layout: Option<LayoutDecl>,
     pub site: Site,
+}
+
+/// A layout rule: the line limits and the order of properties and
+/// children a formatter holds a node, or a whole document, to.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct LayoutDecl {
+    pub width: Option<u64>,
+    pub content_width: Option<u64>,
+    pub order: Option<LayoutOrder>,
+}
+
+/// The order a formatted node's properties and children are written in.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum LayoutOrder {
+    /// As the declaration binds them.
+    Declared,
+    /// As the document writes them.
+    Authored,
+}
+
+impl LayoutOrder {
+    pub fn from_name(name: &str) -> Option<Self> {
+        Some(match name {
+            "declared" => LayoutOrder::Declared,
+            "authored" => LayoutOrder::Authored,
+            _ => return None,
+        })
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            LayoutOrder::Declared => "declared",
+            LayoutOrder::Authored => "authored",
+        }
+    }
+}
+
+impl LayoutDecl {
+    /// The rule a declaration's input spells.
+    pub fn from_input(input: &crate::compile::input::LayoutInput) -> Self {
+        Self {
+            width: input.width,
+            content_width: input.content_width,
+            order: input.order.as_deref().and_then(LayoutOrder::from_name),
+        }
+    }
 }
 
 /// One annotation fact on a node declaration: the name of a

@@ -4,7 +4,9 @@ schema ui version="1" {
             member plain
             member icon
         }
-        object Adornment { field glyph String }
+        object Adornment {
+            field glyph String
+        }
         object Button {
             field label String
             field variant Variant

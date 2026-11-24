@@ -12,20 +12,20 @@ schema demo version="1" {
             field target PartRef
         }
         codec PartRef output=String {
-            match #"(?<name>[a-z-]+)"#
+            match "(?<name>[a-z-]+)"
             capture name String
         }
     }
     node part role=declaration {
         field name String arg=0
         field kind String property=kind
-        cases {
-            case property=kind equals="bolt" type=Bolt
-            case property=kind equals="nut" type=Nut
-        }
         identity {
             domain parts
             compose qualified-name name
+        }
+        cases {
+            case property=kind equals="bolt" type=Bolt
+            case property=kind equals="nut" type=Nut
         }
     }
     node use role=record type=Use {

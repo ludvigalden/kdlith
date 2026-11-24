@@ -1,0 +1,30 @@
+shop "corner" {
+    owner "Ada"
+    motto """
+        Fresh fruit,   every morning,
+        picked by hand.
+        """
+    banner "Open every day but Sunday"
+    item "apple" price=3 kind="stone-fruit" size="small" {
+        run "sh -c 'curl --silent https://example.com/apples | jq .price | tee prices.txt'"
+        tag "fruit" "red"
+
+        note "An apple a day keeps the doctor away, or so the saying goes, though no study has ever shown it. Ours are picked the day they are sold."
+    }
+    // Packs keep the order their sequence rule requires.
+    pack "crate" {
+        count 12
+        label "twelve to a crate"
+    }
+    // A bundle keeps the order it is written in.
+    bundle "sampler" {
+        count 3
+        label "one of each"
+    }
+    item "pear" size="large" price=4 {
+        run "true"
+
+        tag "fruit"
+        note "Ripe in autumn."
+    }
+}
