@@ -1,0 +1,11 @@
+{
+  "binary": "kdlith",
+  "description": "fmt schema formats a schema definition under the bundled meta-schema's conventions: semicolon-joined declarations take a line each, a value of an enum-typed meta-schema field (role=, a text layout) is written bare, an overlong description becomes a multi-line string; the definition vets to the same digest before and after (schema-definition-vet-written, schema-definition-vet-formatted)",
+  "args": ["fmt", "schema", "input.kdl"],
+  "expect": {
+    "exit": 0,
+    "files": {
+      "input.kdl": "expected.kdl"
+    }
+  }
+}

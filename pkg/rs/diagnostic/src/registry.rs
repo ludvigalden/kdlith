@@ -134,6 +134,11 @@ pub const AREAS: &[AreaDefinition] = &[
         owner: "cli",
         scope: "the changelog a binary embeds when it is built",
     },
+    AreaDefinition {
+        name: "FMT",
+        owner: "format",
+        scope: "formatting documents into the canonical layout: unformatted files, layouts that would not read back, writes",
+    },
 ];
 
 /// The registered codes, grouped by area in [`AREAS`] order and
@@ -1202,6 +1207,36 @@ pub const CODES: &[CodeDefinition] = &[
         trigger: "the changelog verb runs in a binary built without changelog data",
         message_template: "changelog data is unavailable: <reason>",
         correction: "Rebuild the binary where its changelog data can be generated",
+        retired: false,
+    },
+    CodeDefinition {
+        code: "KDLITH-FMT001",
+        label: "not-formatted",
+        severity: Severity::Error,
+        exit_class: 1,
+        trigger: "fmt --check reads a document whose text differs from its canonical layout",
+        message_template: "<path> is not formatted",
+        correction: "Run kdlith fmt without --check to write the canonical layout",
+        retired: false,
+    },
+    CodeDefinition {
+        code: "KDLITH-FMT002",
+        label: "layout-unstable",
+        severity: Severity::Error,
+        exit_class: 1,
+        trigger: "the layout fmt wrote for a document would not read back as the same document; the document is left as it was",
+        message_template: "<path> cannot be formatted without changing it; it is left as it was",
+        correction: "Report the document as a kdlith defect; the file is unchanged",
+        retired: false,
+    },
+    CodeDefinition {
+        code: "KDLITH-FMT003",
+        label: "write-failed",
+        severity: Severity::Error,
+        exit_class: 1,
+        trigger: "fmt cannot replace a document with its formatted text",
+        message_template: "cannot write <path>: <reason>",
+        correction: "Make the document and its directory writable, then run kdlith fmt again",
         retired: false,
     },
 ];

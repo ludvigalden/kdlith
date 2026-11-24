@@ -1,0 +1,10 @@
+shop "corner" {
+    motto "Fresh fruit, every morning, picked by hand."
+    item "apple" size=small price=3 {
+        note """
+            An apple a day keeps the doctor away, or so the saying goes,
+            though no study has ever shown it. Ours are picked the day they
+            are sold.
+            """
+    }
+}

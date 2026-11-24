@@ -1,0 +1,9 @@
+{
+  "binary": "kdlith",
+  "description": "vet schema over the schema-definition scenario's definition as fmt schema writes it: both compile to the same digest, so formatting a definition never changes what it declares",
+  "args": ["vet", "schema", "schema.kdl"],
+  "expect": {
+    "exit": 0,
+    "stdout-contains": [" digest=47fe7815dd3e3871"]
+  }
+}

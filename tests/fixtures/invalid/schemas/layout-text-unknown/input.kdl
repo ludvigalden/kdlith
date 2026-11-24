@@ -1,0 +1,13 @@
+schema s version="1" {
+    types {
+        string Body {
+            layout markdown
+        }
+        object Thing {
+            field body Body
+        }
+    }
+    node thing role=record type=Thing {
+        field body arg=0
+    }
+}

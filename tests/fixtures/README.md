@@ -70,6 +70,7 @@ Categories:
 | `schemas/`     | Schema definitions: types, bindings, context effects, and processing rules     |
 | `processing/`  | Processing data documents end to end, plus CLI smoke scenarios                 |
 | `codegen/`     | Processor generation: generated output, ownership, and drift checks            |
+| `format/`      | `kdlith fmt`: the canonical layout, its limits, and the schema's layout rules  |
 | `invalid/`     | Negative controls: inputs that must be rejected with declared diagnostic codes |
 | `harness/`     | Harness self-checks: the scratch protections must fail closed                  |
 
@@ -242,6 +243,22 @@ goldens. Editing an input changes its revision digest, so regenerate
 the goldens with it. `invalid/export/` holds the `KDLITH-EXP001`-`003`
 negative controls and the REF001 failure of the default complete
 scope.
+
+`format/` holds the `fmt` scenarios. The `file-*` scenarios pin the
+schema-less layout: `file-layout` rewrites a document written every
+which way in place and `file-stdout` prints the same bytes, leaving the
+file alone; `file-check-clean` and `file-idempotent` run over that
+output and change nothing; `file-strings` pins every string spelling,
+`file-width` the two line limits, and `file-directory` the directory
+expansion. The data scenarios share `format/shop.kdl`, whose layout
+rules exercise the schema surface: `data-layout` formats under it, and
+the `prose-read-*` twins read a document before and after its prose was
+refilled and pin the same record lines. `schema-definition` formats a
+definition under the meta-schema, and its `-vet-*` twins pin the same
+digest before and after. `invalid/format/` holds the `FMT001` and
+`FMT003` negatives and a syntax error under `fmt`;
+`schemas/vet/layout-rules` and `invalid/schemas/layout-*` pin the
+`layout` declarations.
 
 `processing/round-trip/` runs the full chain entrypoint to meta-schema
 to schema to data over the committed catalog schema: `vet data` and

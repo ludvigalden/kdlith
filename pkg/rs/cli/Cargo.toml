@@ -13,6 +13,7 @@ clap = { workspace = true }
 kdlith-codegen = { path = "../codegen" }
 kdlith-diagnostic = { path = "../diagnostic" }
 kdlith-engine = { path = "../engine" }
+kdlith-format = { path = "../format" }
 kdlith-model = { path = "../model" }
 kdlith-parse = { path = "../parse" }
 kdlith-schema-kdl = { path = "../schema-kdl" }

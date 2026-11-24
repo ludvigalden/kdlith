@@ -1,0 +1,11 @@
+{
+  "binary": "kdlith",
+  "description": "fmt file spells every string so it reads back as the same value: a value that fits stays on its line; an overlong single-paragraph value becomes a multi-line string broken at spaces through whitespace escapes; a value holding newlines is a multi-line string, and one that does not is a single-line string whatever it was written as; trailing and whitespace-only line text is escaped so no editor trims it; a closing-quote run is escaped; a raw string is used only where it saves escapes, and neither a value holding a backslash nor one with no space is ever broken; code points a string holds invisibly are escaped; a long property value opens its multi-line string after its key",
+  "args": ["fmt", "file", "input.kdl"],
+  "expect": {
+    "exit": 0,
+    "files": {
+      "input.kdl": "expected.kdl"
+    }
+  }
+}

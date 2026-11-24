@@ -1,0 +1,8 @@
+{
+  "binary": "kdlith",
+  "description": "fmt file stages a document's formatted text beside it and renames it over the document; when the staged file cannot be written (a directory holds its name) the run reports KDLITH-FMT003 naming the document, exits 1, and leaves the document as it was",
+  "args": ["fmt", "file", "input.kdl"],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

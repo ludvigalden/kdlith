@@ -1,0 +1,12 @@
+schema s version="1" {
+    layout width=80
+    layout content-width=60
+    types {
+        object Thing {
+            field name String
+        }
+    }
+    node thing role=record type=Thing {
+        field name arg=0
+    }
+}

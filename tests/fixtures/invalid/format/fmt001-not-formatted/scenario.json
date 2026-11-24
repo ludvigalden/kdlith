@@ -1,0 +1,8 @@
+{
+  "binary": "kdlith",
+  "description": "fmt file --check over a document whose text differs from its canonical layout reports KDLITH-FMT001 naming it, exits 1, and leaves the file as it was",
+  "args": ["fmt", "file", "--check", "input.kdl"],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "binary": "kdlith",
+  "description": "fmt data formats a document under the layout rules of format/shop.kdl: its schema-wide layout sets the line limits (64 columns of content), shop and item ask for declared order, so their properties follow their fields (size, kind, price) and their children the fields and rules that admit them (motto before owner, note before tag before run) while item and pack, records of their own, stay where they are with nothing moved across them; pack declares a sequence, so its children keep their order; an enum value and a kebab-case value are written bare; a prose value is folded and refilled (the motto fits one line, the note fills three); a verbatim command stays on its line however long",
+  "args": ["fmt", "data", "--schema", "{fx-suite}/format/shop.kdl", "input.kdl"],
+  "expect": {
+    "exit": 0,
+    "files": {
+      "input.kdl": "expected.kdl"
+    }
+  }
+}

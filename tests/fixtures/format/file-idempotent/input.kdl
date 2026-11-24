@@ -1,0 +1,38 @@
+// A document written every which way.
+package "kdlith" version="0.3.2"
+license MIT
+dependencies {
+    clap "=4.6.7" features=(list)"derive"
+    /-serde "=1.0" // retired
+    regex "=1.13.1" optional=#true
+}
+
+notes { // what changed
+    // a comment line
+    note "short"
+    note """
+        decide used to exit 1 both when its decisions held an error and when it could \
+        not decide at all. It now exits 1 only for the first.
+        """
+    /* inline */ note "hand-wrapped" """
+        This paragraph was broken by hand
+        and keeps its lines.
+
+        This one is a single long line that runs well past the eighty columns the \
+        content width allows.
+        """
+}
+empty {}
+tags a b c d e f g h i j k l m n o p q r s t u v w x y z aa bb cc dd ee ff gg hh \
+        ii jj kk ll mm nn
+pattern #"^\d+$"# quoted=#"say "hi""# plain="no escapes" "Hello\ttab"
+numbers 0xFF 1_000 1.5e10 #inf #-inf #nan #true #false #null
+"quoted name" key=1 (type)"annotated" /-{
+    dropped
+}
+/*
+   A block comment
+   spanning lines.
+*/
+last-node
+trailing "space   "

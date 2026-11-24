@@ -1,0 +1,9 @@
+{
+  "binary": "kdlith",
+  "description": "--width and --content-width set the two line limits for the whole document: a line at indentation i ends by column min(width, i + content-width) wherever a break can fall, so at 60 and 40 file-strings' input wraps at column 48 one level in and 52 two levels in",
+  "args": ["fmt", "file", "--stdout", "--width", "60", "--content-width", "40", "input.kdl"],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "stdout.golden"
+  }
+}

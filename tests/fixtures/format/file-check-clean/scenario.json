@@ -1,0 +1,10 @@
+{
+  "binary": "kdlith",
+  "description": "fmt file --check over a document already in the canonical layout (file-layout's output) reports nothing and exits 0: formatting is idempotent",
+  "args": ["fmt", "file", "--check", "input.kdl"],
+  "expect": {
+    "exit": 0,
+    "stdout-golden": "empty.golden",
+    "stderr-golden": "empty.golden"
+  }
+}

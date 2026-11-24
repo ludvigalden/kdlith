@@ -1,0 +1,19 @@
+{
+  "binary": "kdlith",
+  "description": "fmt file rewrites a document in the canonical layout in place: one node per line (a ; splits them), four spaces per level, single spaces between entries, names bare where they read back as themselves, a property's value after its type annotation, comments kept where they stand (a trailing one, one on a block's { line, a block comment before a node on its line, a multi-line block comment as written), at most one empty line between items, an empty children block as {}, a slashdashed entry and block as written, a header that outgrows its line filled onto continuation lines two levels in, a long single-paragraph string as a multi-line string wrapped through whitespace escapes, a hand-wrapped paragraph keeping its lines, strings raw only where that saves escapes, numbers as spelled, and a line's trailing whitespace inside a string kept; nothing is printed",
+  "args": [
+    "fmt",
+    "file",
+    "input.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "files": {
+      "input.kdl": "expected.kdl"
+    },
+    "absent": [
+      ".input.kdl.kdlith-fmt"
+    ],
+    "stdout-golden": "empty.golden"
+  }
+}

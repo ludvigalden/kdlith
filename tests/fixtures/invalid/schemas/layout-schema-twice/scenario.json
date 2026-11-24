@@ -1,0 +1,8 @@
+{
+  "binary": "kdlith",
+  "description": "A schema root carries at most one layout rule; a second is a cardinality fault",
+  "args": ["vet", "schema", "input.kdl"],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}

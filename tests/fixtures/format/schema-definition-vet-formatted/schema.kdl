@@ -1,0 +1,23 @@
+schema notes version="1" {
+    layout content-width=72
+    types {
+        enum Mood {
+            member calm description="""
+                Nothing in the note needs an answer, and nothing in it is urgent enough to \
+                interrupt anyone
+                """
+            member urgent
+        }
+        string Body {
+            layout prose
+        }
+        object Note {
+            field mood Mood
+            field body Body
+        }
+    }
+    node note role=record type=Note {
+        field mood property=mood
+        field body arg=0
+    }
+}

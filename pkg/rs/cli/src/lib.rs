@@ -1,12 +1,14 @@
 //! Commands, arguments, output conventions, and orchestration: a
-//! verb-first clap command tree (gen, vet, export, inspect, list,
+//! verb-first clap command tree (gen, vet, fmt, export, inspect, list,
 //! read, cache, changelog, plus help).
 mod cache;
 mod changelog;
 mod export;
+mod fmt;
 mod generate;
 mod handlers;
 mod inspect;
+mod layout;
 mod list;
 mod read;
 mod report;
@@ -53,6 +55,8 @@ enum Command {
     Gen(GenArgs),
     /// Validate schema definitions or data
     Vet(VetArgs),
+    /// Write documents in the canonical layout, or check that they are
+    Fmt(FmtArgs),
     /// Process data and write typed output
     Export(ExportArgs),
     /// Explain definitions, bindings, references, and provenance
@@ -188,6 +192,106 @@ struct GenWorkspaceArgs {
     /// report every difference and exit nonzero on any
     #[arg(long, conflicts_with = "dry_run")]
     check: bool,
+}
+
+/// `kdlith fmt file|schema|data`.
+#[derive(Args)]
+struct FmtArgs {
+    #[command(subcommand)]
+    command: FmtCommand,
+}
+
+#[derive(Subcommand)]
+enum FmtCommand {
+    /// Format KDL documents with no schema: the layout alone
+    File(FmtFileArgs),
+    /// Format schema definitions under the layout rules of the bundled
+    /// meta-schema, or the one `--meta-schema` names
+    Schema(FmtSchemaArgs),
+    /// Format data documents under the layout rules of the schema
+    /// `--schema` names
+    Data(FmtDataArgs),
+}
+
+/// What `fmt` does with each document, and the line limits it holds
+/// them to.
+#[derive(Args)]
+struct FmtOutputArgs {
+    /// Write nothing; report each document whose text differs from its
+    /// canonical layout (KDLITH-FMT001) and exit 1 if any does
+    #[arg(long, conflicts_with = "stdout")]
+    check: bool,
+    /// Print each formatted document to stdout instead of replacing it
+    #[arg(long)]
+    stdout: bool,
+    /// The column no line runs past, for the whole document (default:
+    /// the schema's, else 100)
+    #[arg(long, value_name = "COLUMNS", value_parser = clap::value_parser!(u16).range(20..))]
+    width: Option<u16>,
+    /// The most columns a line holds after its indentation, for the whole
+    /// document (default: the schema's, else 80)
+    #[arg(long, value_name = "COLUMNS", value_parser = clap::value_parser!(u16).range(20..))]
+    content_width: Option<u16>,
+}
+
+impl FmtOutputArgs {
+    fn run(&self) -> fmt::Run {
+        let mode = match (self.check, self.stdout) {
+            (true, _) => fmt::Mode::Check,
+            (_, true) => fmt::Mode::Stdout,
+            _ => fmt::Mode::Write,
+        };
+        fmt::Run {
+            mode,
+            width: self.width.map(usize::from),
+            content_width: self.content_width.map(usize::from),
+        }
+    }
+}
+
+#[derive(Args)]
+struct FmtFileArgs {
+    #[command(flatten)]
+    output: FmtOutputArgs,
+    /// KDL documents; a directory names every .kdl file under it, - the
+    /// standard input (formatted to stdout)
+    #[arg(required = true)]
+    files: Vec<PathBuf>,
+}
+
+#[derive(Args)]
+struct FmtSchemaArgs {
+    #[command(flatten)]
+    output: FmtOutputArgs,
+    /// A meta-schema definition document replacing the bundled one; it is
+    /// itself vetted with complete checking
+    #[arg(long = "meta-schema", value_name = "FILE")]
+    meta_schema: Option<PathBuf>,
+    #[command(flatten)]
+    locations: LocationArgs,
+    /// Schema definition documents; a directory names every .kdl file
+    /// under it, - the standard input
+    #[arg(required = true)]
+    files: Vec<PathBuf>,
+}
+
+#[derive(Args)]
+struct FmtDataArgs {
+    #[command(flatten)]
+    output: FmtOutputArgs,
+    /// A meta-schema definition document replacing the bundled one; it is
+    /// itself vetted with complete checking
+    #[arg(long = "meta-schema", value_name = "FILE")]
+    meta_schema: Option<PathBuf>,
+    /// The schema definition whose layout rules the data follows
+    #[arg(long, value_name = "FILE", required = true)]
+    schema: PathBuf,
+    #[command(flatten)]
+    locations: LocationArgs,
+    /// Data documents; a directory names every .kdl file under it, - the
+    /// standard input
+    #[arg(required = true)]
+    files: Vec<PathBuf>,
 }
 
 /// `kdlith vet schema|data`.
@@ -851,6 +955,7 @@ where
     match cli.command {
         Command::Gen(args) => generate::run(args.command),
         Command::Vet(args) => vet::run(args.command),
+        Command::Fmt(args) => fmt::dispatch(args.command),
         Command::Export(args) => export::run(args),
         Command::Inspect(args) => inspect::run(args.command),
         Command::List(args) => list::run(args.command),
@@ -873,6 +978,11 @@ impl Command {
             Command::Vet(args) => match &mut args.command {
                 VetCommand::Schema(args) => &mut args.locations,
                 VetCommand::Data(args) => &mut args.locations,
+            },
+            Command::Fmt(args) => match &mut args.command {
+                FmtCommand::File(_) => return None,
+                FmtCommand::Schema(args) => &mut args.locations,
+                FmtCommand::Data(args) => &mut args.locations,
             },
             Command::Export(args) => &mut args.locations,
             Command::Inspect(args) => match &mut args.command {
