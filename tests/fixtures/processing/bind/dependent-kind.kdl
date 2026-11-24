@@ -9,7 +9,7 @@ schema dependent-kind version="1" {
             field kind String
         }
         codec OptionName output=String {
-            match #"(?<name>[a-z0-9-]+)"#
+            match "(?<name>[a-z0-9-]+)"
             capture name String
         }
     }

@@ -5,7 +5,8 @@ schema qualify-bad version="1" {
     context {
         slot count U64
     }
-    reference R target=FooDef codec=Endpoint lookup=foos qualification=explicit-or-context qualify-from=count {
+    reference R target=FooDef codec=Endpoint lookup=foos \
+            qualification=explicit-or-context qualify-from=count {
         qualifier system String required=#false
     }
     types {

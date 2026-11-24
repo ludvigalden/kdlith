@@ -1,5 +1,7 @@
 amend "A1" {
     changes {
-        set kind=module "validity" { validity from="not a number" }
+        set kind=module "validity" {
+            validity from="not a number"
+        }
     }
 }

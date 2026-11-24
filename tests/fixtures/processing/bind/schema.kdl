@@ -10,7 +10,7 @@ schema shelf version="1" {
             format kebab-case
         }
         string Code {
-            pattern #"[A-Z]{2}[0-9]+"#
+            pattern "[A-Z]{2}[0-9]+"
         }
         enum Kind {
             member book
@@ -76,12 +76,12 @@ schema shelf version="1" {
     }
     node section role=container type=Section {
         field title arg=0
+        exactly-one public private
         children item min-occurs=1
         children override
         children stamp
         children public max-occurs=1
         children private max-occurs=1
-        exactly-one public private
     }
     node public parent=section
     node private parent=section

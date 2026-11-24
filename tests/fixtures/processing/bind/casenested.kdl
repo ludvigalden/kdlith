@@ -26,25 +26,30 @@ schema casenested version="1" {
             case property=kind equals=circle type=Shape {
                 field radius {
                     from {
-                        child size { argument 0 }
+                        child size {
+                            argument 0
+                        }
                     }
                 }
             }
             case property=kind equals=square type=Shape {
                 field side {
                     from {
-                        child size { argument 0 }
+                        child size {
+                            argument 0
+                        }
                     }
                 }
                 field unit {
                     from {
-                        child size { property unit }
+                        child size {
+                            property unit
+                        }
                     }
                 }
             }
             otherwise type=Shape
         }
     }
-    node size parent=shape {
-    }
+    node size parent=shape {}
 }

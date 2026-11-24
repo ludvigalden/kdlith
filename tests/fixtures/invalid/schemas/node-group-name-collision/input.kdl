@@ -1,7 +1,11 @@
 schema s version="1" {
     types {
-        object Card { field title String }
-        object Badge { field label String }
+        object Card {
+            field title String
+        }
+        object Badge {
+            field label String
+        }
     }
     group components card badge
     node deck role=container {

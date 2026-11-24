@@ -18,7 +18,8 @@ schema demo version="1" {
             compose qualified-name ns name
         }
     }
-    reference ThingRef target=Thing codec=ThingRef lookup=things qualification=explicit-or-context {
+    reference ThingRef target=Thing codec=ThingRef lookup=things \
+            qualification=explicit-or-context {
         qualifier ns String
     }
     document {

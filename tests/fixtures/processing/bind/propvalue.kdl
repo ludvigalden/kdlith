@@ -16,7 +16,7 @@ schema propvalue version="1" {
             variant template String prefix="${"
         }
         codec PropName output=String {
-            match #"(?<name>[a-z0-9-]+)"#
+            match "(?<name>[a-z0-9-]+)"
             capture name String
         }
     }
@@ -33,13 +33,14 @@ schema propvalue version="1" {
     node entry role=record {
         field id String arg=0
         field target "ref<PropertyDef>" property=of
-        value codec=from-type-name {
-            against target=target member=value-type
-        }
         identity {
             domain entries
             compose qualified-name id
         }
+        value codec=from-type-name {
+            against target=target member=value-type
+        }
     }
-    reference PropRef target=PropertyDef codec=PropName lookup=properties qualification=explicit
+    reference PropRef target=PropertyDef codec=PropName lookup=properties \
+            qualification=explicit
 }

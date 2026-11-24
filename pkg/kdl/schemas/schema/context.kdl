@@ -74,9 +74,15 @@ schema schema version="0" {
         // later set after either is a first value again.
         enum SlotDuplicates {
             member reject description="A second value reaching an occupied slot is rejected"
-            member reject-different description="A second value equal to the held one is a no-op success; a different one is rejected as reject rejects it"
+            member reject-different description="""
+                A second value equal to the held one is a no-op success; a different one is \
+                rejected as reject rejects it
+                """
             member last-wins description="The later value replaces the held one"
-            member layered description="A higher layer's value replaces a lower layer's; a lower layer's later value leaves the held value in place; a second value within one layer is rejected"
+            member layered description="""
+                A higher layer's value replaces a lower layer's; a lower layer's later value \
+                leaves the held value in place; a second value within one layer is rejected
+                """
         }
 
         // How an accumulating effect combines with the slot's incoming
@@ -93,14 +99,23 @@ schema schema version="0" {
         }
 
         enum AccumulateOp {
-            member append description="Concatenate the incoming list in effect order; for list-typed slots"
-            member merge description="Combine key-wise under the declared duplicate treatment; for map-typed slots"
+            member append description="""
+                Concatenate the incoming list in effect order; for list-typed slots
+                """
+            member merge description="""
+                Combine key-wise under the declared duplicate treatment; for map-typed slots
+                """
         }
 
         // How merge treats a key the held map already carries.
         enum MergeDuplicates {
-            member reject description="A key contributed twice is a duplicate-key rejection, never a silent overwrite"
-            member last-wins description="The later entry replaces the held entry's value, keeping the key's first position"
+            member reject description="""
+                A key contributed twice is a duplicate-key rejection, never a silent overwrite
+                """
+            member last-wins description="""
+                The later entry replaces the held entry's value, keeping the key's first \
+                position
+                """
         }
 
         // Where a group of effects takes effect. A node affecting both its
@@ -167,7 +182,9 @@ schema schema version="0" {
         // How a field bound from context (a context source in
         // bindings.kdl) relates to an explicit value for the same field.
         enum ContextPolicy {
-            member fallback description="The context value supplies the field only when no explicit value is present"
+            member fallback description="""
+                The context value supplies the field only when no explicit value is present
+                """
             member fixed description="An explicit value must agree with the context value"
         }
 
@@ -182,7 +199,9 @@ schema schema version="0" {
 
         enum SourceContextMode {
             member initial description="The derived values apply before any control"
-            member fallback description="The derived values supply fields only where no explicit value is present"
+            member fallback description="""
+                The derived values supply fields only where no explicit value is present
+                """
             member fixed description="An explicit value must agree with the derived value"
         }
 
@@ -197,8 +216,7 @@ schema schema version="0" {
 
         // The path-stem source-metadata provider: the importing file
         // name's stem, without extension.
-        object PathStemSource {
-        }
+        object PathStemSource {}
 
         // One entry of the index the engine writes while scanning, so a
         // record can be resolved later by restoring its context snapshot
@@ -218,7 +236,8 @@ schema schema version="0" {
 
         enum ValidationStatus {
             member validated description="The record was bound and validated"
-            member pending description="The record holds a pending binding awaiting its declaration"
+            member pending \
+                    description="The record holds a pending binding awaiting its declaration"
             member failed description="The record failed validation"
         }
     }
@@ -301,8 +320,7 @@ schema schema version="0" {
         children from max-occurs=1
     }
 
-    node path-stem type=PathStemSource parent=from {
-    }
+    node path-stem type=PathStemSource parent=from {}
 
     // The effects of a context-control node, declared inside its node
     // declaration.

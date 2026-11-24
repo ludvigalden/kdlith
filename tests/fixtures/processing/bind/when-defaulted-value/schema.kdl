@@ -4,7 +4,9 @@ schema ui version="1" {
             member plain
             member icon
         }
-        object Icon { field glyph String }
+        object Icon {
+            field glyph String
+        }
         object Button {
             field label String
             field variant Variant {
@@ -30,7 +32,11 @@ schema ui version="1" {
     node button role=record type=Button {
         field label arg=0
         field variant property=variant
-        field icons { from { children icon } }
+        field icons {
+            from {
+                children icon
+            }
+        }
         children icon max-occurs=0 {
             when property=variant equals=icon min-occurs=1 max-occurs=1
         }
@@ -43,7 +49,11 @@ schema ui version="1" {
                 context style policy=fallback
             }
         }
-        field icons { from { children icon } }
+        field icons {
+            from {
+                children icon
+            }
+        }
         children icon max-occurs=0 {
             when property=variant equals=icon min-occurs=1 max-occurs=1
         }

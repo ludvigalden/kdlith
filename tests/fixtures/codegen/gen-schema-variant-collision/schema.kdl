@@ -5,19 +5,19 @@
 // this shape, its spellings sharing one type by construction.
 schema collide version="1" {
     types {
-        object Label { field v String }
+        object Label {
+            field v String
+        }
     }
-    node alpha role=container root=#true {
-    }
-    node beta role=container root=#true {
-    }
-    node tag parent=alpha type=Label role=record {
+    node alpha role=container root=#true {}
+    node beta role=container root=#true {}
+    node tag role=record type=Label parent=alpha {
         field v arg=0
     }
-    node mark parent=alpha type=Label role=record {
+    node mark role=record type=Label parent=alpha {
         field v arg=0
     }
-    node tag parent=beta role=record {
+    node tag role=record parent=beta {
         field v String arg=0
     }
 }

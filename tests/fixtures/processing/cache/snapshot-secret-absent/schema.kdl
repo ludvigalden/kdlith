@@ -26,5 +26,5 @@ schema vault version="1" {
     node note role=record type=Note {
         field text arg=0
     }
-    provider vault ttl=300 "sh" "-c" "touch provider-executed"
+    provider vault "sh" "-c" "touch provider-executed" ttl=300
 }

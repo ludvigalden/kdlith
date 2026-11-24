@@ -1,1 +1,3 @@
-item { tag greeting "hi" }
+item {
+    tag greeting "hi"
+}

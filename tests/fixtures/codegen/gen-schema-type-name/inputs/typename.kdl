@@ -13,7 +13,7 @@ schema typename version="1" {
             variant flag Bool
         }
         codec PropName output=String {
-            match #"(?<name>[a-z0-9-]+)"#
+            match "(?<name>[a-z0-9-]+)"
             capture name String
         }
     }
@@ -27,5 +27,6 @@ schema typename version="1" {
             against target=target member=value-type
         }
     }
-    reference PropRef target=PropertyDef codec=PropName lookup=properties qualification=explicit
+    reference PropRef target=PropertyDef codec=PropName lookup=properties \
+            qualification=explicit
 }

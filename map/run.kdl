@@ -70,7 +70,8 @@ repo kdlith {
         about "Builds kdlith and the fixture harness"
         on repo
         exclusive "cargo-build-dir"
-        run "cargo" "build" "--message-format=json" "-p" "kdlith-bin" "-p" "kdlith-fixtures" {
+        run "cargo" "build" "--message-format=json" "-p" "kdlith-bin" "-p" \
+                "kdlith-fixtures" {
             ok 0
             findings 101
             parse rust.diagnostics
@@ -89,16 +90,18 @@ repo kdlith {
     action fixtures kind=test {
         about "Runs the fixture suite against the kdlith just built"
         on repo
-        needs kdlith.bins
-        attach "tools/kdlith" "tests/tools/kdlith-fixtures"
-        inputs "tests/fixtures/**" "pkg/kdl/**"
         slots 2
         timeout "1h"
-        run "{capture.bins.kdlith-fixtures}" "--fx-suite" "tests/fixtures" "--fx-kdlith" "{capture.bins.kdlith}" "--fx-scratch-root" "{scratch}" "-Z" "unstable-options" "--format" "json" {
+        attach "tools/kdlith" "tests/tools/kdlith-fixtures"
+        inputs "tests/fixtures/**" "pkg/kdl/**"
+        run "{capture.bins.kdlith-fixtures}" "--fx-suite" "tests/fixtures" "--fx-kdlith" \
+                "{capture.bins.kdlith}" "--fx-scratch-root" "{scratch}" "-Z" "unstable-options" \
+                "--format" "json" {
             ok 0
             findings 1 101
             parse rust.libtest-json path="tests/fixtures/{name}"
         }
+        needs kdlith.bins
     }
 
     // The heavy tier, on request (`--with heavy`): every scenario, the
@@ -106,18 +109,20 @@ repo kdlith {
     action fixtures-heavy kind=test {
         about "Runs the whole fixture suite, heavy scenarios included"
         on repo
-        needs kdlith.bins
+        slots 2
+        timeout "2h"
         attach "tools/kdlith" "tests/tools/kdlith-fixtures"
         inputs "tests/fixtures/**" "pkg/kdl/**"
         label heavy
-        subsumes kdlith.fixtures
-        slots 2
-        timeout "2h"
-        run "{capture.bins.kdlith-fixtures}" "--fx-suite" "tests/fixtures" "--fx-kdlith" "{capture.bins.kdlith}" "--fx-scratch-root" "{scratch}" "--fx-heavy" "-Z" "unstable-options" "--format" "json" {
+        run "{capture.bins.kdlith-fixtures}" "--fx-suite" "tests/fixtures" "--fx-kdlith" \
+                "{capture.bins.kdlith}" "--fx-scratch-root" "{scratch}" "--fx-heavy" "-Z" \
+                "unstable-options" "--format" "json" {
             ok 0
             findings 1 101
             parse rust.libtest-json path="tests/fixtures/{name}"
         }
+        subsumes kdlith.fixtures
+        needs kdlith.bins
     }
 
     // ---- the map and the changelog ------------------------------------------

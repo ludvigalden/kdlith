@@ -18,7 +18,8 @@ schema demo version="1" {
             compose qualified-name ns name
         }
     }
-    reference ThingRef target=Thing codec=ThingRef lookup=things qualification=sometimes {
+    reference ThingRef target=Thing codec=ThingRef lookup=things \
+            qualification=sometimes {
         qualifier ns String
     }
     document {

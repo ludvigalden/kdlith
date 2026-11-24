@@ -16,7 +16,7 @@ schema typename-open version="1" {
             field value-type String
         }
         codec PropCodec output=String {
-            match #"(?:(?<system>[A-Z][A-Za-z0-9_]*):)?(?<name>[a-z0-9-]+)"#
+            match "(?:(?<system>[A-Z][A-Za-z0-9_]*):)?(?<name>[a-z0-9-]+)"
             capture system String
             capture name String
         }
@@ -53,7 +53,8 @@ schema typename-open version="1" {
             against target=target member=value-type
         }
     }
-    reference PropRef target=PropertyDef codec=PropCodec lookup=properties qualification=explicit-or-context {
+    reference PropRef target=PropertyDef codec=PropCodec lookup=properties \
+            qualification=explicit-or-context {
         qualifier system String required=#false
         open-world system-member=distribution values="external"
     }

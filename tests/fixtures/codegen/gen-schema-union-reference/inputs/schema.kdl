@@ -6,11 +6,11 @@ schema targets version="1" {
             field name String
         }
         codec Slug output=String {
-            match #"(?<name>[a-z][a-z0-9-]*)"#
+            match "(?<name>[a-z][a-z0-9-]*)"
             capture name String
         }
         codec Pinned output=String {
-            match #"pin:(?<name>[a-z][a-z0-9-]*)"#
+            match "pin:(?<name>[a-z][a-z0-9-]*)"
             capture name String
         }
         union NumOrTarget {
@@ -35,6 +35,8 @@ schema targets version="1" {
     node note role=record {
         field v TextOrPinned arg=0
     }
-    reference TargetRef target=TargetDef codec=Slug lookup=targets qualification=explicit
-    reference PinnedTargetRef target=TargetDef codec=Pinned lookup=targets qualification=explicit
+    reference TargetRef target=TargetDef codec=Slug lookup=targets \
+            qualification=explicit
+    reference PinnedTargetRef target=TargetDef codec=Pinned lookup=targets \
+            qualification=explicit
 }

@@ -1,6 +1,8 @@
 module "M1" status=active
 amend "A1" {
     changes {
-        set kind=module "validity" { validity from=20240101 to=20241231 }
+        set kind=module "validity" {
+            validity from=20240101 to=20241231
+        }
     }
 }

@@ -14,7 +14,7 @@ schema pending version="1" {
             field rows "optional<list<list<String>>>"
         }
         codec SettingName output=String {
-            match #"(?<name>[a-z0-9-]+)"#
+            match "(?<name>[a-z0-9-]+)"
             capture name String
         }
     }

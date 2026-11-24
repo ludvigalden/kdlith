@@ -24,7 +24,8 @@ schema config version="1" {
     node use role=record type=Use {
         field target arg=0
     }
-    reference ConfigVarRef target=ConfigVarDef codec=DottedName lookup=config-vars qualification=explicit-or-context {
+    reference ConfigVarRef target=ConfigVarDef codec=DottedName lookup=config-vars \
+            qualification=explicit-or-context {
         qualifier namespace String required=#false
     }
 }

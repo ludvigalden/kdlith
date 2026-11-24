@@ -5,7 +5,8 @@ schema qualify-bad version="1" {
     context {
         slot namespace String
     }
-    reference R target=FooDef codec=Endpoint lookup=foos qualification=explicit-or-context qualify-from=source {
+    reference R target=FooDef codec=Endpoint lookup=foos \
+            qualification=explicit-or-context qualify-from=source {
         qualifier system String required=#false
     }
     types {

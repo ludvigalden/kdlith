@@ -20,7 +20,8 @@ schema schema version="0" {
         enum Role {
             member record description="Emit a validated record"
             member declaration description="Register an identity and expose typed metadata"
-            member contribution description="Preserve an assignment or overlay for later resolution"
+            member contribution \
+                    description="Preserve an assignment or overlay for later resolution"
             member context-control description="Apply a declared context transition"
             member source-import description="Schedule another source invocation"
             member container description="Process children under structural and scope rules"
@@ -70,7 +71,10 @@ schema schema version="0" {
         // The order a formatted node's properties and children are
         // written in; absent means declared.
         enum LayoutOrder {
-            member declared description="As the declaration binds them: properties by field, children by the field or children rule that admits them"
+            member declared description="""
+                As the declaration binds them: properties by field, children by the field or \
+                children rule that admits them
+                """
             member authored description="As the document writes them"
         }
 
@@ -144,10 +148,20 @@ schema schema version="0" {
         // does not install compiles, and the binder emits a pending
         // typed-binding item.
         enum BindingCodec {
-            member argument-tail description="The remaining arguments, typed per expected type, no scalar-to-list promotion"
+            member argument-tail description="""
+                The remaining arguments, typed per expected type, no scalar-to-list promotion
+                """
             member fixture-value description="The type-directed recursive form"
-            member from-kind description="The payload shape is selected by the value the resolved declaration holds in its member field: flag binds Bool, number U64, choice one of the choices field the against block names (default `choices`), text String"
-            member from-type-name description="The payload's type is the declared type the resolved declaration names in its member field, held as a type name string; a list-typed or optional spelling admits those forms, and a name no declared type answers fails closed at link"
+            member from-kind description="""
+                The payload shape is selected by the value the resolved declaration holds in \
+                its member field: flag binds Bool, number U64, choice one of the choices field \
+                the against block names (default `choices`), text String
+                """
+            member from-type-name description="""
+                The payload's type is the declared type the resolved declaration names in its \
+                member field, held as a type name string; a list-typed or optional spelling \
+                admits those forms, and a name no declared type answers fails closed at link
+                """
         }
 
         // A path-typed payload binding: how a node's remaining payload
@@ -231,8 +245,7 @@ schema schema version="0" {
         }
 
         // All remaining positional arguments, in order, as a list.
-        object ArgsSource {
-        }
+        object ArgsSource {}
 
         object PropertySource {
             field name FieldName
@@ -386,6 +399,7 @@ schema schema version="0" {
     // Node declarations in a schema definition.
 
     node node role=declaration type=NodeDef {
+        parents schema
         field name arg=0
         field aliases {
             from {
@@ -456,7 +470,6 @@ schema schema version="0" {
             }
         }
         field description property=description
-        parents schema
         children parents max-occurs=1
         children effects max-occurs=2
         children value max-occurs=1

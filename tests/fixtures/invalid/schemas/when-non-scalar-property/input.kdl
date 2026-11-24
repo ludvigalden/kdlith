@@ -9,7 +9,9 @@ schema ui version="1" {
             member grid
             member list
         }
-        object Icon { field glyph String }
+        object Icon {
+            field glyph String
+        }
         object Button {
             field variant Variant
             field layout "optional<Layout>"
@@ -20,8 +22,16 @@ schema ui version="1" {
     node button role=record type=Button {
         field variant property=variant
         field layout property=layout
-        field tags { from { args } }
-        field icons { from { children icon } }
+        field tags {
+            from {
+                args
+            }
+        }
+        field icons {
+            from {
+                children icon
+            }
+        }
         children icon max-occurs=1 {
             when property=tags equals=x max-occurs=2
         }

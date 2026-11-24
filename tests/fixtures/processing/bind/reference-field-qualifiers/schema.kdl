@@ -7,7 +7,7 @@ schema tools version="1" {
             field tool ToolRef
         }
         codec ToolRef output=String {
-            match #"(?<contract>[a-z0-9]+):(?<program>[a-z]+)/(?<tool>[a-z-]+)"#
+            match "(?<contract>[a-z0-9]+):(?<program>[a-z]+)/(?<tool>[a-z-]+)"
             capture contract String
             capture program String
             capture tool String

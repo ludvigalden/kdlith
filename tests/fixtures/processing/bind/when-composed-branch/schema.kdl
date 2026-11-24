@@ -10,7 +10,9 @@ schema ui version="1" {
             member list
             member masonry
         }
-        object Menu { field label String }
+        object Menu {
+            field label String
+        }
         object Button {
             field label String
             field variant Variant
@@ -24,7 +26,11 @@ schema ui version="1" {
         field variant property=variant
         field layout property=layout
         field dense property=dense
-        field menus { from { children menu } }
+        field menus {
+            from {
+                children menu
+            }
+        }
         children menu max-occurs=0 {
             when-all min-occurs=1 max-occurs=1 {
                 when property=variant equals=split

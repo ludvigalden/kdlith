@@ -7,11 +7,11 @@
 schema shelf version="1" {
     types {
         codec ShelfName output=String {
-            match #"(?<name>[a-z]+)"#
+            match "(?<name>[a-z]+)"
             capture name String
         }
         codec Placed output=String {
-            match #"(?:(?<room>[a-z]+):)?(?<name>[a-z]+)"#
+            match "(?:(?<room>[a-z]+):)?(?<name>[a-z]+)"
             capture room String
             capture name String
         }
@@ -36,46 +36,48 @@ schema shelf version="1" {
             field shelf "optional<String>"
         }
     }
-    reference ShelfRef target=Shelf codec=ShelfName lookup=shelves qualification=explicit
-    reference PlacedRef target=Spot codec=Placed lookup=placed qualification=explicit-or-context {
+    reference ShelfRef target=Shelf codec=ShelfName lookup=shelves \
+            qualification=explicit
+    reference PlacedRef target=Spot codec=Placed lookup=placed \
+            qualification=explicit-or-context {
         qualifier room String required=#false
     }
     context {
         slot namespace String duplicates=reject
         slot shelf String duplicates=last-wins
     }
-    node room root=#true role=context-control type=Room {
+    node room role=context-control type=Room root=#true {
         field id arg=0
         effects target=following {
             set namespace field=id
         }
     }
-    node shelf root=#true role=declaration type=Shelf {
+    node shelf role=declaration type=Shelf root=#true {
+        field id arg=0
         identity {
             domain shelves
             compose qualified-name id
         }
-        field id arg=0
     }
-    node spot root=#true role=declaration type=Spot {
-        identity {
-            domain placed
-            compose qualified-name room id
-        }
+    node spot role=declaration type=Spot root=#true {
         field id arg=0
         field room {
             from {
                 context namespace policy=fallback
             }
         }
+        identity {
+            domain placed
+            compose qualified-name room id
+        }
     }
-    node defaults root=#true role=context-control type=Defaults {
+    node defaults role=context-control type=Defaults root=#true {
         field shelf property=shelf
         effects target=following {
             set shelf field=shelf
         }
     }
-    node book root=#true role=record type=Book {
+    node book role=record type=Book root=#true {
         field title arg=0
         field shelf {
             from {

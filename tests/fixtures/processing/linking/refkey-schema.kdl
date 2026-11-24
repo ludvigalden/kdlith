@@ -10,7 +10,7 @@ schema refkeys version="0" {
             capture name String
         }
         codec Port output=U64 {
-            match #"(?<number>[0-9]+)"#
+            match "(?<number>[0-9]+)"
             capture number U64
         }
         object Attr {

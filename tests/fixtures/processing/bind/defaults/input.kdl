@@ -2,6 +2,6 @@ locale en-gb
 group bare
 section "S" {
     public
-    item one kind=book /- title="hidden"
-    /- item ghost
+    item one kind=book /-title="hidden"
+    /-item ghost
 }

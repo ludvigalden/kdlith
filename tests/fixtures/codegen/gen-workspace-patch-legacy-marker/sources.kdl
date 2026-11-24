@@ -1,5 +1,6 @@
 sources {
     source kdlith {
-        origin git="https://github.com/ludvigalden/kdlith" rev="0123456789abcdef0123456789abcdef01234567"
+        origin git="https://github.com/ludvigalden/kdlith" \
+                rev="0123456789abcdef0123456789abcdef01234567"
     }
 }

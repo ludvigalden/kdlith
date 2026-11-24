@@ -72,13 +72,16 @@ schema qualify version="1" {
             compose qualified-name id
         }
     }
-    reference SourceRef target=ConceptDef codec=Endpoint lookup=concepts qualification=explicit-or-context qualify-from=source {
+    reference SourceRef target=ConceptDef codec=Endpoint lookup=concepts \
+            qualification=explicit-or-context qualify-from=source {
         qualifier system String required=#false
     }
-    reference TargetRef target=ConceptDef codec=Endpoint lookup=concepts qualification=explicit-or-context qualify-from=target {
+    reference TargetRef target=ConceptDef codec=Endpoint lookup=concepts \
+            qualification=explicit-or-context qualify-from=target {
         qualifier system String required=#false
     }
-    reference EndpointRef target=ConceptDef codec=Endpoint lookup=concepts qualification=explicit-or-context {
+    reference EndpointRef target=ConceptDef codec=Endpoint lookup=concepts \
+            qualification=explicit-or-context {
         qualifier system String required=#false
     }
 }
