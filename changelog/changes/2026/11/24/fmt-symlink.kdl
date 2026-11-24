@@ -1,0 +1,13 @@
+change fmt-symlink {
+    summary "Keep a symbolic link a link when kdlith fmt formats through it"
+    category fixed
+    impact public
+    touches "pkg/rs/cli"
+    commit "38469838056cbb67a26277ed58ffcb532e996797"
+    detail """
+        kdlith fmt wrote a formatted document beside the path it was given and renamed \
+        it over that path, so a symbolic link became a regular file holding the \
+        formatted text. It now replaces the file the link names and leaves the link as \
+        it was.
+        """
+}
