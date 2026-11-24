@@ -384,8 +384,19 @@ fn order_children(block: &mut Block<'_>, ranks: &HashMap<String, usize>) {
     block.items = out;
 }
 
-/// Sort a run of ranked units into `out`, stably.
+/// Sort a run of ranked units into `out`, stably. The empty line that
+/// opens the run belongs to the run's place, not to the unit that was
+/// first: it stays at the run's start whichever unit lands there.
 fn flush<'src>(run: &mut Vec<(usize, Vec<Item<'src>>)>, out: &mut Vec<Item<'src>>) {
+    let opens = run
+        .first()
+        .and_then(|(_, unit)| unit.first())
+        .is_some_and(|item| item.blank_before);
     run.sort_by_key(|(rank, _)| *rank);
+    for (at, (_, unit)) in run.iter_mut().enumerate() {
+        if let Some(item) = unit.first_mut() {
+            item.blank_before = at == 0 && opens;
+        }
+    }
     out.extend(run.drain(..).flat_map(|(_, unit)| unit));
 }

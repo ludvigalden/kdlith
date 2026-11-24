@@ -23,6 +23,8 @@ shop "corner" {
         label "one of each"
     }
     item "pear" size=large price=4 {
+        run "true"
+
         note "Ripe in autumn."
         tag "fruit"
     }
