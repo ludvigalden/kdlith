@@ -11,20 +11,21 @@ use kdlith_engine::{
     ConstraintInput, Construct, DefaultInput, Definition, DefinitionInput, DependentInput,
     DescendantRuleInput, DocumentInput, DocumentRuleInput, EffectGroupInput, EffectInput,
     Extensions, FieldBindingInput, FieldInput, FormatInput, GroupInput, IdentityInput, ImportInput,
-    Located, LocationsInput, MatchRuleInput, MemberInput, NodeAnnotationInput, NodeInput,
-    OpenWorldInput, ParsedDocument, PathValueInput, ProfileInput, ProviderInput, QualifierInput,
-    ReadOptions, ReferenceInput, ResolutionInput, SequenceInput, SlotInput, SourceContextInput,
-    SourceFieldInput, SourceInput, StepInput, TypeInput, TypedItem, ValidatorInput, VariantInput,
-    check_reserved_name, compile_meta_schema, compile_meta_schema_input, compile_schema_input,
+    LayoutInput, Located, LocationsInput, MatchRuleInput, MemberInput, NodeAnnotationInput,
+    NodeInput, OpenWorldInput, ParsedDocument, PathValueInput, ProfileInput, ProviderInput,
+    QualifierInput, ReadOptions, ReferenceInput, ResolutionInput, SequenceInput, SlotInput,
+    SourceContextInput, SourceFieldInput, SourceInput, StepInput, TypeInput, TypedItem,
+    ValidatorInput, VariantInput, check_reserved_name, compile_meta_schema,
+    compile_meta_schema_input, compile_schema_input,
 };
 use kdlith_runtime::Repeated;
 
 use crate::processors::{Item, reader};
 use crate::types::{
     AnnotationDef, AssetType, ChildRule, CodecType, Condition, Constraint, DefaultSpec,
-    DocumentRule, Effect, EnumType, FieldBinding, LocationsRule, MapType, MatchRule, NodeDef,
-    NodeGroupDef, ObjectType, ProfileDef, ReferenceDef, ResolutionPolicyDef, SecretProvider,
-    Source, StringType, UnionType,
+    DocumentRule, Effect, EnumType, FieldBinding, LayoutRule, LocationsRule, MapType, MatchRule,
+    NodeDef, NodeGroupDef, ObjectType, ProfileDef, ReferenceDef, ResolutionPolicyDef,
+    SecretProvider, Source, StringType, UnionType,
 };
 
 /// The canonical meta-schema's contributing documents, copied into
@@ -291,6 +292,14 @@ fn take(item: TypedItem<Item>, input: &mut Gathering, records: &mut Vec<Diagnost
                 Some(Construct::Locations(locations_input(&rule))),
                 span,
             ),
+            // A schema root's layout rule is a record: how the documents
+            // the schema reads are formatted, never referenced by name.
+            Item::LayoutRule(rule) => push(
+                input,
+                records,
+                Some(Construct::Layout(layout_input(&rule))),
+                span,
+            ),
             // A record of any other type is a reader contract this loader
             // cannot proceed past: the meta-schema declares no such record.
             _ => records.push(broken_contract(
@@ -401,6 +410,7 @@ fn declaration(value: Item) -> Option<Construct> {
             validator,
             validator_version,
             min_length,
+            layout,
         }) => Construct::Type(TypeInput::String {
             name: name.as_str().to_owned(),
             parameters: parameters
@@ -418,6 +428,7 @@ fn declaration(value: Item) -> Option<Construct> {
                 version: validator_version,
             }),
             min_length,
+            layout: layout.map(|layout| layout.member().to_owned()),
         }),
         Item::EnumType(EnumType {
             name,
@@ -668,7 +679,10 @@ fn declaration(value: Item) -> Option<Construct> {
             })
         }
         // Records reach `take` as `TypedItem::Record`.
-        Item::DocumentRule(_) | Item::SourceContextDef(_) | Item::LocationsRule(_) => return None,
+        Item::DocumentRule(_)
+        | Item::SourceContextDef(_)
+        | Item::LocationsRule(_)
+        | Item::LayoutRule(_) => return None,
     };
     Some(construct)
 }
@@ -882,6 +896,7 @@ fn node_input(node: NodeDef) -> NodeInput {
                 value: fact.value.clone(),
             })
             .collect(),
+        layout: node.layout.as_ref().map(layout_input),
     }
 }
 
@@ -1032,6 +1047,15 @@ fn locations_input(rule: &LocationsRule) -> LocationsInput {
         doublestar: patterns.is_some_and(|rules| rules.doublestar.unwrap_or(false)),
         braces: patterns.is_some_and(|rules| rules.braces.unwrap_or(false)),
         allow_empty: rule.allow_empty.unwrap_or(false),
+    }
+}
+
+/// A layout rule, into its compiler input.
+fn layout_input(rule: &LayoutRule) -> LayoutInput {
+    LayoutInput {
+        width: rule.width,
+        content_width: rule.content_width,
+        order: rule.order.map(|order| order.member().to_owned()),
     }
 }
 

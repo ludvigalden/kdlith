@@ -62,6 +62,8 @@
 {"item":"effective","data":{"section":"type","entry":{"name":"ImportRequest","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"IncludeRef","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"LayerName","parameters":[],"kind":"string"}}}
+{"item":"effective","data":{"section":"type","entry":{"name":"LayoutOrder","parameters":[],"kind":"enum"}}}
+{"item":"effective","data":{"section":"type","entry":{"name":"LayoutRule","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"LiteralDefault","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"LocationsRule","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"MapType","parameters":[],"kind":"object"}}}
@@ -124,6 +126,7 @@
 {"item":"effective","data":{"section":"type","entry":{"name":"SourceFieldDef","parameters":[],"kind":"object"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"StringFormat","parameters":[],"kind":"enum"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"StringType","parameters":[],"kind":"object"}}}
+{"item":"effective","data":{"section":"type","entry":{"name":"TextLayout","parameters":[],"kind":"enum"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"TypeConstructor","parameters":[],"kind":"enum"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"TypeDef","parameters":[],"kind":"union"}}}
 {"item":"effective","data":{"section":"type","entry":{"name":"TypeExpression","parameters":[],"kind":"string"}}}
@@ -178,6 +181,8 @@
 {"item":"effective","data":{"section":"node","entry":{"name":"identity","parents":["node"],"role":null,"type":"IdentityBlock","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"import","parents":["schema"],"role":"source-import","type":"ImportRequest","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"include","parents":["codec","enum","object","union"],"role":null,"type":"IncludeRef","profile":null}}}
+{"item":"effective","data":{"section":"node","entry":{"name":"layout","parents":["node"],"role":null,"type":"LayoutRule","profile":null}}}
+{"item":"effective","data":{"section":"node","entry":{"name":"layout","parents":["schema"],"role":"record","type":"LayoutRule","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"locations","parents":["profile"],"role":null,"type":"LocationsRule","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"locations","parents":["schema"],"role":"record","type":"LocationsRule","profile":null}}}
 {"item":"effective","data":{"section":"node","entry":{"name":"map","parents":["types"],"role":"declaration","type":"MapType","profile":null}}}

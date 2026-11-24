@@ -5,12 +5,14 @@ use kdlith_engine::Handler;
 
 use super::Item;
 use crate::types::{
-    DocumentRule, LocationsRule, ProfileDef, ReferenceDef, ResolutionPolicyDef, SecretProvider,
+    DocumentRule, LayoutRule, LocationsRule, ProfileDef, ReferenceDef, ResolutionPolicyDef,
+    SecretProvider,
 };
 
 pub(crate) const HANDLERS: &[Handler<Item>] = &[
     Handler::record::<DocumentRule>(),
     Handler::declaration::<ProfileDef>(),
+    Handler::record::<LayoutRule>(),
     Handler::record::<LocationsRule>(),
     Handler::declaration::<ReferenceDef>(),
     Handler::declaration::<ResolutionPolicyDef>(),

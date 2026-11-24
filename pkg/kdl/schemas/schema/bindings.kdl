@@ -64,6 +64,26 @@ schema schema version="0" {
             field identity "optional<IdentityBlock>"
             field description "optional<String>"
             field annotations "optional<list<NodeAnnotation>>"
+            field layout "optional<LayoutRule>"
+        }
+
+        // The order a formatted node's properties and children are
+        // written in; absent means authored.
+        enum LayoutOrder {
+            member declared description="As the declaration binds them: properties by field, children by the field or children rule that admits them"
+            member authored description="As the document writes them"
+        }
+
+        // How documents are formatted: the column no line runs past, the
+        // most columns a line holds after its indentation, and the order
+        // a node's properties and children are written in. On the schema
+        // root it holds for every document the schema reads; on a node
+        // declaration, for that node and everything under it, until a
+        // rule further down says otherwise.
+        object LayoutRule {
+            field width "optional<U64>"
+            field content-width "optional<U64>"
+            field order "optional<LayoutOrder>"
         }
 
         // The name of a schema-declared annotation. Kebab-case, so a
@@ -436,6 +456,7 @@ schema schema version="0" {
                 children annotation
             }
         }
+        field layout child=layout
         children parents max-occurs=1
         children effects max-occurs=2
         children value max-occurs=1
@@ -446,6 +467,15 @@ schema schema version="0" {
         children descendants
         children annotation
         children children-group
+        children layout max-occurs=1
+    }
+
+    // A node declaration's layout rule: `layout width=N content-width=N
+    // order=declared|authored`, each property optional.
+    node layout type=LayoutRule parent=node {
+        field width property=width
+        field content-width property=content-width
+        field order property=order
     }
 
     // A schema-level annotation declaration: `annotation NAME TYPE`,

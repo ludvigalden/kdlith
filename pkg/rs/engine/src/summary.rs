@@ -89,6 +89,9 @@ impl Definition {
                 n.resolve(profile.name)
             );
         }
+        if let Some(layout) = &self.layout {
+            let _ = writeln!(out, "layout {}", describe_layout(layout));
+        }
         if let Some(locations) = &self.locations {
             let _ = writeln!(out, "locations {}", crate::locations::describe(locations));
         }
@@ -212,10 +215,18 @@ pub(crate) fn expr(n: &Names, ty: &TypeExpr) -> String {
 fn kind(n: &Names, kind: &TypeKind) -> String {
     match kind {
         TypeKind::Builtin(builtin) => format!("builtin {}", builtin.name()),
-        TypeKind::String(string) => format!(
-            "string format={:?} pattern={:?} validator={:?} min-length={:?}",
-            string.format, string.pattern, string.validator, string.min_length
-        ),
+        TypeKind::String(string) => {
+            let mut line = format!(
+                "string format={:?} pattern={:?} validator={:?} min-length={:?}",
+                string.format, string.pattern, string.validator, string.min_length
+            );
+            // Written only when declared, so a type without one keeps
+            // its summary line and digest.
+            if let Some(layout) = string.layout {
+                let _ = write!(line, " layout={}", layout.name());
+            }
+            line
+        }
         TypeKind::Enum(enumeration) => {
             let members: Vec<String> = enumeration
                 .members
@@ -428,6 +439,9 @@ fn node_line(n: &Names, node: &NodeDecl) -> String {
             .collect();
         let _ = write!(metadata, " annotations [{}]", facts.join(","));
     }
+    if let Some(layout) = &node.layout {
+        let _ = write!(metadata, " layout {}", describe_layout(layout));
+    }
     format!(
         "node {} role={role} type={ty} under={placement} profile={profile} fields [{}] children [{}] effects [{}] groups [{}] descendants [{}] sequence {sequence} value {value} cases [{}] otherwise {otherwise} identity {identity}{metadata}",
         n.resolve(node.name),
@@ -549,4 +563,14 @@ fn effect(n: &Names, effect: &Effect) -> String {
         Effect::Clear { namespace } => format!("clear {}", n.resolve(*namespace)),
         Effect::Handler { name } => format!("handler {name}"),
     }
+}
+
+/// A layout rule as summaries spell it.
+fn describe_layout(layout: &crate::bindings::LayoutDecl) -> String {
+    format!(
+        "width={:?} content-width={:?} order={}",
+        layout.width,
+        layout.content_width,
+        layout.order.map_or("-", crate::bindings::LayoutOrder::name)
+    )
 }

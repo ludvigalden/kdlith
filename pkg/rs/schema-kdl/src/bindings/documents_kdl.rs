@@ -47,6 +47,10 @@ pub(crate) const NODES: &[NodeShape] = &[
     NodeShape::new("alternatives")
         .under(&["step"])
         .ty("AlternativesRule"),
+    NodeShape::new("layout")
+        .under(&["schema"])
+        .record()
+        .ty("LayoutRule"),
     NodeShape::new("locations")
         .under(&["schema"])
         .record()

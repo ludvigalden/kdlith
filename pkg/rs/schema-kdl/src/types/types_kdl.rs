@@ -67,6 +67,13 @@ enum_type! {
 }
 
 enum_type! {
+    pub enum TextLayout {
+        "prose" => Prose,
+        "verbatim" => Verbatim,
+    }
+}
+
+enum_type! {
     /// The sensitivity a logical field may declare; metadata that every
     /// output surface enforces through an explicit policy.
     pub enum Sensitivity {
@@ -106,6 +113,7 @@ object_type! {
         "validator" => validator: Option<ValidatorName>,
         "validator-version" => validator_version: Option<String>,
         "min-length" => min_length: Option<u64>,
+        "layout" => layout: Option<TextLayout>,
     }
 }
 
@@ -312,6 +320,7 @@ pub(crate) const TYPES: &[TypeShape] = &[
     BuiltinType::SHAPE,
     TypeConstructor::SHAPE,
     StringFormat::SHAPE,
+    TextLayout::SHAPE,
     Sensitivity::SHAPE,
     MergePolicy::SHAPE,
     TypeDef::SHAPE,

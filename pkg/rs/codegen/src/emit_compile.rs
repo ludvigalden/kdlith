@@ -155,6 +155,12 @@ pub const CANONICAL_VERSION: &str = {:?};",
         {
             out.push_str(catalog::LOCATIONS_INPUT);
         }
+        if glues
+            .iter()
+            .any(|(ty, _)| ty == "NodeDef" || ty == "LayoutRule")
+        {
+            out.push_str(catalog::LAYOUT_INPUT);
+        }
         out.push_str(REPEATED_NAME);
 
         Ok(format!("{}\n\n{}", crate::RUST_MARKER, out))
@@ -196,14 +202,24 @@ pub const CANONICAL_VERSION: &str = {:?};",
         if records.is_empty() {
             text.push_str("        _ => return None,\n");
         } else {
-            let patterns = records
+            let alternatives: Vec<String> = records
                 .iter()
                 .map(|name| format!("Item::{name}(_)"))
-                .collect::<Vec<_>>()
-                .join(" | ");
-            text.push_str(&format!(
-                "        // Records reach `take` as `TypedItem::Record`.\n        {patterns} => return None,\n"
-            ));
+                .collect();
+            // One line when it fits rustfmt's width, else one
+            // alternative per line, as rustfmt lays a long pattern out.
+            let line = format!("        {} => return None,", alternatives.join(" | "));
+            let patterns = if line.len() <= 100 {
+                line
+            } else {
+                format!(
+                    "        {} => return None,",
+                    alternatives.join("\n        | ")
+                )
+            };
+            text.push_str("        // Records reach `take` as `TypedItem::Record`.\n");
+            text.push_str(&patterns);
+            text.push('\n');
         }
         text.push_str(DECLARATION_TAIL);
         text
@@ -801,6 +817,7 @@ fn node_input(node: NodeDef) -> NodeInput {
                 value: fact.value.clone(),
             })
             .collect(),
+        layout: node.layout.as_ref().map(layout_input),
     }
 }
 "##;

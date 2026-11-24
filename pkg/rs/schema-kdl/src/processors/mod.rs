@@ -14,9 +14,9 @@ use kdlith_engine::{
 };
 
 use crate::types::{
-    AnnotationDef, AssetType, CodecType, DocumentRule, EnumType, LocationsRule, MapType, NodeDef,
-    NodeGroupDef, ObjectType, ProfileDef, ReferenceDef, ResolutionPolicyDef, SecretProvider,
-    SlotDef, SourceContextDef, StringType, UnionType,
+    AnnotationDef, AssetType, CodecType, DocumentRule, EnumType, LayoutRule, LocationsRule,
+    MapType, NodeDef, NodeGroupDef, ObjectType, ProfileDef, ReferenceDef, ResolutionPolicyDef,
+    SecretProvider, SlotDef, SourceContextDef, StringType, UnionType,
 };
 use crate::{bindings, contexts, types};
 
@@ -37,6 +37,7 @@ item_type! {
         SourceContextDef,
         DocumentRule,
         ProfileDef,
+        LayoutRule,
         LocationsRule,
         ReferenceDef,
         ResolutionPolicyDef,

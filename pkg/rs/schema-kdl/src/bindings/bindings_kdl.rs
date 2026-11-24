@@ -10,6 +10,7 @@ pub(crate) const NODES: &[NodeShape] = &[
         .under(&["schema"])
         .declaration()
         .ty("NodeDef"),
+    NodeShape::new("layout").under(&["node"]).ty("LayoutRule"),
     NodeShape::new("annotation")
         .under(&["schema"])
         .declaration()

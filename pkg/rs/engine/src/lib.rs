@@ -41,19 +41,20 @@ pub use bind::{BindFrame, Binder, BindingSession, EntryValue, NodeStart, ParseEv
 pub use bindings::{
     Arity, BindingCatalog, BindingCodec, CaseRule, ChildPlan, ChildRule, Collision, Condition,
     ContextPolicy, DependentBinding, DescendantRule, DuplicateKeys, Effect, EffectGroup,
-    EffectTarget, FieldBinding, IdentityDecl, NodeAnnotation, NodeDecl, NodeDeclId, ParentKey,
-    PathValueBinding, Placement, Role, Scope, ScopeId, SequenceDecl, SequenceStep, SetFrom,
-    Source as FieldSource, WhenBranch,
+    EffectTarget, FieldBinding, IdentityDecl, LayoutDecl, LayoutOrder, NodeAnnotation, NodeDecl,
+    NodeDeclId, ParentKey, PathValueBinding, Placement, Role, Scope, ScopeId, SequenceDecl,
+    SequenceStep, SetFrom, Source as FieldSource, WhenBranch,
 };
 pub use cache::{DerivedState, derive_state};
 pub use compile::input::{
     AnnotationInput, CaptureInput, CaseInput, ChildRuleInput, ConditionInput, ConstraintInput,
     Construct, DefaultInput, DefinitionInput, DependentInput, DescendantRuleInput, DocumentInput,
     DocumentRuleInput, EffectGroupInput, EffectInput, FieldBindingInput, FieldInput, FormatInput,
-    GroupInput, IdentityInput, ImportInput, Located, LocationsInput, MatchRuleInput, MemberInput,
-    NodeAnnotationInput, NodeInput, OpenWorldInput, PathValueInput, ProfileInput, ProviderInput,
-    QualifierInput, ReferenceInput, ResolutionInput, SequenceInput, SlotInput, SourceContextInput,
-    SourceFieldInput, SourceInput, StepInput, TypeInput, ValidatorInput, VariantInput,
+    GroupInput, IdentityInput, ImportInput, LayoutInput, Located, LocationsInput, MatchRuleInput,
+    MemberInput, NodeAnnotationInput, NodeInput, OpenWorldInput, PathValueInput, ProfileInput,
+    ProviderInput, QualifierInput, ReferenceInput, ResolutionInput, SequenceInput, SlotInput,
+    SourceContextInput, SourceFieldInput, SourceInput, StepInput, TypeInput, ValidatorInput,
+    VariantInput,
 };
 pub use compile::{
     META_SCHEMA_VERSION, check_reserved_name, compile_meta_schema, compile_meta_schema_input,
@@ -136,8 +137,8 @@ pub use typed::{
 pub use types::{
     AssetBase, AssetDecl, AssetKind, Builtin, CaptureDef, CodecDecl, Constraint, DefaultSpec,
     EnumMember, EnumType, ExpandedGroup, FieldDef, FormatRule, MapType, ObjectType, OutputPolicy,
-    Sensitivity, StringFormat, StringType, TypeCatalog, TypeDecl, TypeExpr, TypeId, TypeKind,
-    UnionType, ValidatorUse, Variant,
+    Sensitivity, StringFormat, StringType, TextLayout, TypeCatalog, TypeDecl, TypeExpr, TypeId,
+    TypeKind, UnionType, ValidatorUse, Variant, fold_prose,
 };
 
 pub use value_resolver::{ResolutionCall, SharedResolver, Unresolvable, ValueResolver};
