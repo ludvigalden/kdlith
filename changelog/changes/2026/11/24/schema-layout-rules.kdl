@@ -1,0 +1,9 @@
+change schema-layout-rules {
+    summary "Steer formatting with layout rules and read prose text folded"
+    category added
+    impact public
+    touches "input:fixtures" "input:meta-schema" "pkg/rs/codegen" "pkg/rs/engine" "pkg/rs/schema-kdl"
+    commit "6c509810c734e8dd03c64c8b1b34abb924761f2f"
+    detail "A schema may declare layout width=N content-width=N order=declared|authored on its root, for every document it reads, and on a node declaration, for that node and everything under it. order=declared writes a node's properties in its declaration's field order and its children in the order its fields and children rules name them, never moving a child that declares a role or the children of a node with a sequence; the default keeps the written order. A string type may declare layout prose or layout verbatim: a prose value reads folded, each run of whitespace within a paragraph read as one space, so fmt refills it without changing what a reading returns, and a verbatim value is never broken over lines. By convention fmt also writes a value of an enum or a case-format string type bare. The rules are metadata in the digest only when declared; the meta-schema digest moves to dce39f484acd78d6."
+    migration "A string type that declares layout prose reads its values folded: a value whose line breaks or whitespace runs within a paragraph carried meaning reads differently, so declare prose only on text where they do not."
+}
