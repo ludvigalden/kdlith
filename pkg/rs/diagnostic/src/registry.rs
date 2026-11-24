@@ -1239,6 +1239,16 @@ pub const CODES: &[CodeDefinition] = &[
         correction: "Make the document and its directory writable, then run kdlith fmt again",
         retired: false,
     },
+    CodeDefinition {
+        code: "KDLITH-FMT004",
+        label: "auto-item-unknown",
+        severity: Severity::Error,
+        exit_class: 2,
+        trigger: "fmt auto reads a document argument that starts with `-` and is neither `-` nor `--schema=FILE`",
+        message_template: "<item> is neither a document nor --schema=FILE",
+        correction: "Name the schema as --schema=FILE (with `=`), put options before the documents, or write a document starting with `-` as ./NAME",
+        retired: false,
+    },
 ];
 
 /// Look up a registered code, retired or not.

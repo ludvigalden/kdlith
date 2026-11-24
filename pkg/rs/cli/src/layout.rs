@@ -24,7 +24,7 @@ use kdlith_format::{NodeRule, Order, Policy, Text, ValueRule};
 
 use crate::report::report_all;
 use crate::vet::{DataOptions, definition_extensions, governing_meta_schema};
-use crate::{FmtDataArgs, FmtSchemaArgs};
+use crate::{FmtAutoArgs, FmtDataArgs, FmtSchemaArgs};
 
 /// The policy of the governing meta-schema, for `fmt schema`.
 pub(crate) fn meta_schema_policy(args: &FmtSchemaArgs) -> Result<Policy, ExitStatus> {
@@ -42,6 +42,32 @@ pub(crate) fn schema_policy(args: &FmtDataArgs) -> Result<Policy, ExitStatus> {
         .with_meta_schema(args.meta_schema.clone());
     let definition = options
         .load_schema(&args.schema, &definition_extensions())
+        .map_err(|records| report_all(&records))?;
+    match report_all(&definition.notes) {
+        ExitStatus::Success => Ok(policy(&definition)),
+        failed => Err(failed),
+    }
+}
+
+/// The policy of the governing meta-schema, for `fmt auto`'s schema
+/// definitions.
+pub(crate) fn auto_meta_schema_policy(args: &FmtAutoArgs) -> Result<Policy, ExitStatus> {
+    let definition = governing_meta_schema(args.meta_schema.as_deref(), &definition_extensions())
+        .map_err(|records| report_all(&records))?;
+    Ok(policy(&definition))
+}
+
+/// The policy of `schema`, for the documents `fmt auto` reads under it.
+pub(crate) fn auto_schema_policy(
+    args: &FmtAutoArgs,
+    schema: &std::path::Path,
+) -> Result<Policy, ExitStatus> {
+    let options = args
+        .locations
+        .apply(DataOptions::new(None, Vec::new()))
+        .with_meta_schema(args.meta_schema.clone());
+    let definition = options
+        .load_schema(schema, &definition_extensions())
         .map_err(|records| report_all(&records))?;
     match report_all(&definition.notes) {
         ExitStatus::Success => Ok(policy(&definition)),

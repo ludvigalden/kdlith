@@ -1,0 +1,5 @@
+shop "corner" {
+    owner "Ada"
+    motto "Fresh fruit"
+    item "pear" price=2 size="large"
+}

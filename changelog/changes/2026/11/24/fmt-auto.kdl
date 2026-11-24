@@ -1,0 +1,15 @@
+change fmt-auto {
+    summary "Format documents of many schemas in one run with kdlith fmt auto"
+    category added
+    impact public
+    touches "context" "input:fixtures" "pkg/rs/cli" "pkg/rs/diagnostic"
+    commit "c4341967d14d6a620f51afe75c674ac1e8b1e0d3"
+    detail """
+        kdlith fmt auto reads each document under the schema the --schema=FILE before \
+        it names (--schema= names none); a document under no schema is formatted as a \
+        schema definition when its first node is schema, else by the layout alone. \
+        Each schema is compiled once. A stray option among its documents is \
+        KDLITH-FMT004. It is what a tool that knows which schema governs which file \
+        runs, as relmap's KDL format check does from a map.
+        """
+}

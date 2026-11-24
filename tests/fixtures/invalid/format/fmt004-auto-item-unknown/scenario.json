@@ -1,0 +1,8 @@
+{
+  "binary": "kdlith",
+  "description": "fmt auto reads every argument after its options as a document or as --schema=FILE; one that starts with - and is neither (here --schema FILE, without the =) is KDLITH-FMT004, a usage error that formats nothing",
+  "args": ["fmt", "auto", "--schema", "shop.kdl", "input.kdl"],
+  "expect-invalid": {
+    "input": "expect-invalid.txt"
+  }
+}
