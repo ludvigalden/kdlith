@@ -359,6 +359,14 @@ fn one(job: &Job<'_>, options: &Options) -> Outcome {
 /// Replace `path` with `text` in one step: written beside it, given its
 /// permissions, then renamed over it.
 fn replace(path: &Path, text: &str) -> std::io::Result<()> {
+    // A symbolic link stays a link: the file it names is replaced.
+    let resolved;
+    let path = if std::fs::symlink_metadata(path)?.file_type().is_symlink() {
+        resolved = std::fs::canonicalize(path)?;
+        resolved.as_path()
+    } else {
+        path
+    };
     let permissions = std::fs::metadata(path)?.permissions();
     let name = path
         .file_name()
