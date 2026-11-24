@@ -1,8 +1,11 @@
 // The schema the format/ data scenarios share. Its layout rule sets the
-// line limits for every document; shop and item ask for their
-// properties and children in declared order, and pack, which declares a
-// sequence, cannot have them moved. Prose and Command are text types:
-// prose reads folded and is refilled, a command is never broken.
+// line limits for every document; order is declared by default, so shop
+// and item write their properties and children in field order, while
+// bundle opts out with order=authored and pack, which declares a
+// sequence, cannot have its children moved. A banner is admitted by a
+// children rule alone, so it stays where it is written. Prose and
+// Command are text types: prose reads folded and is refilled, a command
+// is never broken.
 schema shop version="1" {
     layout width=80 content-width=64
     types {
@@ -33,6 +36,14 @@ schema shop version="1" {
             field tags "list<String>"
             field run "optional<Command>"
         }
+        object Banner {
+            field text String
+        }
+        object Bundle {
+            field name String
+            field label "optional<String>"
+            field count "optional<U64>"
+        }
         object Pack {
             field name String
             field label "optional<String>"
@@ -40,16 +51,19 @@ schema shop version="1" {
         }
     }
     node shop role=record type=Shop {
-        layout order=declared
         field name arg=0
         field motto child=motto
         field owner child=owner
+        children banner
         children item
         children pack
+        children bundle
+    }
+    node banner type=Banner parent=shop {
+        field text arg=0
     }
     node item role=record type=Item {
         parents shop
-        layout order=declared
         field name arg=0
         field size property=size
         field kind property=kind
@@ -64,9 +78,15 @@ schema shop version="1" {
         }
         field run child=run
     }
+    node bundle role=record type=Bundle {
+        parents shop
+        layout order=authored
+        field name arg=0
+        field label child=label
+        field count child=count
+    }
     node pack role=record type=Pack {
         parents shop
-        layout order=declared
         field name arg=0
         field label child=label
         field count child=count

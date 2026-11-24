@@ -4,6 +4,6 @@
   "args": ["vet", "schema", "schema.kdl"],
   "expect": {
     "exit": 0,
-    "stdout-contains": [" types=7 nodes=3 ", " digest=5f0081dcac063ece"]
+    "stdout-contains": [" types=9 nodes=5 ", " digest=a174413c0065c217"]
   }
 }

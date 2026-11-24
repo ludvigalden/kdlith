@@ -14,7 +14,7 @@
     "stdout-contains": [
       "ok: schema schema version 0 scope=complete documents=4 ",
       " types=137 nodes=91 ",
-      " digest=dce39f484acd78d6"
+      " digest=fc4f501f538ac83e"
     ]
   }
 }

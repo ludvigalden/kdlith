@@ -68,7 +68,7 @@ schema schema version="0" {
         }
 
         // The order a formatted node's properties and children are
-        // written in; absent means authored.
+        // written in; absent means declared.
         enum LayoutOrder {
             member declared description="As the declaration binds them: properties by field, children by the field or children rule that admits them"
             member authored description="As the document writes them"
@@ -386,7 +386,6 @@ schema schema version="0" {
     // Node declarations in a schema definition.
 
     node node role=declaration type=NodeDef {
-        parents schema
         field name arg=0
         field aliases {
             from {
@@ -412,21 +411,10 @@ schema schema version="0" {
                 }
             }
         }
+        field layout child=layout
         field fields {
             from {
                 entries field key="arg(0)" value=FieldBinding
-            }
-            duplicate-keys reject
-        }
-        field children {
-            from {
-                entries children key="arg(0)" value=ChildRule
-            }
-            duplicate-keys reject
-        }
-        field children-groups {
-            from {
-                entries children-group key="arg(0)" value=ChildRule
             }
             duplicate-keys reject
         }
@@ -440,10 +428,27 @@ schema schema version="0" {
                 children exactly-one
             }
         }
+        field identity child=identity
         field value child=value
         field value-from-path child=value-from-path
         field cases child=cases
-        field identity child=identity
+        field annotations {
+            from {
+                children annotation
+            }
+        }
+        field children {
+            from {
+                entries children key="arg(0)" value=ChildRule
+            }
+            duplicate-keys reject
+        }
+        field children-groups {
+            from {
+                entries children-group key="arg(0)" value=ChildRule
+            }
+            duplicate-keys reject
+        }
         field sequence child=sequence
         field descendants {
             from {
@@ -451,12 +456,7 @@ schema schema version="0" {
             }
         }
         field description property=description
-        field annotations {
-            from {
-                children annotation
-            }
-        }
-        field layout child=layout
+        parents schema
         children parents max-occurs=1
         children effects max-occurs=2
         children value max-occurs=1

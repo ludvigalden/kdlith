@@ -33,11 +33,10 @@ pub struct RuleId(usize);
 /// The order a node's properties and children are written in.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Order {
-    /// As the declaration binds them.
-    Declared,
-    /// As the document writes them: the default, since a declaration's
-    /// field order follows its type, not how its documents read.
+    /// As the declaration binds them: the default.
     #[default]
+    Declared,
+    /// As the document writes them.
     Authored,
 }
 
@@ -339,9 +338,9 @@ fn order_entries(node: &mut Node<'_>, ranks: &HashMap<String, usize>) {
     node.parts.extend(tail);
 }
 
-/// Children by rank within each run between unranked children; a node
-/// keeps the comments written before it, and a comment written on its
-/// line after it.
+/// Children by rank within each run between unranked children and empty
+/// lines; a node keeps the comments written before it, and a comment
+/// written on its line after it.
 fn order_children(block: &mut Block<'_>, ranks: &HashMap<String, usize>) {
     let items = std::mem::take(&mut block.items);
     let mut units: Vec<(Option<usize>, Vec<Item<'_>>)> = Vec::new();
@@ -367,6 +366,11 @@ fn order_children(block: &mut Block<'_>, ranks: &HashMap<String, usize>) {
     let mut out = Vec::with_capacity(units.len());
     let mut run: Vec<(usize, Vec<Item<'_>>)> = Vec::new();
     for (rank, unit) in units {
+        // An empty line closes a group its author made: nothing moves
+        // across it.
+        if unit.first().is_some_and(|item| item.blank_before) {
+            flush(&mut run, &mut out);
+        }
         match rank {
             Some(rank) => run.push((rank, unit)),
             None => {

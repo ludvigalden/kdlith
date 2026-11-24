@@ -1,16 +1,17 @@
 //! The formatting policy a compiled definition implies. The schema's
-//! `layout` rules set line limits and, with `order=declared`, write a
-//! node's properties in its declaration's field order and its children
-//! in the order its fields and children rules name them; otherwise
-//! entries and children stay as written. By convention a value bound to
+//! `layout` rules set line limits and the order: by default
+//! (`order=declared`) a node's properties follow its declaration's field
+//! order and the children its fields bind follow the same order;
+//! `order=authored` keeps both as written. By convention a value bound to
 //! an enum or an identifier-format string is written bare, and a string
 //! type's `layout prose` or `layout verbatim` decides how its long
 //! values are laid out.
 //!
-//! Children whose order a reading can observe never move: a node with a
-//! sequence rule keeps its children as written, and a child that is a
-//! processing item of its own (it declares a role) stays in place with
-//! nothing moved across it.
+//! Children whose order a reading can observe never move: a child only a
+//! `children` rule admits, or one that is a processing item of its own (it
+//! declares a role), stays in place with nothing moved across it; a node
+//! with a sequence rule keeps all its children as written; and no child
+//! moves across an empty line, which closes a group its author made.
 
 use std::collections::HashMap;
 
@@ -136,8 +137,7 @@ impl Rules<'_> {
 
     fn ranks(&self, decl: &NodeDecl, rule: &mut NodeRule) {
         let mut children: HashMap<String, usize> = HashMap::new();
-        let mut rank = 0;
-        for field in fields(decl) {
+        for (rank, field) in fields(decl).enumerate() {
             for source in &field.sources {
                 match source {
                     FieldSource::Property(key) => {
@@ -164,16 +164,10 @@ impl Rules<'_> {
                     _ => {}
                 }
             }
-            rank += 1;
         }
-        let rules = decl
-            .children
-            .iter()
-            .chain(decl.cases.iter().flat_map(|case| case.children.iter()));
-        for child in rules {
-            children.entry(self.name(child.name)).or_insert(rank);
-            rank += 1;
-        }
+        // A child only a children rule admits is no field value: a
+        // reading meets it in document order, so that order is the
+        // document's meaning and it ranks nowhere.
         // A child that is a processing item of its own is emitted,
         // applied, or imported in the order written: it ranks nowhere.
         children.retain(|child, _| {

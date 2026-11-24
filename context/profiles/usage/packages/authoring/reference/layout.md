@@ -98,13 +98,17 @@ schema shop version="1" {
   declaration, for that node and everything under it, until a rule
   further down says otherwise. Each property is optional, and a
   command line's `--width` or `--content-width` overrides every rule's.
-- `order=declared` writes the node's arguments first, then its
-  properties in its declaration's field order, and its children in the
-  order its fields and children rules name them; same-named children
-  keep their order. A child that is a processing item of its own (it
-  declares a role) stays where it is and nothing moves across it, and
-  a node with a `sequence` keeps its children as written. The default,
-  `authored`, keeps everything as written.
+- `order=declared`, the default, writes the node's arguments first,
+  then its properties in its declaration's field order, and the
+  children its fields bind in the same order; same-named children keep
+  their order. Only an order no reading can observe changes: a child
+  that only a `children` rule admits, or one that is a processing item
+  of its own (it declares a role), stays where it is and nothing moves
+  across it; nothing moves across an empty line, which closes a group
+  the author made; and a node with a `sequence` keeps its children as
+  written. `order=authored` keeps everything as written, for a node
+  whose author's order reads better than its fields'. To change the
+  declared order itself, reorder the declaration's `field` bindings.
 - A string type's `layout prose` declares its values paragraphs:
   paragraphs are separated by empty lines, and within one every run of
   whitespace, line breaks included, reads as a single space. A reading

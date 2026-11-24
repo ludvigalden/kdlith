@@ -79,17 +79,28 @@ binder dispatches: by node name and parent name. Children a field
 binds through nested `child`/`children` sources with no declaration of
 their own get a rule from those sources. A rule carries the `layout`
 limits and order, the property ranks (field order; a compact child
-counts as a property), the child ranks (field order, then children
-rules), and a value rule per argument position and property: bare
-for an enum or a case-format string, and the type's text layout.
+counts as a property), the child ranks (the field that binds each
+child), and a value rule per argument position and property: bare for
+an enum or a case-format string, and the type's text layout.
 
-Order is `authored` unless a `layout` rule says `declared`. Across
-the repositories formatted while this was built, a declaration's field
-order follows its type, not the order its documents are read in, so
-reordering by default rewrote correct documents. Under `declared`, a
-child that declares a role ranks nowhere: it is emitted, applied, or
-imported in written order, so it stays in place and nothing moves
-across it, and a node with a `sequence` keeps its children as written.
+Order is `declared` unless a `layout` rule says `authored`. It moves
+only what no reading can observe. A child no field binds — one only a
+`children` rule admits, such as a container's steps — is met by a
+reading in document order, so it ranks nowhere; nor does a child that
+declares a role, which is emitted, applied, or imported in written
+order. Each stays in place and nothing moves across it. An empty line
+closes a group its author made, so nothing moves across it either, and
+a node with a `sequence` keeps its children as written.
+
+The declared order is the order of a declaration's `field` bindings,
+so it is fixed where it is wrong. Before declared order became the
+default, every authored document of the attached repositories was
+compared with its declared order, pair of child names by pair: the
+meta-schema's `node` declaration now binds `layout`, `effects`,
+`identity`, `value`, and `cases` before its `children` rules, as
+authors write them, and the few other schemas whose field order
+authors consistently reversed were reordered in their own
+repositories.
 
 Prose folding is the one rule that reaches a reading: the engine's
 decoder folds a value of a `layout prose` string type
