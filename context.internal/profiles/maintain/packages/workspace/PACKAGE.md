@@ -18,7 +18,7 @@ built; the committed code, the canonical meta-schema files, and
 ## Layout
 
 ```
-pkg/rs/{diagnostic,model,parse,runtime,engine,schema-kdl,codegen,cli}/
+pkg/rs/{diagnostic,model,parse,format,runtime,engine,schema-kdl,codegen,cli}/
                                   library crates
 tools/kdlith/                     the CLI binary (package kdlith-bin)
 pkg/kdl/schemas/schema/           the canonical meta-schema documents and
@@ -92,6 +92,8 @@ Under `context.internal/reference/`:
   processor — `40_engine_contract.md`, `41_binder_semantics.md`
 - what `gen` emits and how it is packaged —
   `42_generated_crate_contract.md`
+- what `fmt` guarantees, how the layout is decided, and where the
+  schema's rules enter — `43_formatter_contract.md`
 - one code per rejected construct, rendering, and the registry
   history — `50_diagnostic_registry.md`
 - contribution scope, merge, and payload resolution —

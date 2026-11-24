@@ -43,6 +43,42 @@ scope-less partition under `local`, and only the partitions of scope
 `KDLITH-CLI001`); a record is found under each, and the scope never
 gates the exit.
 
+## fmt
+
+`kdlith fmt file|schema|data FILES...` writes documents in the
+canonical layout, replacing each file whose text differs. `file` needs
+no schema; `schema` formats schema definitions under the layout rules
+of the bundled meta-schema (or `--meta-schema FILE`); `data --schema
+SCHEMA` formats data documents under that schema's. A directory names
+every `.kdl` file under it, its hidden entries passed over; `-` reads
+standard input and prints to standard output.
+
+```sh
+kdlith fmt file map/
+kdlith fmt data --schema shop.kdl --check orders.kdl
+kdlith fmt schema --stdout shop.kdl
+```
+
+- `--check` writes nothing and reports each document whose text
+  differs (`KDLITH-FMT001`, exit 1); `--stdout` prints each formatted
+  document instead of writing it. The two exclude each other.
+- `--width N` and `--content-width N` set the line limits for the
+  whole run, over the schema's: a line at indentation `i` ends by
+  column `min(width, i + content-width)` wherever a break can fall
+  (defaults 100 and 80).
+
+The layout depends only on what the document holds: its nodes,
+values, and comments, where its empty lines fell, and which strings
+were written bare. Formatting is idempotent, never changes a value,
+and is verified before anything is written: the result is read back
+and compared with the document, and a layout that would not read back
+as the document is reported (`KDLITH-FMT002`) and nothing is written.
+A file is replaced in one step (written beside it, then renamed over
+it); a write that fails is `KDLITH-FMT003`. A document that is not
+KDL v2 fails as `read file` fails it. The layout itself, and the
+schema rules that steer it, are in the `authoring` package's
+`reference/layout.md`.
+
 ## sources
 
 `kdlith sources plan --sources FILE [--store DIR]` prints one JSON line
@@ -115,7 +151,8 @@ build.
   under `--warnings-as-errors`; a note never does)
 - 1 — a diagnostic or gate failure the run reports (binding, link,
   export delivery, drift check, generation refusal, cache fault,
-  changelog data unavailable)
+  changelog data unavailable, an unformatted document under
+  `fmt --check`)
 - 2 — an argument fault (`KDLITH-CLI001` through `KDLITH-CLI004`),
   reported before any document is read
 

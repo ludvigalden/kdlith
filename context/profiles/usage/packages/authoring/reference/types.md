@@ -21,7 +21,9 @@ field's type).
 A `string` type may carry `pattern` (whole-string match),
 `min-length`, a built-in `format` (`kebab-case`, `camel-case`,
 `lower-snake`, `upper-snake`, `uuid`, `zero-padded` with `width`), or
-a registered `validator` with a version.
+a registered `validator` with a version, and a `layout` of `prose`
+(paragraphs whose line breaks read as spaces) or `verbatim` (never
+wrapped); `reference/layout.md` describes both.
 
 A pattern codec decodes a matching string into a typed value:
 

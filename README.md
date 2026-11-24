@@ -9,9 +9,9 @@ describes itself. kdlith reads these definitions and either processes data
 documents directly or generates a typed Rust processor for them.
 
 > Status: early development, pre-release. Every `kdlith` command (`gen`,
-> `vet`, `export`, `inspect`, `list`, `read`, `cache`, `changelog`, `help`) is
-> implemented, and `gen` generates compilable processor crates from schema
-> definitions. Interfaces may still change between releases.
+> `vet`, `fmt`, `export`, `inspect`, `list`, `read`, `cache`, `changelog`,
+> `help`) is implemented, and `gen` generates compilable processor crates
+> from schema definitions. Interfaces may still change between releases.
 
 ## What it does
 
@@ -21,6 +21,14 @@ documents directly or generates a typed Rust processor for them.
   up and reports references that are unresolved, ambiguous, or missing a
   required qualifier, declarations that are duplicated, and deferred
   payloads that do not fit the declaration their reference resolved to.
+- **Format.** `kdlith fmt file|schema|data` writes documents in one
+  canonical layout under a line width and a content width, or checks
+  that they are. Comments stay put, a string too long for its line
+  becomes a multi-line string without changing its value, and every
+  result is read back and compared before it is written. A schema
+  steers the layout with `layout` rules: line limits, the declared
+  order of properties and children, and prose text a reading folds,
+  so `fmt` refills it.
 - **Inspect.** `kdlith inspect --view` shows a reading seven ways:
   source, bound, context, effective, origins, plan, and references.
 - **Export.** `kdlith export` writes typed records as NDJSON. Each record
@@ -51,7 +59,8 @@ under [`context/`](context); development-facing design notes live in
 
 | Path                          | Package             | Role                                                               |
 | ----------------------------- | ------------------- | ------------------------------------------------------------------ |
-| `pkg/rs/parse`                | `kdlith-parse`      | Streaming KDL v2 pull parser and source coordinates                |
+| `pkg/rs/parse`                | `kdlith-parse`      | Streaming KDL v2 pull parser, syntax tree, and source coordinates  |
+| `pkg/rs/format`               | `kdlith-format`     | The canonical layout `kdlith fmt` writes                           |
 | `pkg/rs/model`                | `kdlith-model`      | Identities, origins, bound values, and processing items            |
 | `pkg/rs/runtime`              | `kdlith-runtime`    | Binding frames, context operations, sessions, processor interfaces |
 | `pkg/rs/diagnostic`           | `kdlith-diagnostic` | Diagnostic codes, labels, and presentation-neutral structures      |

@@ -8,12 +8,14 @@ binds_to_depth: main...
 
 # kdlith CLI usage
 
-kdlith is a single binary with eight verbs, all implemented:
+kdlith is a single binary with nine verbs, all implemented:
 
 - `gen schema` — generate a Rust processor crate from a schema
   definition
 - `vet schema|data` — compile a definition or bind data
   documents against a schema and report every diagnostic
+- `fmt file|schema|data` — write documents in the canonical layout,
+  or check that they are
 - `export` — write typed records as NDJSON
 - `inspect schema|data` — show a reading seven ways with
   `--view`
@@ -32,8 +34,8 @@ been shown.
 
 Read on demand:
 
-- every verb's arguments and the exit-code strata —
-  `reference/verbs.md`
+- every verb's arguments, `fmt`'s modes and limits, and the
+  exit-code strata — `reference/verbs.md`
 - the inputs shared across verbs (`--schema`, `--root`, `--source`,
   `--alias`, `--profiles`, `--scope`, `--max-invocations`,
   `--threads`, `--resolve-from`, and the export sensitivity policy
