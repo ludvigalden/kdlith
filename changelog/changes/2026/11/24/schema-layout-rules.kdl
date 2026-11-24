@@ -6,6 +6,7 @@ change schema-layout-rules {
             "pkg/rs/engine" "pkg/rs/format" "pkg/rs/schema-kdl" "context" "context.internal"
     commit "6c509810c734e8dd03c64c8b1b34abb924761f2f"
     commit "ef865d5070fc34b20834a7bb53226031fee977b2"
+    commit "6ef53fa822b2f6c3492fe988fa8c29d2d6725655"
     detail """
         Under a schema, fmt writes a node's properties in its declaration's field \
         order and the children its fields bind in the same order. It moves only what \
