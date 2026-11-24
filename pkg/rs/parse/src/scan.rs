@@ -51,6 +51,11 @@ impl<'src> Scanner<'src> {
         self.at
     }
 
+    /// The whole source the scanner reads.
+    pub(crate) fn source(&self) -> &'src str {
+        self.src
+    }
+
     pub(crate) fn source_len(&self) -> usize {
         self.src.len()
     }
@@ -80,11 +85,11 @@ impl<'src> Scanner<'src> {
         &bytes[self.at..stop]
     }
 
-    fn starts_with(&self, text: &str) -> bool {
+    pub(crate) fn starts_with(&self, text: &str) -> bool {
         self.src[self.at..].starts_with(text)
     }
 
-    fn bump(&mut self, ch: char) {
+    pub(crate) fn bump(&mut self, ch: char) {
         self.at += ch.len_utf8();
     }
 
@@ -164,7 +169,7 @@ impl<'src> Scanner<'src> {
     }
 
     /// `multi-line-comment` after its `/*`; comments nest.
-    fn block_comment(&mut self, start: usize) -> Result<()> {
+    pub(crate) fn block_comment(&mut self, start: usize) -> Result<()> {
         let mut depth = 0_usize;
         loop {
             if self.starts_with("*/") {
@@ -201,7 +206,7 @@ impl<'src> Scanner<'src> {
 
     /// `escline` after its `\`: whitespace, then a line comment, a
     /// newline, or the end of input.
-    fn escline(&mut self) -> Result<()> {
+    pub(crate) fn escline(&mut self) -> Result<()> {
         loop {
             match self.peek() {
                 Some(ch) if is_space(ch) => self.bump(ch),
@@ -240,6 +245,17 @@ impl<'src> Scanner<'src> {
                     self.block_comment(comment)?;
                 }
                 _ => return Ok(self.at != start),
+            }
+        }
+    }
+
+    /// Unicode spaces alone: no line continuation, no comment.
+    pub(crate) fn node_space_plain(&mut self) -> Result<()> {
+        loop {
+            self.at += space_run(&self.src.as_bytes()[self.at..]);
+            match self.peek() {
+                Some(ch) if is_space(ch) => self.bump(ch),
+                _ => return Ok(()),
             }
         }
     }
