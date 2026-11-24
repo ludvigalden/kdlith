@@ -2,9 +2,26 @@ change fmt-canonical-layout {
     summary "Format documents in one canonical layout with kdlith fmt"
     category added
     impact public
-    touches "@repo" "input:fixtures" "pkg/rs/cli" "pkg/rs/diagnostic" "pkg/rs/format" "pkg/rs/parse"
+    touches "@repo" "input:fixtures" "pkg/rs/cli" "pkg/rs/diagnostic" \
+            "pkg/rs/format" "pkg/rs/parse"
     commit "9f72570d9d115a5a0ff927e1411b6b9cb621d1d0"
     commit "666bdc17c3f3bd18b16ffe5679c32f4c0cd52e16"
     commit "c067423aa69bfa028a53b2ebf176ae40ee728a0b"
-    detail "kdlith fmt file|schema|data writes documents in one canonical layout, in place, to stdout with --stdout, or only checks them with --check, which reports each unformatted document as KDLITH-FMT001. The layout depends only on what a document holds, its comments, where its empty lines fell, and which strings were written bare: four spaces per level, one node per line, comments kept where they stand, at most one empty line between items, and every line held within a width (default 100) and a content width after its indentation (default 80), which --width and --content-width set. A header that outgrows its line fills continuation lines two levels in, and a string too long for any line becomes a multi-line string broken at spaces through whitespace escapes, so no value changes. Every result is read back and compared before anything is written; a layout that would not read back is KDLITH-FMT002 and a failed write KDLITH-FMT003. A directory names every .kdl file under it. kdlith-parse gains the syntax tree the formatter reads, which keeps comments, slashdashed text, and spellings, and the new kdlith-format crate holds the layout."
+    detail """
+        kdlith fmt file|schema|data writes documents in one canonical layout, in \
+        place, to stdout with --stdout, or only checks them with --check, which \
+        reports each unformatted document as KDLITH-FMT001. The layout depends only on \
+        what a document holds, its comments, where its empty lines fell, and which \
+        strings were written bare: four spaces per level, one node per line, comments \
+        kept where they stand, at most one empty line between items, and every line \
+        held within a width (default 100) and a content width after its indentation \
+        (default 80), which --width and --content-width set. A header that outgrows \
+        its line fills continuation lines two levels in, and a string too long for any \
+        line becomes a multi-line string broken at spaces through whitespace escapes, \
+        so no value changes. Every result is read back and compared before anything is \
+        written; a layout that would not read back is KDLITH-FMT002 and a failed write \
+        KDLITH-FMT003. A directory names every .kdl file under it. kdlith-parse gains \
+        the syntax tree the formatter reads, which keeps comments, slashdashed text, \
+        and spellings, and the new kdlith-format crate holds the layout.
+        """
 }
