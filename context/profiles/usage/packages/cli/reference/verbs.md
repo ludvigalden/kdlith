@@ -45,7 +45,7 @@ gates the exit.
 
 ## fmt
 
-`kdlith fmt file|schema|data FILES...` writes documents in the
+`kdlith fmt file|schema|data|auto FILES...` writes documents in the
 canonical layout, replacing each file whose text differs. `file` needs
 no schema; `schema` formats schema definitions under the layout rules
 of the bundled meta-schema (or `--meta-schema FILE`); `data --schema
@@ -53,10 +53,21 @@ SCHEMA` formats data documents under that schema's. A directory names
 every `.kdl` file under it, its hidden entries passed over; `-` reads
 standard input and prints to standard output.
 
+`auto` formats documents of many schemas in one run, as a tool that
+knows which schema governs which file asks (relmap's `core.kdl-format`
+check, from a map's classes). Each document is read under the schema
+the nearest `--schema=FILE` before it names, and `--schema=` names
+none; a document under no schema is formatted as a schema definition
+when its first node is `schema`, else by the layout alone. Each schema
+is compiled once. Options come before the documents: any later
+argument that starts with `-` and is neither `-` nor `--schema=FILE`
+is `KDLITH-FMT004`.
+
 ```sh
 kdlith fmt file map/
 kdlith fmt data --schema shop.kdl --check orders.kdl
 kdlith fmt schema --stdout shop.kdl
+kdlith fmt auto --check --schema=shop.kdl orders.kdl --schema= shop.kdl notes.kdl
 ```
 
 - `--check` writes nothing and reports each document whose text

@@ -1,0 +1,11 @@
+schema stall version="1" {
+    node stall type=Stall {
+        children crate
+        field name arg=0
+    }
+    types {
+        record Stall {
+            field name String
+        }
+    }
+}

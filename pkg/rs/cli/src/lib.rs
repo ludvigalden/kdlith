@@ -211,6 +211,10 @@ enum FmtCommand {
     /// Format data documents under the layout rules of the schema
     /// `--schema` names
     Data(FmtDataArgs),
+    /// Format each document in the mode it calls for: under the schema
+    /// the `--schema=FILE` before it names, a schema definition under the
+    /// meta-schema, and any other document by the layout alone
+    Auto(FmtAutoArgs),
 }
 
 /// What `fmt` does with each document, and the line limits it holds
@@ -292,6 +296,30 @@ struct FmtDataArgs {
     /// standard input
     #[arg(required = true)]
     files: Vec<PathBuf>,
+}
+
+#[derive(Args)]
+struct FmtAutoArgs {
+    #[command(flatten)]
+    output: FmtOutputArgs,
+    /// A meta-schema definition document replacing the bundled one; it is
+    /// itself vetted with complete checking
+    #[arg(long = "meta-schema", value_name = "FILE")]
+    meta_schema: Option<PathBuf>,
+    #[command(flatten)]
+    locations: LocationArgs,
+    /// Documents, each read under the schema the nearest `--schema=FILE`
+    /// before it names (`--schema=` names none); a document under no
+    /// schema is formatted as a schema definition when its first node is
+    /// `schema`, else by the layout alone. A directory names every .kdl
+    /// file under it, - the standard input
+    #[arg(
+        required = true,
+        allow_hyphen_values = true,
+        trailing_var_arg = true,
+        value_name = "[--schema=FILE] FILE"
+    )]
+    items: Vec<std::ffi::OsString>,
 }
 
 /// `kdlith vet schema|data`.
@@ -983,6 +1011,7 @@ impl Command {
                 FmtCommand::File(_) => return None,
                 FmtCommand::Schema(args) => &mut args.locations,
                 FmtCommand::Data(args) => &mut args.locations,
+                FmtCommand::Auto(args) => &mut args.locations,
             },
             Command::Export(args) => &mut args.locations,
             Command::Inspect(args) => match &mut args.command {

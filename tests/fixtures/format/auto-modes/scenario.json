@@ -1,0 +1,21 @@
+{
+  "binary": "kdlith",
+  "description": "fmt auto reads each document in the mode it calls for: shop.kdl under the format/shop.kdl the --schema= before it names (its children and properties move to field order, an enum value goes bare), definition.kdl under the meta-schema once --schema= (empty) names no schema, since its first node is schema (its field binding moves before its children rule), and plain.kdl, under no schema and no schema definition, by the layout alone (the same text as shop.kdl keeps its order and quotes)",
+  "args": [
+    "fmt",
+    "auto",
+    "--schema={fx-suite}/format/shop.kdl",
+    "shop.kdl",
+    "--schema=",
+    "definition.kdl",
+    "plain.kdl"
+  ],
+  "expect": {
+    "exit": 0,
+    "files": {
+      "shop.kdl": "shop.expected.kdl",
+      "definition.kdl": "definition.expected.kdl",
+      "plain.kdl": "plain.expected.kdl"
+    }
+  }
+}

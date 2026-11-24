@@ -67,4 +67,5 @@ read); syntax faults (`SYN…` from the KDL parser); export faults
 built without changelog data); formatting faults (`FMT001` a document
 `fmt --check` finds unformatted, `FMT002` a layout that would not read
 back as its document, so nothing was written, `FMT003` a formatted
-document that could not be written).
+document that could not be written, `FMT004` an argument of `fmt auto`
+that is neither a document nor `--schema=FILE`, exit 2).
