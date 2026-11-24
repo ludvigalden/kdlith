@@ -3,7 +3,7 @@ change schema-layout-rules {
     category added
     impact public
     touches "input:fixtures" "input:meta-schema" "pkg/rs/cli" "pkg/rs/codegen" \
-            "pkg/rs/engine" "pkg/rs/format" "pkg/rs/schema-kdl"
+            "pkg/rs/engine" "pkg/rs/format" "pkg/rs/schema-kdl" "context" "context.internal"
     commit "6c509810c734e8dd03c64c8b1b34abb924761f2f"
     commit "ef865d5070fc34b20834a7bb53226031fee977b2"
     detail """
